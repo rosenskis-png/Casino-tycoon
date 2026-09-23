@@ -40,4 +40,4 @@ Same priority order as M2 (leave → restroom → bar → cage → machine → b
 Walking guests show what they're searching for ("Looking for a restroom", "Looking for the way out", "Trapped inside"). The Debug view adds floor knowledge and regular / first visit.
 
 ## Not yet
-Crowds and jackpot cheers as things that pull guests, regulars walking to things that were removed (needs real returning individuals), and perf tuning if large floors need it (the 5,000-guest headless tick went from ~1.8 to ~2.2–2.8 ms).
+Crowds and jackpot cheers as things that pull guests, regulars walking to things that were removed (needs real returning individuals), A machine search considers at most 400 machines, and a first-timer only searches the nearest sector ring (sight never reaches farther). With the guests.md cadence change, the 5,000-guest Big Floor headless tick is ~1.3–1.4 ms on average, with a worst tick of ~4 ms (it was ~2.5 ms and ~13 ms).

@@ -14,7 +14,7 @@ import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents"
 import { SIGHT, canSee, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
 import { betOf, modelOf, roundTicks } from "./gaming";
 import { post } from "./finance";
-import { TICKS_PER_DAY, TICKS_PER_SECOND, dateOfDay } from "./clock";
+import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND, dateOfDay } from "./clock";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -25,6 +25,8 @@ declare module "./commands" {
 }
 
 const REP_RATE = 0.02;
+/** Seconds between mood updates for a guest who is sitting or standing still. */
+const MOOD_EVERY = 5;
 const THINK_EVERY: [number, number] = [15, 30]; // seconds at 1×
 const CASH_OUT_MIN = 20;
 /** Hops looking for a machine before giving up on the place. */
@@ -379,6 +381,8 @@ function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
 const MAX_CANDIDATES = 16;
 /** Sight-line checks per look for machines: a glance, not a survey. */
 const MAX_LOOKS = 40;
+/** Machines considered per look at most, so a packed floor can't make one decision expensive. */
+const MAX_SCAN = 400;
 
 /**
  * Free, working machines a guest would consider: ones in view, or ones a regular knows the way to. Searched in
@@ -387,15 +391,17 @@ const MAX_LOOKS = 40;
 function candidates(g: Game, a: Agent, type: GuestTypeDef): { o: number; appeal: number; d: number; seen: boolean }[] {
   const gd = a.g!, { w, h } = g.state.map, here = a.y * w + a.x;
   // Look up to 3 sectors away (~50 tiles): guests don't know about machines across a huge floor.
-  const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.min(3, Math.max(w, h) >> 4);
+  // Anything in sight lies within one sector ring; farther rings only hold machines a regular remembers.
+  const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.min(gd.memDate >= 0 ? 3 : 1, Math.max(w, h) >> 4);
   const out: { o: number; appeal: number; d: number; seen: boolean }[] = [];
-  let looks = MAX_LOOKS;
+  let looks = MAX_LOOKS, scan = MAX_SCAN;
   for (let r = 0; r <= maxR; r++) {
     for (let y = sy - r; y <= sy + r; y++) for (let x = sx - r; x <= sx + r; x++) {
       if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== r || x < 0 || y < 0) continue;
       const list = g.slotSectors.get(y * 4096 + x);
       if (!list) continue;
       for (const o of list) {
+        if (--scan < 0) return out;
         if (o.broken) continue;
         const m = modelOf(o.kind)!;
         const appeal = type.games[m.id] ?? 0;
@@ -578,8 +584,6 @@ function guestTick(g: Game, a: Agent) {
         if (why) { release(g, a); a.act = "idle"; return; }
         a.timer = roundTicks(modelOf(g.objById.get(a.target)!.kind)!, gd.pace);
       }
-      gd.mem.playTicks++;
-      g.objById.get(a.target)!.st.playTicks++;
       return;
     }
     case "drink":
@@ -612,7 +616,16 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : 0.8));
   gd.annoy = Math.max(0, Math.min(30, gd.annoy - 0.5));
   gd.know += (1 - gd.know) * LEARN;
+  // Play time is booked once a second, not every tick.
+  if (a.act === "play" && a.timer !== 0) {
+    const o = g.objById.get(a.target);
+    if (o) { gd.mem.playTicks += TICKS_PER_BEAT; o.st.playTicks += TICKS_PER_BEAT; }
+  }
   if (a.hidden) return;
+  // Mood: every second while walking; every MOOD_EVERY seconds while settled (surroundings don't change much).
+  const beatNo = Math.floor(g.state.tick / TICKS_PER_BEAT);
+  const span = walking ? 1 : MOOD_EVERY;
+  if (!walking && (a.id + beatNo) % MOOD_EVERY !== 0) return thinkIfDue(g, a, type, r);
   const here = a.y * g.state.map.w + a.x;
   const env = Math.max(-30, Math.min(12, fitAt(g, type, here).score * 8));
   const luck = Math.max(-15, Math.min(15, ((gd.mem.won - gd.mem.wagered) / Math.max(1, gd.bankroll)) * 25));
@@ -620,10 +633,15 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   for (const v of [n.bladder, n.thirst, n.hunger, n.fatigue]) if (v > 60) needs += (v - 60) / 3;
   const drink = gd.intox > 0 && gd.intox <= 2 ? 4 : gd.intox > 3 ? -4 : 0;
   const target = 62 + env + luck - needs - gd.annoy + drink;
-  gd.mood = Math.max(0, Math.min(100, gd.mood + (target - gd.mood) * 0.1));
-  gd.mem.moodSum += gd.mood;
-  gd.mem.moodN++;
+  gd.mood = Math.max(0, Math.min(100, gd.mood + (target - gd.mood) * (1 - Math.pow(0.9, span))));
+  gd.mem.moodSum += gd.mood * span;
+  gd.mem.moodN += span;
   if (walking && r.chance(gd.mem.drinks ? 0.006 : 0.003)) litter(g, here);
+  thinkIfDue(g, a, type, r);
+}
+
+function thinkIfDue(g: Game, a: Agent, type: GuestTypeDef, r: Rng) {
+  const gd = a.g!;
   if (g.state.tick >= gd.nextThink) {
     periodicThought(g, a, type);
     gd.nextThink = g.state.tick + r.int(THINK_EVERY[0], THINK_EVERY[1]) * TICKS_PER_SECOND;
@@ -694,15 +712,20 @@ export const guestSystem: System = {
   },
   tick(g) {
     const s = g.state;
-    for (const a of s.agents) if (a.role === "guest") guestTick(g, a);
+    const r = rng(s, "guests");
+    // Each guest's once-a-second update falls on its own tick, so 5,000 guests don't all update at once.
+    for (const a of s.agents) {
+      if (a.role !== "guest") continue;
+      if ((a.id + s.tick) % TICKS_PER_BEAT === 0) guestBeat(g, a, r);
+      guestTick(g, a);
+    }
     const out = gone(g);
     if (out.size) { s.agents = s.agents.filter((a) => !out.has(a.id)); out.clear(); }
   },
   beat(g) {
     const s = g.state;
-    const r = rng(s, "guests");
     let n = 0;
-    for (const a of s.agents) if (a.role === "guest") { n++; guestBeat(g, a, r); }
+    for (const a of s.agents) if (a.role === "guest") n++;
     // Arrivals from the street.
     const ra = rng(s, "arrivals");
     const rates = arrivalRates(g, n);

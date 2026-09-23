@@ -11,7 +11,8 @@ Type, group, intention (gamble / drink), name, bankroll and wallet, withdrawals 
 ## Tastes
 - A type's `prefs` give an ideal, tolerance and weight for NRG, CRW, PRS, TRF (fields) and DIRT (litter within 2 tiles).
 - Within tolerance: +0.3 × weight. Beyond it: −weight × min(1.5, excess / tolerance). The cap is the saturation rule from §4.
-- Mood each beat eases toward 62 + surroundings (fit × 8, clamped −30…+12) + luck (net win vs bankroll, ±15) − needs over 60 − annoyance (broken machine, lines, no seat) ± drink.
+- Update cadence: each guest's once-a-second update (needs, mood, thoughts, play-time bookkeeping) falls on its own tick (id + tick), so the load is spread across the second. Mood is recomputed every second while walking and every 5 s while sitting or standing still, catching up by the same amount. Walking, slot rounds and use timers stay per tick.
+- Mood eases toward 62 + surroundings (fit × 8, clamped −30…+12) + luck (net win vs bankroll, ±15) − needs over 60 − annoyance (broken machine, lines, no seat) ± drink.
 
 ## What a guest does
 - Arrives at a street entrance, then decides. Order: leave (exhausted, miserable, starving, or already leaving) → restroom when bladder ≥ 70 → bar when thirsty (or came for a drink) → withdraw at the cage when they can't afford any machine and are the ATM type → pick a machine → otherwise wander and retry (3 failures and they go home).

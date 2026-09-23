@@ -35,7 +35,7 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Save schema 3 (migration from 2). Exit guarantees checked by `npm run check`.
 
 ## M3 · Guest model depth ☐  (needs guest design discussion)
-Groups, intentions, betting behavior, quit rules, intoxication, drink servers.
+Real returning individuals (a finite, persistent population per scenario; replaces per-type familiarity), roster, groups, intentions, betting behavior, quit rules, intoxication, drink servers.
 
 ## M4 · Incidents, house rules, authorities ☐
 ## M5 · Cheats, suspicion tools, enforcement, luck tags ☐
@@ -43,5 +43,6 @@ Groups, intentions, betting behavior, quit rules, intoxication, drink servers.
 ## M7 · Games catalog and table rules ☐
 ## M8 · Slot designer ☐
 ## M9 · Staff depth, policies, marketing, comps, whales, events, research tree ☐
+Whale bankrolls are sized to game money (a variance crisis means several months of the casino's profit), not real-world millions.
 ## M10 · Audio, play-the-games-yourself ☐
 ## M11 · Scenarios, tutorial, balance ☐

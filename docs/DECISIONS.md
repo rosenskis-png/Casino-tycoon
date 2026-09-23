@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · After the external review of M2.5
+- Real returning individuals move into M3: a finite, persistent population per scenario, each person with their own visit history and memory. This replaces the per-type familiarity stand-in, and bans, returning cheats and chasers' shrinking bankrolls depend on it.
+- Accepted consequence of having no time of day: crowds that don't mix are always on the floor together. Space (rooms, zoning, sightlines, noise) is the only way to separate them, and types are told apart by season, events and marketing, not by hour.
+- Guest update cadence: once-a-second work is spread across ticks, and seated guests recompute mood every 5 s. Walking, rounds and timers stay per tick. A machine search considers at most 400 machines. Big Floor, 5,000 guests, headless: average tick 2.5 → 1.3 ms, worst tick 13 → 4 ms.
+- Whale bankrolls (M9) are sized to game money, not reality.
+- Review claims checked and not needing action: the perf test already uses real guests on Big Floor, and FOUNDATIONS already marks the parts superseded by clock.md. Types don't yet look different on the floor; that's an M3 decision.
+
 ## 2026-09-23 · Green light for M2.5; wayfinding built
 - Owner said "green light".
 - Regulars: no per-object memory for now. Real returning individuals come in a later milestone. Until then each guest has a floor knowledge meter that grows while they're here, and it carries into later visits through a per-type familiarity. A regular only knows things built before their last visit.

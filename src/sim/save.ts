@@ -24,6 +24,24 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.outcome = "";
     return s;
   },
+  // 2 → 3 (M2.5): wayfinding. Objects remember when they were built; guests gain floor knowledge and search
+  // state; each type's familiarity with the floor starts at its default.
+  2: (s) => {
+    for (const o of s.objects) o.built = 0;
+    s.familiar = {};
+    for (const t of Object.keys(s.rep)) if (GUEST_TYPES[t]) s.familiar[t] = GUEST_TYPES[t].familiarity.start;
+    const w = s.map.w;
+    for (const a of s.agents) {
+      if (a.role !== "guest" || !a.g) continue;
+      let door = -1, bd = Infinity;
+      for (const e of s.map.entrances) {
+        const d = Math.abs((e % w) - a.x) + Math.abs(Math.floor(e / w) - a.y);
+        if (d < bd) { bd = d; door = e; }
+      }
+      Object.assign(a.g, { know: s.familiar[a.g.type] ?? 0, kseed: a.id, memDate: 0, door, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0 });
+    }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

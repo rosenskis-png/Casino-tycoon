@@ -88,7 +88,7 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom"> = {
     apply(g, c) {
       const f = placement(g, c.kind, c.x, c.y, c.rot & 3) as { tiles: number[]; seats: number[] };
       const id = g.state.nextId++;
-      g.state.objects.push(newObject(id, c.kind, c.x, c.y, c.rot & 3));
+      g.state.objects.push(newObject(id, c.kind, c.x, c.y, c.rot & 3, g.state.tick));
       post(g, "build", -OBJECTS[c.kind].cost);
       g.rebuildOccupancy();
       g.tilesChanged([...f.tiles, ...f.seats]);
@@ -130,8 +130,8 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom"> = {
   },
 };
 
-export function newObject(id: number, kind: string, x: number, y: number, rot: number): PlacedObject {
-  return { id, kind, x, y, rot, broken: 0, last: { tick: -1, win: 0 }, st: { rounds: 0, coinIn: 0, paidOut: 0, sessions: 0, playTicks: 0, uses: 0 } };
+export function newObject(id: number, kind: string, x: number, y: number, rot: number, built = 0): PlacedObject {
+  return { id, kind, x, y, rot, broken: 0, last: { tick: -1, win: 0 }, st: { rounds: 0, coinIn: 0, paidOut: 0, sessions: 0, playTicks: 0, uses: 0 }, built };
 }
 
 export const buildSystem: System = { id: "build", commands };

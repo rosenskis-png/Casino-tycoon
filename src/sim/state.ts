@@ -2,7 +2,7 @@
 import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface MapState {
   w: number;
@@ -28,6 +28,8 @@ export interface PlacedObject {
   /** Last round shown on the cabinet: tick it resolved and result (0 loss, 1 win, 2 jackpot). */
   last: { tick: number; win: number };
   st: ObjectStats;
+  /** Tick it was placed. Regulars only know what was built before their last visit. */
+  built: number;
 }
 
 export type Needs = { bladder: number; hunger: number; thirst: number; fatigue: number };
@@ -71,6 +73,24 @@ export interface GuestData {
   annoy: number;
   /** Why they are leaving, once they are. */
   why: string;
+  /** Wayfinding (docs/spec/navigation.md). Familiarity with the floor, 0-1; grows while here. */
+  know: number;
+  /** Per-guest seed for which remembered routes they know. */
+  kseed: number;
+  /** Tick of their last visit (regulars) or -1: only objects built by then can be remembered. */
+  memDate: number;
+  /** Entrance tile they came in by. */
+  door: number;
+  /** Amenity and sign ids seen this visit (newest last, capped). */
+  seen: number[];
+  /** Recent decision tiles, so wandering explores instead of doubling back. */
+  trail: number[];
+  /** What they are searching for ("" none), how many hops they've spent searching, and needs given up on (bits). */
+  seek: string;
+  lost: number;
+  gaveUp: number;
+  /** 1 while no walkable route to any exit exists. */
+  trapped: number;
 }
 
 export type Activity =
@@ -129,6 +149,8 @@ export interface GameState {
   log: NewsItem[];
   /** Reputation per guest type, 0-100. */
   rep: Record<string, number>;
+  /** How well each guest type knows this floor, 0-1: carried from departing guests to returning ones. */
+  familiar: Record<string, number>;
   finance: {
     /** This month so far, per category. */
     month: Ledger;

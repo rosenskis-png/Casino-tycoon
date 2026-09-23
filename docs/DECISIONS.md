@@ -2,6 +2,19 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Green light for M2.5; wayfinding built
+- Owner said "green light".
+- Regulars: no per-object memory for now. Real returning individuals come in a later milestone. Until then each guest has a floor knowledge meter that grows while they're here, and it carries into later visits through a per-type familiarity. A regular only knows things built before their last visit.
+- Signs are just objects. The player doesn't set arrows (too much micromanagement). A sign imperfectly points guests toward whatever they're looking for.
+- Sight is ray-cast only when a guest decides what to do (no cache): simpler, and cheap enough at 5,000 guests.
+
+## 2026-09-23 · M2.5: navigation and wayfinding before M3 (see docs/spec/navigation.md)
+- Owner: guests knowing the path to every destination kills the point of layouts. Inserted M2.5 before M3; the M3 guest discussion resumes after it.
+- Guests no longer choose from the whole floor. They act on what they can see, what they remember, and what signs say, then walk known routes on the existing path fields.
+- Walls and slot banks block sight. Signs are placeable objects. Regulars remember the floor, and that memory goes stale after a remodel.
+- A guest with a walkable path to an exit always finds it eventually; with none, they are truly trapped (replaces "walled-in guests leave anyway").
+- Fields bias which visible waypoint wins; they don't steer footsteps (keeps cause readable). Staff stay omniscient.
+
 ## 2026-09-23 · Bigger peak crowds; two-level pathfinding
 - Owner asked to raise the planned scale: the largest maps now aim for 5,000–8,000 guests at peak (was 2,000–3,000). Mid-size raised to ~500–1,500. Every guest is still one real person.
 - Why it's safe: on the owner's iPhone, a tutorial floor with ~100 slots held 60 fps with ~18,000 guests. A new ~20×-size test map (Big Floor, hidden from New game) now drives the perf test, so the ceiling is measured where it matters.

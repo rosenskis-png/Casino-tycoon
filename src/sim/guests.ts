@@ -11,6 +11,7 @@ import type { System } from "./registry";
 import type { Agent, GuestData } from "./state";
 import { rng, type Rng } from "./rng";
 import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
+import { SIGHT, canSee, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
 import { betOf, modelOf, roundTicks } from "./gaming";
 import { post } from "./finance";
 import { TICKS_PER_DAY, TICKS_PER_SECOND, dateOfDay } from "./clock";
@@ -26,7 +27,17 @@ declare module "./commands" {
 const REP_RATE = 0.02;
 const THINK_EVERY: [number, number] = [15, 30]; // seconds at 1×
 const CASH_OUT_MIN = 20;
-const MAX_FAILS = 3;
+/** Hops looking for a machine before giving up on the place. */
+const MAX_FAILS = 8;
+/** Hops searching for an amenity before going without; hops lost before a leaving guest finds the way anyway. */
+const GIVE_UP = 6;
+const EXIT_LOST = 8;
+/** Floor knowledge gained per beat on the floor, and how fast departing guests move their type's familiarity. */
+const LEARN = 0.002;
+const FAMILIAR_RATE = 0.05;
+type Need = "thirst" | "bladder" | "cage";
+const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4 };
+const WHERE: Record<Need, string> = { thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage" };
 const DIRT_CAP = 9;
 
 // ---------------------------------------------------------------------------------------------------------
@@ -179,6 +190,9 @@ export function spawnGuest(g: Game, typeId: string, at: number): Agent | null {
   const r = rng(s, "guests");
   const w = s.map.w;
   const bankroll = Math.round(range(r, type.budget) / 5) * 5;
+  const fam = type.familiarity, regular = r.chance(fam.regulars);
+  const know = regular ? Math.min(1, (s.familiar[typeId] ?? fam.start) * range(r, [0.6, 1.3])) : 0;
+  const memDate = regular ? Math.max(0, s.tick - Math.round(range(r, fam.lapse) * TICKS_PER_DAY)) : -1;
   const x = at % w, y = (at - x) / w;
   const gd: GuestData = {
     type: typeId, group: 0, intent: r.chance(0.12) ? "drink" : "gamble", name: r.int(0, FIRST_NAMES.length * 26 - 1),
@@ -193,6 +207,7 @@ export function spawnGuest(g: Game, typeId: string, at: number): Agent | null {
     mood: r.int(60, 75), luck: 0, cheat: 0,
     mem: { arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, fails: 0, cashed: 0 },
     thought: "", thoughtTick: -1, recent: [], nextThink: s.tick + r.int(5, 20) * TICKS_PER_SECOND, annoy: 0, why: "",
+    know, kseed: r.int(0, 1 << 30), memDate, door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0,
   };
   gd.group = s.nextId;
   const a: Agent = {
@@ -219,6 +234,8 @@ function depart(g: Game, a: Agent) {
   const sat = satisfaction(a);
   const cur = s.rep[gd.type] ?? 50;
   s.rep[gd.type] = Math.max(0, Math.min(100, cur + (sat * 100 - cur) * REP_RATE));
+  const fam = s.familiar[gd.type] ?? 0;
+  s.familiar[gd.type] = fam + (gd.know - fam) * FAMILIAR_RATE;
   s.visits.today.left++;
   s.visits.today.satSum += sat;
   if (gd.why === "broke") s.visits.today.broke++;
@@ -233,63 +250,146 @@ function depart(g: Game, a: Agent) {
 const goneSets = new WeakMap<Game, Set<number>>();
 function gone(g: Game) { let s = goneSets.get(g); if (!s) goneSets.set(g, (s = new Set())); return s; }
 
-function nearestExit(g: Game, a: Agent): number {
-  const w = g.state.map.w;
-  let best = -1, bd = Infinity;
-  for (const e of g.state.map.entrances) {
-    const d = Math.abs((e % w) - a.x) + Math.abs(Math.floor(e / w) - a.y);
-    if (d < bd && g.walkable(e)) { bd = d; best = e; }
-  }
-  return best;
-}
-
 function startLeaving(g: Game, a: Agent, why: string) {
-  const gd = a.g!;
+  const gd = a.g!, w = g.state.map.w, r = rng(g.state, "guests");
   if (!gd.why) gd.why = why;
   release(g, a);
-  // Winners and anyone holding tickets cash out at the cage first, if there is one.
+  // Winners and anyone holding tickets cash out at the cage first, if they can find one.
   if (!gd.mem.cashed && gd.wallet >= CASH_OUT_MIN && gd.mem.wagered > 0) {
-    if (goUse(g, a, "cage")) return;
+    const use = g.has("cage") ? goUse(g, a, "cage") : "unknown";
+    if (use === "ok") return;
+    if (use === "unknown" && g.has("cage") && seekNeed(g, a, r, "cage", 1)) return;
     if (!g.has("cage")) { think(g, a, "noCage"); gd.mem.unmet++; }
     gd.mem.cashed = 1;
   }
-  const exit = nearestExit(g, a);
-  // Walled in with no way out: they leave anyway rather than haunt the floor.
-  if (exit < 0 || !g.paths.reachable(a.y * g.state.map.w + a.x, exit)) return depart(g, a);
-  go(a, exit, "leave");
+  const here = a.y * w + a.x;
+  const ents = g.state.map.entrances;
+  const open: number[] = [];
+  for (const e of ents) if (g.walkable(e) && g.paths.reachable(here, e)) open.push(e);
+  // No walkable way out at all: truly trapped until the layout changes.
+  if (!open.length) {
+    if (!gd.trapped) { gd.trapped = 1; think(g, a, "trapped"); }
+    gd.annoy += 4;
+    return wander(g, a, r);
+  }
+  gd.trapped = 0;
+  // An exit in view, or one a regular knows the way to: walk straight there.
+  let best = -1, bd = Infinity;
+  ents.forEach((e, k) => {
+    if (!open.includes(e)) return;
+    const d = Math.abs((e % w) - a.x) + Math.abs(Math.floor(e / w) - a.y);
+    if (d < bd && (canSee(g, here, e) || knowsExit(gd, k))) { bd = d; best = e; }
+  });
+  // Lost long enough: they find it anyway (asking around, retracing steps), not happily.
+  if (best < 0 && gd.seek === "exit" && gd.lost >= EXIT_LOST) {
+    for (const e of open) {
+      const d = Math.abs((e % w) - a.x) + Math.abs(Math.floor(e / w) - a.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    think(g, a, "finallyOut");
+    gd.annoy += 6;
+  }
+  if (best >= 0) { gd.seek = ""; gd.lost = 0; return go(a, best, "leave"); }
+  if (gd.seek === "exit" && gd.lost === 3) think(g, a, "lostExit");
+  // Otherwise head roughly back the way they came in, helped by any sign in view.
+  const toward = g.walkable(gd.door) ? gd.door : open[0];
+  if (search(g, a, r, "exit", open, toward, 1 + 0.2 * gd.lost)) return;
+  go(a, open[0], "leave");
 }
 
 // ---------------------------------------------------------------------------------------------------------
 // Choosing what to do.
 
-/** Walk to the nearest free seat of an amenity serving `what`. Returns false when none is free. */
-function goUse(g: Game, a: Agent, what: "thirst" | "bladder" | "cage"): boolean {
-  const w = g.state.map.w;
-  let best = -1, bestSeat = -1, bd = Infinity;
+/** Remember amenities in view. Spotting one ends any give-up on that need. */
+function lookAround(g: Game, a: Agent) {
+  const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
+  for (const what of ["thirst", "bladder", "cage"] as Need[])
+    for (const o of g.amenities[what]) {
+      const t = faceTile(g, o);
+      if (Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y) > SIGHT || !canSee(g, here, t)) continue;
+      remember(gd, o.id);
+      gd.gaveUp &= ~NEED_BIT[what];
+    }
+}
+
+/**
+ * Walk to the nearest free seat of an amenity serving `what` that the guest can see or knows the way to.
+ * "full" when every one they know of is taken; "unknown" when they don't know of any.
+ */
+function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
+  const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
+  let best = -1, bestSeat = -1, bd = Infinity, known = false;
   for (const o of g.amenities[what]) {
+    const t = faceTile(g, o);
+    const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+    if (!knowsRoute(gd, o) && (d > SIGHT || !canSee(g, here, t))) continue;
+    if (!g.paths.reachable(here, t)) continue;
+    known = true;
     const k = freeSeat(g, o.id);
     if (k < 0) continue;
-    const t = seatTile(g, o.id, k);
-    const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
-    if (d < bd) { bd = d; best = o.id; bestSeat = k; }
+    const st = seatTile(g, o.id, k);
+    const ds = Math.abs((st % w) - a.x) + Math.abs(Math.floor(st / w) - a.y);
+    if (ds < bd) { bd = ds; best = o.id; bestSeat = k; }
   }
-  if (best < 0) return false;
+  if (best < 0) return known ? "full" : "unknown";
+  if (gd.seek === what) { gd.seek = ""; gd.lost = 0; }
   claim(g, a, best, bestSeat);
   go(a, seatTile(g, best, bestSeat), what === "thirst" ? "drink" : what === "bladder" ? "restroom" : "cage");
+  return "ok";
+}
+
+/** One hop of searching: follow a sign in view if one helps, else explore (toward a remembered spot, if any). */
+function search(g: Game, a: Agent, r: Rng, goal: string, targets: number[], toward: number, det: number): boolean {
+  const gd = a.g!, type = GUEST_TYPES[gd.type];
+  if (gd.seek !== goal) { gd.seek = goal; gd.lost = 0; }
+  gd.lost++;
+  if (gd.lost >= 2) gd.annoy += 2;
+  let dest = signLeg(g, a, r, targets);
+  if (dest >= 0 && gd.lost >= 2 && r.chance(0.3)) think(g, a, "signHelped");
+  if (dest < 0) dest = explore(g, a, r, (i) => fitAt(g, type, i).score, toward, det);
+  if (dest < 0) return false;
+  go(a, dest, "idle");
   return true;
 }
 
+/** Search for an amenity the guest doesn't know the way to. False once they give up (and go without). */
+function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
+  const gd = a.g!;
+  if (gd.gaveUp & NEED_BIT[what]) return false;
+  if (gd.seek === what && gd.lost >= GIVE_UP) {
+    gd.gaveUp |= NEED_BIT[what];
+    gd.seek = "";
+    gd.lost = 0;
+    think(g, a, WHERE[what]);
+    gd.mem.unmet++;
+    return false;
+  }
+  if (gd.seek === what && gd.lost === 3) think(g, a, WHERE[what]);
+  // Somewhere they saw one earlier this visit: head that way.
+  let toward = -1;
+  for (let k = gd.seen.length - 1; k >= 0 && toward < 0; k--) {
+    const o = g.objById.get(gd.seen[k]);
+    if (o && OBJECTS[o.kind].serves === what) toward = faceTile(g, o);
+  }
+  const targets: number[] = [];
+  for (const o of g.amenities[what]) targets.push(faceTile(g, o));
+  return search(g, a, r, what, targets, toward, det);
+}
+
 const MAX_CANDIDATES = 16;
+/** Sight-line checks per look for machines: a glance, not a survey. */
+const MAX_LOOKS = 40;
 
 /**
- * Free, working machines a guest would consider: searched in rings of 16×16 sectors outward from the guest,
- * keeping the MAX_CANDIDATES nearest. Guests look around them, not across the whole map.
+ * Free, working machines a guest would consider: ones in view, or ones a regular knows the way to. Searched in
+ * rings of 16×16 sectors outward from the guest, keeping the MAX_CANDIDATES nearest.
  */
-function candidates(g: Game, a: Agent, type: GuestTypeDef): { o: number; appeal: number; d: number }[] {
-  const gd = a.g!, { w, h } = g.state.map;
+function candidates(g: Game, a: Agent, type: GuestTypeDef): { o: number; appeal: number; d: number; seen: boolean }[] {
+  const gd = a.g!, { w, h } = g.state.map, here = a.y * w + a.x;
   // Look up to 3 sectors away (~50 tiles): guests don't know about machines across a huge floor.
   const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.min(3, Math.max(w, h) >> 4);
-  const out: { o: number; appeal: number; d: number }[] = [];
+  const out: { o: number; appeal: number; d: number; seen: boolean }[] = [];
+  let looks = MAX_LOOKS;
   for (let r = 0; r <= maxR; r++) {
     for (let y = sy - r; y <= sy + r; y++) for (let x = sx - r; x <= sx + r; x++) {
       if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== r || x < 0 || y < 0) continue;
@@ -303,9 +403,13 @@ function candidates(g: Game, a: Agent, type: GuestTypeDef): { o: number; appeal:
         const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
         // Keep the nearest few, sorted by distance (ties by id, so the order is deterministic).
         if (out.length >= MAX_CANDIDATES && d >= out[out.length - 1].d) continue;
+        // Known routes first (a cheap hash); sight lines only for the rest, and only so many per look.
+        const known = knowsRoute(gd, o);
+        const seen = !known && d <= SIGHT + 1 && looks-- > 0 && canSee(g, here, seatTile(g, o.id, 0));
+        if (!seen && !known) continue;
         let k = out.length;
         while (k > 0 && (out[k - 1].d > d || (out[k - 1].d === d && out[k - 1].o > o.id))) k--;
-        out.splice(k, 0, { o: o.id, appeal, d });
+        out.splice(k, 0, { o: o.id, appeal, d, seen });
         if (out.length > MAX_CANDIDATES) out.pop();
       }
     }
@@ -317,14 +421,16 @@ function candidates(g: Game, a: Agent, type: GuestTypeDef): { o: number; appeal:
 
 function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng): boolean {
   const w = g.state.map.w;
-  let best = -1, bestScore = -Infinity;
+  let best = -1, bestScore = -Infinity, far = false;
   for (const c of candidates(g, a, type)) {
     const t = seatTile(g, c.o, 0);
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
-    const score = c.appeal * 2 + fitAt(g, type, t).score * 0.5 - d / 25 + r.next() * 0.6;
-    if (score > bestScore) { bestScore = score; best = c.o; }
+    // What's in front of them pulls a little harder than what they remember.
+    const score = c.appeal * 2 + fitAt(g, type, t).score * 0.5 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
+    if (score > bestScore) { bestScore = score; best = c.o; far = c.seen && d > 6; }
   }
   if (best < 0) return false;
+  if (far && r.chance(0.15)) think(g, a, "ooh");
   claim(g, a, best, freeSeat(g, best));
   go(a, seatTile(g, best, a.seat), "play");
   return true;
@@ -335,41 +441,55 @@ function canAffordAnything(g: Game, gd: GuestData): boolean {
   return g.minRound === Infinity || g.minRound <= gd.wallet + 1e-9;
 }
 
-/** Browse the floor nearby for a bit, then think again. */
+/** Browse: walk to the most inviting view nearby, then think again. */
 function wander(g: Game, a: Agent, r: Rng) {
-  let dest = nearbyTile(g, "guests", a.x, a.y, 8);
-  if (dest < 0) { const pts = g.state.wanderPoints; dest = pts.length ? r.pick(pts) : a.y * g.state.map.w + a.x; }
+  const type = GUEST_TYPES[a.g!.type];
+  let dest = explore(g, a, r, (i) => fitAt(g, type, i).score);
+  if (dest < 0) dest = nearbyTile(g, "guests", a.x, a.y, 8);
+  if (dest < 0) dest = a.y * g.state.map.w + a.x;
   go(a, dest, "idle");
 }
 
 function decide(g: Game, a: Agent) {
   const gd = a.g!, type = GUEST_TYPES[gd.type], n = gd.needs;
   const r = rng(g.state, "guests");
+  lookAround(g, a);
   if (gd.why) return startLeaving(g, a, gd.why);
   if (n.fatigue >= 100) { think(g, a, "tired"); return startLeaving(g, a, "tired"); }
   if (gd.mood < 15) { think(g, a, "badTime"); return startLeaving(g, a, "unhappy"); }
   if (n.hunger >= 100) { think(g, a, "hungry"); gd.mem.unmet++; return startLeaving(g, a, "hungry"); }
   if (n.bladder >= 70) {
-    if (goUse(g, a, "bladder")) return;
-    if (!g.has("bladder")) {
+    if (!g.has("bladder") || gd.gaveUp & NEED_BIT.bladder) {
       if (n.bladder >= 90) { think(g, a, "noRestroom"); gd.mem.unmet++; return startLeaving(g, a, "restroom"); }
-    } else { think(g, a, "line"); gd.annoy += 3; return wander(g, a, r); }
+    } else {
+      const use = goUse(g, a, "bladder");
+      if (use === "ok") return;
+      if (use === "full") { think(g, a, "line"); gd.annoy += 3; return wander(g, a, r); }
+      // The more urgent, the more single-minded the search.
+      if (seekNeed(g, a, r, "bladder", n.bladder / 40)) return;
+    }
   }
   if (n.thirst >= 70 || (gd.intent === "drink" && gd.mem.drinks === 0)) {
-    if (goUse(g, a, "thirst")) return;
-    if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; n.thirst = 40; }
-    else { think(g, a, "line"); gd.annoy += 2; n.thirst = 55; }
+    const use = g.has("thirst") && !(gd.gaveUp & NEED_BIT.thirst) ? goUse(g, a, "thirst") : "none";
+    if (use === "ok") return;
+    if (use === "unknown" && seekNeed(g, a, r, "thirst", 0.8)) return;
+    if (use === "none") { if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; } n.thirst = 40; }
+    else if (use === "full") { think(g, a, "line"); gd.annoy += 2; n.thirst = 55; }
+    else n.thirst = 40;
     gd.intent = "gamble";
   }
   if (!canAffordAnything(g, gd)) {
-    if (gd.atm && gd.withdrawn < gd.withdrawCap && goUse(g, a, "cage")) return;
+    if (gd.atm && gd.withdrawn < gd.withdrawCap && g.has("cage")) {
+      const use = goUse(g, a, "cage");
+      if (use === "ok" || (use === "unknown" && seekNeed(g, a, r, "cage", 0.8))) return;
+    }
     think(g, a, "broke");
     return startLeaving(g, a, "broke");
   }
   if (chooseMachine(g, a, type, r)) { gd.mem.fails = 0; return; }
   if (++gd.mem.fails >= MAX_FAILS) return startLeaving(g, a, "nothing");
-  if (gd.mem.fails === 1) think(g, a, "noMachine");
-  gd.annoy += 6;
+  if (gd.mem.fails === 3) think(g, a, "cantFind");
+  gd.annoy += 2;
   wander(g, a, r);
 }
 
@@ -491,6 +611,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   n.hunger = Math.min(100, n.hunger + rate.hunger);
   n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : 0.8));
   gd.annoy = Math.max(0, Math.min(30, gd.annoy - 0.5));
+  gd.know += (1 - gd.know) * LEARN;
   if (a.hidden) return;
   const here = a.y * g.state.map.w + a.x;
   const env = Math.max(-30, Math.min(12, fitAt(g, type, here).score * 8));

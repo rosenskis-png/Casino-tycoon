@@ -46,6 +46,12 @@ export interface GuestTypeDef {
   };
   /** Need growth per second at 1× (0-100 scale). */
   needs: { bladder: number; hunger: number; thirst: number; fatigue: number };
+  /**
+   * Knowing the floor (docs/spec/navigation.md). PROVISIONAL stand-in until real returning individuals:
+   * `regulars` is the share of arrivals who have been before, `start` the type's familiarity with a new casino,
+   * `lapse` the days since a regular's last visit (anything built since then is new to them).
+   */
+  familiarity: { regulars: number; start: number; lapse: [number, number] };
   /** Seconds of play at 1× that feel like good value for money (NORTH_STAR: time over money). */
   valueSeconds: number;
 }
@@ -64,6 +70,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     incidents: {}, tolerance: {}, leniency: {}, repSensitivity: 1, comps: 0.5,
     play: { credits: 0.4, pace: [0.9, 1.2], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.2], lossLimit: [0.6, 1], compSeek: 0.2 },
     needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.4 },
+    familiarity: { regulars: 0.8, start: 0.5, lapse: [2, 30] },
     valueSeconds: 260,
   },
   retiree: {
@@ -77,6 +84,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     incidents: {}, tolerance: {}, leniency: {}, repSensitivity: 1.2, comps: 0.7,
     play: { credits: 0.15, pace: [0.7, 1], quit: { winGoal: 3, lossLimit: 4, broke: 0.5, jackpot: 1 }, winGoal: [0.3, 0.8], lossLimit: [0.5, 0.9], compSeek: 0.4 },
     needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.42 },
+    familiarity: { regulars: 0.6, start: 0.4, lapse: [3, 45] },
     valueSeconds: 300,
   },
   tourist: {
@@ -90,6 +98,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     incidents: {}, tolerance: {}, leniency: {}, repSensitivity: 0.8, comps: 0.3,
     play: { credits: 0.7, pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.05 },
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.38 },
+    familiarity: { regulars: 0.05, start: 0.05, lapse: [60, 365] },
     valueSeconds: 200,
   },
 };

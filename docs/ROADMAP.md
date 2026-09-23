@@ -28,6 +28,9 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Books by category, monthly close, worth. Staff, Guests, Finance and Goals tabs; guest, staff and machine inspectors.
 - Save schema 2 (migration from 1; M1 walkers retire).
 
+## M2.5 · Navigation and wayfinding ☐  (see docs/spec/navigation.md; design agreed, awaiting green light)
+Guests know only what they see, remember, or are pointed to by signs. Sight lines (walls and slot banks block), waypoint hopping weighted by determination, signs as objects, regulars' stale memory, truly trapped guests.
+
 ## M3 · Guest model depth ☐  (needs guest design discussion)
 Groups, intentions, betting behavior, quit rules, intoxication, drink servers.
 

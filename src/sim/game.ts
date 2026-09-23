@@ -3,6 +3,7 @@ import { SCENARIOS } from "../data/scenarios";
 import { GUEST_TYPES } from "../data/guests";
 import { DOOR_STATE, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
+import { SLOT_MODELS, WAGERS_PER_ROUND } from "../data/games";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, dateOfDay } from "./clock";
 import { EventBus } from "./events";
 import { SCHEMA_VERSION, type GameState, type PlacedObject } from "./state";
@@ -39,6 +40,14 @@ export class Game {
   /** Object id whose seat is on this tile. */
   seatAt = new Int32Array(0);
   objById = new Map<number, PlacedObject>();
+  /** Slot machines by 16×16 sector (key sy * 4096 + sx), for nearby searches. */
+  slotSectors = new Map<number, PlacedObject[]>();
+  /** Amenities by what they serve. */
+  amenities: Record<"thirst" | "bladder" | "cage", PlacedObject[]> = { thirst: [], bladder: [], cage: [] };
+  /** Seat tile indices per object. */
+  seatTiles = new Map<number, number[]>();
+  /** Cheapest one-credit round on any placed slot model (Infinity when there are none). */
+  minRound = Infinity;
   readonly rooms = new RoomIndex();
   readonly paths = new PathCache(this);
   readonly fields = new FieldEngine(this);
@@ -81,22 +90,39 @@ export class Game {
 
   /** Whether any placed object serves this need. */
   has(serves: "thirst" | "bladder" | "cage"): boolean {
-    for (const o of this.state.objects) if (OBJECTS[o.kind].serves === serves) return true;
-    return false;
+    return this.amenities[serves].length > 0;
   }
 
   rebuildOccupancy() {
     const { w, h } = this.state.map;
     const occ = new Int32Array(w * h), objAt = new Int32Array(w * h), seatAt = new Int32Array(w * h);
     this.objById.clear();
+    this.slotSectors.clear();
+    this.seatTiles.clear();
+    this.amenities = { thirst: [], bladder: [], cage: [] };
+    this.minRound = Infinity;
     for (const o of this.state.objects) {
       const def = OBJECTS[o.kind];
       this.objById.set(o.id, o);
+      if (def.serves) this.amenities[def.serves].push(o);
+      if (def.slot) {
+        const key = (o.y >> 4) * 4096 + (o.x >> 4);
+        let list = this.slotSectors.get(key);
+        if (!list) this.slotSectors.set(key, (list = []));
+        list.push(o);
+        const m = SLOT_MODELS[def.slot];
+        this.minRound = Math.min(this.minRound, m.denom * WAGERS_PER_ROUND);
+      }
       for (const p of footprint(def, o.x, o.y, o.rot)) {
         objAt[p.y * w + p.x] = o.id;
         if (def.blocks) occ[p.y * w + p.x] = o.id;
       }
-      for (const s of seats(def, o.x, o.y, o.rot)) if (s.x >= 0 && s.y >= 0 && s.x < w && s.y < h) seatAt[s.y * w + s.x] = o.id;
+      const st: number[] = [];
+      for (const s of seats(def, o.x, o.y, o.rot)) {
+        st.push(s.y * w + s.x);
+        if (s.x >= 0 && s.y >= 0 && s.x < w && s.y < h) seatAt[s.y * w + s.x] = o.id;
+      }
+      if (st.length) this.seatTiles.set(o.id, st);
     }
     this.occ = occ;
     this.objAt = objAt;

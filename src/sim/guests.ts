@@ -10,9 +10,7 @@ import type { CommandTable } from "./commands";
 import type { System } from "./registry";
 import type { Agent, GuestData } from "./state";
 import { rng, type Rng } from "./rng";
-import { go, isWalking, randomWalkable, MAX_AGENTS } from "./agents";
-import { UNREACHED } from "./paths";
-import { objSeats } from "./geometry";
+import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
 import { betOf, modelOf, roundTicks } from "./gaming";
 import { post } from "./finance";
 import { TICKS_PER_DAY, TICKS_PER_SECOND, dateOfDay } from "./clock";
@@ -79,9 +77,7 @@ function release(g: Game, a: Agent) {
 
 /** Tile of seat k of an object. */
 function seatTile(g: Game, objId: number, k: number): number {
-  const o = g.objById.get(objId)!;
-  const s = objSeats(o)[k];
-  return s.y * g.state.map.w + s.x;
+  return g.seatTiles.get(objId)![k];
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -259,7 +255,7 @@ function startLeaving(g: Game, a: Agent, why: string) {
   }
   const exit = nearestExit(g, a);
   // Walled in with no way out: they leave anyway rather than haunt the floor.
-  if (exit < 0 || g.paths.get(exit)[a.y * g.state.map.w + a.x] === UNREACHED) return depart(g, a);
+  if (exit < 0 || !g.paths.reachable(a.y * g.state.map.w + a.x, exit)) return depart(g, a);
   go(a, exit, "leave");
 }
 
@@ -270,8 +266,7 @@ function startLeaving(g: Game, a: Agent, why: string) {
 function goUse(g: Game, a: Agent, what: "thirst" | "bladder" | "cage"): boolean {
   const w = g.state.map.w;
   let best = -1, bestSeat = -1, bd = Infinity;
-  for (const o of g.state.objects) {
-    if (OBJECTS[o.kind].serves !== what) continue;
+  for (const o of g.amenities[what]) {
     const k = freeSeat(g, o.id);
     if (k < 0) continue;
     const t = seatTile(g, o.id, k);
@@ -284,19 +279,50 @@ function goUse(g: Game, a: Agent, what: "thirst" | "bladder" | "cage"): boolean 
   return true;
 }
 
+const MAX_CANDIDATES = 16;
+
+/**
+ * Free, working machines a guest would consider: searched in rings of 16×16 sectors outward from the guest,
+ * keeping the MAX_CANDIDATES nearest. Guests look around them, not across the whole map.
+ */
+function candidates(g: Game, a: Agent, type: GuestTypeDef): { o: number; appeal: number; d: number }[] {
+  const gd = a.g!, { w, h } = g.state.map;
+  // Look up to 3 sectors away (~50 tiles): guests don't know about machines across a huge floor.
+  const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.min(3, Math.max(w, h) >> 4);
+  const out: { o: number; appeal: number; d: number }[] = [];
+  for (let r = 0; r <= maxR; r++) {
+    for (let y = sy - r; y <= sy + r; y++) for (let x = sx - r; x <= sx + r; x++) {
+      if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== r || x < 0 || y < 0) continue;
+      const list = g.slotSectors.get(y * 4096 + x);
+      if (!list) continue;
+      for (const o of list) {
+        if (o.broken) continue;
+        const m = modelOf(o.kind)!;
+        const appeal = type.games[m.id] ?? 0;
+        if (appeal <= 0.05 || betOf(m, 1) * WAGERS_PER_ROUND > gd.wallet || freeSeat(g, o.id) < 0) continue;
+        const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
+        // Keep the nearest few, sorted by distance (ties by id, so the order is deterministic).
+        if (out.length >= MAX_CANDIDATES && d >= out[out.length - 1].d) continue;
+        let k = out.length;
+        while (k > 0 && (out[k - 1].d > d || (out[k - 1].d === d && out[k - 1].o > o.id))) k--;
+        out.splice(k, 0, { o: o.id, appeal, d });
+        if (out.length > MAX_CANDIDATES) out.pop();
+      }
+    }
+    // Enough choice close by: stop looking farther.
+    if (out.length >= MAX_CANDIDATES) break;
+  }
+  return out;
+}
+
 function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng): boolean {
-  const gd = a.g!, w = g.state.map.w;
+  const w = g.state.map.w;
   let best = -1, bestScore = -Infinity;
-  for (const o of g.state.objects) {
-    const m = modelOf(o.kind);
-    if (!m || o.broken) continue;
-    const appeal = type.games[m.id] ?? 0;
-    if (appeal <= 0.05 || freeSeat(g, o.id) < 0) continue;
-    if (betOf(m, 1) * WAGERS_PER_ROUND > gd.wallet) continue;
-    const t = seatTile(g, o.id, 0);
+  for (const c of candidates(g, a, type)) {
+    const t = seatTile(g, c.o, 0);
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
-    const score = appeal * 2 + fitAt(g, type, t).score * 0.5 - d / 25 + r.next() * 0.6;
-    if (score > bestScore) { bestScore = score; best = o.id; }
+    const score = c.appeal * 2 + fitAt(g, type, t).score * 0.5 - d / 25 + r.next() * 0.6;
+    if (score > bestScore) { bestScore = score; best = c.o; }
   }
   if (best < 0) return false;
   claim(g, a, best, freeSeat(g, best));
@@ -305,16 +331,14 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng): boolean {
 }
 
 function canAffordAnything(g: Game, gd: GuestData): boolean {
-  for (const o of g.state.objects) {
-    const m = modelOf(o.kind);
-    if (m && betOf(m, 1) * WAGERS_PER_ROUND <= gd.wallet) return true;
-  }
-  return !g.state.objects.some((o) => modelOf(o.kind)); // nothing to play at all: not a money problem
+  // Nothing to play at all is not a money problem.
+  return g.minRound === Infinity || g.minRound <= gd.wallet + 1e-9;
 }
 
+/** Browse the floor nearby for a bit, then think again. */
 function wander(g: Game, a: Agent, r: Rng) {
-  const pts = g.state.wanderPoints;
-  const dest = pts.length ? r.pick(pts) : a.y * g.state.map.w + a.x;
+  let dest = nearbyTile(g, "guests", a.x, a.y, 8);
+  if (dest < 0) { const pts = g.state.wanderPoints; dest = pts.length ? r.pick(pts) : a.y * g.state.map.w + a.x; }
   go(a, dest, "idle");
 }
 

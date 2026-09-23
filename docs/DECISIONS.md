@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Bigger peak crowds; two-level pathfinding
+- Owner asked to raise the planned scale: the largest maps now aim for 5,000–8,000 guests at peak (was 2,000–3,000). Mid-size raised to ~500–1,500. Every guest is still one real person.
+- Why it's safe: on the owner's iPhone, a tutorial floor with ~100 slots held 60 fps with ~18,000 guests. A new ~20×-size test map (Big Floor, hidden from New game) now drives the perf test, so the ceiling is measured where it matters.
+- Pathfinding rebuilt as two levels (local window fields per destination + shared per-room sector anchor fields, exact reachability by components). The single-level cache would have rebuilt full-map fields constantly on big maps.
+- Guests consider only machines within ~50 tiles (the nearest 16 free). That makes the search cheap, and it's plausible: nobody surveys a huge floor before sitting down.
+- Far zoom draws objects as flat colors baked into the floor image; thought bubbles are capped at 24 on screen.
+
 ## 2026-09-23 · Green light for M2; vertical slice built
 - Owner said "green light to build m2".
 - Engine fixes done first, as planned: per-system commands (module-augmented `CommandTypes`), a `layout` hook, save fixtures (`tests/saves/schema-1.json` is a real M1 save; `schema-2.json` the M2 one).

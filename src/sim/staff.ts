@@ -6,9 +6,8 @@ import type { CommandTable } from "./commands";
 import type { System } from "./registry";
 import type { Agent } from "./state";
 import { rng } from "./rng";
-import { go, isWalking } from "./agents";
+import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
-import { UNREACHED } from "./paths";
 import { TICKS_PER_SECOND } from "./clock";
 
 declare module "./commands" {
@@ -44,9 +43,13 @@ function claimed(g: Game, role: string): Set<number> {
   return out;
 }
 
+/** Patrol: a walk to somewhere nearby, sometimes across the floor. */
 function wanderStaff(g: Game, a: Agent) {
+  const r = rng(g.state, "staff");
   const pts = g.state.wanderPoints;
-  if (pts.length) go(a, rng(g.state, "staff").pick(pts), "idle");
+  const near = r.chance(0.7) ? nearbyTile(g, "staff", a.x, a.y, 12) : -1;
+  if (near >= 0) go(a, near, "idle");
+  else if (pts.length) go(a, r.pick(pts), "idle");
   a.target = -1;
 }
 
@@ -61,7 +64,7 @@ function janitorFindWork(g: Game, a: Agent) {
     const s = dirt[i] * 4 - (Math.abs((i % w) - a.x) + Math.abs(Math.floor(i / w) - a.y)) / 3;
     if (s > bs) { bs = s; best = i; }
   }
-  if (best >= 0 && g.paths.get(best)[here] !== UNREACHED) { a.target = best; go(a, best, "clean"); return; }
+  if (best >= 0 && g.paths.reachable(here, best)) { a.target = best; go(a, best, "clean"); return; }
   wanderStaff(g, a);
 }
 
@@ -86,10 +89,11 @@ function techFindWork(g: Game, a: Agent) {
   let best = -1, spot = -1, bd = Infinity;
   for (const o of g.state.objects) {
     if (!o.broken || taken.has(o.id)) continue;
+    const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
+    if (d >= bd) continue;
     const t = workSpot(g, o.id);
-    if (t < 0) continue;
-    const d = g.paths.get(t)[here];
-    if (d !== UNREACHED && d < bd) { bd = d; best = o.id; spot = t; }
+    if (t < 0 || !g.paths.reachable(here, t)) continue;
+    bd = d; best = o.id; spot = t;
   }
   if (best >= 0) { a.target = best; go(a, spot, "repair"); return; }
   wanderStaff(g, a);

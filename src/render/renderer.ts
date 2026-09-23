@@ -3,13 +3,14 @@
 import { T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
-import { PEOPLE } from "../data/art";
+import { OBJECT_MAP_COLORS, PEOPLE, SLOT_COLORS } from "../data/art";
 import { THOUGHTS } from "../data/thoughts";
 import { objSeats, objSize, type Agent, type Game, type SimEvent } from "../sim";
 import { buildAtlas, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
 const ART = 16; // art pixels per tile
+const MAX_BUBBLES = 24;
 const CHUNK = 16; // tiles per chunk side
 
 export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
@@ -24,8 +25,11 @@ export interface DrawStats { agentsDrawn: number; chunksRedrawn: number }
 export class Renderer {
   readonly atlas: Atlas;
   private ctx: CanvasRenderingContext2D;
+  // Two chunk caches: terrain only (Close/Default, objects drawn live) and terrain + flat objects (Wide/Overview).
   private chunks = new Map<number, HTMLCanvasElement>();
   private dirty = new Set<number>();
+  private farChunks = new Map<number, HTMLCanvasElement>();
+  private farDirty = new Set<number>();
   private game: Game | null = null;
   private unsub: (() => void) | null = null;
   stats: DrawStats = { agentsDrawn: 0, chunksRedrawn: 0 };
@@ -40,6 +44,8 @@ export class Renderer {
     this.game = g;
     this.chunks.clear();
     this.dirty.clear();
+    this.farChunks.clear();
+    this.farDirty.clear();
     this.unsub = g.bus.on((e: SimEvent) => { if (e.type === "tilesChanged") this.invalidate(e.tiles); });
   }
 
@@ -50,7 +56,11 @@ export class Renderer {
       const x = i % w, y = (i - x) / w;
       for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]]) {
         const X = x + dx, Y = y + dy;
-        if (X >= 0 && Y >= 0) this.dirty.add(Math.floor(Y / CHUNK) * cw + Math.floor(X / CHUNK));
+        if (X >= 0 && Y >= 0) {
+          const k = Math.floor(Y / CHUNK) * cw + Math.floor(X / CHUNK);
+          this.dirty.add(k);
+          this.farDirty.add(k);
+        }
       }
     }
   }
@@ -66,15 +76,16 @@ export class Renderer {
     }
   }
 
-  private chunk(key: number, cx: number, cy: number): HTMLCanvasElement {
-    let c = this.chunks.get(key);
-    if (c && !this.dirty.has(key)) return c;
+  private chunk(key: number, cx: number, cy: number, far: boolean): HTMLCanvasElement {
+    const cache = far ? this.farChunks : this.chunks, dirty = far ? this.farDirty : this.dirty;
+    let c = cache.get(key);
+    if (c && !dirty.has(key)) return c;
     if (!c) {
       c = document.createElement("canvas");
       c.width = c.height = CHUNK * ART;
-      this.chunks.set(key, c);
+      cache.set(key, c);
     }
-    this.dirty.delete(key);
+    dirty.delete(key);
     this.stats.chunksRedrawn++;
     const g = c.getContext("2d")!;
     const { w, h } = this.game!.state.map;
@@ -85,6 +96,16 @@ export class Renderer {
       if (x >= w || y >= h) continue;
       const f = this.atlas.frames.get(this.tileSprite(y * w + x))!;
       g.drawImage(this.atlas.canvas, f.x, f.y, f.w, f.h, tx * ART, ty * ART, ART, ART);
+      if (!far) continue;
+      const id = this.game!.objAt[y * w + x];
+      if (!id) continue;
+      const o = this.game!.objById.get(id);
+      if (!o) continue;
+      const def = OBJECTS[o.kind];
+      g.fillStyle = "#120a07";
+      g.fillRect(tx * ART, ty * ART, ART, ART);
+      g.fillStyle = def.slot ? SLOT_COLORS[def.slot]?.C ?? "#888" : OBJECT_MAP_COLORS[def.sprite] ?? "#888";
+      g.fillRect(tx * ART + 2, ty * ART + 2, ART - 4, ART - 4);
     }
     return c;
   }
@@ -111,7 +132,7 @@ export class Renderer {
     const cw = Math.ceil(w / CHUNK);
     for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor(y1 / CHUNK); cy++)
       for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor(x1 / CHUNK); cx++) {
-        const c = this.chunk(cy * cw + cx, cx, cy);
+        const c = this.chunk(cy * cw + cx, cx, cy, cam.level >= 2);
         ctx.drawImage(c, Math.round(ox + cx * CHUNK * tp), Math.round(oy + cy * CHUNK * tp), Math.ceil(CHUNK * tp), Math.ceil(CHUNK * tp));
       }
 
@@ -152,7 +173,8 @@ export class Renderer {
     // Who is playing which machine right now (for reels and lights).
     const playing = new Map<number, Agent>();
     for (const a of s.agents) if (a.act === "play" && a.seat >= 0) playing.set(a.target, a);
-    for (const o of s.objects) {
+    // At Wide and Overview objects are part of the cached floor image.
+    if (cam.level < 2) for (const o of s.objects) {
       const def = OBJECTS[o.kind];
       const { w: ow, h: oh } = objSize(o);
       if (o.x + ow < x0 - 1 || o.x > x1 + 1 || o.y + oh < y0 - 2 || o.y > y1 + 1) continue;
@@ -203,6 +225,7 @@ export class Renderer {
       });
     }
     const lod = cam.level; // 0-1 full sprites, 2 simplified, 3 dots
+    let bubbles = 0; // at most MAX_BUBBLES on screen, so a packed floor doesn't turn into a wall of speech
     const FACE = ["up", "side", "down", "left"];
     for (const a of s.agents) {
       if (a.hidden) continue;
@@ -229,7 +252,8 @@ export class Renderer {
       const f = atlas.frames.get(`p:${set}:${v}:${dir}${step}`)!;
       const gd = a.g;
       const bubble = gd && gd.thought && tick - gd.thoughtTick < 60 ? THOUGHTS[gd.thought] : null;
-      const bubbleKey = bubble ? (bubble.bad ? "obj:bubbleBad" : bubble.notable ? "obj:bubbleGood" : null) : null;
+      let bubbleKey = bubble ? (bubble.bad ? "obj:bubbleBad" : bubble.notable ? "obj:bubbleGood" : null) : null;
+      if (bubbleKey && ++bubbles > MAX_BUBBLES) bubbleKey = null;
       items.push({
         y: fy + 0.02,
         draw: () => {

@@ -4,7 +4,6 @@ import type { System } from "./registry";
 import type { Game } from "./game";
 import type { Activity, Agent } from "./state";
 import { rng } from "./rng";
-import { UNREACHED } from "./paths";
 
 const WANDER_POINTS = 16;
 export const MAX_AGENTS = 20_000;
@@ -25,6 +24,19 @@ export function randomWalkable(g: Game, stream: string, indoor = true): number {
     if (g.walkable(i) && (!indoor || g.state.map.outdoor[i] === 0)) return i;
   }
   for (let i = 0; i < w * h; i++) if (g.walkable(i)) return i;
+  return -1;
+}
+
+/** A random walkable tile within `r` tiles of (x, y) that can be reached from there, or -1. */
+export function nearbyTile(g: Game, stream: string, x: number, y: number, r: number): number {
+  const { w, h } = g.state.map;
+  const rr = rng(g.state, stream), from = y * w + x;
+  for (let k = 0; k < 12; k++) {
+    const X = x + rr.int(-r, r), Y = y + rr.int(-r, r);
+    if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+    const i = Y * w + X;
+    if (g.walkable(i) && !g.seatAt[i] && g.paths.reachable(from, i)) return i;
+  }
   return -1;
 }
 
@@ -83,17 +95,10 @@ export const movementSystem: System = {
       if (!isWalking(a)) continue;
       const here = a.y * w + a.x;
       if (here === a.dest) { a.act = a.next; a.timer = 0; continue; }
-      const f = g.paths.get(a.dest);
-      const d = f[here];
+      const j = g.paths.next(here, a.dest, a.id);
       // No way there (walled off, or the layout changed): give up and let the role decide again.
-      if (d === UNREACHED) { a.act = "idle"; a.next = "idle"; a.timer = 0; continue; }
-      // Step to the neighbor that is one closer; agents alternate tie order by id to spread out.
-      const order = a.id & 1 ? [1, -1, w, -w] : [w, -w, 1, -1];
-      for (const o of order) {
-        const j = here + o;
-        if ((o === 1 && a.x === w - 1) || (o === -1 && a.x === 0)) continue;
-        if (j >= 0 && j < f.length && f[j] === d - 1) { a.nx = j % w; a.ny = (j - a.nx) / w; break; }
-      }
+      if (j < 0) { a.act = "idle"; a.next = "idle"; a.timer = 0; continue; }
+      a.nx = j % w; a.ny = (j - a.nx) / w;
     }
   },
   beat(g) {

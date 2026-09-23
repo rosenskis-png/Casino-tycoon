@@ -1,5 +1,6 @@
-// Performance test: measures sim cost per tick and draw cost per frame at several crowd sizes of real guests on a
-// throwaway free-play game, then estimates the most agents that hold 60 fps at each speed. Run it on the phone.
+// Performance test: measures sim cost per tick and draw cost per frame at several crowd sizes of real guests on the
+// Big Floor test map (~20× the tutorial lot, ~9,000 slots with bars, restrooms and cages, techs and janitors),
+// then estimates the most guests that hold 60 fps at each speed. Run it on the phone.
 import { Game, TICKS_PER_SECOND } from "../sim";
 import { Renderer } from "../render/renderer";
 import { Camera } from "../render/camera";
@@ -10,13 +11,13 @@ export interface PerfResult {
   budgetMs: number;
 }
 
-const SIZES = [250, 1000, 2500, 5000, 10_000, 20_000];
+const SIZES = [500, 1000, 2500, 5000, 8000, 12_000];
 const BUDGET_MS = 12; // of 16.7 ms per 60 fps frame, leaving room for the browser and UI
 
 const pause = () => new Promise((r) => setTimeout(r, 0));
 
 export async function perfTest(vw: number, vh: number, onProgress?: (msg: string) => void): Promise<PerfResult> {
-  const g = Game.create("sandbox", 99);
+  const g = Game.create("bigfloor", 99);
   const canvas = document.createElement("canvas");
   const r = new Renderer(canvas);
   r.setGame(g);
@@ -32,7 +33,7 @@ export async function perfTest(vw: number, vh: number, onProgress?: (msg: string
       g.step();
       if (g.state.agents.length <= before) break;
     }
-    for (let k = 0; k < 60; k++) g.step(); // let them spread
+    for (let k = 0; k < 200; k++) g.step(); // let them find machines and settle in
     let t = performance.now();
     for (let k = 0; k < 120; k++) g.step();
     const simMsPerTick = (performance.now() - t) / 120;

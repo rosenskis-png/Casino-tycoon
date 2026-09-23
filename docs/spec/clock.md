@@ -35,7 +35,7 @@ Pause, 1×, 2×, 4×, 8×. Faster speeds run more ticks per frame, never bigger 
 ## Population
 - Every guest is one real person, always.
 - Arrivals depend on reputation per guest type, marketing, season, events, and how crowded the floor already is, not on the hour.
-- Peak guests on the floor: tutorial ~150–300, mid-size ~500–1,000, largest ~2,000–3,000 (M1 performance test sets the real ceiling).
+- Peak guests on the floor: tutorial ~150–300, mid-size ~500–1,500, largest ~5,000–8,000 (raised 2026-09-23 from 2,000–3,000; the Big Floor perf test checks it).
 
 ## Money
 - What guests see stays real-looking: $1 slot bets, $5–$25 table minimums, $7 drinks.

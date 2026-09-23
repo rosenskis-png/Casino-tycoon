@@ -27,7 +27,7 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - The owner is new to GitHub and branches. Don't make them manage git: handle branches, PRs, and merges yourself, and explain any GitHub website steps click by click.
 - `main` is the live branch; every push to it publishes to GitHub Pages (https://rosenskis-png.github.io/Casino-tycoon/), which the owner plays as a home-screen web app.
 - Flow: work on the session's branch → `npm run check` green → push → open a PR to `main` → merge it once CI passes. Don't ask the owner to merge.
-- Before every push: `npm run check` (typecheck, layer boundaries, single-file build, headless phone smoke test). Push only when green.
+- Before every push: `npm run check` (typecheck, layer boundaries, headless Node sim run, single-file build, phone-size browser smoke test). Push only when green.
 - Visual changes: `npm run build && npm run shot -- out.png` (iPhone-size screenshot, `--landscape` optional). Look at it before handing off; send it to the owner when useful.
 - This sandbox can't reach github.io: confirm a deploy through the Pages workflow run's result, not by fetching the site.
 - Quick previews may also go out as a private Artifact of `dist/index.html`; the Pages link is the real play build (saves persist there).

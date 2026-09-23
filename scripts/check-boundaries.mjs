@@ -28,6 +28,8 @@ for (const file of files) {
   const src = readFileSync(file, "utf8");
   if (layer === "sim" && /\b(window|document|localStorage|requestAnimationFrame|performance)\b\./.test(src))
     errors.push(`${file}: sim/ must not touch browser globals`);
+  if (layer === "sim" && /\bMath\.random\b|\bDate\.now\b|\bnew Date\(/.test(src))
+    errors.push(`${file}: sim/ must use named RNG streams and the sim clock (no Math.random, Date.now, new Date)`);
   for (const m of src.matchAll(/(?:import|export)\s[^'"]*?from\s+["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g)) {
     const spec = m[1] || m[2];
     if (spec.startsWith(".")) {

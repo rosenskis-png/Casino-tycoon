@@ -2,7 +2,7 @@
 import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export interface MapState {
   w: number;
@@ -30,6 +30,20 @@ export interface PlacedObject {
   st: ObjectStats;
   /** Tick it was placed. Regulars only know what was built before their last visit. */
   built: number;
+  /** Bars only: the drink policy for this bar and the servers who work it. */
+  bar?: BarPolicy;
+}
+
+/** Player-set drink policy per bar (docs/spec/guests.md §Drinks). */
+export interface BarPolicy {
+  /** Multiplier on the base drink price, 0-3. */
+  price: number;
+  /** Share of drinks served free to players, 0-1. */
+  comp: number;
+  /** Drink strength multiplier (0.6 light, 1 standard, 1.4 strong). */
+  strength: number;
+  /** A tile of the room its servers work, or -1 for anywhere. */
+  area: number;
 }
 
 export type Needs = { bladder: number; hunger: number; thirst: number; fatigue: number };
@@ -63,6 +77,9 @@ export interface GuestData {
   compSeek: number;
   /** Floor time this visit may last (ticks since arrival). */
   floorTime: number;
+  /** The drink in hand: how much is left (0 = none, 1 = full) and its strength (0 = a soft drink). One at a time. */
+  drink: number;
+  dStr: number;
   /** Intended intoxication (0 = sober, soft drinks only), how hard being drunk pushes it up, and intoxication now. */
   intend: number;
   drift: number;
@@ -78,18 +95,29 @@ export interface GuestData {
    * Memory of this visit, for the visit score and chasing. `feel` sums how good each round felt over `rounds`;
    * `served` and `comped` drinks were pushed on them; `early` a big win early on; `peak` their highest
    * intoxication; `atmYes` the ATM trip they decided on; `exitHops` hops spent looking for the way out;
-   * `barAt` when they'll try a full bar again.
+   * `barAt` when they'll try the bar again; `offerAt` when a server may offer again; `sitAt` when this session
+   * began; `favSeat` / `favScore` the seat of their best session this visit.
    */
   mem: {
     arrived: number; playTicks: number; moodSum: number; moodN: number; unmet: number; drinks: number; bigWin: number;
-    wagered: number; won: number; fails: number; cashed: number; feel: number; rounds: number; served: number; comped: number;
+    wagered: number; won: number; cashed: number; feel: number; rounds: number; served: number; comped: number;
     early: number; startIntend: number; peak: number; atmYes: number; exitHops: number; barAt: number;
+    offerAt: number; sitAt: number; favSeat: number; favScore: number;
   };
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
   thoughtTick: number;
   recent: string[];
   nextThink: number;
+  /**
+   * Finding a machine: seconds of browsing (sightseeing, learning the floor) still to do, frustration from wanting
+   * to sit and finding nothing (they give up at FRUSTRATED), machines they liked the look of this visit, and which
+   * of their favorite spots (regulars) they've checked.
+   */
+  browse: number;
+  frus: number;
+  liked: number[];
+  favAt: number;
   /** Short-lived annoyance from events (broken machine, line, no seat), decays each beat. */
   annoy: number;
   /** Why they are leaving, once they are. */
@@ -136,6 +164,8 @@ export interface Person {
   /** Disposition toward this casino, 0-100: what their visits felt like. The type's reputation is the pool's average. */
   score: number;
   chase: number;
+  /** Favorite spots: seat tiles of their best sessions, best first (at most 3). They check these first. */
+  fav: number[];
   /** Tick of their next planned visit, or -1 when they have no plans to come. */
   next: number;
   /** 1 while on the way in or on the floor. */
@@ -168,19 +198,10 @@ export interface Ped {
   look: number;
 }
 
-/** Player-set drink policy (docs/spec/guests.md). */
-export interface DrinkPolicy {
-  /** Multiplier on base drink prices, 0-3. */
-  price: number;
-  /** Share of drinks served free to players, 0-1. */
-  comp: number;
-  /** Drink strength multiplier (0.6 light, 1 standard, 1.4 strong). */
-  strength: number;
-}
 
 export type Activity =
   | "arrive" | "walk" | "wander" | "play" | "drink" | "restroom" | "cage" | "leave"
-  | "idle" | "wait" | "clean" | "repair" | "fetch" | "serve";
+  | "idle" | "wait" | "clean" | "repair" | "offer" | "fetch" | "serve";
 
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {
@@ -204,8 +225,10 @@ export interface Agent {
   timer: number;
   /** 1 while out of sight (restroom stall). */
   hidden: number;
-  /** Drink servers: guests still waiting for a drink on this tray (target is the one being served next). */
+  /** Drink servers: their bar (object id), orders on the tray (guest ids), and when order-taking ends. */
+  bar?: number;
   tray?: number[];
+  due?: number;
   g?: GuestData;
 }
 
@@ -243,7 +266,6 @@ export interface GameState {
   pool: Person[];
   /** People on the sidewalk. */
   peds: Ped[];
-  drinks: DrinkPolicy;
   finance: {
     /** This month so far, per category. */
     month: Ledger;

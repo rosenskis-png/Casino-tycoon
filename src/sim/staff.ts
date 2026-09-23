@@ -5,13 +5,14 @@ import { STAFF_ROLES } from "../data/staff";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
-import type { Agent } from "./state";
+import type { Agent, PlacedObject } from "./state";
 import { rng } from "./rng";
 import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
 import { TICKS_PER_SECOND } from "./clock";
 import { faceTile } from "./wayfinding";
-import { serveDrink } from "./drinks";
+import { acceptChance, barPolicy, leastServedBar, rollComp, serveDrink } from "./drinks";
+import { OBJECTS } from "../data/objects";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -23,12 +24,17 @@ declare module "./commands" {
 const MAX_STAFF = 200;
 const CLEAN_TICKS = 2 * TICKS_PER_SECOND;
 const REPAIR_TICKS = 6 * TICKS_PER_SECOND;
-const FETCH_TICKS = 2 * TICKS_PER_SECOND;
-const SERVE_TICKS = 2 * TICKS_PER_SECOND;
-/** How far a server looks for someone to serve (tiles, Manhattan); drinks per tray, for players this close together. */
+const OFFER_TICKS = TICKS_PER_SECOND / 2;
+const SERVE_TICKS = TICKS_PER_SECOND / 2;
+/** How far from the bar (or their last stop) a server looks for guests (tiles, Manhattan, with a penalty for walkers). */
 const SERVER_REACH = 30;
-const TRAY = 3;
-const TRAY_SPREAD = 8;
+/** Drinks a server carries; seconds of order-taking after the first order before heading to the bar. */
+export const TRAY = 6;
+const COLLECT_TICKS = 20 * TICKS_PER_SECOND;
+/** Guests this close to a server's stop get asked too (a row of players). */
+const OFFER_REACH = 2;
+/** A guest isn't offered again for this long after saying yes or no. */
+const OFFER_AGAIN = 45 * TICKS_PER_SECOND;
 
 export function hireStaff(g: Game, role: string): Agent | null {
   const s = g.state;
@@ -38,20 +44,19 @@ export function hireStaff(g: Game, role: string): Agent | null {
   const at = r.pick(ents), w = s.map.w;
   const x = at % w, y = (at - x) / w;
   const a: Agent = {
-    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
+    // Drink servers move briskly.
+    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: role === "server" ? r.int(6, 7) : r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
     act: "idle", next: "idle", target: -1, seat: -1, timer: 0, hidden: 0,
   };
+  if (role === "server") { const b = leastServedBar(g); if (b >= 0) a.bar = b; }
   s.agents.push(a);
   return a;
 }
 
-/** Targets other staff already have: tiles for janitors, object ids for techs, guests on servers' trays. */
+/** Targets other staff already have: tiles for janitors, object ids for techs. */
 function claimed(g: Game, role: string): Set<number> {
   const out = new Set<number>();
-  for (const a of g.state.agents) if (a.role === role) {
-    if (a.target >= 0) out.add(a.target);
-    for (const id of a.tray ?? []) out.add(id);
-  }
+  for (const a of g.state.agents) if (a.role === role && a.target >= 0) out.add(a.target);
   return out;
 }
 
@@ -111,88 +116,131 @@ function techFindWork(g: Game, a: Agent) {
   wanderStaff(g, a);
 }
 
-/**
- * Would this guest take a drink from a server now? Seated players first (only players are served): drinkers
- * below where they'd like to be (a server makes it easy to go a little past), and anyone thirsty enough.
- */
-function wantsServing(a: Agent): boolean {
-  const gd = a.g;
-  if (!gd || a.act !== "play" || a.seat < 0 || gd.why) return false;
-  return gd.needs.thirst >= 60 || (gd.intend > 0 && gd.intox < gd.intend + 0.1 && gd.needs.thirst >= 30);
+// Drink servers (docs/spec/guests.md §Servers): each works one bar. Loop: take orders from guests nearby
+// (starting near the bar, or in its service area), until the tray is full or time is up; pick the drinks up at
+// the bar (the bartender pours one a second); hand them out; start again near the bar. Tray entries are
+// guest id × 2 + 1 when the drink is on the house.
+
+function serverBar(g: Game, a: Agent): PlacedObject | null {
+  let o = a.bar !== undefined ? g.objById.get(a.bar) : undefined;
+  if (!o || OBJECTS[o.kind].serves !== "thirst") {
+    const b = leastServedBar(g);
+    a.bar = b >= 0 ? b : undefined;
+    o = b >= 0 ? g.objById.get(b) : undefined;
+  }
+  return o ?? null;
 }
 
-function serverFindWork(g: Game, a: Agent) {
-  if (!g.amenities.thirst.length) return wanderStaff(g, a);
-  const taken = claimed(g, "server");
-  let best: Agent | null = null, bd = SERVER_REACH + 1;
+/** Guests already on some server's tray (or being offered one right now). */
+function ordered(g: Game): Set<number> {
+  const out = new Set<number>();
+  for (const a of g.state.agents) if (a.role === "server") {
+    for (const e of a.tray ?? []) out.add(e >> 1);
+    if (a.act === "offer" || (a.next === "offer" && a.target >= 0)) out.add(a.target);
+  }
+  return out;
+}
+
+/** Nearest guest to offer a drink to: no drink in hand, not offered lately, in the bar's area. Settled guests first. */
+function nextCustomer(g: Game, a: Agent, bar: PlacedObject): Agent | null {
+  const w = g.state.map.w, tick = g.state.tick, pol = barPolicy(bar);
+  const from = a.tray?.length ? a.y * w + a.x : faceTile(g, bar);
+  const fx = from % w, fy = Math.floor(from / w);
+  const room = pol.area >= 0 ? g.rooms.roomOf[pol.area] : -2;
+  const taken = ordered(g);
+  let best: Agent | null = null, bs = SERVER_REACH;
   for (const b of g.state.agents) {
-    if (b.role !== "guest" || taken.has(b.id) || !wantsServing(b)) continue;
-    const d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-    if (d < bd) { bd = d; best = b; }
+    const gd = b.g;
+    if (!gd || b.hidden || gd.drink > 0 || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
+    if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
+    const s = Math.abs(b.x - fx) + Math.abs(b.y - fy) + (isWalking(b) ? 6 : 0);
+    if (s < bs) { bs = s; best = b; }
   }
-  if (!best) return wanderStaff(g, a);
-  // Fetch from the nearest bar they can reach, then take the tray round.
-  const w = g.state.map.w, here = a.y * w + a.x;
-  let bar = -1, bb = Infinity;
-  for (const o of g.amenities.thirst) {
-    const t = faceTile(g, o);
-    const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
-    if (d < bb && g.paths.reachable(here, t)) { bb = d; bar = t; }
-  }
-  if (bar < 0) return wanderStaff(g, a);
-  // A tray: the first player plus a couple of others sitting nearby who'd like one too.
-  const tray = [best.id];
-  for (const b of g.state.agents) {
-    if (tray.length >= TRAY) break;
-    if (b.role !== "guest" || b === best || taken.has(b.id) || !wantsServing(b)) continue;
-    if (Math.abs(b.x - best.x) + Math.abs(b.y - best.y) <= TRAY_SPREAD) tray.push(b.id);
-  }
-  a.target = best.id;
-  a.tray = tray.slice(1);
-  go(a, bar, "fetch");
+  return best;
 }
 
-/** Next guest on the tray who still wants their drink, or null (the tray is done). */
-function nextOnTray(g: Game, a: Agent): Agent | null {
-  while (a.tray && a.tray.length) {
-    const id = a.tray.shift()!;
-    const b = g.state.agents.find((x) => x.id === id);
-    if (b && wantsServing(b)) return b;
-  }
-  return null;
-}
-
-function endRound(a: Agent) {
-  a.target = -1;
+function takeOrders(g: Game, a: Agent) {
+  const bar = serverBar(g, a);
+  if (!bar) { a.tray = undefined; return wanderStaff(g, a); }
+  a.tray ??= [];
+  const c = nextCustomer(g, a, bar);
+  if (c) { a.target = c.id; go(a, c.y * g.state.map.w + c.x, "offer"); return; }
+  if (a.tray.length) return fetchDrinks(g, a, bar);
+  // Nobody to serve: wait around the bar.
   a.tray = undefined;
+  a.target = -1;
+  const t = faceTile(g, bar), w = g.state.map.w;
+  const near = nearbyTile(g, "staff", t % w, Math.floor(t / w), 5);
+  if (near >= 0) go(a, near, "idle");
+}
+
+function fetchDrinks(g: Game, a: Agent, bar: PlacedObject) {
+  a.target = -1;
+  a.due = undefined;
+  go(a, faceTile(g, bar), "fetch");
+}
+
+/** Hand out the next drink: to the nearest guest still on the tray (skipping anyone who left or has one). */
+function deliverNext(g: Game, a: Agent) {
+  const w = g.state.map.w;
+  while (a.tray && a.tray.length) {
+    let k = -1, bd = Infinity, who: Agent | null = null;
+    a.tray.forEach((e, i) => {
+      const b = g.state.agents.find((x) => x.id === e >> 1);
+      if (!b?.g || b.g.drink > 0) return;
+      const d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+      if (d < bd) { bd = d; k = i; who = b; }
+    });
+    if (k < 0) break;
+    a.target = a.tray.splice(k, 1)[0];
+    go(a, who!.y * w + who!.x, "serve");
+    return;
+  }
+  a.tray = undefined;
+  a.target = -1;
   a.act = "idle";
 }
 
 function serverTick(g: Game, a: Agent) {
-  const w = g.state.map.w;
-  let guest = g.state.agents.find((b) => b.id === a.target) ?? null;
-  // The guest left their machine (or the floor): on to the next on the tray, if any.
-  if (!guest || !wantsServing(guest)) {
-    guest = nextOnTray(g, a);
-    if (!guest) return endRound(a);
-    a.target = guest.id;
-    if (a.act === "serve") { go(a, guest.y * w + guest.x, "serve"); return; }
+  const r = rng(g.state, "staff");
+  if (a.act === "offer") {
+    if (a.timer === 0) { a.timer = OFFER_TICKS; return; }
+    if (--a.timer > 0) return;
+    const bar = serverBar(g, a);
+    a.target = -1;
+    // "Cocktails?": everyone within reach at this stop gets asked, until the tray is full.
+    if (bar) {
+      const pol = barPolicy(bar), tick = g.state.tick, taken = ordered(g), w = g.state.map.w;
+      const room = pol.area >= 0 ? g.rooms.roomOf[pol.area] : -2;
+      for (const b of g.state.agents) {
+        if (a.tray!.length >= TRAY) break;
+        const gd = b.g;
+        if (!gd || b.hidden || gd.drink > 0 || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
+        if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > OFFER_REACH) continue;
+        if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
+        const comped = rollComp(g, gd, pol);
+        gd.mem.offerAt = tick + OFFER_AGAIN;
+        if (!r.chance(acceptChance(gd, pol, comped))) continue;
+        a.tray!.push(b.id * 2 + (comped ? 1 : 0));
+        taken.add(b.id);
+        if (a.tray!.length === 1) a.due = tick + COLLECT_TICKS;
+      }
+    }
+    if (bar && a.tray!.length && (a.tray!.length >= TRAY || g.state.tick >= (a.due ?? 0))) return fetchDrinks(g, a, bar);
+    return takeOrders(g, a);
   }
   if (a.act === "fetch") {
-    if (a.timer === 0) { a.timer = FETCH_TICKS; return; }
+    // The bartender pours one a second.
+    if (a.timer === 0) { a.timer = TICKS_PER_SECOND * Math.max(1, a.tray?.length ?? 0); return; }
     if (--a.timer > 0) return;
-    const to = guest.y * w + guest.x;
-    if (!g.paths.reachable(a.y * w + a.x, to)) return endRound(a);
-    go(a, to, "serve");
-    return;
+    return deliverNext(g, a);
   }
+  // serve
   if (a.timer === 0) { a.timer = SERVE_TICKS; return; }
   if (--a.timer > 0) return;
-  serveDrink(g, guest, "server");
-  const next = nextOnTray(g, a);
-  if (!next) return endRound(a);
-  a.target = next.id;
-  go(a, next.y * w + next.x, "serve");
+  const b = g.state.agents.find((x) => x.id === a.target >> 1);
+  if (b?.g) serveDrink(g, b, serverBar(g, a) ?? undefined, "server", (a.target & 1) === 1);
+  deliverNext(g, a);
 }
 
 function staffTick(g: Game, a: Agent) {
@@ -200,10 +248,10 @@ function staffTick(g: Game, a: Agent) {
   if (a.act === "idle") {
     if (a.role === "janitor") janitorFindWork(g, a);
     else if (a.role === "tech") techFindWork(g, a);
-    else if (a.role === "server") serverFindWork(g, a);
+    else if (a.role === "server") takeOrders(g, a);
     return;
   }
-  if (a.act === "fetch" || a.act === "serve") return serverTick(g, a);
+  if (a.act === "offer" || a.act === "fetch" || a.act === "serve") return serverTick(g, a);
   if (a.act === "clean") {
     if (a.timer === 0) { a.timer = CLEAN_TICKS; return; }
     if (--a.timer > 0) return;
@@ -256,7 +304,7 @@ export const staffSystem: System = {
       if (a.role === "guest" || a.target < 0) continue;
       if (a.role === "tech" && !g.objById.has(a.target)) { a.target = -1; a.act = "idle"; }
       if (a.role === "janitor" && !g.walkable(a.target)) { a.target = -1; a.act = "idle"; }
-      if (a.role === "server" && !g.amenities.thirst.length) { a.target = -1; a.tray = undefined; a.act = "idle"; }
+
     }
   },
   tick(g) {

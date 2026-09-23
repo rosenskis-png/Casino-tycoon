@@ -26,9 +26,11 @@ for (const file of files) {
   const layer = relative(ROOT, file).split(sep)[0];
   if (!ALLOWED[layer]) continue;
   const src = readFileSync(file, "utf8");
-  if (layer === "sim" && /\b(window|document|localStorage|requestAnimationFrame|performance)\b\./.test(src))
+  // Rules about code, not prose: comments may mention "window." or "Date.now".
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  if (layer === "sim" && /\b(window|document|localStorage|requestAnimationFrame|performance)\b\./.test(code))
     errors.push(`${file}: sim/ must not touch browser globals`);
-  if (layer === "sim" && /\bMath\.random\b|\bDate\.now\b|\bnew Date\(/.test(src))
+  if (layer === "sim" && /\bMath\.random\b|\bDate\.now\b|\bnew Date\(/.test(code))
     errors.push(`${file}: sim/ must use named RNG streams and the sim clock (no Math.random, Date.now, new Date)`);
   for (const m of src.matchAll(/(?:import|export)\s[^'"]*?from\s+["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g)) {
     const spec = m[1] || m[2];

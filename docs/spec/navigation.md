@@ -15,8 +15,8 @@ Guests don't know the floor. They act on what they can see, what they remember, 
 Same priority order as M2 (leave → restroom → bar → cage → machine → browse), but each step only considers what the guest knows:
 - **Direct:** a free amenity or machine in view, or one whose route they know, becomes the target: claim a seat and walk there. Machines in view get a small bonus over remembered ones. A far machine in view sometimes gets "Ooh, what's that over there?"
 - **Searching:** a need with nothing known that serves it means one hop at a time. Each hop follows a sign in view if one helps. Otherwise the guest explores: it looks along eight sight lines and walks to the end of the best one. Longer views pull, spots near their last four decision points push (so they explore instead of doubling back), and the spot's fit to their tastes biases the choice. If they saw one earlier this visit, progress toward it by straight-line distance counts, weighted by **determination** (bladder / 40 for the restroom, 0.8 for bar and cage, 1 + 0.2 per hop for the exit). Straight-line guessing is what mazes defeat.
-- **Browsing** (nothing wanted but a machine, and none known): explore hops. After 3 hops "I can't find a machine I like", and after 8 they give up and leave.
-- **Giving up on a need:** after 6 hops they go without ("Where's the restroom?", counted as an unmet need). They leave once the restroom need hits 90; for a drink they settle back to 40 thirst. Spotting that kind of amenity later ends the give-up.
+- **Browsing** (nothing wanted but a machine, and none known): explore hops, pulled toward surroundings the guest's type likes. First-timers sightsee on purpose before settling, and frustration only builds after that; see guests.md §Finding a machine.
+- **Giving up on a need:** after 6 hops (9 in a good mood, 4 in a bad one) they go without ("Where's the restroom?", counted as an unmet need). They leave once the restroom need hits 90; for a drink they put the bar off for a minute. Spotting that kind of amenity later ends the give-up.
 - Every hop spent searching past the first adds annoyance, which lowers mood.
 
 ## Signs

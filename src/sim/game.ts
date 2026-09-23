@@ -80,7 +80,7 @@ export class Game {
       schema: SCHEMA_VERSION, scenario: def.id, seed: seed >>> 0, tick: 0, rng: {}, nextId: 1,
       cash: def.startCash, map, objects: [], agents: [], wanderPoints: [],
       traffic: new Array(n).fill(0), dirt: new Array(n).fill(0), roomMeta: [], log: [], rep,
-      pool: [], peds: [], drinks: { price: 1, comp: 0, strength: 1 },
+      pool: [], peds: [],
       finance: { month: { start: def.startCash }, history: [], total: { start: def.startCash } },
       thoughts: [{}],
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },

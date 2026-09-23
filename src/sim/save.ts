@@ -77,6 +77,32 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const sw of def?.sidewalks ?? []) for (const i of lineTiles(s.map, sw.from, sw.to)) if (s.map.terrain[i] === T.VOID) s.map.terrain[i] = T.SIDEWALK;
     return s;
   },
+  // 4 → 5 (M3 revisions): drink policy moves from the whole casino to each bar; guests hold a drink at a time,
+  // browse before settling and carry frustration instead of a fail count; people keep favorite spots; servers
+  // work a bar (spread evenly) and start a fresh round.
+  4: (s) => {
+    const pol = s.drinks ?? { price: 1, comp: 0, strength: 1 };
+    const bars = s.objects.filter((o: any) => o.kind === "bar");
+    for (const o of bars) o.bar = { price: pol.price, comp: pol.comp, strength: pol.strength, area: -1 };
+    delete s.drinks;
+    for (const p of s.pool) p.fav = [];
+    let k = 0;
+    for (const a of s.agents) {
+      if (a.role === "server") {
+        Object.assign(a, { act: "idle", next: "idle", target: -1, timer: 0, dest: a.y * s.map.w + a.x });
+        delete a.tray;
+        if (bars.length) a.bar = bars[k++ % bars.length].id;
+      }
+      const g = a.g;
+      if (a.role !== "guest" || !g) continue;
+      Object.assign(g, { drink: 0, dStr: 0, browse: 0, frus: g.mem.fails ?? 0, liked: [], favAt: 0 });
+      delete g.mem.fails;
+      Object.assign(g.mem, { offerAt: 0, sitAt: s.tick, favSeat: -1, favScore: 0 });
+      // Anyone mid-drink at the bar starts their (new-style) round over.
+      if (a.act === "drink") a.timer = 0;
+    }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

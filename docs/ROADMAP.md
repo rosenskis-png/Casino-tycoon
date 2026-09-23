@@ -43,6 +43,7 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Visit score; thoughts averaged over ~2 days with per-guest wordings; no floor bubbles; red, rarer jackpot notices.
 - Money scale: 4 wagers per round, running costs retuned. Save schema 4 (migration from 3). `npm run targets` and `npm run economy` reports.
 - Big Floor headless: ~1.9 ms/tick at 5,000 guests (M2.5: ~1.4). Re-run the in-app Perf test on the phone.
+- Revisions after the owner's first look: browsing and favorite spots instead of fail counts; drinks in hand, per-bar policy and service areas, server order rounds (trays of 6); guest numbers reframed as sanity checks with levers; realistic Test Floor scenario. Save schema 5.
 
 ## M3.1 · Art pass ☐
 Type outfits and silhouettes (cheats and chasers never distinguishable), flushed drunk sprites, sidewalk look, and a general art review.

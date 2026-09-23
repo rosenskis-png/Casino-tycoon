@@ -16,8 +16,8 @@ import { logNormal, normal, pickIndex, pickKey, range, skewed } from "./dist";
 import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
 import { SIGHT, canSee, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
 import { betOf, modelOf, roundTicks } from "./gaming";
-import { serveDrink, compSeeking } from "./drinks";
-import { afterVisit, reconcilePool } from "./pool";
+import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRINK_UNIT, INTOX_CAP } from "./drinks";
+import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 
@@ -33,13 +33,20 @@ declare module "./commands" {
 const MOOD_EVERY = 5;
 const THINK_EVERY: [number, number] = [15, 30]; // seconds at 1×
 const CASH_OUT_MIN = 20;
-/** Hops looking for a machine before giving up on the place. */
-const MAX_FAILS = 8;
+/**
+ * Frustration at which a guest who wants to sit and can't find a machine gives up on the place. Each fruitless
+ * look adds 1 (1.5 in a bad mood, 0.5 in a good one); browsing never counts.
+ */
+const FRUSTRATED = 10;
 /** Hops searching for an amenity before going without; hops lost before a leaving guest finds the way anyway. */
 const GIVE_UP = 6;
 const EXIT_LOST = 8;
-/** Floor knowledge gained per beat on the floor. */
+/** Floor knowledge gained per beat on the floor (three times that while walking around). */
 const LEARN = 0.002;
+/** Machines a guest remembers liking the look of this visit. */
+const LIKED_CAP = 12;
+/** Bar stays: drinks at most per sitting. */
+const BAR_ROUNDS = 4;
 /** Seconds a group member waits (broke or done) before counting as waiting too long. */
 const WAIT_LONG = 120;
 /** How far a group's average mood pulls each member's. */
@@ -264,13 +271,17 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     winGoal: Math.round(bankroll * range(r, type.play.winGoal)), lossLimit: Math.round(bankroll * range(r, type.play.lossLimit)),
     compSeek: r.chance(type.play.compSeek) ? 1 : 0,
     floorTime: Math.round(normal(r, type.minutes) * TICKS_PER_MIN * (1 + 3 * chase)),
+    drink: 0, dStr: 0,
     intend, drift: intend ? logNormal(r, { median: dr.overshoot, sigma: 1.2 }) : 0, intox: 0, chase,
     needs: { bladder: r.int(0, 30), hunger: r.int(0, 30), thirst: r.int(0, 30), fatigue: r.int(0, 10) },
     mood: r.int(60, 75), luck: 0, cheat: 0,
     mem: {
-      arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, fails: 0, cashed: 0,
+      arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, cashed: 0,
       feel: 0, rounds: 0, served: 0, comped: 0, early: 0, startIntend: intend, peak: 0, atmYes: 0, exitHops: 0, barAt: 0,
+      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0,
     },
+    // First-timers sightsee before settling; regulars less, the better they know the place.
+    browse: 0, frus: 0, liked: [], favAt: 0,
     thought: "", thoughtTick: -1, recent: [], nextThink: s.tick + r.int(5, 20) * TICKS_PER_SECOND, annoy: 0, why: "", wait: -1,
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
@@ -283,6 +294,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     act: "arrive", next: "idle", target: -1, seat: -1, timer: 0, hidden: 0, g: gd,
   };
   gd.group = leader ? leader.id : a.id;
+  gd.browse = Math.round(type.browse * range(r, [0.5, 1.5]) * (1 - gd.know) * (gd.memDate >= 0 ? 0.3 : 1));
   s.agents.push(a);
   s.visits.today.arrived++;
   return a;
@@ -348,7 +360,7 @@ function depart(g: Game, a: Agent) {
   g.bus.emit({
     type: "departed", guestType: gd.type, pid: gd.pid, lead: gd.lead, minutes: (s.tick - gd.mem.arrived) / TICKS_PER_MIN, play: gd.mem.playTicks / TICKS_PER_MIN,
     budget: gd.bankroll, lost: gd.mem.wagered - gd.mem.won, intend: gd.mem.startIntend, peak: gd.mem.peak,
-    atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
+    atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
   });
   walkAway(g, a);
   gone(g).add(a.id);
@@ -491,11 +503,14 @@ function search(g: Game, a: Agent, r: Rng, goal: string, targets: number[], towa
   return true;
 }
 
+/** Hops a guest searches before giving up: longer in a good mood, shorter in a bad one. */
+const giveUpAfter = (gd: GuestData) => (gd.mood > 65 ? GIVE_UP + 3 : gd.mood < 40 ? GIVE_UP - 2 : GIVE_UP);
+
 /** Search for an amenity the guest doesn't know the way to. False once they give up (and go without). */
 function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
   const gd = a.g!;
   if (gd.gaveUp & NEED_BIT[what]) return false;
-  if (gd.seek === what && gd.lost >= GIVE_UP) {
+  if (gd.seek === what && gd.lost >= giveUpAfter(gd)) {
     gd.gaveUp |= NEED_BIT[what];
     gd.seek = "";
     gd.lost = 0;
@@ -517,8 +532,9 @@ function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
 }
 
 const MAX_CANDIDATES = 16;
-/** Sight-line checks per look for machines: a glance, not a survey. */
+/** Sight-line checks per look for machines: a glance, not a survey (fewer while just browsing). */
 const MAX_LOOKS = 40;
+const BROWSE_LOOKS = 16;
 /** Machines considered per look at most, so a packed floor can't make one decision expensive. */
 const MAX_SCAN = 400;
 /** A machine seen paying a jackpot this recently is "hot" (seconds at 1×). */
@@ -530,13 +546,13 @@ interface Candidate { o: number; appeal: number; d: number; seen: boolean }
  * Free, working machines a guest would consider: ones in view, or ones a regular knows the way to. Searched in
  * rings of 16×16 sectors outward from the guest, keeping the MAX_CANDIDATES nearest.
  */
-function candidates(g: Game, a: Agent, type: GuestTypeDef): Candidate[] {
+function candidates(g: Game, a: Agent, type: GuestTypeDef, maxLooks = MAX_LOOKS): Candidate[] {
   const gd = a.g!, { w, h } = g.state.map, here = a.y * w + a.x;
   // Look up to 3 sectors away (~50 tiles): guests don't know about machines across a huge floor.
   // Anything in sight lies within one sector ring; farther rings only hold machines a regular remembers.
-  const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.min(gd.memDate >= 0 ? 3 : 1, Math.max(w, h) >> 4);
+  const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.min(gd.memDate >= 0 || gd.liked.length ? 3 : 1, Math.max(w, h) >> 4);
   const out: Candidate[] = [];
-  let looks = MAX_LOOKS, scan = MAX_SCAN;
+  let looks = maxLooks, scan = MAX_SCAN;
   for (let r = 0; r <= maxR; r++) {
     for (let y = sy - r; y <= sy + r; y++) for (let x = sx - r; x <= sx + r; x++) {
       if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== r || x < 0 || y < 0) continue;
@@ -552,9 +568,11 @@ function candidates(g: Game, a: Agent, type: GuestTypeDef): Candidate[] {
         // Keep the nearest few, sorted by distance (ties by id, so the order is deterministic).
         if (out.length >= MAX_CANDIDATES && d >= out[out.length - 1].d) continue;
         // Known routes first (a cheap hash); sight lines only for the rest, and only so many per look.
-        const known = knowsRoute(gd, o);
+        // Known: a regular's remembered route, or one they saw and liked earlier this visit.
+        const known = knowsRoute(gd, o) || gd.liked.includes(o.id);
         const seen = !known && d <= SIGHT + 1 && looks-- > 0 && canSee(g, here, seatTile(g, o.id, 0));
         if (!seen && !known) continue;
+        if (seen && appeal >= 0.5) { gd.liked.push(o.id); if (gd.liked.length > LIKED_CAP) gd.liked.shift(); }
         let k = out.length;
         while (k > 0 && (out[k - 1].d > d || (out[k - 1].d === d && out[k - 1].o > o.id))) k--;
         out.splice(k, 0, { o: o.id, appeal, d, seen });
@@ -575,18 +593,20 @@ function groupSeats(g: Game, a: Agent): number[] {
 }
 
 /** Pick a machine and walk to it. `liked` only considers machines in view they really like (drink-first guests). */
-function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = false): boolean {
+function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = false, found?: Candidate[]): boolean {
   const w = g.state.map.w, gd = a.g!, tick = g.state.tick;
   const mates = groupSeats(g, a);
   const cheap = compSeeking(g, gd);
   let best = -1, bestScore = -Infinity, far = false, hot = false;
-  for (const c of candidates(g, a, type)) {
-    if (liked && (!c.seen || c.appeal < 0.8)) continue;
+  for (const c of found ?? candidates(g, a, type)) {
+    if (liked && !c.seen) continue;
     const t = seatTile(g, c.o, 0);
     const o = g.objById.get(c.o)!;
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
     // What's in front of them pulls a little harder than what they remember.
-    let score = c.appeal * 2 + fitAt(g, type, t).score * 0.5 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
+    // The spot matters as much as the machine: guests settle where they like the surroundings.
+    let score = c.appeal * 2 + fitAt(g, type, t).score * 0.8 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
+    if (liked && (c.appeal < 0.9 || fitAt(g, type, t).score < 0)) continue;
     // Hot machine belief: one they just saw pay out.
     const isHot = c.seen && o.last.win === 2 && tick - o.last.tick < HOT_SECONDS * TICKS_PER_SECOND;
     if (isHot) score += 1.2;
@@ -617,10 +637,13 @@ function canAffordAnything(g: Game, gd: GuestData): boolean {
   return g.minRound === Infinity || g.minRound <= gd.wallet + 1e-9;
 }
 
-/** Browse: walk to the most inviting view nearby (indoors: the casino is inside), then think again. */
+/**
+ * Browse: walk to the most inviting view nearby (indoors: the casino is inside), then think again. The kinds of
+ * surroundings a type likes pull harder while sightseeing.
+ */
 function wander(g: Game, a: Agent, r: Rng) {
-  const type = GUEST_TYPES[a.g!.type], out = g.state.map.outdoor;
-  let dest = explore(g, a, r, (i) => (out[i] ? -2 : fitAt(g, type, i).score));
+  const type = GUEST_TYPES[a.g!.type], out = g.state.map.outdoor, pull = a.g!.browse > 0 ? 2.5 : 1.5;
+  let dest = explore(g, a, r, (i) => (out[i] ? -2 : fitAt(g, type, i).score * pull));
   if (dest < 0) dest = nearbyTile(g, "guests", a.x, a.y, 8);
   if (dest < 0) dest = a.y * g.state.map.w + a.x;
   go(a, dest, "idle");
@@ -642,13 +665,35 @@ function wantsAtm(g: Game, a: Agent, r: Rng): boolean {
   return true;
 }
 
-/** Seconds a guest who found the bar full puts off trying again (unless really thirsty). */
+/** Seconds a guest who found the bar full (or couldn't pay) puts off trying again. */
 const BAR_RETRY = 60;
 
+/**
+ * A trip to the bar: only with nothing in hand, money for a drink, and real thirst (a little less for drinkers
+ * still below the level they mean to reach). Most drinks come from servers instead.
+ */
 function wantsDrink(g: Game, gd: GuestData): boolean {
-  // Drinkers go when they're below where they mean to be; everyone goes when thirsty enough.
-  if (gd.needs.thirst >= 70) return true;
-  return gd.intend > 0 && gd.intox < gd.intend - 0.03 && gd.needs.thirst >= 20 && g.state.tick >= gd.mem.barAt;
+  if (gd.drink > 0 || gd.wallet < DRINK_PRICE || g.state.tick < gd.mem.barAt) return false;
+  return gd.needs.thirst >= 70 || (gd.intend > 0 && gd.intox < gd.intend - 0.05 && gd.needs.thirst >= 55);
+}
+
+/** At the bar: order a drink from the bartender. False when they can't (can't pay, or already holding one). */
+function orderAtBar(g: Game, a: Agent): boolean {
+  const o = g.objById.get(a.target), gd = a.g!;
+  if (!o) return false;
+  const pol = barPolicy(o);
+  const ok = serveDrink(g, a, o, "bar", rollComp(g, gd, pol));
+  if (!ok) gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND;
+  if (ok && rng(g.state, "guests").chance(0.2)) litter(g, a.y * g.state.map.w + a.x);
+  return ok;
+}
+
+/** Finished one at the bar: another? While below their level (or still thirsty), with money and time left. */
+function anotherRound(g: Game, a: Agent): boolean {
+  const gd = a.g!, o = g.objById.get(a.target);
+  if (!o || gd.why || a.timer > BAR_ROUNDS || g.state.tick - gd.mem.arrived >= gd.floorTime) return false;
+  if (gd.wallet < priceAt(barPolicy(o), gd)) return false;
+  return (gd.intend > 0 && gd.intox < gd.intend) || gd.needs.thirst >= 50;
 }
 
 function decide(g: Game, a: Agent) {
@@ -673,16 +718,16 @@ function decide(g: Game, a: Agent) {
   // Waiting on the group: stay put (a restroom trip above is still allowed).
   if (gd.wait >= 0) return standBy(g, a);
   if (g.state.tick - gd.mem.arrived >= gd.floorTime) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
-  const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0;
+  const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0 && gd.drink === 0 && gd.wallet >= DRINK_PRICE;
   // Came for a drink, but a machine they like catches their eye: "just one quick spin".
   if (firstDrink && r.chance(0.25) && chooseMachine(g, a, type, r, true)) { gd.intent = "gamble"; think(g, a, "quickSpin"); return; }
   if (wantsDrink(g, gd) || firstDrink) {
     const use = g.has("thirst") && !(gd.gaveUp & NEED_BIT.thirst) ? goUse(g, a, "thirst") : "none";
     if (use === "ok") return;
     if (use === "unknown" && seekNeed(g, a, r, "thirst", 0.8)) return;
-    if (use === "none") { if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; } n.thirst = 40; }
-    else if (use === "full") { think(g, a, "line"); gd.annoy += 2; n.thirst = Math.min(n.thirst, 55); gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
-    else n.thirst = 40;
+    if (use === "none") { if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; } gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
+    else if (use === "full") { think(g, a, "line"); gd.annoy += 2; gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
+    else gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND;
     gd.intent = "gamble";
   }
   if (!canAffordAnything(g, gd)) {
@@ -693,13 +738,44 @@ function decide(g: Game, a: Agent) {
     think(g, a, "broke");
     return wantToLeave(g, a, "broke");
   }
-  if (chooseMachine(g, a, type, r)) { gd.mem.fails = 0; return; }
   // Wandered outside: back in through the door.
   if (headInside(g, a)) return;
-  if (++gd.mem.fails >= MAX_FAILS) { gd.mem.unmet++; return wantToLeave(g, a, "nothing"); }
-  if (gd.mem.fails === 3) think(g, a, "cantFind");
-  gd.annoy += 2;
+  // Sightseeing first: get a feel for the place, noting machines they like; a real standout can win them over early.
+  if (gd.browse > 0) {
+    // A lighter glance while sightseeing; one look serves both noting machines and spotting a standout.
+    const seen = candidates(g, a, type, BROWSE_LOOKS);
+    if (r.chance(0.2) && chooseMachine(g, a, type, r, true, seen)) { think(g, a, "ooh"); return; }
+    return wander(g, a, r);
+  }
+  if (chooseMachine(g, a, type, r)) { gd.frus = Math.max(0, gd.frus - 3); return; }
+  // Regulars check their favorite spots one by one.
+  if (goToFavorite(g, a)) return;
+  gd.frus += gd.mood < 40 ? 1.5 : gd.mood > 65 ? 0.5 : 1;
+  if (gd.frus >= FRUSTRATED) { gd.mem.unmet++; return wantToLeave(g, a, "nothing"); }
+  if (gd.frus >= 4 && gd.frus - 1.5 < 4) think(g, a, "cantFind");
+  if (gd.frus >= 4) gd.annoy += 1;
   wander(g, a, r);
+}
+
+/** Walk to the next of a regular's favorite spots that they haven't checked yet this round. */
+function goToFavorite(g: Game, a: Agent): boolean {
+  const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
+  const fav = gd.pid >= 0 ? personOf(g, gd.pid)?.fav ?? [] : [];
+  while (gd.favAt < fav.length) {
+    const t = fav[gd.favAt++];
+    if (t === here || !g.walkable(t) || !g.paths.reachable(here, t)) continue;
+    go(a, t, "idle");
+    return true;
+  }
+  return false;
+}
+
+/** A session ends: the seat of their best one this visit (long, and in a good mood) may become a favorite spot. */
+function noteSession(g: Game, a: Agent) {
+  const gd = a.g!;
+  const secs = (g.state.tick - gd.mem.sitAt) / TICKS_PER_SECOND;
+  const score = secs * (gd.mood / 100);
+  if (secs >= 30 && gd.mood >= 55 && score > gd.mem.favScore) { gd.mem.favScore = score; gd.mem.favSeat = a.y * g.state.map.w + a.x; }
 }
 
 /** Loss limit and win goal as they stand now: drink loosens both, chasing erodes the limit. */
@@ -746,10 +822,7 @@ function finishUse(g: Game, a: Agent, r: Rng) {
   const def = o && OBJECTS[o.kind];
   if (o && def) {
     o.st.uses++;
-    if (def.serves === "thirst") {
-      serveDrink(g, a, "bar");
-      if (r.chance(0.25)) litter(g, a.y * g.state.map.w + a.x);
-    } else if (def.serves === "bladder") {
+    if (def.serves === "bladder") {
       gd.needs.bladder = 0;
     } else if (def.serves === "cage" && gd.why) {
       gd.mem.cashed = 1;
@@ -810,10 +883,13 @@ function guestTick(g: Game, a: Agent) {
         const o = g.objById.get(a.target), m = o && modelOf(o.kind);
         if (!o || !m || o.broken || a.seat < 0) { release(g, a); a.act = "idle"; return; }
         o.st.sessions++;
+        gd.mem.sitAt = g.state.tick;
+        gd.favAt = 0;
         a.timer = roundTicks(m, gd.pace * (compSeeking(g, gd) ? 0.7 : 1));
       } else if (a.timer === -1) {
         const why = quitReason(g, a);
         if (why) {
+          noteSession(g, a);
           release(g, a);
           a.act = "idle";
           // A quit rule met, or the time they meant to spend is up: they go home (not just to another machine).
@@ -824,7 +900,20 @@ function guestTick(g: Game, a: Agent) {
       }
       return;
     }
-    case "drink":
+    case "drink": {
+      // At the bar: one drink at a time, sipped (guestBeat); maybe another round, then back to the floor.
+      if (a.seat < 0 || !g.objById.has(a.target)) { release(g, a); a.act = "idle"; return; }
+      if (a.timer === 0) {
+        a.timer = 1;
+        if (gd.drink > 0 || !orderAtBar(g, a)) { release(g, a); a.act = "idle"; }
+        return;
+      }
+      if (gd.drink > 0) return;
+      if (anotherRound(g, a) && orderAtBar(g, a)) { a.timer++; return; }
+      release(g, a);
+      a.act = "idle";
+      return;
+    }
     case "restroom":
     case "cage": {
       if (a.seat < 0 || !g.objById.has(a.target)) { release(g, a); a.act = "idle"; return; }
@@ -853,7 +942,17 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   n.hunger = Math.min(100, n.hunger + rate.hunger);
   n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : 0.8));
   gd.annoy = Math.max(0, Math.min(30, gd.annoy - 0.5 + (gd.wait >= 0 ? 0.3 : 0)));
-  gd.know += (1 - gd.know) * LEARN;
+  gd.know += (1 - gd.know) * LEARN * (walking ? 3 : 1);
+  if (gd.browse > 0) gd.browse--;
+  // The drink in hand: sipped over the type's drinking time, easing thirst and adding intoxication as it goes.
+  if (gd.drink > 0) {
+    const sip = Math.min(gd.drink, 1 / type.drinking.sip);
+    gd.drink = Math.max(0, gd.drink - sip);
+    if (gd.drink < 1e-9) gd.drink = 0;
+    gd.intox = Math.min(INTOX_CAP, gd.intox + sip * gd.dStr * DRINK_UNIT);
+    n.thirst = Math.max(0, n.thirst - sip * 90);
+    if (!gd.drink && a.act !== "drink" && r.chance(0.1)) litter(g, a.y * g.state.map.w + a.x);
+  }
   // Drink wears off; being drunk nudges the intended level up (inhibition is what drinking erodes).
   if (gd.intox > 0) {
     gd.intend = Math.min(type.drinking.cap, gd.intend + (gd.drift * gd.intox) / 60);

@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Green light for M2; vertical slice built
+- Owner said "green light to build m2".
+- Engine fixes done first, as planned: per-system commands (module-augmented `CommandTypes`), a `layout` hook, save fixtures (`tests/saves/schema-1.json` is a real M1 save; `schema-2.json` the M2 one).
+- Guest roster stays open. M2 uses three placeholder types (Locals, Retirees, Tourists) with provisional numbers on the full §6 structure; the guest design discussion before M3 replaces them.
+- Money scale: wagers per round raised from 5 to 10, the knob clock.md names for this. At 5, wallets barely mattered (a visit lost ~$30 of a $150 bankroll) and machines took years to pay back. At 10, guests can go broke, visits last a few minutes, and a busy machine pays for itself in months. Casino prices tuned to match (slots $300–$700). Provisional until playtesting.
+- **Flag (FOUNDATIONS §8):** amenities are fixed-size objects (3-stool bar, 2-stall restroom, 2-window cage) in M2, not drag-sized zones with tiers. Zones need the construction work planned for M6.
+- Guest types are hidden in the inspector (types are earned through the player's club, §16); the Game tab's Debug view shows them for testing.
+- Cash can go below zero (wages, a big jackpot) because loans arrive in M9; building stops while it's negative. Scenario goals are checked at each month-end; a win or a loss doesn't end play.
+- Tutorial goal (provisional): worth $30K and Locals reputation 60 by the end of December, Year 1.
+
 ## 2026-09-23 · Safety net (post-M1 review)
 - `main` protected by a GitHub ruleset: no deletion, no force pushes (owner set it up 2026-09-23).
 - Each finished milestone gets a git tag (`m0`, `m1`, …); a workflow attaches that version's playable `index.html` to a GitHub Release.

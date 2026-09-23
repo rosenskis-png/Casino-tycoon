@@ -13,7 +13,7 @@ Casino Tycoon copies all three.
 ## Floor clock (everything guests and staff do)
 - Fixed simulation step: 20 ticks per real second at 1× speed.
 - Guests, staff, needs, drinks, incidents, cheating, and play all run on ticks at human pace. A typical visit lasts a few real minutes at 1×.
-- **Play is event-based.** A slot round takes about 3 real seconds at 1×. Each round resolves a small fixed batch of real wagers, drawn from the machine's true distribution (default batch: 5 wagers, a single tuning constant). Tables deal a visible hand that resolves a batch the same way. The animation shows that round's actual result, including a jackpot only if one hit. Nothing is ever simulated off-screen.
+- **Play is event-based.** A slot round takes about 3 real seconds at 1×. Each round resolves a small fixed batch of real wagers, drawn from the machine's true distribution (batch: 10 wagers since M2, `WAGERS_PER_ROUND` in `src/data/games.ts`, a single tuning constant). Tables deal a visible hand that resolves a batch the same way. The animation shows that round's actual result, including a jackpot only if one hit. Nothing is ever simulated off-screen.
 
 ## Calendar
 - 1 game day = 200 ticks (10 real seconds at 1×). A month is about 5 minutes; a year about 1 hour, as the owner asked.

@@ -2,6 +2,12 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Time and population (see docs/spec/time-and-population.md)
+- One guest is always one real person. Casinos are smaller than real ones instead, and goals are tuned to match. Owner's call.
+- Slow speed is 1 game hour = 30 s (a day = 12 min) so visits look human; medium 8×, fast 30×, and a new max speed ~120×.
+- Per-guest money stays in real dollars; scenario totals scale with the simulated population.
+- Scenario lengths: early 2–8 weeks, core 2–6 months, largest up to 1–3 years.
+
 ## 2026-09-23 · Approach review (owner approved all)
 - Sprites as palette-indexed text data compiled to atlases at load, not per-frame pixel painting. Why: v0.2's approach won't scale to 20x maps and drains battery; text sprites stay editable and recolorable.
 - Procedural Web Audio sound effects defined as data. Why: no asset licensing, tiny build, tweakable.
@@ -18,4 +24,4 @@ Newest first. One entry per decision: date, what, why.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- **Clock vs. population.** At "slow" (1 day ≈ 2 real min) a visit that looks like a few real minutes spans more than a calendar day. With realistic arrivals (~1–3K guests/day for a small locals casino) and 1:1 agents, thousands would be on the floor at once. Choose among: visible agents represent successive "visit threads" of real guests; fewer, 1:1 guests with money scales adjusted; or a slower calendar. Blocks M1 clock design. (FOUNDATIONS §26 flags this.)
+- Guest roster and parameters (FOUNDATIONS §26), before M3.

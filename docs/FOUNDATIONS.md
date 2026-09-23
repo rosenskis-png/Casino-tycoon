@@ -27,6 +27,8 @@
 
 ## 2. Time
 
+> Clock numbers and speeds superseded by `docs/spec/time-and-population.md` (2026-09-23).
+
 **Two clocks, deliberately decoupled.**
 - **Calendar clock:** hours, days, months, and years pass quickly, as in RollerCoaster Tycoon. At slow speed, one game day takes about 2 real minutes. A 3-year scenario takes about 36 hours at slow, 4.5 hours at medium, and 70 minutes at fast.
 - **Floor clock:** walking, sitting, dealing, and spinning happen at a readable human pace. A guest visit looks like a few real minutes of activity but covers hours of calendar time. All math for that visit (spins, hands, drinks, spending) is computed for the calendar time it covers.
@@ -428,6 +430,8 @@ Information is a resource: the player starts with symptoms only.
 ---
 
 ## 20. Scenarios and progression
+
+> Scenario lengths and population sizes superseded by `docs/spec/time-and-population.md` (2026-09-23).
 
 - **Structure:** a few scenarios are open at the start, and completing one unlocks the next. Tiers: early (small, few tools, teach reading symptoms), core (each built around one or two psychology ideas, each with a tempting wrong move that visibly fails), challenge (gimmicks, reversed incentives, extreme scale), and free play (open lot, adjustable conditions).
 - **Goals:** most scenarios have both a money goal (cash or worth, at a date) and a reputation goal (overall or for one guest type; checked at a date or held above a threshold over a window of months). Either may be the hard one. Challenge scenarios may use different goals.

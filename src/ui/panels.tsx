@@ -366,7 +366,7 @@ export function GamePanel({ host }: { host: Host }) {
       </div>
       <div className="row" style={{ marginTop: 8 }}>
         <select value={scenario} onChange={(e) => setScenario(e.target.value)} style={{ flex: 1 }}>
-          {Object.values(SCENARIOS).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          {Object.values(SCENARIOS).filter((s) => !s.hidden).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <button className="btn danger" onClick={() => { if (confirm("Start a new game? The autosave will be replaced.")) { const n = newGame(Date.now(), scenario); host.setGame(n); save(n, AUTO_KEY); } }}>New game</button>
       </div>
@@ -394,7 +394,7 @@ export function GamePanel({ host }: { host: Host }) {
       )}
       <div className="kv" style={{ marginTop: 8 }}>
         <b>Frame</b><span className="num">{st.fps.toFixed(0)} fps · sim {st.simMs.toFixed(2)} ms · draw {st.drawMs.toFixed(2)} ms</span>
-        <b>World</b><span className="num">{guests} guests · {g.rooms.rooms.length} rooms · {g.paths.size} path fields</span>
+        <b>World</b><span className="num">{guests} guests · {g.rooms.rooms.length} rooms · {g.paths.size} + {g.paths.localSize} path fields</span>
         <b>Day</b><span className="num">{Math.floor(g.state.tick / TICKS_PER_DAY) + 1} · tick {g.state.tick}</span>
       </div>
     </>

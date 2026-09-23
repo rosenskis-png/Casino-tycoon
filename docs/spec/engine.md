@@ -32,9 +32,14 @@ What the engine provides (M1, with the M2 fixes) and the rules for extending it.
 - Rooms are detected by 4-way flood fill over floor, split by walls, doors, and the indoor/outdoor edge. Names and purposes live in `state.roomMeta`, keyed by an anchor tile; a room keeps the first meta whose anchor lies inside it, and metas whose room vanished or merged are dropped.
 
 ## Pathfinding
-- One BFS distance field per destination tile, shared by every agent going there (`src/sim/paths.ts`), LRU-capped at 96.
-- A change to a set of tiles drops only fields that reached a changed tile or its neighbor.
-- Walkable = floor without a blocking object, or an open door. Agents step to a neighbor one closer; tie order alternates by id.
+Two levels (`src/sim/paths.ts`, rebuilt after M2 for the 8,000-guest target), all runtime cache:
+- **Local fields**: a BFS limited to a 33×33 window around each destination (every seat gets one; ~2 KB each, 8,192 kept).
+- **Anchor fields**: full-map BFS fields toward one anchor per room per 16×16 sector, shared by every destination of that room in that sector (memory-budgeted at 24 MB, so ~260 on the largest maps).
+- `paths.next(here, dest, id)` gives the next step. On a tile the destination's local field reaches, go downhill on it; anywhere else, go downhill on the anchor's field. The anchor is itself reached by the local field, so routes are strictly downhill on one field and then the other: they can't loop. A destination whose local field can't reach its anchor gets a full-map field of its own.
+- `paths.reachable(a, b)` is exact, from connected-component labels of the walkable grid.
+- A layout change drops components, anchors and local fields wholesale (they're cheap), and full-map fields that reached a changed tile or its neighbor.
+- Walkable = floor without a blocking object, or an open door. Tie order between equal steps alternates by agent id, so crowds spread over parallel routes.
+- Guests look for machines within 3 sectors (~50 tiles), nearest 16 free ones considered, using a per-sector index of slots.
 
 ## Quality fields
 - Channels and per-channel wall cut are data (`src/data/fields.ts`); objects list emissions `{ channel, strength, radius }`.
@@ -64,7 +69,10 @@ What the engine provides (M1, with the M2 fixes) and the rules for extending it.
 - The smoke check (`window.__ct.smoke`, also run in the phone-size browser by `npm run smoke`) builds and demolishes at random from the `smoke` stream and checks each day: finite numbers, array lengths, the books add up to cash exactly, objects and their seats on open floor without overlaps, occupancy in sync, agents on walkable tiles and never jumping, no two guests holding one seat, players at their machine, wallets and needs in range, reputation 0-100, room index matches terrain, fields finite and non-negative, save round-trips exactly. Random player activity covers every command. After the run: two runs with one seed match exactly, and a reloaded save continues identically to the original.
 
 ## Performance test
-- Game tab → *Perf test* times sim ms/tick and draw ms/frame with real guests (M2; walkers before) at 250 / 1,000 / 2,500 / 5,000 / 10,000 / 20,000 agents (Default and Overview zoom, all on screen) and estimates the most agents that fit a 12 ms frame budget at each speed.
+- Game tab → *Perf test* runs on the hidden **Big Floor** test map (240×200, ~20× the tutorial lot, ~9,000 slots plus bars, restrooms, cages, 20 janitors, 20 techs). It times sim ms/tick and draw ms/frame with real guests at 500 / 1,000 / 2,500 / 5,000 / 8,000 / 12,000 (Default and Overview zoom) and estimates the most guests that fit a 12 ms frame budget at each speed. Before this change (M1 and the first M2 build) it used walkers, then guests, on the small empty lot.
+- At Wide and Overview zoom, objects are baked into the cached floor image as flat colors; only people draw per frame. At most 24 thought bubbles show at once.
 - Headless Chromium on the dev container (2026-09-23): sim ~0.12 ms/tick at 5,000 agents; drawing dominates (~19 ms at Default zoom with 5,000 on screen), giving ~3,200 agents at every speed.
 - Owner's iPhone (2026-09-23): 5,000 agents cost sim 0.09 ms/tick and draw 0.3 / 1.7 ms. 20,000 walkers ran at a real 60 fps (sim ~1.1 ms, draw ~1.9 ms per frame). Walkers are cheap; re-measure with M2 guests.
-- Headless Node, M2 guests on the empty free-play lot (2026-09-23): ~4,400 guests at 0.6 ms/tick, ~17,500 at 2.9 ms/tick. Owner to re-run the in-game test on the iPhone.
+- Owner's iPhone, first M2 build (2026-09-23): the old test (guests on the empty lot) estimated 25,853 / 25,087 / 23,684 / 21,302 guests at 1× / 2× / 4× / 8× (sim 0.85 ms/tick and draw 3.9 / 9.0 ms at 20,000). A real tutorial-size floor with ~100 slots, a bar and restrooms held 60 fps with ~18,000 guests at 1× (sim 0.73 ms, draw 2.1 ms per frame), with the path cache at its old 96-field cap.
+- Before the two-level pathfinding, the Big Floor cost 11 ms/tick with 2,000 guests in headless Node (full-map field per seat, every guest scanning every machine). After (2026-09-23, headless Node): 2,000 guests 0.5 ms/tick, 5,000 1.2 ms, 8,000 2.2 ms, 12,000 3.7 ms. Headless Chromium (software drawing, slower than the phone) estimates ~20,000 / 16,000 / 10,800 / 6,900 guests at 1× / 2× / 4× / 8×. The iPhone ran the sim ~3× faster than this container on the old test. Owner to re-run on the iPhone.
+- `npm run headless` also runs 5,000 guests on the Big Floor, checks invariants, and prints ms/tick.

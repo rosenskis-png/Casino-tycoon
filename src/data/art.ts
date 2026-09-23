@@ -134,6 +134,11 @@ export const SLOT_COLORS: Record<string, Record<string, string>> = {
   thunder: { C: "#6a3fc8", D: "#33206a", H: "#7df9ff", J: "#e8fdff", F: "#ffd23f", I: "#f4efe4" },
 };
 
+/** Flat colors for objects at the Wide and Overview zoom levels, where they are baked into the floor image. */
+export const OBJECT_MAP_COLORS: Record<string, string> = {
+  counter: "#8a5a2a", cage: "#d4a64a", restroom: "#3f7f9a", plant: "#2d6a3e", neon: "#ff4fa0", fountain: "#9fd8f0",
+};
+
 export const EXTRA_SPRITES: Record<string, SpriteDef> = {
   stool: tile([
     "................", "................", "................", "................",

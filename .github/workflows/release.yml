@@ -1,0 +1,28 @@
+name: Milestone release
+# Pushing a milestone tag (m0, m1, ...) publishes a GitHub Release with that version's playable index.html attached.
+# Also runnable by hand for tags created before this workflow existed.
+on:
+  push:
+    tags: ["m*"]
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Existing tag to release, e.g. m1", required: true }
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ env.TAG }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - run: cp dist/index.html "casino-tycoon-${TAG}.html"
+      - run: |
+          gh release view "$TAG" >/dev/null 2>&1 && gh release upload "$TAG" "casino-tycoon-${TAG}.html" --clobber \
+            || gh release create "$TAG" "casino-tycoon-${TAG}.html" --title "Milestone ${TAG#m}" --notes "Playable snapshot of milestone ${TAG#m}. Download the .html file and open it in a browser to play this version."

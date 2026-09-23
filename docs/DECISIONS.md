@@ -2,6 +2,12 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Safety net (post-M1 review)
+- `main` protected by a GitHub ruleset: no deletion, no force pushes (owner set it up).
+- Each finished milestone gets a git tag (`m0`, `m1`, …); a workflow attaches that version's playable `index.html` to a GitHub Release.
+- Push at every stopping point.
+- M2 starts with three engine fixes (per-system commands, layout hook, save fixtures); see ROADMAP.
+
 ## 2026-09-23 · Population ceiling from the iPhone perf test
 - iPhone results with test walkers: sim 0.09 ms/tick and draw 0.3 ms (Default zoom) / 1.7 ms (Overview) at 5,000 agents. The estimate was ~32–36K at every speed, but that is extrapolated from 5,000. What was actually measured: 20,000 walkers held 60 fps (sim ~1.1 ms, draw ~1.9 ms per frame).
 - Result: agent count doesn't limit the planned 2–3K peak. "Every guest is one real guest" holds at all scales (closes that FOUNDATIONS §26 item). The real ceiling will come from guest logic cost; re-run the perf test once M2 guests exist. The perf test now measures up to 20,000 instead of extrapolating.

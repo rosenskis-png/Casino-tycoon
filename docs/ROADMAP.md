@@ -5,7 +5,7 @@ Status key: ☐ not started · ◐ in progress · ☑ done. Each milestone ends 
 ## M0 · Prep ☑
 Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, headless phone smoke test, CI, docs, v0.2 reference archived, `main` branch, GitHub Pages publishing, home-screen web app manifest and icon, storage adapter with save export/import, screenshot tool, session-start dependency hook.
 
-## M1 · Engine skeleton ☑  (see docs/spec/engine.md; open item: owner runs Perf test on the iPhone)
+## M1 · Engine skeleton ☑  (see docs/spec/engine.md; iPhone perf: 20K walkers at 60 fps)
 - State, runtime caches, save/load + migration chain, autosave
 - Fixed-timestep clock and speeds per `docs/spec/clock.md`, hook cadence (tick / beat / day / month / year), dependency-ordered system registry
 - Command bus (validate → apply → log), event bus (sim → ticker, audio, fx, stats)

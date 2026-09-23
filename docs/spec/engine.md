@@ -59,5 +59,6 @@ What exists after M1 and the rules for extending it. See `docs/spec/clock.md` fo
 - The smoke check (`window.__ct.smoke`, also run in the phone-size browser by `npm run smoke`) builds and demolishes at random from the `smoke` stream and checks each day: finite numbers, array lengths, no negative cash, objects on floor without overlaps, occupancy in sync, agents on walkable tiles and never jumping, room index matches terrain, fields finite and non-negative, save round-trips exactly. After the run: two runs with one seed match exactly, and a reloaded save continues identically to the original.
 
 ## Performance test
-- Game tab → *Perf test* times sim ms/tick and draw ms/frame at 250 / 1,000 / 2,500 / 5,000 agents (Default and Overview zoom, all on screen) and estimates the most agents that fit a 12 ms frame budget at each speed.
-- Headless Chromium on the dev container (2026-09-23): sim ~0.12 ms/tick at 5,000 agents; drawing dominates (~19 ms at Default zoom with 5,000 on screen), giving ~3,200 agents at every speed. **The ceiling that counts is the owner's iPhone result**; record it here and in DECISIONS when run.
+- Game tab → *Perf test* times sim ms/tick and draw ms/frame at 250 / 1,000 / 2,500 / 5,000 / 10,000 / 20,000 agents (Default and Overview zoom, all on screen) and estimates the most agents that fit a 12 ms frame budget at each speed.
+- Headless Chromium on the dev container (2026-09-23): sim ~0.12 ms/tick at 5,000 agents; drawing dominates (~19 ms at Default zoom with 5,000 on screen), giving ~3,200 agents at every speed.
+- Owner's iPhone (2026-09-23): 5,000 agents cost sim 0.09 ms/tick and draw 0.3 / 1.7 ms. 20,000 walkers ran at a real 60 fps (sim ~1.1 ms, draw ~1.9 ms per frame). Walkers are cheap; re-measure with M2 guests.

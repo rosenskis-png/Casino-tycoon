@@ -24,8 +24,17 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - Save shape change = bump schema + add a migration. From the first engine release on, saves must carry forward.
 
 ## Workflow
-- Branch: develop on the branch the session names; push with `git push -u origin <branch>`.
+- The owner is new to GitHub and branches. Don't make them manage git: handle branches, PRs, and merges yourself, and explain any GitHub website steps click by click.
+- `main` is the live branch; every push to it publishes to GitHub Pages (https://rosenskis-png.github.io/Casino-tycoon/), which the owner plays as a home-screen web app.
+- Flow: work on the session's branch → `npm run check` green → push → open a PR to `main` → merge it once CI passes. Don't ask the owner to merge.
 - Before every push: `npm run check` (typecheck, layer boundaries, single-file build, headless phone smoke test). Push only when green.
-- Playtesting: publish `dist/index.html` as a private Artifact so the owner can play it in the Claude app. Reuse the same artifact URL across builds.
+- Visual changes: `npm run build && npm run shot -- out.png` (iPhone-size screenshot, `--landscape` optional). Look at it before handing off; send it to the owner when useful.
+- Quick previews may also go out as a private Artifact of `dist/index.html`; the Pages link is the real play build (saves persist there).
+- One chat per milestone keeps token costs down; the repo docs carry context between chats. Update ROADMAP.md and DECISIONS.md before ending a milestone.
 - Don't write tests that assert outcomes of random systems. Test invariants (no seat conflicts, finite numbers, saves reload) and exact math (a paytable's expected return equals its target).
 - The owner has a limited token budget: keep chat replies tight, don't re-read big files needlessly, and don't dump code into chat.
+
+## Engine conventions decided before M1
+- Art is data: sprites are palette-indexed text grids compiled into sprite sheets (atlases) at load; frames blit cached images. Never paint sprites pixel by pixel per frame (v0.2 did). The renderer stays swappable for WebGL if a perf test demands it.
+- Sound is data: short synth recipes played through Web Audio. No audio files.
+- Saves: stored via `src/platform/storage.ts`, with export/import to a file as a backup. Call `requestPersistence()` at startup.

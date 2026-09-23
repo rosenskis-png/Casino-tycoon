@@ -3,7 +3,7 @@
 Status key: ☐ not started · ◐ in progress · ☑ done. Each milestone ends with a playable (or at least watchable) build published as an Artifact.
 
 ## M0 · Prep ☑
-Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, headless phone smoke test, CI, docs, v0.2 reference archived.
+Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, headless phone smoke test, CI, docs, v0.2 reference archived, `main` branch, GitHub Pages publishing, home-screen web app manifest and icon, storage adapter with save export/import, screenshot tool, session-start dependency hook.
 
 ## M1 · Engine skeleton ☐  (blocked on: "green light", clock/population decision)
 - State, runtime caches, save/load + migration chain, autosave
@@ -13,6 +13,7 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Grid: terrain, walls, doors, indoor/outdoor; room detection by flood fill
 - Distance-field pathfinding cache with targeted invalidation
 - Field engine: sources, falloff, wall attenuation, dirty-region recompute
+- Sprite pipeline: text sprites → atlas; procedural sound pipeline
 - Renderer: chunked static layers, 4 zoom levels, camera, touch pan/pinch
 - UI shell: top bar, ticker + log, tab bar, inspector frame
 - `window.__ct` debug hook: headless N-day runner + invariant checks used by the smoke test

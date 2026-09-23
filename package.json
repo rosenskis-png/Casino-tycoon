@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "boundaries": "node scripts/check-boundaries.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "shot": "node scripts/screenshot.mjs",
     "check": "npm run typecheck && npm run boundaries && npm run build && npm run smoke"
   },
   "dependencies": {

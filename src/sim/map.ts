@@ -29,8 +29,20 @@ export function buildScenarioMap(def: ScenarioDef): MapState {
   for (const r of def.walls) fill(r, (i) => { m.terrain[i] = T.WALL; });
   for (const r of def.water) fill(r, (i) => { m.terrain[i] = T.WATER; m.fixed[i] = 1; });
   for (const [x, y] of def.doors) m.terrain[idx(m, x, y)] = T.DOOR;
+  for (const sw of def.sidewalks) for (const i of lineTiles(m, sw.from, sw.to)) { m.terrain[i] = T.SIDEWALK; m.fixed[i] = 1; }
   // Unowned land stays VOID but is fixed so nothing can be built there.
   for (let i = 0; i < n; i++) if (m.terrain[i] === T.VOID) m.fixed[i] = 1;
   m.entrances = def.entrances.map(([x, y]) => idx(m, x, y));
   return m;
+}
+
+/** Tiles of a straight (horizontal, vertical or diagonal) line, end to end. */
+export function lineTiles(m: { w: number; h: number }, [x0, y0]: [number, number], [x1, y1]: [number, number]): number[] {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  const out: number[] = [];
+  for (let k = 0; k <= n; k++) {
+    const x = x0 + Math.round(((x1 - x0) * k) / Math.max(1, n)), y = y0 + Math.round(((y1 - y0) * k) / Math.max(1, n));
+    if (inBounds(m, x, y)) out.push(idx(m, x, y));
+  }
+  return out;
 }

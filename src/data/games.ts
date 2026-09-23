@@ -17,12 +17,15 @@ export interface SlotModel {
   jackpotX: number;
   /** Chance per round that the machine breaks down. */
   breakChance: number;
+  /** (M8 hooks) Share of losing spins shown as near misses, and how good a win smaller than the bet feels (0-1). */
+  nearMiss?: number;
+  ldwFeel?: number;
   /** Reel symbols shown on the cabinet. */
   look: "cherry" | "bell" | "bolt";
 }
 
 /** Wagers resolved per visible round: the main money-scale knob (docs/spec/clock.md). */
-export const WAGERS_PER_ROUND = 10;
+export const WAGERS_PER_ROUND = 4;
 
 export const SLOT_MODELS: Record<string, SlotModel> = {
   cherry: {

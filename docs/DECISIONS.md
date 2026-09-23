@@ -2,6 +2,36 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · M3 built (Claude's calls while building; see docs/spec/guests.md)
+- **Money scale (flagged for the owner):** the agreed visit lengths and losses can't both hold at 10 wagers per round (a $90 budget lasted under a minute of play). `WAGERS_PER_ROUND` is now 4; running costs came down ~40% to match what a seat earns (wages $70/$110/$90, slot upkeep $2–4, bar $50, cage $35, restroom $15). Tutorial year-end cash with a tech and a bar: ~$7K–$15K (M2: $12K–$17K). Full balance stays M11.
+- The Lucky Horseshoe's arrival rates and market were scaled down (visits last ~2.5× longer, so the same arrivals packed the floor): ~60 guests on the floor with a tech and a bar, Locals reputation drifting to ~53.
+- Targets are measured by `npm run targets` on a furnished Free Play Lot and reported in guests.md; generator draws are asserted in `npm run check`, emergent outcomes only reported.
+- Planned floor time is drawn above the target visit length, since money, quit rules and the group end many visits first.
+- Quit rules (win goal, loss limit, jackpot) now send guests home; since M2 they only made guests switch machines.
+- A broke or bored leader waits for the group like anyone else; "the leader quits" means a quit rule or their time running out. "Waiting too long" is 2 minutes.
+- An ATM object (withdrawals only) joins the cage, so ATM placement is a layout lever.
+- Drink servers carry a tray of up to 3 drinks per bar run (one at a time couldn't keep up with a busy floor).
+- One-off types: 30% of the M2 arrival formula come on purpose; the rest must be converted from passers-by.
+- Guests stay indoors when wandering, and new arrivals head for the open door first (M2.5 guests drifted onto the lot and gave up).
+- Party group makeup (all men, all women, mixed) is stored per guest now, for the M3.1 art pass.
+
+## 2026-09-23 · Green light for M3
+The owner said "green light for M3" (build the M3 guest design, now docs/spec/guests.md).
+
+## 2026-09-23 · M3 guest design (built; see docs/spec/guests.md)
+- A type is who someone is. Group size, play style and chasing are drawn per person. Couples are a group size. Chasing is a hidden per-person level your floor can raise across visits, not a type.
+- A population pool of real returning people per scenario. Reputation for recurring types is the pool's memory; one-off types use word of mouth.
+- The M3 roster is Locals, Retirees, Tourists and Party groups. The other types wait for the milestone that builds what they want (Claude's call; the owner left it open).
+- Sidewalk and entrance threshold (owner): pedestrians decide at the door, and only people who cross the threshold count as guests. Scenarios define their own sidewalks and entrances.
+- Drinking is a continuous inhibition spectrum (owner): sober guests at 0, drinkers on a skewed bell shifted by intent, with overshoot. The ATM works the same way (owner): some never use it, the rest are on a skewed bell of what they could and do draw, with repeat trips driven by mood, drink, chasing and luck. The rare tail is someone draining their life savings.
+- Group leaves when the leader quits or half the group has waited too long. Hot machine belief is in. House-money and break-even effects are in.
+- Drink policy is player-set: price multiplier, comped %, strength (owner).
+- Numbers are set as target outcomes with spread, shape and hard caps, then checked headless (owner).
+- Thoughts: counts averaged over ~2 in-game days, counted by thought id regardless of wording; wording variants only on the guest's card; floor thought bubbles removed (owner).
+- Reports are rare: negative incidents left unaddressed while many low-drama guests are present (owner; M4).
+- Jackpots are red and only big ones reach the ticker; fewer notifications overall (owner).
+- Types look different, cheats never (owner). All guest visuals wait for an M3.1 art pass after M3 (owner).
+
 ## 2026-09-23 · After the external review of M2.5
 - Real returning individuals move into M3: a finite, persistent population per scenario, each person with their own visit history and memory. This replaces the per-type familiarity stand-in, and bans, returning cheats and chasers' shrinking bankrolls depend on it.
 - Accepted consequence of having no time of day: crowds that don't mix are always on the floor together. Space (rooms, zoning, sightlines, noise) is the only way to separate them, and types are told apart by season, events and marketing, not by hour.
@@ -83,4 +113,4 @@ Replaces the same-day "time and population" decision, which kept time of day.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- Guest roster and parameters (FOUNDATIONS §26), before M3.
+- Nothing pending.

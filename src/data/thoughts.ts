@@ -1,46 +1,71 @@
-// What guests say (NORTH_STAR: their thoughts are the player's main diagnostic tool). Generic on purpose:
-// one thought is noise, a room full of them is a diagnosis. `bad` thoughts and `notable` good ones get bubbles.
-export interface ThoughtDef { text: string; bad?: boolean; notable?: boolean }
+// What guests say (NORTH_STAR: their thoughts are the player's main diagnostic tool). Generic on purpose: one
+// thought is noise, a room full of them is a diagnosis. Thoughts are counted by id; the Guests tab shows `text`.
+// A guest's own card picks one of the wordings (`text`, `alt`, or their type's own `voice`).
+export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<string, string[]>; bad?: boolean }
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
-  nrgHi: { text: "Too loud to think in here.", bad: true },
-  nrgLo: { text: "This place needs more buzz.", bad: true },
-  crwHi: { text: "Way too crowded in here.", bad: true },
-  crwLo: { text: "Where is everybody?", bad: true },
-  prsLo: { text: "This place looks run-down.", bad: true },
-  dirty: { text: "This floor is filthy.", bad: true },
-  trfHi: { text: "Too many people walking past me.", bad: true },
-  gNRG: { text: "Love the energy in here!" },
-  gCRW: { text: "Nice and uncrowded." },
-  gPRS: { text: "Classy little joint." },
+  nrgHi: { text: "Too loud to think in here.", alt: ["All this noise is giving me a headache."], voice: { retiree: ["Goodness, it's loud in here.", "I can't hear myself think."] }, bad: true },
+  nrgLo: { text: "This place needs more buzz.", alt: ["Kind of dead in here."], voice: { party: ["This place is a morgue!", "Where's the party at?"] }, bad: true },
+  crwHi: { text: "Way too crowded in here.", alt: ["I can barely move in here."], voice: { retiree: ["Too many people for my liking."] }, bad: true },
+  crwLo: { text: "Where is everybody?", alt: ["It's a ghost town in here."], bad: true },
+  prsLo: { text: "This place looks run-down.", alt: ["This place could use a facelift."], voice: { tourist: ["Not quite what the brochure showed."] }, bad: true },
+  dirty: { text: "This floor is filthy.", alt: ["Doesn't anyone clean up around here?"], voice: { retiree: ["Such a mess on the floor."] }, bad: true },
+  trfHi: { text: "Too many people walking past me.", alt: ["Feels like I'm sitting in a hallway."], bad: true },
+  gNRG: { text: "Love the energy in here!", alt: ["Great buzz in this place."], voice: { party: ["Now THIS is a party!"] } },
+  gCRW: { text: "Nice and uncrowded.", alt: ["Plenty of elbow room."], voice: { retiree: ["Lovely and peaceful."] } },
+  gPRS: { text: "Classy little joint.", alt: ["Fancy!"], voice: { tourist: ["Wait till I post this."] } },
   gCLN: { text: "Spotless in here." },
-  gTRF: { text: "Great people-watching here." },
-  noRestroom: { text: "I really need a restroom!", bad: true },
-  line: { text: "The line is ridiculous.", bad: true },
-  noBar: { text: "I could really use a drink.", bad: true },
-  hungry: { text: "I'm starving.", bad: true },
+  gTRF: { text: "Great people-watching here.", alt: ["Fun to watch the crowd go by."] },
+  noRestroom: { text: "I really need a restroom!", alt: ["Where can I go around here?"], bad: true },
+  line: { text: "The line is ridiculous.", alt: ["Why is there always a wait?"], bad: true },
+  noBar: { text: "I could really use a drink.", alt: ["No bar? Seriously?"], voice: { party: ["No bar?! What kind of place is this?"] }, bad: true },
+  hungry: { text: "I'm starving.", alt: ["I need something to eat."], bad: true },
   noMachine: { text: "Every machine I like is taken.", bad: true },
-  broken: { text: "My machine broke down!", bad: true },
+  broken: { text: "My machine broke down!", alt: ["This machine just died on me."], bad: true },
   noCage: { text: "Where do I cash out around here?", bad: true },
-  bigWin: { text: "I just hit it big!", notable: true },
-  onARoll: { text: "I'm on a roll!" },
-  eaten: { text: "These machines are eating my money.", bad: true },
-  broke: { text: "I'm tapped out." },
-  atm: { text: "Just one more withdrawal..." },
-  tipsy: { text: "Whoa, the room is spinning.", bad: true },
-  goodDrink: { text: "Nice drink." },
-  tired: { text: "My feet are killing me.", bad: true },
+  bigWin: { text: "I just hit it big!", alt: ["Jackpot, baby!"], voice: { retiree: ["Oh my stars, I won!"] } },
+  hot: { text: "That machine's hot!", alt: ["Did you see that one pay out?", "I want a shot at that machine."] },
+  onARoll: { text: "I'm on a roll!", alt: ["Playing with house money now."] },
+  eaten: { text: "These machines are eating my money.", alt: ["I can't catch a break."], bad: true },
+  winBack: { text: "I can win it back.", alt: ["Just need one good hit to get even."], bad: true },
+  broke: { text: "I'm tapped out.", alt: ["That's all my money gone."] },
+  atm: { text: "Just one more withdrawal...", alt: ["Quick trip to the ATM."] },
+  noAtm: { text: "Is there an ATM anywhere?", bad: true },
+  tipsy: { text: "Feeling pretty good.", alt: ["Just a little buzzed."], voice: { party: ["Woo! Round two!"] } },
+  drunk: { text: "Whoa, the room is spinning.", alt: ["I think I've had a few."], voice: { party: ["Shots! Who wants shots?"] }, bad: true },
+  wasted: { text: "Wh... where am I?", alt: ["I shouldn't have had that last one."], bad: true },
+  goodDrink: { text: "Nice drink.", alt: ["That hit the spot."] },
+  freeDrink: { text: "Free drinks? Don't mind if I do.", alt: ["Love a comped drink."] },
+  served: { text: "Drinks right to my seat. Nice.", alt: ["Great service here."] },
+  pricey: { text: "These drinks cost a fortune.", alt: ["How much for a beer?!"], bad: true },
+  weak: { text: "These drinks are watered down.", alt: ["Did they forget the alcohol?"], voice: { party: ["This is basically juice."] }, bad: true },
+  quickSpin: { text: "Just one quick spin.", alt: ["Ooh, one little try."] },
+  quitAhead: { text: "Quitting while I'm ahead.", alt: ["Time to cash in my winnings."] },
+  myLimit: { text: "That's my limit for today.", alt: ["I'm not losing another cent."], bad: true },
+  timeToGo: { text: "Time to head home.", alt: ["That's enough for today."] },
+  waiting: { text: "Are you done yet?", alt: ["Come on, let's go already.", "I'll wait for the others."], bad: true },
+  tired: { text: "My feet are killing me.", alt: ["I'm worn out."], bad: true },
   whereRestroom: { text: "Where's the restroom?", bad: true },
   whereBar: { text: "Is there a bar in this place?", bad: true },
   whereCage: { text: "How do I cash out around here?", bad: true },
-  lostExit: { text: "I can't find the way out.", bad: true },
+  lostExit: { text: "I can't find the way out.", alt: ["How do I get out of here?"], bad: true },
   trapped: { text: "I'm trapped in here!", bad: true },
   finallyOut: { text: "Finally found the exit.", bad: true },
-  cantFind: { text: "I can't find a machine I like.", bad: true },
+  cantFind: { text: "I can't find a machine I like.", alt: ["Nothing here for me."], bad: true },
   ooh: { text: "Ooh, what's that over there?" },
   signHelped: { text: "Good, a sign." },
-  goodTime: { text: "What a great place!", notable: true },
-  badTime: { text: "I'm never coming back here.", bad: true },
-  goodValue: { text: "My money lasted forever today." },
-  badValue: { text: "That went fast.", bad: true },
+  goodTime: { text: "What a great place!", alt: ["I'll be back!"], voice: { retiree: ["What a lovely afternoon."], party: ["Best night ever!"] } },
+  badTime: { text: "I'm never coming back here.", alt: ["What a waste of a trip."], bad: true },
+  goodValue: { text: "My money lasted forever today.", alt: ["Got my money's worth."] },
+  badValue: { text: "That went fast.", alt: ["My money vanished in no time."], bad: true },
 };
+
+/** The wording a guest uses for a thought: one of the common wordings or their type's own, the same each time for that guest. */
+export function wording(id: string, type: string, guest: number): string {
+  const t = THOUGHTS[id];
+  if (!t) return id;
+  const pool = [t.text, ...(t.alt ?? []), ...(t.voice?.[type] ?? [])];
+  let h = guest >>> 0;
+  for (let k = 0; k < id.length; k++) h = Math.imul(h ^ id.charCodeAt(k), 0x9e3779b1) >>> 0;
+  return pool[((h ^ (h >>> 15)) >>> 0) % pool.length];
+}

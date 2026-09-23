@@ -34,8 +34,18 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Signs (imperfect, no arrows to set). Floor knowledge per guest and familiarity per type, stale for anything built since a regular's last visit.
 - Save schema 3 (migration from 2). Exit guarantees checked by `npm run check`.
 
-## M3 · Guest model depth ☐  (needs guest design discussion)
-Real returning individuals (a finite, persistent population per scenario; replaces per-type familiarity), roster, groups, intentions, betting behavior, quit rules, intoxication, drink servers.
+## M3 · Guest model depth ☑  (see docs/spec/guests.md)
+- Population pool of real returning people per scenario (reputation for recurring types = their average disposition); chasing as a hidden per-person level.
+- Roster: Locals, Retirees, Tourists, Party groups. Groups with leaders, sitting together, mood pull, waiting and leaving rules.
+- Sidewalk and entrance threshold: passers-by glance in and step inside or walk past; regulars come on purpose.
+- Bets as a fraction of budget with house-money, break-even and hot-machine effects; quit rules and a floor-time budget; ATM curve and an ATM object.
+- Continuous intoxication with overshoot; drink servers (trays) and drink policy (price, comps, strength); stagger walk.
+- Visit score; thoughts averaged over ~2 days with per-guest wordings; no floor bubbles; red, rarer jackpot notices.
+- Money scale: 4 wagers per round, running costs retuned. Save schema 4 (migration from 3). `npm run targets` and `npm run economy` reports.
+- Big Floor headless: ~1.9 ms/tick at 5,000 guests (M2.5: ~1.4). Re-run the in-app Perf test on the phone.
+
+## M3.1 · Art pass ☐
+Type outfits and silhouettes (cheats and chasers never distinguishable), flushed drunk sprites, sidewalk look, and a general art review.
 
 ## M4 · Incidents, house rules, authorities ☐
 ## M5 · Cheats, suspicion tools, enforcement, luck tags ☐

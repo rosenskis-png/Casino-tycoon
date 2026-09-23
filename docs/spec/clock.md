@@ -13,7 +13,7 @@ Casino Tycoon copies all three.
 ## Floor clock (everything guests and staff do)
 - Fixed simulation step: 20 ticks per real second at 1× speed.
 - Guests, staff, needs, drinks, incidents, cheating, and play all run on ticks at human pace. A typical visit lasts a few real minutes at 1×.
-- **Play is event-based.** A slot round takes about 3 real seconds at 1×. Each round resolves a small fixed batch of real wagers, drawn from the machine's true distribution (batch: 10 wagers since M2, `WAGERS_PER_ROUND` in `src/data/games.ts`, a single tuning constant). Tables deal a visible hand that resolves a batch the same way. The animation shows that round's actual result, including a jackpot only if one hit. Nothing is ever simulated off-screen.
+- **Play is event-based.** A slot round takes about 3 real seconds at 1×. Each round resolves a small fixed batch of real wagers, drawn from the machine's true distribution (batch: 4 wagers since M3, 10 in M2; `WAGERS_PER_ROUND` in `src/data/games.ts`, a single tuning constant). Tables deal a visible hand that resolves a batch the same way. The animation shows that round's actual result, including a jackpot only if one hit. Nothing is ever simulated off-screen.
 
 ## Calendar
 - 1 game day = 200 ticks (10 real seconds at 1×). A month is about 5 minutes; a year about 1 hour, as the owner asked.
@@ -40,7 +40,7 @@ Pause, 1×, 2×, 4×, 8×. Faster speeds run more ticks per frame, never bigger 
 ## Money
 - What guests see stays real-looking: $1 slot bets, $5–$25 table minimums, $7 drinks.
 - Casino-level money is game money: wages, upkeep, prices of equipment, loan sizes, and scenario goals are tuned against what the simulated floor actually earns per game month. Totals will land in RCT-like ranges (thousands to low millions), not real casino billions.
-- The wagers-per-round batch is the main knob for overall money scale. Change it to rescale the whole economy without touching anything else.
+- The wagers-per-round batch is the main knob for overall money scale. Since guest budgets are real-looking dollars (M3), changing it also changes how long guests' money lasts, so running costs are retuned alongside it.
 
 ## Scenario lengths
 Deadlines are in months and years, like RCT: early scenarios about 1 year, core 1–2 years, large and challenge up to 3–5 years. At 4× a 2-year scenario takes about 30 minutes; at 1× about 2 hours.

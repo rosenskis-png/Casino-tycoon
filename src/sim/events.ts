@@ -11,9 +11,15 @@ export type SimEvent =
   | { type: "month"; month: number; year: number }
   | { type: "commandRejected"; command: string; reason: string }
   | { type: "jackpot"; obj: number; amount: number; x: number; y: number }
-  | { type: "broken"; obj: number };
+  | { type: "broken"; obj: number }
+  | { type: "arrived"; guestType: string; n: number; regular: number }
+  | {
+      type: "departed"; guestType: string; pid: number; lead: number; minutes: number; play: number; budget: number; lost: number;
+      intend: number; peak: number; atm: number; drinks: number; withdrawn: number; trips: number; score: number; why: string; chase: number;
+    };
 
-export type NewsLevel = "info" | "good" | "urgent";
+/** bad: red, but queued like any other item (jackpots); urgent: red and jumps the queue. */
+export type NewsLevel = "info" | "good" | "bad" | "urgent";
 
 export class EventBus {
   private queue: SimEvent[] = [];

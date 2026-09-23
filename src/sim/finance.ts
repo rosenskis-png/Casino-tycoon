@@ -9,7 +9,7 @@ import { fmtMoney, news } from "./news";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", bar: "Bar sales", build: "Construction", sales: "Sold objects",
-  wages: "Wages", upkeep: "Upkeep",
+  wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs",
 };
 const HISTORY_MONTHS = 24;
 
@@ -53,7 +53,7 @@ export const financeSystem: System = {
     const prev = dateOfDay(Math.floor(g.state.tick / TICKS_PER_DAY) - 1);
     f.history.push({ year: prev.year, month: prev.month, l: f.month });
     const net = Object.entries(f.month).filter(([k]) => k !== "start").reduce((a, [, v]) => a + v, 0);
-    news(g, "info", `${MONTH_NAMES[prev.month]} books closed: ${net >= 0 ? "+" : ""}${fmtMoney(net)}.`);
+    news(g, "info", `${MONTH_NAMES[prev.month]} books closed: ${net >= 0 ? "+" : ""}${fmtMoney(net)}.`, true);
     if (f.history.length > HISTORY_MONTHS) f.history.shift();
     f.month = {};
   },

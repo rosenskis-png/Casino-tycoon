@@ -57,6 +57,12 @@ export const TILES: Record<string, SpriteDef> = {
     "gggggggggggggggg", "gGgggggggggggggg", "gggggggggggGgggg", "ggggjggggggggggg",
     "gggggggggggggggg", "gggggggGggggggjg", "ggGggggggggggggg", "gggggggggggggggg",
   ]),
+  sidewalk: tile([
+    "mmmmmmmmmmmmmmmM", "mmmmmmmmmmmmmmmM", "mmmmmMmmmmmmmmmM", "mmmmmmmmmmmmmmmM",
+    "mmmmmmmmmmmmmmmM", "mmmmmmmmmmMmmmmM", "mmmmmmmmmmmmmmmM", "mmmmmmmmmmmmmmmM",
+    "mmmmmmmmmmmmmmmM", "mMmmmmmmmmmmmmmM", "mmmmmmmmmmmmmmmM", "mmmmmmmmmmmmmmmM",
+    "mmmmmmmmmmmmMmmM", "mmmmmmmmmmmmmmmM", "mmmmmmmmmmmmmmmM", "MMMMMMMMMMMMMMMM",
+  ]),
   void: tile([
     "zzzzzzzzzzzzzzzz", "zzzzzzzzzzzzzzzz", "zzzZzzzzzzzzzzzz", "zzzzzzzzzzzzzzzz",
     "zzzzzzzzzzzzzzzz", "zzzzzzzzzzzZzzzz", "zzzzzzzzzzzzzzzz", "zzzzzzzzzzzzzzzz",
@@ -92,6 +98,12 @@ export const OBJECT_SPRITES: Record<string, SpriteDef> = {
     ],
     pal: { X: "#ffffff" },
   },
+  atm: tile([
+    "................", "...kkkkkkkkkk...", "...kqqqqqqqqk...", "...kqvvvvvvqk...",
+    "...kqvUUUUvqk...", "...kqvvvvvvqk...", "...kqqqqqqqqk...", "...kqmMmMmMqk...",
+    "...kqMmMmMmqk...", "...kqqqqqqqqk...", "...kqkkkkkkqk...", "...kqqqqqqqqk...",
+    "...kqqqqqqqqk...", "...kqqqqqqqqk...", "...kkkkkkkkkk...", "................",
+  ], { q: "#3a4a5a" }),
   sign: tile([
     "................", "..kkkkkkkkkkkk..", "..kppppppppppk..", "..kppPpppppPpk..",
     "..kpPPPPpPPPPk..", "..kppPpppppPpk..", "..kppppppppppk..", "..kkkkkkkkkkkk..",
@@ -142,7 +154,7 @@ export const SLOT_COLORS: Record<string, Record<string, string>> = {
 
 /** Flat colors for objects at the Wide and Overview zoom levels, where they are baked into the floor image. */
 export const OBJECT_MAP_COLORS: Record<string, string> = {
-  counter: "#8a5a2a", cage: "#d4a64a", restroom: "#3f7f9a", plant: "#2d6a3e", neon: "#ff4fa0", sign: "#1e5a3c", fountain: "#9fd8f0",
+  counter: "#8a5a2a", cage: "#d4a64a", restroom: "#3f7f9a", plant: "#2d6a3e", atm: "#7aa0c0", neon: "#ff4fa0", sign: "#1e5a3c", fountain: "#9fd8f0",
 };
 
 export const EXTRA_SPRITES: Record<string, SpriteDef> = {
@@ -189,14 +201,6 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
     "....vvv...mm....", "..........mM....", "................", "..II............",
     "..EI............", "................", "................", "................",
   ], { I: "#f4efe4", E: "#e5484d" }),
-  bubbleBad: tile([
-    ".IIIII..", "IIIEIII.", "IIIEIII.", "IIIEIII.",
-    "IIIIIII.", "IIIEIII.", ".IIIII..", "..I.....",
-  ], { I: "#fff8ec", E: "#e5484d" }),
-  bubbleGood: tile([
-    ".IIIII..", "IIAIAII.", "IAAAAAI.", "IAAAAAI.",
-    "IIAAAII.", "IIIAIII.", ".IIIII..", "..I.....",
-  ], { I: "#fff8ec", A: "#3cbf6a" }),
   broken: tile([
     "...HH...", "..HkkH..", "..HkkH..", ".HHkkHH.",
     ".HHkkHH.", "HHHHHHHH", "HHHkkHHH", "HHHHHHHH",
@@ -211,6 +215,8 @@ export const PEOPLE: Record<string, LookSet> = {
   local: { skin: SKINS, hair: HAIRS, shirt: ["#2c3e6b", "#6b2c3a", "#556b2f", "#5a5a5a", "#3a5a6b", "#8a6a3a"], pants: ["#2e4a7a", "#3a3a44", "#26262c"], variants: 12 },
   retiree: { skin: SKINS, hair: ["#e8e8e8", "#c9c9c9", "#b9b4d8", "#d8d0c0"], shirt: ["#a8d8c0", "#d8b0d8", "#f0c0a0", "#b0c8f0", "#f0e0a0"], pants: ["#c8b48c", "#8c8c9c", "#e8e0d0"], variants: 12 },
   tourist: { skin: SKINS, hair: HAIRS, shirt: ["#ff6b6b", "#4ecdc4", "#ffd93d", "#ff9f43", "#48dbfb", "#ff78c4"], pants: ["#e8d8b0", "#6bb0d8", "#f0f0f0"], variants: 12 },
+  party: { skin: SKINS, hair: HAIRS, shirt: ["#e02f8a", "#1ec8a0", "#f8e030", "#8a3cf0", "#f06020", "#ffffff"], pants: ["#1a1a1a", "#3a3a44", "#2e4a7a"], variants: 12 },
   janitor: { skin: SKINS, hair: HAIRS, shirt: ["#7f8794"], pants: ["#5a616c"], variants: 5 },
   tech: { skin: SKINS, hair: HAIRS, shirt: ["#f08c1e"], pants: ["#2e3440"], variants: 5 },
+  server: { skin: SKINS, hair: HAIRS, shirt: ["#f4efe4"], pants: ["#141414"], variants: 5 },
 };

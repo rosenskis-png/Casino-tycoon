@@ -1,6 +1,6 @@
-// Guest types (FOUNDATIONS §6). PROVISIONAL: the roster and every number here are placeholders until the guest
-// design discussion (FOUNDATIONS §26, before M3). The structure is the full §6 entry; fields marked (M3/M4)
-// are carried but not yet used by the simulation.
+// Guest types (FOUNDATIONS §6, docs/spec/guests.md). A type is who someone is: its tastes, budget, seasons and
+// drinking. Group size, play style and chasing are drawn per person from the ranges a type sets, so types overlap
+// at the edges. Distribution numbers are the M3 starting targets (docs/spec/guests.md §Targets), tuned headless.
 import type { Channel } from "./fields";
 
 /** A quality a guest reacts to: the hidden field channels plus DIRT (litter near them). */
@@ -8,101 +8,179 @@ export type Taste = Extract<Channel, "NRG" | "CRW" | "PRS" | "TRF"> | "DIRT";
 export interface Pref { ideal: number; tol: number; w: number }
 export type QuitRule = "winGoal" | "lossLimit" | "broke" | "jackpot";
 
+/** Log-normal (long right tail): the median, the spread (sigma of the log), and optional hard bounds. */
+export interface LogNormal { median: number; sigma: number; min?: number; cap?: number }
+/** Normal, clamped to optional bounds. */
+export interface Normal { mean: number; sd: number; min?: number; max?: number }
+
 export interface GuestTypeDef {
   id: string;
   name: string;
-  /** Arrival weight and month-by-month multiplier (no time of day; docs/spec/clock.md). */
+  /** Weight among arrivals and month-by-month multiplier (no time of day; docs/spec/clock.md). */
   arrival: { base: number; season: number[] };
-  /** (M3) Group sizes and weights. Everyone arrives alone until groups exist. */
-  group: { sizes: number[]; weights: number[] };
-  /** Arrival bankroll range in dollars; ATM/cage use (chance to withdraw when low, and cap range). */
-  budget: [number, number];
-  atm: { chance: number; cap: [number, number] };
+  /** Visits bunch around the 1st and 15th of each month (paydays): how strongly, 0-1. */
+  payday: number;
+  /**
+   * Recurring types keep real returning people in the scenario's pool: `share` of visits end with a plan to come
+   * back, `days` later. One-off types have `share` 0 except for the few who return (Tourists).
+   */
+  returns: { share: number; days: LogNormal };
+  /** Group size weights, by size (index 0 = alone). */
+  group: number[];
+  /** Party-style groups: all men, all women or mixed. Otherwise members are drawn independently. */
+  sexes?: boolean;
+  /** Money for one visit (dollars, before the ATM). */
+  budget: LogNormal;
+  /**
+   * Floor time a guest plans on, in real minutes at 1× (fatigue means going home: no hotel yet). Set above the
+   * target visit length, since money, quit rules and the group end many visits sooner.
+   */
+  minutes: Normal;
+  /** Regulars' savings (the most they could ever draw) and monthly disposable income. */
+  savings: LogNormal;
+  income: LogNormal;
+  /** One-off guests: the most they'd draw at the ATM on this trip. */
+  tripCap: LogNormal;
+  /** Share who never use the ATM; what the rest draw per trip; base chance of going back once out of money. */
+  atm: { never: number; draw: LogNormal; again: number };
+  /**
+   * Intoxication (0 sober, ~0.25 tipsy, ~0.5 drunk, ~0.8 wasted): the sober share (exactly 0), the drinkers'
+   * intended level (skewed bell: mean, sd, cap), overshoot (median of how hard being drunk pushes the intended
+   * level up; the spread gives the few who run away), and the share who come in for a drink first.
+   */
+  drinking: { sober: number; mean: number; sd: number; cap: number; overshoot: number; first: number };
+  /** Chance per visit, on an easy floor, that someone starts chasing their losses. */
+  chase: number;
   /** (M9) Credit behavior. */
   credit: number;
   /** Appeal of each slot model, 0..1. */
   games: Record<string, number>;
   prefs: Partial<Record<Taste, Pref>>;
-  drinking: { sober: number; perVisit: [number, number]; overdo: number };
+  /** Walk-in appeal: how readily a passer-by of this type steps inside (times the entrance's curb appeal). */
+  walkIn: number;
   /** (M4) Incident tendencies, tolerance for others' incidents, reaction to leniency per house-rule category. */
   incidents: Record<string, number>;
   tolerance: Record<string, number>;
   leniency: Record<string, number>;
+  /** (M4) Appetite for drama: low-drama guests are the ones who file reports. */
+  drama: number;
+  /** (M5) Share who are cheats. Cheats never look any different. */
+  cheat: number;
   /** How hard scandals hit this type's reputation (M4+). */
   repSensitivity: number;
   /** (M9) Comp appetite. */
   comps: number;
   play: {
-    /** 0 = always min credits, 1 = always max. */
-    credits: number;
+    /** Usual stake per wager as a fraction of the visit budget (drawn uniformly). */
+    stake: [number, number];
     pace: [number, number];
     quit: Record<QuitRule, number>;
-    /** Leave when up this multiple of the bankroll (winGoal rule). */
+    /** Leave when up this multiple of the budget (winGoal rule). */
     winGoal: [number, number];
-    /** Leave after losing this fraction of the bankroll (lossLimit rule). */
+    /** Leave after losing this fraction of the budget (lossLimit rule). */
     lossLimit: [number, number];
-    /** (M9) Slow-plays cheap machines for free drinks. */
+    /** Nurses cheap machines for free drinks, when drinks are comped. */
     compSeek: number;
   };
   /** Need growth per second at 1× (0-100 scale). */
   needs: { bladder: number; hunger: number; thirst: number; fatigue: number };
-  /**
-   * Knowing the floor (docs/spec/navigation.md). PROVISIONAL stand-in until real returning individuals:
-   * `regulars` is the share of arrivals who have been before, `start` the type's familiarity with a new casino,
-   * `lapse` the days since a regular's last visit (anything built since then is new to them).
-   */
-  familiarity: { regulars: number; start: number; lapse: [number, number] };
-  /** Seconds of play at 1× that feel like good value for money (NORTH_STAR: time over money). */
-  valueSeconds: number;
+  /** Seconds of play per dollar lost that feel like good value (NORTH_STAR: time over money). */
+  secPerDollar: number;
 }
 
 const flat = (v = 1) => Array(12).fill(v);
+const NO_POOL = { share: 0, days: { median: 1, sigma: 0 } };
 
 export const GUEST_TYPES: Record<string, GuestTypeDef> = {
   local: {
     id: "local", name: "Locals",
-    arrival: { base: 1, season: flat() },
-    group: { sizes: [1], weights: [1] },
-    budget: [60, 220], atm: { chance: 0.25, cap: [40, 120] }, credit: 0,
+    arrival: { base: 1, season: flat() }, payday: 0.6,
+    returns: { share: 0.85, days: { median: 7, sigma: 0.55, min: 3, cap: 20 } },
+    group: [0.6, 0.35, 0.025, 0.025],
+    budget: { median: 90, sigma: 0.6, min: 20, cap: 600 },
+    minutes: { mean: 8, sd: 2.5, min: 1 },
+    savings: { median: 2500, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
+    tripCap: { median: 200, sigma: 0.6, min: 40, cap: 1500 },
+    atm: { never: 0.35, draw: { median: 60, sigma: 0.5, min: 20 }, again: 0.35 },
+    drinking: { sober: 0.3, mean: 0.35, sd: 0.15, cap: 1.3, overshoot: 0.035, first: 0.12 },
+    chase: 0.01,
+    credit: 0,
     games: { cherry: 0.5, liberty: 1, thunder: 0.6 },
     prefs: { NRG: { ideal: 5, tol: 5, w: 0.6 }, CRW: { ideal: 2, tol: 3, w: 0.8 }, DIRT: { ideal: 0, tol: 2, w: 0.9 }, PRS: { ideal: 1, tol: 3, w: 0.3 } },
-    drinking: { sober: 0.3, perVisit: [1, 2], overdo: 0.05 },
-    incidents: {}, tolerance: {}, leniency: {}, repSensitivity: 1, comps: 0.5,
-    play: { credits: 0.4, pace: [0.9, 1.2], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.2], lossLimit: [0.6, 1], compSeek: 0.2 },
-    needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.4 },
-    familiarity: { regulars: 0.8, start: 0.5, lapse: [2, 30] },
-    valueSeconds: 260,
+    walkIn: 0.25,
+    incidents: {}, tolerance: {}, leniency: {}, drama: 0.4, cheat: 0.01, repSensitivity: 1, comps: 0.5,
+    play: { stake: [0.005, 0.012], pace: [0.9, 1.2], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.2], lossLimit: [0.6, 1], compSeek: 0.2 },
+    needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.13 },
+    secPerDollar: 6,
   },
   retiree: {
     id: "retiree", name: "Retirees",
-    arrival: { base: 0.6, season: [1.3, 1.3, 1.2, 1, 0.9, 0.7, 0.6, 0.6, 0.8, 1, 1.2, 1.3] },
-    group: { sizes: [1], weights: [1] },
-    budget: [50, 150], atm: { chance: 0.08, cap: [20, 60] }, credit: 0,
+    arrival: { base: 0.6, season: [1.3, 1.3, 1.2, 1, 0.9, 0.7, 0.6, 0.6, 0.8, 1, 1.2, 1.3] }, payday: 0.3,
+    returns: { share: 0.7, days: { median: 14, sigma: 0.4, min: 7, cap: 30 } },
+    group: [0.4, 0.55, 0.0125, 0.0125, 0.0125, 0.0125],
+    budget: { median: 60, sigma: 0.3, min: 20, cap: 200 },
+    minutes: { mean: 11, sd: 3.5, min: 1 },
+    savings: { median: 8000, sigma: 0.9, min: 500 }, income: { median: 200, sigma: 0.4, min: 50 },
+    tripCap: { median: 100, sigma: 0.4, min: 20, cap: 400 },
+    atm: { never: 0.75, draw: { median: 40, sigma: 0.4, min: 20 }, again: 0.2 },
+    drinking: { sober: 0.6, mean: 0.2, sd: 0.08, cap: 1.3, overshoot: 0.012, first: 0.08 },
+    chase: 0.003,
+    credit: 0,
     games: { cherry: 1, liberty: 0.7, thunder: 0.2 },
     prefs: { NRG: { ideal: 2, tol: 4, w: 1 }, CRW: { ideal: 1, tol: 2, w: 1 }, DIRT: { ideal: 0, tol: 1, w: 1.2 }, PRS: { ideal: 3, tol: 3, w: 0.5 } },
-    drinking: { sober: 0.6, perVisit: [1, 1], overdo: 0.01 },
-    incidents: {}, tolerance: {}, leniency: {}, repSensitivity: 1.2, comps: 0.7,
-    play: { credits: 0.15, pace: [0.7, 1], quit: { winGoal: 3, lossLimit: 4, broke: 0.5, jackpot: 1 }, winGoal: [0.3, 0.8], lossLimit: [0.5, 0.9], compSeek: 0.4 },
-    needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.42 },
-    familiarity: { regulars: 0.6, start: 0.4, lapse: [3, 45] },
-    valueSeconds: 300,
+    walkIn: 0.15,
+    incidents: {}, tolerance: {}, leniency: {}, drama: 0.1, cheat: 0.005, repSensitivity: 1.2, comps: 0.7,
+    play: { stake: [0.004, 0.009], pace: [0.7, 1], quit: { winGoal: 3, lossLimit: 4, broke: 0.5, jackpot: 1 }, winGoal: [0.3, 0.8], lossLimit: [0.5, 0.9], compSeek: 0.4 },
+    needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.1 },
+    secPerDollar: 12,
   },
   tourist: {
     id: "tourist", name: "Tourists",
-    arrival: { base: 0.4, season: [0.6, 0.7, 1.1, 1, 1.1, 1.5, 1.7, 1.6, 1, 0.8, 0.7, 1.1] },
-    group: { sizes: [1], weights: [1] },
-    budget: [100, 400], atm: { chance: 0.35, cap: [60, 200] }, credit: 0,
+    arrival: { base: 0.4, season: [0.6, 0.7, 1.1, 1, 1.1, 1.5, 1.7, 1.6, 1, 0.8, 0.7, 1.1] }, payday: 0,
+    returns: { share: 0.05, days: { median: 150, sigma: 0.5, min: 60, cap: 365 } },
+    group: [0.25, 0.5, 0.0833, 0.0833, 0.0834],
+    budget: { median: 180, sigma: 0.7, min: 30, cap: 2000 },
+    minutes: { mean: 5.5, sd: 2, min: 1 },
+    savings: { median: 3000, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
+    tripCap: { median: 300, sigma: 0.7, min: 50, cap: 2000 },
+    atm: { never: 0.3, draw: { median: 100, sigma: 0.5, min: 20 }, again: 0.35 },
+    drinking: { sober: 0.15, mean: 0.45, sd: 0.2, cap: 1.3, overshoot: 0.04, first: 0.15 },
+    chase: 0.003,
+    credit: 0,
     games: { cherry: 0.8, liberty: 0.4, thunder: 1 },
     prefs: { NRG: { ideal: 10, tol: 6, w: 1 }, CRW: { ideal: 4, tol: 3, w: 0.5 }, PRS: { ideal: 5, tol: 4, w: 0.8 }, DIRT: { ideal: 0, tol: 1.5, w: 1 }, TRF: { ideal: 3, tol: 3, w: 0.4 } },
-    drinking: { sober: 0.15, perVisit: [1, 3], overdo: 0.1 },
-    incidents: {}, tolerance: {}, leniency: {}, repSensitivity: 0.8, comps: 0.3,
-    play: { credits: 0.7, pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.05 },
-    needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.38 },
-    familiarity: { regulars: 0.05, start: 0.05, lapse: [60, 365] },
-    valueSeconds: 200,
+    walkIn: 0.35,
+    incidents: {}, tolerance: {}, leniency: {}, drama: 0.5, cheat: 0.01, repSensitivity: 0.8, comps: 0.3,
+    play: { stake: [0.01, 0.022], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.05 },
+    needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.18 },
+    secPerDollar: 2.2,
+  },
+  party: {
+    id: "party", name: "Party groups",
+    arrival: { base: 0.15, season: [0.6, 0.7, 1.4, 1.1, 1.2, 1.3, 1.3, 1.2, 0.9, 0.9, 1, 1.5] }, payday: 0.3,
+    returns: NO_POOL,
+    group: [0, 0, 0, 0.2, 0.2, 0.2, 0.2, 0.2], sexes: true,
+    budget: { median: 120, sigma: 0.5, min: 30, cap: 800 },
+    minutes: { mean: 6.5, sd: 2.5, min: 1 },
+    savings: { median: 2000, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
+    tripCap: { median: 250, sigma: 0.6, min: 40, cap: 800 },
+    atm: { never: 0.2, draw: { median: 80, sigma: 0.5, min: 20 }, again: 0.4 },
+    drinking: { sober: 0.05, mean: 0.65, sd: 0.2, cap: 1.3, overshoot: 0.035, first: 0.5 },
+    chase: 0,
+    credit: 0,
+    games: { cherry: 0.7, liberty: 0.3, thunder: 1 },
+    prefs: { NRG: { ideal: 12, tol: 6, w: 1.2 }, CRW: { ideal: 6, tol: 4, w: 0.6 }, PRS: { ideal: 3, tol: 4, w: 0.3 }, DIRT: { ideal: 0, tol: 3, w: 0.5 } },
+    walkIn: 0.3,
+    incidents: {}, tolerance: {}, leniency: {}, drama: 0.9, cheat: 0.01, repSensitivity: 0.6, comps: 0.3,
+    play: { stake: [0.009, 0.02], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.02 },
+    needs: { bladder: 0.3, hunger: 0.12, thirst: 0.4, fatigue: 0.15 },
+    secPerDollar: 3.3,
   },
 };
 export type GuestTypeId = keyof typeof GUEST_TYPES;
+
+/** Types whose people are kept in the scenario's pool from the start (the rest are one-off, with a few returning). */
+export const recurring = (t: GuestTypeDef) => t.returns.share >= 0.5;
 
 /** First names for the inspector. Guests are shown by name, never by type (types are earned: FOUNDATIONS §16). */
 export const FIRST_NAMES = [

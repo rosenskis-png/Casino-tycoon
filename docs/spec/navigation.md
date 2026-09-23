@@ -23,12 +23,11 @@ Same priority order as M2 (leave → restroom → bar → cage → machine → b
 - A placeable object (`sign`, $80, no upkeep). No arrows to set. A guest who can see a sign while searching reads it: it points the next 10 steps along the real route toward the Manhattan-nearest destination of what they want, within 40 tiles of the sign. It's rough: 20% of readings don't help, and "nearest" isn't always the best one.
 - Guests remember signs they've passed (for future use; nothing reads that yet).
 
-## Knowledge and familiarity
-- Each guest has a **floor knowledge** meter, 0–1. It grows while they're on the floor (+0.2% of what's left per beat) and moves their type's **familiarity** with this casino 5% of the way toward it when they leave.
-- Arrivals: a share of each type are **regulars** (Locals 80%, Retirees 60%, Tourists 5%). A regular starts with knowledge around their type's familiarity (×0.6–1.3), plus a last-visit date some days back (Locals 2–30, Retirees 3–45, Tourists 60–365). First-timers start at 0.
-- A regular knows the route to an object with probability equal to their knowledge, fixed per guest and object (a hash, so it's stable), but only for objects built before their last visit. Anything built or moved since is new to them until they see it. Remodeling therefore disorients your regulars, while rebuilding familiarity takes a stream of returning visitors.
+## Knowledge
+- Each guest has a **floor knowledge** meter, 0–1. It grows while they're on the floor (+0.2% of what's left per beat). Since M3 each regular is a real person from the scenario's pool (docs/spec/guests.md) who takes their knowledge and last-visit date home and brings them back next time; group members share their leader's. First-timers start at 0. (M2.5 used a per-type familiarity as a stand-in; saves convert it into the seeded pool.)
+- A regular knows the route to an object with probability equal to their knowledge, fixed per person and object (a hash, so it's stable), but only for objects built before their last visit. Anything built or moved since is new to them until they see it. Remodeling therefore disorients your regulars, while rebuilding familiarity takes a stream of returning visitors.
 - Knowledge of entrances works the same way (entrances are part of the building, so no build date).
-- This is a stand-in until real returning individuals (M3 or later), which will replace familiarity per type with each person's own memory.
+- New arrivals on the lot first walk to the open door in view, and wandering prefers indoor spots, so nobody drifts off onto the grass looking for machines.
 
 ## Leaving and being trapped
 - An exit in view, or one a regular knows, means walking straight there. Otherwise they head roughly back toward the door they came in by, using signs, and think "I can't find the way out" after 3 hops. After 8 hops lost they find the way anyway ("Finally found the exit.", annoyance). A guest with a walkable path always gets out.
@@ -37,7 +36,7 @@ Same priority order as M2 (leave → restroom → bar → cage → machine → b
 - `npm run check` verifies both guarantees (`exitChecks` in `src/sim/debug.ts`): with every exit walled, nobody leaves and guests notice they're trapped; once the exits reopen, everyone gets out.
 
 ## Inspector
-Walking guests show what they're searching for ("Looking for a restroom", "Looking for the way out", "Trapped inside"). The Debug view adds floor knowledge and regular / first visit.
+Walking guests show what they're searching for ("Looking for a restroom", "Looking for an ATM", "Looking for the way out", "Trapped inside"). The Debug view adds floor knowledge and regular / first visit.
 
 ## Not yet
-Crowds and jackpot cheers as things that pull guests, regulars walking to things that were removed (needs real returning individuals), A machine search considers at most 400 machines, and a first-timer only searches the nearest sector ring (sight never reaches farther). With the guests.md cadence change, the 5,000-guest Big Floor headless tick is ~1.3–1.4 ms on average, with a worst tick of ~4 ms (it was ~2.5 ms and ~13 ms).
+Crowds and jackpot cheers as things that pull guests, regulars walking to things that were removed, A machine search considers at most 400 machines, and a first-timer only searches the nearest sector ring (sight never reaches farther). With the guests.md cadence change, the 5,000-guest Big Floor headless tick is ~1.3–1.4 ms on average, with a worst tick of ~4 ms (it was ~2.5 ms and ~13 ms).

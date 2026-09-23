@@ -18,5 +18,13 @@ export const SOUNDS: Record<string, SoundRecipe> = {
   demolish: [{ wave: "noise", f0: 900, dur: 0.18, gain: 0.3 }, { wave: "sawtooth", f0: 140, f1: 50, dur: 0.15, gain: 0.12 }],
   deny: [{ wave: "square", f0: 220, dur: 0.07, gain: 0.08 }, { wave: "square", f0: 165, at: 0.08, dur: 0.1, gain: 0.08 }],
   news: [{ wave: "sine", f0: 880, dur: 0.06, gain: 0.08 }, { wave: "sine", f0: 1320, at: 0.07, dur: 0.09, gain: 0.07 }],
+  win: [{ wave: "triangle", f0: 1046, dur: 0.08, gain: 0.12 }, { wave: "triangle", f0: 1318, at: 0.08, dur: 0.08, gain: 0.12 }, { wave: "triangle", f0: 1568, at: 0.16, dur: 0.14, gain: 0.12 }],
+  jackpot: [
+    { wave: "square", f0: 784, dur: 0.1, gain: 0.08 }, { wave: "square", f0: 988, at: 0.1, dur: 0.1, gain: 0.08 },
+    { wave: "square", f0: 1175, at: 0.2, dur: 0.1, gain: 0.08 }, { wave: "square", f0: 1568, at: 0.3, dur: 0.35, gain: 0.08 },
+    { wave: "noise", f0: 6000, at: 0.3, dur: 0.4, gain: 0.08 },
+  ],
+  broken: [{ wave: "sawtooth", f0: 300, f1: 120, dur: 0.25, gain: 0.08 }],
+  fixed: [{ wave: "triangle", f0: 660, f1: 990, dur: 0.1, gain: 0.1 }],
   urgent: [{ wave: "square", f0: 660, dur: 0.1, gain: 0.08 }, { wave: "square", f0: 660, at: 0.16, dur: 0.1, gain: 0.08 }],
 };

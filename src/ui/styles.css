@@ -40,3 +40,11 @@ html,body,#root{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 select,input[type=text]{font:inherit;font-size:16px;background:#120a07;color:var(--cream);border:1px solid var(--brass2);border-radius:4px;padding:6px 8px;min-height:40px}
 .logitem{padding:6px 0;border-bottom:1px solid #2a1a12;font-size:14px}
 .logitem .d{color:var(--cream2);font-size:11px}
+.neg{color:var(--red)}
+.bar{display:grid;grid-template-columns:80px 1fr 28px;gap:8px;align-items:center;font-size:13px;margin:3px 0}
+.bar>div{height:8px;background:#120a07;border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--brass2)}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--brass2),var(--gold))}
+.thought{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(212,166,74,.1)}
+.thought .c{flex:none;min-width:30px;text-align:right;font-weight:700}
+.thought.bad .c{color:#ff9a9a}.thought.good .c{color:#a7e8bb}
+.quote{margin:4px 0;font-style:italic;color:var(--cream)}.quote.bad{color:#ffb4b4}

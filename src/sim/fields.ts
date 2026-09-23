@@ -79,7 +79,7 @@ export class FieldEngine {
   updateCrowd() {
     const { w, h } = this.g.state.map;
     const count = new Float32Array(w * h);
-    for (const a of this.g.state.agents) count[a.y * w + a.x]++;
+    for (const a of this.g.state.agents) if (!a.hidden) count[a.y * w + a.x]++;
     const crw = this.values.CRW;
     crw.fill(0);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {

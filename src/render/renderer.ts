@@ -3,15 +3,16 @@
 import { T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
-import { LOOK_VARIANTS } from "../data/art";
-import type { Game, SimEvent } from "../sim";
+import { PEOPLE } from "../data/art";
+import { THOUGHTS } from "../data/thoughts";
+import { objSeats, objSize, type Agent, type Game, type SimEvent } from "../sim";
 import { buildAtlas, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
 const ART = 16; // art pixels per tile
 const CHUNK = 16; // tiles per chunk side
 
-export interface Ghost { tiles: number[]; ok: boolean }
+export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
 export interface DrawOptions {
   overlay?: Channel | null;
   ghost?: Ghost | null;
@@ -127,39 +128,115 @@ export class Renderer {
       ctx.globalAlpha = 1;
     }
 
+    // Litter on the floor (under everything that stands).
+    if (cam.level <= 2) {
+      const lit = this.atlas.frames.get("obj:litter")!, spill = this.atlas.frames.get("obj:spill")!;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const d = s.dirt[y * w + x];
+        if (!d) continue;
+        const f = d >= 3 ? spill : lit;
+        ctx.drawImage(this.atlas.canvas, f.x, f.y, f.w, f.h, Math.round(ox + x * tp), Math.round(oy + y * tp), tp, tp);
+      }
+    }
+
     // Dynamic layer: objects and people, y-sorted, on-screen only.
     type Item = { y: number; draw: () => void };
     const items: Item[] = [];
     const atlas = this.atlas;
+    const scale = tp / ART;
+    const blit = (key: string, px: number, py: number) => {
+      const f = atlas.frames.get(key);
+      if (f) ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(px), Math.round(py), f.w * scale, f.h * scale);
+    };
+    const tick = s.tick;
+    // Who is playing which machine right now (for reels and lights).
+    const playing = new Map<number, Agent>();
+    for (const a of s.agents) if (a.act === "play" && a.seat >= 0) playing.set(a.target, a);
     for (const o of s.objects) {
       const def = OBJECTS[o.kind];
-      if (o.x + def.w < x0 || o.x > x1 + 1 || o.y + def.h < y0 || o.y > y1 + 1) continue;
+      const { w: ow, h: oh } = objSize(o);
+      if (o.x + ow < x0 - 1 || o.x > x1 + 1 || o.y + oh < y0 - 2 || o.y > y1 + 1) continue;
+      for (const st of objSeats(o)) if (st.kind === "stool") items.push({ y: st.y - 0.05, draw: () => blit("obj:stool", ox + st.x * tp, oy + st.y * tp) });
+      if (def.art === "tiled") {
+        for (let dy = 0; dy < oh; dy++) for (let dx = 0; dx < ow; dx++)
+          items.push({ y: o.y + dy + 0.99, draw: () => blit(`obj:${def.sprite}`, ox + (o.x + dx) * tp, oy + (o.y + dy) * tp) });
+        continue;
+      }
+      if (def.art === "facing" && def.slot) {
+        const facing = ["front", "left", "back", "right"][o.rot & 3];
+        const key = `slot:${def.slot}:${facing}`;
+        const f = atlas.frames.get(key)!;
+        const px = ox + o.x * tp, py = oy + (o.y + 1) * tp - f.h * scale;
+        const player = playing.get(o.id);
+        items.push({
+          y: o.y + 0.99,
+          draw: () => {
+            blit(key, px, py);
+            const age = tick - o.last.tick;
+            // Lights: a win glows on the topper; a jackpot flashes the whole cabinet.
+            if (o.last.tick >= 0 && o.last.win === 2 && age < 120) {
+              ctx.globalAlpha = (Math.floor(age / 4) & 1) ? 0.55 : 0.2;
+              ctx.fillStyle = ["#ffd23f", "#ff4fa0", "#7df9ff"][Math.floor(age / 8) % 3];
+              ctx.fillRect(px + 2 * scale, py, 12 * scale, f.h * scale);
+              ctx.globalAlpha = 1;
+            } else if (o.last.tick >= 0 && o.last.win === 1 && age < 30) {
+              ctx.globalAlpha = 0.6;
+              ctx.fillStyle = "#fff6b0";
+              ctx.fillRect(px + 4 * scale, py, 8 * scale, 3 * scale);
+              ctx.globalAlpha = 1;
+            }
+            // Spinning reels, visible from the front only.
+            if (facing === "front" && player && player.timer > 0 && !o.broken && cam.level <= 1) {
+              const phase = (tick + player.id) & 3;
+              ctx.fillStyle = phase & 1 ? "#f4efe4" : "#c8c0b0";
+              for (let k = 0; k < 3; k++) ctx.fillRect(px + (4 + 3 * k) * scale, py + (6 + ((phase + k) & 1)) * scale, 2 * scale, 2 * scale);
+            }
+            if (o.broken) blit("obj:broken", px + 4 * scale, py - 9 * scale);
+          },
+        });
+        continue;
+      }
       const f = atlas.frames.get(`obj:${def.sprite}`)!;
-      const scale = tp / ART;
       items.push({
-        y: o.y + def.h - 0.01,
-        draw: () => ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(ox + o.x * tp), Math.round(oy + (o.y + def.h) * tp - f.h * scale), f.w * scale, f.h * scale),
+        y: o.y + oh - 0.01,
+        draw: () => ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(ox + o.x * tp), Math.round(oy + (o.y + oh) * tp - f.h * scale), f.w * scale, f.h * scale),
       });
     }
     const lod = cam.level; // 0-1 full sprites, 2 simplified, 3 dots
-    const scale = tp / ART;
+    const FACE = ["up", "side", "down", "left"];
     for (const a of s.agents) {
+      if (a.hidden) continue;
       const moving = a.nx !== a.x || a.ny !== a.y;
       const p = moving ? Math.min(1, (a.t + alpha) / a.steps) : 0;
       const fx = a.x + (a.nx - a.x) * p, fy = a.y + (a.ny - a.y) * p;
       if (fx < x0 - 1 || fx > x1 + 1 || fy < y0 - 1 || fy > y1 + 1) continue;
-      const v = a.look % LOOK_VARIANTS;
+      const set = a.role === "guest" ? a.g!.type : a.role;
+      const looks = PEOPLE[set] ?? PEOPLE.local;
+      const v = a.look % looks.variants;
       const sx = ox + (fx + 0.5) * tp, sy = oy + (fy + 0.5) * tp;
       this.stats.agentsDrawn++;
       if (lod >= 2) {
         const d = lod === 2 ? Math.max(2, tp * 0.35) : Math.max(2, tp * 0.45);
-        items.push({ y: fy, draw: () => { ctx.fillStyle = atlas.lookColor[v]; ctx.fillRect(Math.round(sx - d / 2), Math.round(sy - d), Math.ceil(d), Math.ceil(d)); } });
+        const color = atlas.lookColor[set]?.[v] ?? "#fff";
+        items.push({ y: fy, draw: () => { ctx.fillStyle = color; ctx.fillRect(Math.round(sx - d / 2), Math.round(sy - d), Math.ceil(d), Math.ceil(d)); } });
         continue;
       }
-      const dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
+      let dir: string;
+      const seated = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage");
+      if (seated) dir = FACE[(g.objById.get(a.target)?.rot ?? 0) & 3];
+      else dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
       const step = moving && (a.t + alpha) / a.steps >= 0.5 ? 1 : 0;
-      const f = atlas.frames.get(`p:${v}:${dir}${step}`)!;
-      items.push({ y: fy, draw: () => ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(sx - 4 * scale), Math.round(sy + 5 * scale - f.h * scale), f.w * scale, f.h * scale) });
+      const f = atlas.frames.get(`p:${set}:${v}:${dir}${step}`)!;
+      const gd = a.g;
+      const bubble = gd && gd.thought && tick - gd.thoughtTick < 60 ? THOUGHTS[gd.thought] : null;
+      const bubbleKey = bubble ? (bubble.bad ? "obj:bubbleBad" : bubble.notable ? "obj:bubbleGood" : null) : null;
+      items.push({
+        y: fy + 0.02,
+        draw: () => {
+          ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(sx - 4 * scale), Math.round(sy + 5 * scale - f.h * scale), f.w * scale, f.h * scale);
+          if (bubbleKey) blit(bubbleKey, sx - 1 * scale, sy - 16 * scale);
+        },
+      });
     }
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -169,6 +246,8 @@ export class Renderer {
     if (opt.ghost) {
       ctx.fillStyle = opt.ghost.ok ? "rgba(125,255,176,0.35)" : "rgba(229,72,77,0.4)";
       for (const i of opt.ghost.tiles) ctx.fillRect(ox + (i % w) * tp, oy + Math.floor(i / w) * tp, tp, tp);
+      ctx.strokeStyle = opt.ghost.ok ? "rgba(125,255,176,0.9)" : "rgba(229,72,77,0.9)";
+      for (const i of opt.ghost.seats ?? []) ctx.strokeRect(ox + (i % w) * tp + 2, oy + Math.floor(i / w) * tp + 2, tp - 4, tp - 4);
     }
     if (opt.selectedTile !== undefined && opt.selectedTile >= 0) {
       const i = opt.selectedTile;
@@ -177,12 +256,12 @@ export class Renderer {
     }
     if (opt.selectedAgent !== undefined) {
       const a = s.agents.find((a) => a.id === opt.selectedAgent);
-      if (a) {
+      if (a && !a.hidden) {
         const p = a.nx !== a.x || a.ny !== a.y ? Math.min(1, (a.t + alpha) / a.steps) : 0;
         const sx = ox + (a.x + (a.nx - a.x) * p + 0.5) * tp, sy = oy + (a.y + (a.ny - a.y) * p + 0.5) * tp;
         ctx.strokeStyle = "#ffd36b";
         ctx.beginPath();
-        ctx.ellipse(sx, sy + 4 * scale, Math.max(4, tp * 0.35), Math.max(2, tp * 0.15), 0, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy + 4 * (tp / ART), Math.max(4, tp * 0.35), Math.max(2, tp * 0.15), 0, 0, Math.PI * 2);
         ctx.stroke();
       }
     }

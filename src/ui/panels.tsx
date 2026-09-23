@@ -1,10 +1,18 @@
 // Tab panels and the inspector.
 import { Fragment, useState } from "react";
-import { OBJECTS } from "../data/objects";
+import { OBJECTS, OBJECT_CATS } from "../data/objects";
 import { BUILD_COST, T } from "../data/terrain";
 import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
-import { formatDate, Game, TICKS_PER_DAY } from "../sim";
+import { STAFF_ROLES } from "../data/staff";
+import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
+import { THOUGHTS } from "../data/thoughts";
+import { SCENARIOS } from "../data/scenarios";
+import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
+import {
+  formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
+  Game, TICKS_PER_DAY, TICKS_PER_SECOND, type Agent, type Ledger,
+} from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
 import type { Host } from "./host";
 import type { Tool } from "./input";
@@ -15,8 +23,9 @@ import { perfTest, type PerfResult } from "./perf";
 export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: number } | null;
 
 const TERRAIN_NAME: Record<number, string> = { [T.VOID]: "Unowned land", [T.FLOOR]: "Floor", [T.WALL]: "Wall", [T.DOOR]: "Door", [T.WATER]: "Water" };
+const FACING = ["down", "left", "up", "right"];
 
-export function BuildPanel({ tool, setTool }: { tool: Tool; setTool: (t: Tool) => void }) {
+export function BuildPanel({ tool, setTool, rot, setRot }: { tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void }) {
   const b = (t: Tool, label: string, sub?: string) => (
     <button key={t} className={`btn ${tool === t ? "on" : ""}`} onClick={() => setTool(tool === t ? "inspect" : t)}>
       {label}{sub && <small>{sub}</small>}
@@ -29,15 +38,167 @@ export function BuildPanel({ tool, setTool }: { tool: Tool; setTool: (t: Tool) =
         {b("door", "Door", money(BUILD_COST.door))}
         {b("demolish", "Demolish", `${money(BUILD_COST.demolish)}/tile`)}
         {b("remove", "Sell object")}
+        <button className="btn" onClick={() => setRot((rot + 1) & 3)}>Rotate<small>faces {FACING[rot & 3]}</small></button>
       </div>
-      <p className="muted" style={{ margin: "10px 0 6px" }}>Decoration</p>
-      <div className="grid">{Object.values(OBJECTS).map((o) => b(`place:${o.id}`, o.name, money(o.cost)))}</div>
+      {OBJECT_CATS.map((c) => (
+        <Fragment key={c.id}>
+          <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}</p>
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id).map((o) => b(`place:${o.id}`, o.name, `${money(o.cost)} · ${money(o.upkeep)}/mo`))}</div>
+        </Fragment>
+      ))}
+      {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6)]?.desc}</p>}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------
+
+function roleDoing(g: Game, a: Agent): string {
+  const obj = a.target >= 0 ? g.objById.get(a.target) : undefined;
+  const name = obj ? OBJECTS[obj.kind].name : "";
+  switch (a.act) {
+    case "play": return `Playing ${name}`;
+    case "drink": return "Having a drink";
+    case "restroom": return "In the restroom";
+    case "cage": return "At the cashier cage";
+    case "clean": return "Sweeping up";
+    case "repair": return `Fixing ${name}`;
+    case "walk":
+      if (a.next === "leave") return "Heading home";
+      if (a.next === "clean") return "Off to sweep up";
+      if (a.next === "repair") return `On the way to fix ${name}`;
+      if (a.next === "play") return `Walking to ${name}`;
+      if (a.next === "drink") return "Going for a drink";
+      if (a.next === "restroom") return "Looking for the restroom";
+      if (a.next === "cage") return "Going to the cage";
+      return "Walking";
+    case "wander": return a.role === "guest" ? "Looking around" : "Patrolling";
+    case "arrive": return "Just arrived";
+    default: return "Thinking";
+  }
+}
+
+export function guestName(n: number): string {
+  return `${FIRST_NAMES[n % FIRST_NAMES.length]} ${String.fromCharCode(65 + (Math.floor(n / FIRST_NAMES.length) % 26))}.`;
+}
+
+const moodFace = (m: number) => (m > 75 ? "😀" : m > 55 ? "🙂" : m > 40 ? "😐" : m > 25 ? "🙁" : "😠");
+
+export function StaffPanel({ host }: { host: Host }) {
+  const g = host.game;
+  const staff = g.state.agents.filter((a) => a.role !== "guest");
+  return (
+    <>
+      <div className="grid">
+        {Object.values(STAFF_ROLES).map((r) => (
+          <button key={r.id} className="btn" onClick={() => g.dispatch({ type: "hire", role: r.id })}>
+            Hire {r.name}<small>{money(r.wage)}/mo · {staff.filter((a) => a.role === r.id).length} on staff</small>
+          </button>
+        ))}
+      </div>
+      <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
+      {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
+      {staff.map((a) => (
+        <div className="row" key={a.id} style={{ alignItems: "center" }}>
+          <span style={{ flex: 1 }}>{STAFF_ROLES[a.role].name} #{a.id}<br /><small className="muted">{roleDoing(g, a)}</small></span>
+          <button className="btn danger" onClick={() => g.dispatch({ type: "fire", id: a.id })}>Fire</button>
+        </div>
+      ))}
+    </>
+  );
+}
+
+export function GuestsPanel({ host }: { host: Host }) {
+  const s = host.game.state;
+  const guests = s.agents.filter((a) => a.role === "guest");
+  const v = s.visits.yday;
+  const merged: Record<string, number> = {};
+  for (const src of [s.thoughts.yday, s.thoughts.today]) for (const [k, n] of Object.entries(src)) merged[k] = (merged[k] ?? 0) + n;
+  const list = Object.entries(merged).filter(([k]) => THOUGHTS[k]).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  return (
+    <>
+      <div className="kv">
+        <b>On the floor</b><span className="num">{guests.length} guests</span>
+        <b>Yesterday</b><span className="num">{v.arrived} came · {v.left} left · {v.broke} went broke</span>
+      </div>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Reputation</p>
+      {Object.entries(s.rep).map(([t, r]) => (
+        <div className="bar" key={t}>
+          <span>{GUEST_TYPES[t]?.name ?? t}</span>
+          <div><i style={{ width: `${Math.round(r)}%` }} /></div>
+          <span className="num">{Math.round(r)}</span>
+        </div>
+      ))}
+      <p className="muted" style={{ margin: "10px 0 6px" }}>What guests are saying (today and yesterday)</p>
+      {list.length === 0 && <p className="muted">Nothing yet.</p>}
+      {list.map(([k, n]) => (
+        <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{n}</span><span>{THOUGHTS[k].text}</span></div>
+      ))}
+    </>
+  );
+}
+
+function LedgerRows({ l }: { l: Ledger }) {
+  const rows = Object.entries(l).filter(([, v]) => Math.abs(v) >= 0.5);
+  const net = rows.filter(([k]) => k !== "start").reduce((a, [, v]) => a + v, 0);
+  return (
+    <div className="kv">
+      {rows.map(([k, v]) => <Fragment key={k}><b>{LEDGER_LABELS[k] ?? k}</b><span className={`num ${v < 0 ? "neg" : ""}`}>{money(v)}</span></Fragment>)}
+      <b>Net</b><span className={`num ${net < 0 ? "neg" : ""}`}>{money(net)}</span>
+    </div>
+  );
+}
+
+export function FinancePanel({ host }: { host: Host }) {
+  const g = host.game, f = g.state.finance;
+  const c = monthlyCosts(g);
+  const d = Math.floor(g.state.tick / TICKS_PER_DAY);
+  const date = formatDate(d).split(", ");
+  return (
+    <>
+      <div className="kv">
+        <b>Cash</b><span className={`num ${g.state.cash < 0 ? "neg" : ""}`}>{money(g.state.cash)}</span>
+        <b>Casino worth</b><span className="num">{money(worth(g))}</span>
+        <b>Monthly bills</b><span className="num">{money(c.wages)} wages · {money(c.upkeep)} upkeep</span>
+      </div>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>This month ({date[0].split(" ")[1]}, {date[1]})</p>
+      <LedgerRows l={f.month} />
+      {[...f.history].reverse().slice(0, 3).map((h) => (
+        <Fragment key={`${h.year}-${h.month}`}>
+          <p className="muted" style={{ margin: "10px 0 6px" }}>{MONTH_NAMES[h.month]}, Year {h.year}</p>
+          <LedgerRows l={h.l} />
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+export function GoalsPanel({ host }: { host: Host }) {
+  const g = host.game, sc = SCENARIOS[g.state.scenario];
+  const st = goalStatus(g);
+  return (
+    <>
+      <p><b>{sc.name}</b></p>
+      <p className="muted">{sc.blurb}</p>
+      {!st && <p className="muted">No goals here. Build whatever you like.</p>}
+      {st && (
+        <>
+          <p style={{ margin: "10px 0" }}>{describeGoals(st.goals)}</p>
+          <div className="kv">
+            <b>Worth</b><span className="num">{money(st.worth)} of {money(st.goals.worth)} {st.worthOk ? "✅" : ""}</span>
+            <b>Reputation</b><span className="num">{Math.round(st.rep)} of {st.goals.rep.min} {st.repOk ? "✅" : ""}</span>
+          </div>
+          <p className="muted" style={{ marginTop: 8 }}>Checked at the end of each month.</p>
+        </>
+      )}
+      {g.state.outcome === "won" && <p className="lv-good">Scenario complete!</p>}
+      {g.state.outcome === "lost" && <p className="lv-urgent">The deadline passed. Keep playing if you like.</p>}
     </>
   );
 }
 
 export function Placeholder({ when }: { when: string }) {
-  return <p className="muted">Arrives in {when}. This build is the engine skeleton (M1).</p>;
+  return <p className="muted">Arrives in {when}.</p>;
 }
 
 export function LogSheet({ game, onClose }: { game: Game; onClose: () => void }) {
@@ -56,32 +217,85 @@ export function LogSheet({ game, onClose }: { game: Game; onClose: () => void })
   );
 }
 
+// ---------------------------------------------------------------------------------------------------------
+
+function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: () => void }) {
+  const g = host.game;
+  if (a.role !== "guest") {
+    return (
+      <div className="sheet">
+        <h3>{STAFF_ROLES[a.role].name} #{a.id}<button className="x" onClick={onClose}>✕</button></h3>
+        <p>{roleDoing(g, a)}</p>
+        <div className="row"><button className="btn danger" onClick={() => { g.dispatch({ type: "fire", id: a.id }); onClose(); }}>Fire</button></div>
+      </div>
+    );
+  }
+  const gd = a.g!;
+  const days = Math.floor((g.state.tick - gd.mem.arrived) / TICKS_PER_DAY);
+  return (
+    <div className="sheet">
+      <h3>{moodFace(gd.mood)} {guestName(gd.name)}<button className="x" onClick={onClose}>✕</button></h3>
+      <p>{roleDoing(g, a)}</p>
+      <p className="muted">Here {days < 1 ? "since today" : `for ${days} day${days === 1 ? "" : "s"}`}.</p>
+      {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{THOUGHTS[t].text}”</p>)}
+      {host.debug && (
+        <div className="kv" style={{ marginTop: 8 }}>
+          <b>Type</b><span>{GUEST_TYPES[gd.type].name}</span>
+          <b>Wallet</b><span className="num">{money(gd.wallet)} of {money(gd.bankroll)}</span>
+          <b>Mood</b><span className="num">{gd.mood.toFixed(0)}</span>
+          <b>Needs</b><span className="num">B{gd.needs.bladder.toFixed(0)} T{gd.needs.thirst.toFixed(0)} H{gd.needs.hunger.toFixed(0)} F{gd.needs.fatigue.toFixed(0)}</span>
+          <b>Quit rule</b><span>{gd.quit}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObjectStats({ host, id }: { host: Host; id: number }) {
+  const o = host.game.objById.get(id)!;
+  const m = modelOf(o.kind);
+  if (!m) return o.st.uses ? <div className="kv"><b>Visits</b><span className="num">{o.st.uses}</span></div> : null;
+  const hold = o.st.coinIn ? (o.st.coinIn - o.st.paidOut) / o.st.coinIn : 0;
+  const avg = o.st.sessions ? o.st.playTicks / o.st.sessions / TICKS_PER_SECOND : 0;
+  const bets = `${money(m.denom)}–${money(m.denom * m.maxCredits)}`;
+  return (
+    <div className="kv">
+      <b>Status</b><span>{o.broken ? "Broken down" : "Working"}</span>
+      <b>Bets</b><span className="num">{bets} a spin</span>
+      <b>Payback</b><span className="num">{(expectedReturn(SLOT_MODELS[m.id]) * 100).toFixed(0)}% by design</span>
+      <b>Played</b><span className="num">{o.st.sessions} sessions · avg {avg.toFixed(0)} s</span>
+      <b>Coin in</b><span className="num">{money(o.st.coinIn)} ({(o.st.rounds * WAGERS_PER_ROUND).toLocaleString()} spins)</span>
+      <b>House won</b><span className={`num ${hold < 0 ? "neg" : ""}`}>{money(o.st.coinIn - o.st.paidOut)} ({(hold * 100).toFixed(1)}%)</span>
+    </div>
+  );
+}
+
 export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable<Selection>; onClose: () => void }) {
   const g = host.game;
   const s = g.state;
   const w = s.map.w;
   if (sel.kind === "agent") {
     const a = s.agents.find((a) => a.id === sel.id);
-    return (
-      <div className="sheet">
-        <h3>Test walker #{sel.id}<button className="x" onClick={onClose}>✕</button></h3>
-        {a ? <p className="muted">Wandering the floor so the engine has someone to move. Real guests arrive in M2.</p> : <p className="muted">Gone.</p>}
-      </div>
-    );
+    if (!a) return <div className="sheet"><h3>Gone<button className="x" onClick={onClose}>✕</button></h3><p className="muted">They've left.</p></div>;
+    return <AgentInspector host={host} a={a} onClose={onClose} />;
   }
   const i = sel.tile;
   const x = i % w, y = Math.floor(i / w);
   const room = g.rooms.rooms[g.rooms.roomOf[i]];
   const meta = room && room.meta >= 0 ? s.roomMeta[room.meta] : null;
-  const obj = s.objects.find((o) => { const d = OBJECTS[o.kind]; return x >= o.x && y >= o.y && x < o.x + d.w && y < o.y + d.h; });
+  const obj = s.objects.find((o) => covers(o, x, y));
   return (
     <div className="sheet">
       <h3>{obj ? OBJECTS[obj.kind].name : room ? meta?.name || (room.indoor ? "Room" : "Grounds") : TERRAIN_NAME[s.map.terrain[i]]}
         <button className="x" onClick={onClose}>✕</button></h3>
       {obj && (
-        <div className="row">
-          <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(OBJECTS[obj.kind].cost / 2)} back</small></button>
-        </div>
+        <>
+          <p className="muted">{OBJECTS[obj.kind].desc}</p>
+          <ObjectStats host={host} id={obj.id} />
+          <div className="row">
+            <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(OBJECTS[obj.kind].cost / 2)} back</small></button>
+          </div>
+        </>
       )}
       {room && !obj && (
         <>
@@ -115,6 +329,7 @@ function HiddenValues({ g, tile }: { g: Game; tile: number }) {
   return (
     <div className="kv" style={{ marginTop: 8 }}>
       {CHANNELS.map((c) => <Fragment key={c}><b>{c}</b><span className="num">{g.fields.get(c, tile).toFixed(2)}</span></Fragment>)}
+      <b>Dirt</b><span className="num">{g.state.dirt[tile]}</span>
     </div>
   );
 }
@@ -124,6 +339,7 @@ export function GamePanel({ host }: { host: Host }) {
   const [perf, setPerf] = useState<PerfResult | null>(null);
   const [perfMsg, setPerfMsg] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [scenario, setScenario] = useState(host.game.state.scenario);
   const g = host.game;
   const st = host.stats;
   const refresh = () => force((n) => n + 1);
@@ -138,6 +354,7 @@ export function GamePanel({ host }: { host: Host }) {
     setPerfMsg(null);
     host.setSpeed(was);
   };
+  const guests = g.state.agents.filter((a) => a.role === "guest").length;
   return (
     <>
       <div className="grid">
@@ -145,15 +362,19 @@ export function GamePanel({ host }: { host: Host }) {
         <button className="btn" disabled={!hasSave(MANUAL_KEY)} onClick={() => { const r = load(MANUAL_KEY); replace(r.game, r.error); }}>Load save</button>
         <button className="btn" onClick={() => exportSave(g)}>Export<small>backup file</small></button>
         <button className="btn" onClick={async () => { const r = await importSave(); replace(r.game, r.error, "Imported."); }}>Import<small>backup file</small></button>
-        <button className="btn danger" onClick={() => { if (confirm("Start a new game? The autosave will be replaced.")) { const n = newGame(Date.now()); host.setGame(n); save(n, AUTO_KEY); } }}>New game</button>
         <button className="btn" onClick={() => { setMuted(!isMuted()); refresh(); }}>{isMuted() ? "Sound off" : "Sound on"}</button>
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        <select value={scenario} onChange={(e) => setScenario(e.target.value)} style={{ flex: 1 }}>
+          {Object.values(SCENARIOS).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <button className="btn danger" onClick={() => { if (confirm("Start a new game? The autosave will be replaced.")) { const n = newGame(Date.now(), scenario); host.setGame(n); save(n, AUTO_KEY); } }}>New game</button>
       </div>
       {note && <p className="muted">{note}</p>}
       <p className="muted" style={{ margin: "12px 0 6px" }}>Engine test tools</p>
       <div className="grid">
-        <button className="btn" onClick={() => g.dispatch({ type: "spawnWalkers", n: 100 })}>+100 walkers</button>
-        <button className="btn" onClick={() => g.dispatch({ type: "spawnWalkers", n: 1000 })}>+1000 walkers</button>
-        <button className="btn" onClick={() => g.dispatch({ type: "clearWalkers" })}>Clear walkers</button>
+        <button className="btn" onClick={() => g.dispatch({ type: "spawnGuests", n: 100 })}>+100 guests</button>
+        <button className="btn" onClick={() => g.dispatch({ type: "clearGuests" })}>Clear guests</button>
         <button className={`btn ${host.debug ? "on" : ""}`} onClick={() => { host.debug = !host.debug; if (!host.debug) host.drawOptions.overlay = null; refresh(); }}>Debug view</button>
         <button className="btn" disabled={!!perfMsg} onClick={runPerf}>{perfMsg ?? "Perf test"}</button>
       </div>
@@ -167,13 +388,13 @@ export function GamePanel({ host }: { host: Host }) {
       )}
       {perf && (
         <div className="kv" style={{ marginTop: 8 }}>
-          {[1, 2, 4, 8].map((s) => <Fragment key={s}><b>Max at {s}×</b><span className="num">{perf.maxAgents[s].toLocaleString()} agents</span></Fragment>)}
+          {[1, 2, 4, 8].map((s) => <Fragment key={s}><b>Max at {s}×</b><span className="num">{perf.maxAgents[s].toLocaleString()} guests</span></Fragment>)}
           {perf.samples.map((p) => <Fragment key={p.agents}><b>{p.agents}</b><span className="num">sim {p.simMsPerTick.toFixed(2)} ms/tick · draw {p.drawMsClose.toFixed(1)}/{p.drawMsFar.toFixed(1)} ms</span></Fragment>)}
         </div>
       )}
       <div className="kv" style={{ marginTop: 8 }}>
         <b>Frame</b><span className="num">{st.fps.toFixed(0)} fps · sim {st.simMs.toFixed(2)} ms · draw {st.drawMs.toFixed(2)} ms</span>
-        <b>World</b><span className="num">{g.state.agents.length} walkers · {g.rooms.rooms.length} rooms · {g.paths.size} path fields</span>
+        <b>World</b><span className="num">{guests} guests · {g.rooms.rooms.length} rooms · {g.paths.size} path fields</span>
         <b>Day</b><span className="num">{Math.floor(g.state.tick / TICKS_PER_DAY) + 1} · tick {g.state.tick}</span>
       </div>
     </>

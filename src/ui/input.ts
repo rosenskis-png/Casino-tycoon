@@ -1,13 +1,15 @@
 // Touch input on the world canvas: one finger pans (or builds, with a build tool), two fingers pan and pinch
 // between the four zoom levels, a tap inspects or places. Also mouse wheel zoom for desktop testing.
 import { OBJECTS } from "../data/objects";
-import type { Command } from "../sim";
+import { covers, footprint, seats, type Command } from "../sim";
 import type { Host } from "./host";
 
 export type Tool = "inspect" | "wall" | "door" | "demolish" | "remove" | `place:${string}`;
 
 export interface InputCallbacks {
   tool(): Tool;
+  /** Rotation for placing objects (quarter turns). */
+  rot(): number;
   tap(tile: number, tx: number, ty: number): void;
   command(c: Command): void;
 }
@@ -57,19 +59,21 @@ export class WorldInput {
     if (!c) { this.host.drawOptions.ghost = null; return; }
     const g = this.host.game;
     const w = g.state.map.w;
-    let tiles: number[] = [];
+    let tiles: number[] = [], seatTiles: number[] = [];
+    const { h } = g.state.map;
+    const onMap = (p: { x: number; y: number }) => p.x >= 0 && p.y >= 0 && p.x < w && p.y < h;
     if (c.type === "build") tiles = c.tiles;
     else if (c.type === "place") {
       const d = OBJECTS[c.kind];
-      for (let dy = 0; dy < d.h; dy++) for (let dx = 0; dx < d.w; dx++) tiles.push((c.y + dy) * w + c.x + dx);
-      tiles = tiles.filter((i) => i >= 0 && i < g.state.map.terrain.length);
+      tiles = footprint(d, c.x, c.y, c.rot).filter(onMap).map((p) => p.y * w + p.x);
+      seatTiles = seats(d, c.x, c.y, c.rot).filter(onMap).map((p) => p.y * w + p.x);
     }
-    this.host.drawOptions.ghost = { tiles, ok: g.check(c) === null };
+    this.host.drawOptions.ghost = { tiles, seats: seatTiles, ok: g.check(c) === null };
   }
 
   private ghostFor(tool: Tool, a: ReturnType<WorldInput["tileAt"]>, b: ReturnType<WorldInput["tileAt"]>): Command | null {
     const w = this.host.game.state.map.w;
-    if (tool.startsWith("place:")) return { type: "place", kind: tool.slice(6), x: b.x, y: b.y, rot: 0 };
+    if (tool.startsWith("place:")) return { type: "place", kind: tool.slice(6), x: b.x, y: b.y, rot: this.cb.rot() & 3 };
     if (tool === "wall" || tool === "door" || tool === "demolish") {
       if (a.i < 0) return null;
       const tiles: number[] = [];
@@ -168,10 +172,7 @@ export class WorldInput {
   };
 
   objectAt(x: number, y: number): number | null {
-    for (const o of this.host.game.state.objects) {
-      const d = OBJECTS[o.kind];
-      if (x >= o.x && y >= o.y && x < o.x + d.w && y < o.y + d.h) return o.id;
-    }
+    for (const o of this.host.game.state.objects) if (covers(o, x, y)) return o.id;
     return null;
   }
 }

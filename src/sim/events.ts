@@ -9,7 +9,9 @@ export type SimEvent =
   | { type: "sound"; id: string; x?: number; y?: number }
   | { type: "day"; day: number }
   | { type: "month"; month: number; year: number }
-  | { type: "commandRejected"; command: string; reason: string };
+  | { type: "commandRejected"; command: string; reason: string }
+  | { type: "jackpot"; obj: number; amount: number; x: number; y: number }
+  | { type: "broken"; obj: number };
 
 export type NewsLevel = "info" | "good" | "urgent";
 

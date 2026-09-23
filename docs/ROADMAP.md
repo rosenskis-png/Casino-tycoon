@@ -19,13 +19,14 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Perf test: max agents at 60 fps on a phone at each speed (sets the population ceiling)
 - `window.__ct` debug hook: headless N-day runner + invariant checks used by the smoke test
 
-## M2 · Vertical slice ☐
-Start with three engine fixes from the post-M1 review, before guests multiply the code:
-- Commands register per system (each system contributes its own command handlers) instead of one central union and handler table in `sim/commands.ts`.
-- Layout changes reach systems through a `layout` hook or event, not by `Game.tilesChanged` calling agent internals (`ensureWanderPoints`, `repairAgents`) directly.
-- Save fixtures: keep one real save per released schema in `tests/saves/`, and make `npm run check` load and step every one. From then on, any schema bump must add a migration and a new fixture.
-
-Then: Tutorial-size map. Slots, bar, restroom, cage, janitors, techs. Basic guest types on the full §6 data structure. Thoughts. Finance. Money + reputation goal. First genuinely playable build.
+## M2 · Vertical slice ☑  (see docs/spec/guests.md, gaming.md, floor.md, economy.md)
+- Engine fixes: commands register per system; layout changes reach systems through a `layout` hook; save fixtures per released schema in `tests/saves/`, loaded and stepped by `npm run check`.
+- Tutorial scenario (The Lucky Horseshoe) with a worth + Locals reputation goal; Free Play Lot.
+- Three slot models with exact paytables, 10-wager rounds, breakdowns, machine stats. Bar, restrooms, cashier cage. Rotation.
+- Janitors and slot techs; litter.
+- Guests on the full §6 structure (3 provisional types), tastes, needs, mood, thoughts with floor bubbles and a daily summary, reputation per type, arrivals.
+- Books by category, monthly close, worth. Staff, Guests, Finance and Goals tabs; guest, staff and machine inspectors.
+- Save schema 2 (migration from 1; M1 walkers retire).
 
 ## M3 · Guest model depth ☐  (needs guest design discussion)
 Groups, intentions, betting behavior, quit rules, intoxication, drink servers.

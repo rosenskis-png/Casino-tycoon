@@ -9,17 +9,17 @@ import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
 import { save } from "./saves";
-import { BuildPanel, GamePanel, Inspector, LogSheet, Placeholder, type Selection } from "./panels";
+import { BuildPanel, FinancePanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
   { id: "build", icon: "🔨", label: "Build" },
-  { id: "staff", icon: "🧹", label: "Staff", when: "M2" },
-  { id: "guests", icon: "🧑", label: "Guests", when: "M2" },
-  { id: "finance", icon: "💰", label: "Finance", when: "M2" },
+  { id: "staff", icon: "🧹", label: "Staff" },
+  { id: "guests", icon: "🧑", label: "Guests" },
+  { id: "finance", icon: "💰", label: "Finance" },
   { id: "policies", icon: "📜", label: "Policies", when: "M9" },
   { id: "research", icon: "🔬", label: "Research", when: "M9" },
   { id: "authorities", icon: "⚖️", label: "Authorities", when: "M4" },
-  { id: "goals", icon: "🏆", label: "Goals", when: "M2" },
+  { id: "goals", icon: "🏆", label: "Goals" },
   { id: "game", icon: "⚙️", label: "Game" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -33,6 +33,9 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const [tool, setTool] = useState<Tool>("inspect");
   const toolRef = useRef(tool);
   toolRef.current = tool;
+  const [rot, setRot] = useState(0);
+  const rotRef = useRef(rot);
+  rotRef.current = rot;
   const [sel, setSel] = useState<Selection>(null);
   const [showLog, setShowLog] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -56,6 +59,8 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       unsub();
       unsub = g.bus.on((e) => {
         if (e.type === "sound") sound(e.id);
+        else if (e.type === "jackpot") sound("jackpot");
+        else if (e.type === "broken") sound("broken");
         else if (e.type === "news") { ticker.push({ level: e.level, text: e.text }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
         else if (e.type === "commandRejected") {
           setToast(e.reason);
@@ -70,11 +75,13 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     else ticker.push({ level: "info", text: initial.state.log.at(-1)?.text ?? "Welcome." }, performance.now());
     const input = new WorldInput(h, canvasRef.current!, {
       tool: () => toolRef.current,
+      rot: () => rotRef.current,
       command: (c: Command) => h.game.dispatch(c),
       tap: (tile, fx, fy) => {
         const g = h.game;
         let best: number | null = null, bd = 0.7;
         for (const a of g.state.agents) {
+          if (a.hidden) continue;
           const d = Math.hypot(a.x + 0.5 - fx, a.y + 0.2 - fy);
           if (d < bd) { bd = d; best = a.id; }
         }
@@ -149,8 +156,12 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       {host && !showLog && !sel && tab && (
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>
-          {tab === "build" ? <BuildPanel tool={tool} setTool={setTool} /> :
+          {tab === "build" ? <BuildPanel tool={tool} setTool={setTool} rot={rot} setRot={setRot} /> :
             tab === "game" ? <GamePanel host={host} /> :
+            tab === "staff" ? <StaffPanel host={host} /> :
+            tab === "guests" ? <GuestsPanel host={host} /> :
+            tab === "finance" ? <FinancePanel host={host} /> :
+            tab === "goals" ? <GoalsPanel host={host} /> :
             <Placeholder when={(TABS.find((t) => t.id === tab) as { when?: string }).when ?? ""} />}
         </div>
       )}
@@ -172,5 +183,5 @@ function toolHint(t: Tool): string {
   if (t === "door") return "Tap a wall you built to add a door";
   if (t === "demolish") return "Drag over walls or doors to remove them";
   if (t === "remove") return "Tap an object to sell it (half price back)";
-  return "Tap to place · drag to position";
+  return "Tap to place · drag to position · Rotate in the Build tab";
 }

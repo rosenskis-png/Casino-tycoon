@@ -1,5 +1,7 @@
 # Guests (M2)
 
+> M3 redesign agreed 2026-09-23: see `docs/spec/guests-m3.md` (not built yet). This file describes what is built.
+
 FOUNDATIONS §6 structure, built in `src/sim/guests.ts` with types in `src/data/guests.ts`. **Everything numeric here is provisional** until the guest design discussion (before M3). The roster is three placeholder types from the working list: Locals, Retirees, Tourists.
 
 ## Type entry (data)

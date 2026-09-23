@@ -70,7 +70,7 @@ Two levels (`src/sim/paths.ts`, rebuilt after M2 for the 8,000-guest target), al
 
 ## Performance test
 - Game tab → *Perf test* runs on the hidden **Big Floor** test map (240×200, ~20× the tutorial lot, ~9,000 slots plus bars, restrooms, cages, 20 janitors, 20 techs). It times sim ms/tick and draw ms/frame with real guests at 500 / 1,000 / 2,500 / 5,000 / 8,000 / 12,000 (Default and Overview zoom) and estimates the most guests that fit a 12 ms frame budget at each speed. Before this change (M1 and the first M2 build) it used walkers, then guests, on the small empty lot.
-- At Wide and Overview zoom, objects are baked into the cached floor image as flat colors; only people draw per frame. At most 24 thought bubbles show at once.
+- At Wide and Overview zoom, objects are baked into the cached floor image as flat colors; only people draw per frame. (Floor thought bubbles were removed in M3.)
 - Headless Chromium on the dev container (2026-09-23): sim ~0.12 ms/tick at 5,000 agents; drawing dominates (~19 ms at Default zoom with 5,000 on screen), giving ~3,200 agents at every speed.
 - Owner's iPhone (2026-09-23): 5,000 agents cost sim 0.09 ms/tick and draw 0.3 / 1.7 ms. 20,000 walkers ran at a real 60 fps (sim ~1.1 ms, draw ~1.9 ms per frame). Walkers are cheap; re-measure with M2 guests.
 - Owner's iPhone, first M2 build (2026-09-23): the old test (guests on the empty lot) estimated 25,853 / 25,087 / 23,684 / 21,302 guests at 1× / 2× / 4× / 8× (sim 0.85 ms/tick and draw 3.9 / 9.0 ms at 20,000). A real tutorial-size floor with ~100 slots, a bar and restrooms held 60 fps with ~18,000 guests at 1× (sim 0.73 ms, draw 2.1 ms per frame), with the path cache at its old 96-field cap.

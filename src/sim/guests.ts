@@ -800,6 +800,8 @@ function guestTick(g: Game, a: Agent) {
       decide(g, a);
       return;
     case "wait":
+      // Stand a few seconds, then look around again.
+      if (a.timer === 0 && !gd.why) { a.timer = rng(g.state, "guests").int(5, 10) * TICKS_PER_SECOND; return; }
       if (gd.why || --a.timer <= 0) { a.act = "idle"; a.timer = 0; }
       return;
     case "play": {

@@ -149,10 +149,10 @@ export function newcomerRates(g: Game): Record<string, number> {
   return out;
 }
 
-/** A random person of this type free to come (not here, no plans, not banned, not broke), or null. */
+/** A random person of this type free to come (not here, no plans, not banned, with money to spend), or null. */
 export function available(g: Game, type: string, r: Rng): Person | null {
   const free: Person[] = [];
-  for (const p of g.state.pool) if (p.type === type && !p.here && p.next < 0 && !p.ban && p.cash + p.savings >= BROKE) free.push(p);
+  for (const p of g.state.pool) if (p.type === type && !p.here && p.next < 0 && !p.ban && p.cash >= BROKE) free.push(p);
   return free.length ? r.pick(free) : null;
 }
 

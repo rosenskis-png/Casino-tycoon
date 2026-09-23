@@ -173,10 +173,10 @@ function serverTick(g: Game, a: Agent) {
   let guest = g.state.agents.find((b) => b.id === a.target) ?? null;
   // The guest left their machine (or the floor): on to the next on the tray, if any.
   if (!guest || !wantsServing(guest)) {
-    guest = a.act === "serve" || a.timer === 0 ? nextOnTray(g, a) : guest;
+    guest = nextOnTray(g, a);
     if (!guest) return endRound(a);
     a.target = guest.id;
-    if (a.act === "serve") { a.timer = 0; go(a, guest.y * w + guest.x, "serve"); return; }
+    if (a.act === "serve") { go(a, guest.y * w + guest.x, "serve"); return; }
   }
   if (a.act === "fetch") {
     if (a.timer === 0) { a.timer = FETCH_TICKS; return; }

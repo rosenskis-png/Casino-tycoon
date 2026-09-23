@@ -2,10 +2,23 @@
 
 Newest first. One entry per decision: date, what, why.
 
-## 2026-09-23 · Green light for M3
-The owner said "green light for M3" (build docs/spec/guests-m3.md).
+## 2026-09-23 · M3 built (Claude's calls while building; see docs/spec/guests.md)
+- **Money scale (flagged for the owner):** the agreed visit lengths and losses can't both hold at 10 wagers per round (a $90 budget lasted under a minute of play). `WAGERS_PER_ROUND` is now 4; running costs came down ~40% to match what a seat earns (wages $70/$110/$90, slot upkeep $2–4, bar $50, cage $35, restroom $15). Tutorial year-end cash with a tech and a bar: ~$7K–$15K (M2: $12K–$17K). Full balance stays M11.
+- The Lucky Horseshoe's arrival rates and market were scaled down (visits last ~2.5× longer, so the same arrivals packed the floor): ~60 guests on the floor with a tech and a bar, Locals reputation drifting to ~53.
+- Targets are measured by `npm run targets` on a furnished Free Play Lot and reported in guests.md; generator draws are asserted in `npm run check`, emergent outcomes only reported.
+- Planned floor time is drawn above the target visit length, since money, quit rules and the group end many visits first.
+- Quit rules (win goal, loss limit, jackpot) now send guests home; since M2 they only made guests switch machines.
+- A broke or bored leader waits for the group like anyone else; "the leader quits" means a quit rule or their time running out. "Waiting too long" is 2 minutes.
+- An ATM object (withdrawals only) joins the cage, so ATM placement is a layout lever.
+- Drink servers carry a tray of up to 3 drinks per bar run (one at a time couldn't keep up with a busy floor).
+- One-off types: 30% of the M2 arrival formula come on purpose; the rest must be converted from passers-by.
+- Guests stay indoors when wandering, and new arrivals head for the open door first (M2.5 guests drifted onto the lot and gave up).
+- Party group makeup (all men, all women, mixed) is stored per guest now, for the M3.1 art pass.
 
-## 2026-09-23 · M3 guest design (see docs/spec/guests-m3.md)
+## 2026-09-23 · Green light for M3
+The owner said "green light for M3" (build the M3 guest design, now docs/spec/guests.md).
+
+## 2026-09-23 · M3 guest design (built; see docs/spec/guests.md)
 - A type is who someone is. Group size, play style and chasing are drawn per person. Couples are a group size. Chasing is a hidden per-person level your floor can raise across visits, not a type.
 - A population pool of real returning people per scenario. Reputation for recurring types is the pool's memory; one-off types use word of mouth.
 - The M3 roster is Locals, Retirees, Tourists and Party groups. The other types wait for the milestone that builds what they want (Claude's call; the owner left it open).

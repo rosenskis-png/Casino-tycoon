@@ -7,6 +7,7 @@ import type { Agent, GuestData } from "./state";
 import { rng } from "./rng";
 import { post } from "./finance";
 import { think } from "./guests";
+import { TICKS_PER_SECOND } from "./clock";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -44,9 +45,15 @@ export function serveDrink(g: Game, a: Agent, via: "bar" | "server"): boolean {
   if (price > DRINK_PRICE * 1.5 && r.chance(Math.min(0.8, (pol.price - 1.5) * 0.5))) {
     think(g, a, "pricey");
     gd.needs.thirst = Math.min(gd.needs.thirst, 40);
+    gd.mem.barAt = g.state.tick + 60 * TICKS_PER_SECOND;
     return false;
   }
-  if (price > gd.wallet) return false;
+  if (price > gd.wallet) {
+    // Can't pay: they'll stop trying for a while.
+    gd.needs.thirst = Math.min(gd.needs.thirst, 40);
+    gd.mem.barAt = g.state.tick + 60 * TICKS_PER_SECOND;
+    return false;
+  }
   if (price) { gd.wallet -= price; post(g, "bar", price); }
   post(g, "drinks", -DRINK_COST);
   gd.needs.thirst = 0;

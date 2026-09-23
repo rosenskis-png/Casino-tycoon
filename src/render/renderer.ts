@@ -4,13 +4,11 @@ import { T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
 import { OBJECT_MAP_COLORS, PEOPLE, SLOT_COLORS } from "../data/art";
-import { THOUGHTS } from "../data/thoughts";
-import { objSeats, objSize, type Agent, type Game, type SimEvent } from "../sim";
+import { objSeats, objSize, pedSpot, type Agent, type Game, type SimEvent } from "../sim";
 import { buildAtlas, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
 const ART = 16; // art pixels per tile
-const MAX_BUBBLES = 24;
 const CHUNK = 16; // tiles per chunk side
 
 export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
@@ -72,6 +70,7 @@ export class Renderer {
       case T.WALL: return "tile:wall";
       case T.DOOR: return "tile:door";
       case T.WATER: return "tile:water";
+      case T.SIDEWALK: return "tile:sidewalk";
       default: return "tile:void";
     }
   }
@@ -225,42 +224,51 @@ export class Renderer {
       });
     }
     const lod = cam.level; // 0-1 full sprites, 2 simplified, 3 dots
-    let bubbles = 0; // at most MAX_BUBBLES on screen, so a packed floor doesn't turn into a wall of speech
     const FACE = ["up", "side", "down", "left"];
-    for (const a of s.agents) {
-      if (a.hidden) continue;
-      const moving = a.nx !== a.x || a.ny !== a.y;
-      const p = moving ? Math.min(1, (a.t + alpha) / a.steps) : 0;
-      const fx = a.x + (a.nx - a.x) * p, fy = a.y + (a.ny - a.y) * p;
-      if (fx < x0 - 1 || fx > x1 + 1 || fy < y0 - 1 || fy > y1 + 1) continue;
-      const set = a.role === "guest" ? a.g!.type : a.role;
+    // One person: set = look set (guest type or staff role), fx/fy = tile position, dir/step = sprite frame.
+    const person = (set: string, look: number, fx: number, fy: number, dir: string, step: number) => {
+      if (fx < x0 - 1 || fx > x1 + 1 || fy < y0 - 1 || fy > y1 + 1) return;
       const looks = PEOPLE[set] ?? PEOPLE.local;
-      const v = a.look % looks.variants;
+      const v = look % looks.variants;
       const sx = ox + (fx + 0.5) * tp, sy = oy + (fy + 0.5) * tp;
       this.stats.agentsDrawn++;
       if (lod >= 2) {
         const d = lod === 2 ? Math.max(2, tp * 0.35) : Math.max(2, tp * 0.45);
         const color = atlas.lookColor[set]?.[v] ?? "#fff";
         items.push({ y: fy, draw: () => { ctx.fillStyle = color; ctx.fillRect(Math.round(sx - d / 2), Math.round(sy - d), Math.ceil(d), Math.ceil(d)); } });
-        continue;
+        return;
       }
+      const f = atlas.frames.get(`p:${set}:${v}:${dir}${step}`)!;
+      items.push({ y: fy + 0.02, draw: () => ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(sx - 4 * scale), Math.round(sy + 5 * scale - f.h * scale), f.w * scale, f.h * scale) });
+    };
+    for (const a of s.agents) {
+      if (a.hidden) continue;
+      const moving = a.nx !== a.x || a.ny !== a.y;
+      const p = moving ? Math.min(1, (a.t + alpha) / a.steps) : 0;
+      let fx = a.x + (a.nx - a.x) * p, fy = a.y + (a.ny - a.y) * p;
+      // Drink shows in the walk: a sideways stagger that grows with intoxication.
+      const intox = a.g?.intox ?? 0;
+      if (moving && intox > 0.2) {
+        const sway = Math.min(0.35, (intox - 0.2) * 0.5) * Math.sin((tick + alpha) * 0.25 + a.id);
+        if (a.nx !== a.x) fy += sway; else fx += sway;
+      }
+      const set = a.role === "guest" ? a.g!.type : a.role;
       let dir: string;
       const seated = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage");
       if (seated) dir = FACE[(g.objById.get(a.target)?.rot ?? 0) & 3];
       else dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
-      const step = moving && (a.t + alpha) / a.steps >= 0.5 ? 1 : 0;
-      const f = atlas.frames.get(`p:${set}:${v}:${dir}${step}`)!;
-      const gd = a.g;
-      const bubble = gd && gd.thought && tick - gd.thoughtTick < 60 ? THOUGHTS[gd.thought] : null;
-      let bubbleKey = bubble ? (bubble.bad ? "obj:bubbleBad" : bubble.notable ? "obj:bubbleGood" : null) : null;
-      if (bubbleKey && ++bubbles > MAX_BUBBLES) bubbleKey = null;
-      items.push({
-        y: fy + 0.02,
-        draw: () => {
-          ctx.drawImage(atlas.canvas, f.x, f.y, f.w, f.h, Math.round(sx - 4 * scale), Math.round(sy + 5 * scale - f.h * scale), f.w * scale, f.h * scale);
-          if (bubbleKey) blit(bubbleKey, sx - 1 * scale, sy - 16 * scale);
-        },
-      });
+      person(set, a.look, fx, fy, dir, moving && (a.t + alpha) / a.steps >= 0.5 ? 1 : 0);
+    }
+    // Pedestrians on the sidewalk.
+    for (const pd of s.peds) {
+      const s0 = pedSpot(g, pd, 0), s1 = pedSpot(g, pd, 1);
+      if (!s0) continue;
+      const hx = s1 ? s0.x - s1.x : 0, hy = s1 ? s0.y - s1.y : 0;
+      const dir = Math.abs(hx) >= Math.abs(hy) ? (hx >= 0 ? "side" : "left") : hy < 0 ? "up" : "down";
+      for (let k = 0; k < pd.n; k++) {
+        const sp = pedSpot(g, { ...pd, s: pd.s + pd.dir * pd.spd * alpha }, k)!;
+        person(pd.type, pd.look + k * 7, sp.x, sp.y, dir, Math.floor((tick + k * 3) / 6) & 1);
+      }
     }
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();

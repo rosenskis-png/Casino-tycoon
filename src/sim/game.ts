@@ -22,9 +22,14 @@ import { gamingSystem } from "./gaming";
 import { guestSystem } from "./guests";
 import { staffSystem, hireStaff } from "./staff";
 import { goalSystem } from "./goals";
+import { drinkSystem } from "./drinks";
+import { poolSystem, seedPool } from "./pool";
+import { streetSystem } from "./street";
 
 /** Every system, in any order; the registry sorts by dependencies. */
-const SYSTEMS: System[] = [movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, staffSystem, goalSystem];
+const SYSTEMS: System[] = [
+  movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem,
+];
 
 export interface CommandRecord { tick: number; cmd: Command; error: string | null }
 
@@ -42,8 +47,8 @@ export class Game {
   objById = new Map<number, PlacedObject>();
   /** Slot machines by 16×16 sector (key sy * 4096 + sx), for nearby searches. */
   slotSectors = new Map<number, PlacedObject[]>();
-  /** Amenities by what they serve. */
-  amenities: Record<"thirst" | "bladder" | "cage", PlacedObject[]> = { thirst: [], bladder: [], cage: [] };
+  /** Amenities by what they serve. Cages also serve withdrawals ("atm"). */
+  amenities: Record<"thirst" | "bladder" | "cage" | "atm", PlacedObject[]> = { thirst: [], bladder: [], cage: [], atm: [] };
   /** Objects that block sight, per tile (walls and closed doors are checked from terrain). */
   opaque = new Uint8Array(0);
   /** Wayfinding signs. */
@@ -70,18 +75,19 @@ export class Game {
     const map = buildScenarioMap(def);
     const n = map.w * map.h;
     const rep: Record<string, number> = {};
-    const familiar: Record<string, number> = {};
-    for (const t of Object.keys(def.population)) if (GUEST_TYPES[t]) { rep[t] = def.rep[t] ?? 50; familiar[t] = GUEST_TYPES[t].familiarity.start; }
+    for (const t of Object.keys(def.population)) if (GUEST_TYPES[t]) rep[t] = def.rep[t] ?? 50;
     const state: GameState = {
       schema: SCHEMA_VERSION, scenario: def.id, seed: seed >>> 0, tick: 0, rng: {}, nextId: 1,
       cash: def.startCash, map, objects: [], agents: [], wanderPoints: [],
-      traffic: new Array(n).fill(0), dirt: new Array(n).fill(0), roomMeta: [], log: [], rep, familiar,
+      traffic: new Array(n).fill(0), dirt: new Array(n).fill(0), roomMeta: [], log: [], rep,
+      pool: [], peds: [], drinks: { price: 1, comp: 0, strength: 1 },
       finance: { month: { start: def.startCash }, history: [], total: { start: def.startCash } },
-      thoughts: { today: {}, yday: {} },
-      visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0 } },
+      thoughts: [{}],
+      visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "",
     };
     for (const o of def.objects) state.objects.push(newObject(state.nextId++, o.kind, o.x, o.y, o.rot));
+    seedPool(state, def);
     const g = new Game(state);
     for (const [role, k] of Object.entries(def.staff)) for (let i = 0; i < k; i++) hireStaff(g, role);
     news(g, "info", `Welcome to ${def.name}.`);
@@ -94,7 +100,7 @@ export class Game {
   };
 
   /** Whether any placed object serves this need. */
-  has(serves: "thirst" | "bladder" | "cage"): boolean {
+  has(serves: "thirst" | "bladder" | "cage" | "atm"): boolean {
     return this.amenities[serves].length > 0;
   }
 
@@ -105,12 +111,13 @@ export class Game {
     this.objById.clear();
     this.slotSectors.clear();
     this.seatTiles.clear();
-    this.amenities = { thirst: [], bladder: [], cage: [] };
+    this.amenities = { thirst: [], bladder: [], cage: [], atm: [] };
     this.minRound = Infinity;
     for (const o of this.state.objects) {
       const def = OBJECTS[o.kind];
       this.objById.set(o.id, o);
       if (def.serves) this.amenities[def.serves].push(o);
+      if (def.serves === "cage") this.amenities.atm.push(o);
       if (def.guide) this.signs.push(o);
       if (def.slot) {
         const key = (o.y >> 4) * 4096 + (o.x >> 4);

@@ -12,7 +12,9 @@
     "shot": "node scripts/screenshot.mjs",
     "check": "npm run typecheck && npm run boundaries && npm run headless && npm run build && npm run smoke",
     "headless": "node scripts/headless.mjs",
-    "fixture": "node scripts/fixture.mjs"
+    "fixture": "node scripts/fixture.mjs",
+    "targets": "node scripts/targets.mjs",
+    "economy": "node scripts/economy.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",

@@ -1,5 +1,6 @@
-// Staff (FOUNDATIONS §9): hiring and firing, and the M2 roles at work. Janitors sweep litter; slot techs fix
-// broken machines. Both are visible on the floor. Wages accrue monthly through finance.
+// Staff (FOUNDATIONS §9): hiring and firing, and the roles at work. Janitors sweep litter; slot techs fix
+// broken machines; drink servers (M3) carry drinks from a bar to players at their machines. All are visible on
+// the floor. Wages accrue monthly through finance.
 import { STAFF_ROLES } from "../data/staff";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
@@ -9,6 +10,8 @@ import { rng } from "./rng";
 import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
 import { TICKS_PER_SECOND } from "./clock";
+import { faceTile } from "./wayfinding";
+import { serveDrink } from "./drinks";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -20,6 +23,12 @@ declare module "./commands" {
 const MAX_STAFF = 200;
 const CLEAN_TICKS = 2 * TICKS_PER_SECOND;
 const REPAIR_TICKS = 6 * TICKS_PER_SECOND;
+const FETCH_TICKS = 2 * TICKS_PER_SECOND;
+const SERVE_TICKS = 2 * TICKS_PER_SECOND;
+/** How far a server looks for someone to serve (tiles, Manhattan); drinks per tray, for players this close together. */
+const SERVER_REACH = 30;
+const TRAY = 3;
+const TRAY_SPREAD = 8;
 
 export function hireStaff(g: Game, role: string): Agent | null {
   const s = g.state;
@@ -36,10 +45,13 @@ export function hireStaff(g: Game, role: string): Agent | null {
   return a;
 }
 
-/** Targets other staff already have: tiles for janitors, object ids for techs. */
+/** Targets other staff already have: tiles for janitors, object ids for techs, guests on servers' trays. */
 function claimed(g: Game, role: string): Set<number> {
   const out = new Set<number>();
-  for (const a of g.state.agents) if (a.role === role && a.target >= 0) out.add(a.target);
+  for (const a of g.state.agents) if (a.role === role) {
+    if (a.target >= 0) out.add(a.target);
+    for (const id of a.tray ?? []) out.add(id);
+  }
   return out;
 }
 
@@ -99,13 +111,99 @@ function techFindWork(g: Game, a: Agent) {
   wanderStaff(g, a);
 }
 
+/**
+ * Would this guest take a drink from a server now? Seated players first (only players are served): drinkers
+ * below where they'd like to be (a server makes it easy to go a little past), and anyone thirsty enough.
+ */
+function wantsServing(a: Agent): boolean {
+  const gd = a.g;
+  if (!gd || a.act !== "play" || a.seat < 0 || gd.why) return false;
+  return gd.needs.thirst >= 60 || (gd.intend > 0 && gd.intox < gd.intend + 0.1 && gd.needs.thirst >= 30);
+}
+
+function serverFindWork(g: Game, a: Agent) {
+  if (!g.amenities.thirst.length) return wanderStaff(g, a);
+  const taken = claimed(g, "server");
+  let best: Agent | null = null, bd = SERVER_REACH + 1;
+  for (const b of g.state.agents) {
+    if (b.role !== "guest" || taken.has(b.id) || !wantsServing(b)) continue;
+    const d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (d < bd) { bd = d; best = b; }
+  }
+  if (!best) return wanderStaff(g, a);
+  // Fetch from the nearest bar they can reach, then take the tray round.
+  const w = g.state.map.w, here = a.y * w + a.x;
+  let bar = -1, bb = Infinity;
+  for (const o of g.amenities.thirst) {
+    const t = faceTile(g, o);
+    const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+    if (d < bb && g.paths.reachable(here, t)) { bb = d; bar = t; }
+  }
+  if (bar < 0) return wanderStaff(g, a);
+  // A tray: the first player plus a couple of others sitting nearby who'd like one too.
+  const tray = [best.id];
+  for (const b of g.state.agents) {
+    if (tray.length >= TRAY) break;
+    if (b.role !== "guest" || b === best || taken.has(b.id) || !wantsServing(b)) continue;
+    if (Math.abs(b.x - best.x) + Math.abs(b.y - best.y) <= TRAY_SPREAD) tray.push(b.id);
+  }
+  a.target = best.id;
+  a.tray = tray.slice(1);
+  go(a, bar, "fetch");
+}
+
+/** Next guest on the tray who still wants their drink, or null (the tray is done). */
+function nextOnTray(g: Game, a: Agent): Agent | null {
+  while (a.tray && a.tray.length) {
+    const id = a.tray.shift()!;
+    const b = g.state.agents.find((x) => x.id === id);
+    if (b && wantsServing(b)) return b;
+  }
+  return null;
+}
+
+function endRound(a: Agent) {
+  a.target = -1;
+  a.tray = undefined;
+  a.act = "idle";
+}
+
+function serverTick(g: Game, a: Agent) {
+  const w = g.state.map.w;
+  let guest = g.state.agents.find((b) => b.id === a.target) ?? null;
+  // The guest left their machine (or the floor): on to the next on the tray, if any.
+  if (!guest || !wantsServing(guest)) {
+    guest = a.act === "serve" || a.timer === 0 ? nextOnTray(g, a) : guest;
+    if (!guest) return endRound(a);
+    a.target = guest.id;
+    if (a.act === "serve") { a.timer = 0; go(a, guest.y * w + guest.x, "serve"); return; }
+  }
+  if (a.act === "fetch") {
+    if (a.timer === 0) { a.timer = FETCH_TICKS; return; }
+    if (--a.timer > 0) return;
+    const to = guest.y * w + guest.x;
+    if (!g.paths.reachable(a.y * w + a.x, to)) return endRound(a);
+    go(a, to, "serve");
+    return;
+  }
+  if (a.timer === 0) { a.timer = SERVE_TICKS; return; }
+  if (--a.timer > 0) return;
+  serveDrink(g, guest, "server");
+  const next = nextOnTray(g, a);
+  if (!next) return endRound(a);
+  a.target = next.id;
+  go(a, next.y * w + next.x, "serve");
+}
+
 function staffTick(g: Game, a: Agent) {
   if (isWalking(a)) return;
   if (a.act === "idle") {
     if (a.role === "janitor") janitorFindWork(g, a);
     else if (a.role === "tech") techFindWork(g, a);
+    else if (a.role === "server") serverFindWork(g, a);
     return;
   }
+  if (a.act === "fetch" || a.act === "serve") return serverTick(g, a);
   if (a.act === "clean") {
     if (a.timer === 0) { a.timer = CLEAN_TICKS; return; }
     if (--a.timer > 0) return;
@@ -158,6 +256,7 @@ export const staffSystem: System = {
       if (a.role === "guest" || a.target < 0) continue;
       if (a.role === "tech" && !g.objById.has(a.target)) { a.target = -1; a.act = "idle"; }
       if (a.role === "janitor" && !g.walkable(a.target)) { a.target = -1; a.act = "idle"; }
+      if (a.role === "server" && !g.amenities.thirst.length) { a.target = -1; a.tray = undefined; a.act = "idle"; }
     }
   },
   tick(g) {

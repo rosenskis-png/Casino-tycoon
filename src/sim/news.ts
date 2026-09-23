@@ -6,9 +6,10 @@ import { TICKS_PER_DAY } from "./clock";
 
 export const LOG_DAYS = 30;
 
-export function news(g: Game, level: NewsLevel, text: string) {
+/** Logs an item; `quiet` keeps it off the ticker (routine notices the owner wouldn't want to be interrupted by). */
+export function news(g: Game, level: NewsLevel, text: string, quiet = false) {
   g.state.log.push({ tick: g.state.tick, level, text });
-  g.bus.emit({ type: "news", level, text });
+  if (!quiet) g.bus.emit({ type: "news", level, text });
 }
 
 /** Money for news text, abbreviated like the UI: $950, $48.2K, $3.1M. */

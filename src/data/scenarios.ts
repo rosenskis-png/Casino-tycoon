@@ -28,13 +28,23 @@ export interface ScenarioDef {
   water: Rect[];
   /** Tiles where guests arrive from the street. */
   entrances: [number, number][];
+  /** Sidewalks: straight lines of tiles pedestrians walk end to end (either way), past the entrances. */
+  sidewalks: { from: [number, number]; to: [number, number] }[];
+  /** Passers-by per real second at 1×, and their mix by guest type (times the type's arrival base and season). */
+  footfall: number;
+  street: Record<string, number>;
+  /**
+   * The finite market of real returning people per recurring type: how many, and the share who are already
+   * regulars on day one (they know the floor as it is at the start).
+   */
+  market: Record<string, { size: number; regulars: number }>;
   objects: { kind: string; x: number; y: number; rot: number }[];
   staff: Record<string, number>;
-  /** Guest mix: arrival weight per guest type (multiplies the type's own base). */
+  /** Guests who come on purpose: weight per guest type (multiplies the type's own base). */
   population: Record<string, number>;
   /** Starting reputation per guest type (default 50). */
   rep: Record<string, number>;
-  /** Guests arriving per real second at 1× for an average-reputation casino of normal size. */
+  /** New guests coming on purpose per real second at 1× for an average-reputation casino of normal size (regulars come on their own schedule). */
   arrivals: number;
   /** Most guests on the floor at once. */
   maxGuests: number;
@@ -52,6 +62,7 @@ const LOT = {
   doors: [[27, 31], [28, 31], [36, 10], [42, 16]] as [number, number][],
   water: [{ x: 8, y: 35, w: 6, h: 4 }],
   entrances: [[27, 41], [28, 41]] as [number, number][],
+  sidewalks: [{ from: [0, 42] as [number, number], to: [55, 42] as [number, number] }],
 };
 
 const row = (kind: string, x0: number, y: number, n: number, rot = 0) => Array.from({ length: n }, (_, k) => ({ kind, x: x0 + k, y, rot }));
@@ -84,8 +95,9 @@ function bigFloor(): ScenarioDef {
   return {
     id: "bigfloor", name: "Big Floor (engine test)", blurb: "A huge test floor for measuring performance.", hidden: true,
     w, h, startCash: 1_000_000, grounds: [{ x: 1, y: 1, w: w - 2, h: h - 2 }], buildings: [{ x: bx, y: by, w: bw, h: bh }],
-    walls: [], doors, water: [], entrances, objects, staff: { janitor: 20, tech: 20 },
-    population: { local: 1, retiree: 1, tourist: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null,
+    walls: [], doors, water: [], entrances, sidewalks: [], objects, staff: { janitor: 20, tech: 20 },
+    footfall: 0, street: {}, market: {},
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null,
   };
 }
 
@@ -104,9 +116,12 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
       { kind: "plant", x: 7, y: 30, rot: 0 },
     ],
     staff: { janitor: 1 },
-    population: { local: 1, retiree: 1, tourist: 0.3 },
-    rep: { local: 40, retiree: 50, tourist: 45 },
-    arrivals: 0.45,
+    footfall: 0.15,
+    street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
+    market: { local: { size: 70, regulars: 0.2 }, retiree: { size: 45, regulars: 0.2 } },
+    population: { local: 1, retiree: 1, tourist: 0.3, party: 0.2 },
+    rep: { local: 40, retiree: 50, tourist: 45, party: 45 },
+    arrivals: 0.12,
     maxGuests: 300,
     goals: { worth: 30_000, rep: { type: "local", min: 60 }, by: { year: 1, month: 11 } },
   },
@@ -118,9 +133,12 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     startCash: 50_000,
     objects: [],
     staff: {},
-    population: { local: 1, retiree: 1, tourist: 1 },
+    footfall: 0.5,
+    street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
+    market: { local: { size: 220, regulars: 0 }, retiree: { size: 140, regulars: 0 } },
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 },
     rep: {},
-    arrivals: 0.6,
+    arrivals: 0.45,
     maxGuests: 400,
     goals: null,
   },

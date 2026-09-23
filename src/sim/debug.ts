@@ -12,6 +12,9 @@ import { Game } from "./game";
 import { rng } from "./rng";
 import { loadState, serialize } from "./save";
 import { footprint, seats } from "./geometry";
+import { MAX_PEDS } from "./street";
+import { INTOX_CAP, STRENGTHS } from "./drinks";
+import { spawnGroup, groupSize } from "./guests";
 
 export function checkInvariants(g: Game): string[] {
   const p: string[] = [];
@@ -58,6 +61,8 @@ export function checkInvariants(g: Game): string[] {
   for (let i = 0; i < n; i++) if (seen[i] && seatTile[i]) { p.push(`seat of ${seatTile[i]} under object ${seen[i]}`); break; }
   const ids = new Set<number>();
   const held = new Map<string, number>();
+  const pids = new Set<number>();
+  const groups = new Map<number, { n: number; leads: number; type: string }>();
   for (const a of s.agents) {
     if (ids.has(a.id) || objIds.has(a.id)) p.push(`duplicate id ${a.id}`);
     ids.add(a.id);
@@ -80,6 +85,20 @@ export function checkInvariants(g: Game): string[] {
         else if (a.seat >= OBJECTS[o.kind].seats.length) p.push(`guest ${a.id} holds a seat that doesn't exist`);
       }
       if (a.hidden && a.act !== "restroom") p.push(`guest ${a.id} hidden while ${a.act}`);
+      if (gd.intox < 0 || gd.intox > INTOX_CAP + 1e-9 || gd.intend < 0 || gd.intend > INTOX_CAP + 1e-9) p.push(`guest ${a.id} intoxication out of range`);
+      if (gd.withdrawn > gd.withdrawCap + 1e-9) p.push(`guest ${a.id} drew more than they have`);
+      if (gd.pid >= 0) {
+        const per = s.pool.find((q) => q.id === gd.pid);
+        if (!per) p.push(`guest ${a.id} is a missing person ${gd.pid}`);
+        else if (!per.here) p.push(`guest ${a.id} on the floor but their person isn't marked here`);
+        if (pids.has(gd.pid)) p.push(`person ${gd.pid} on the floor twice`);
+        pids.add(gd.pid);
+      }
+      const grp = groups.get(gd.group) ?? { n: 0, leads: 0, type: gd.type };
+      grp.n++;
+      grp.leads += gd.lead;
+      if (grp.type !== gd.type) p.push(`group ${gd.group} mixes types`);
+      groups.set(gd.group, grp);
       if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
       if (a.act === "play") {
         const o = s.objects.find((o) => o.id === a.target);
@@ -89,6 +108,14 @@ export function checkInvariants(g: Game): string[] {
         }
       }
     }
+  }
+  for (const [id, grp] of groups) if (grp.n > 8 || grp.leads > 1) p.push(`group ${id}: ${grp.n} members, ${grp.leads} leaders`);
+  // The pool: money never negative; anyone marked here is on the floor or on the sidewalk.
+  if (s.peds.length > MAX_PEDS) p.push(`${s.peds.length} pedestrians (cap ${MAX_PEDS})`);
+  for (const q of s.peds) if (q.pid >= 0) { if (pids.has(q.pid)) p.push(`person ${q.pid} both inside and on the sidewalk`); pids.add(q.pid); }
+  for (const q of s.pool) {
+    if (q.savings < 0 || q.cash < 0) p.push(`person ${q.id} has negative money`);
+    if (q.here && !pids.has(q.id)) p.push(`person ${q.id} marked here but nowhere to be seen`);
   }
   for (let i = 0; i < n; i++) {
     const r = g.rooms.roomOf[i];
@@ -117,6 +144,47 @@ export function mathChecks(): string[] {
   return p;
 }
 
+/**
+ * Guest generators against the §11 starting targets (docs/spec/guests.md): thousands of draws through the real
+ * arrival path on a fixed seed, checking medians and shares within a tolerance, and that every draw is finite
+ * and inside its hard caps. What guests then *do* (visit length, loss, overshoot) is emergent and only reported,
+ * by `npm run targets`.
+ */
+export function generatorChecks(): string[] {
+  const p: string[] = [];
+  const TARGET: Record<string, { budget: number; sober: number; never: number; mean: number; groups: number[] }> = {
+    local: { budget: 90, sober: 0.3, never: 0.35, mean: 0.35, groups: [0.6, 0.35] },
+    retiree: { budget: 60, sober: 0.6, never: 0.75, mean: 0.2, groups: [0.4, 0.55] },
+    tourist: { budget: 180, sober: 0.15, never: 0.3, mean: 0.45, groups: [0.25, 0.5] },
+    party: { budget: 120, sober: 0.05, never: 0.2, mean: 0.65, groups: [0, 0] },
+  };
+  const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+  const near = (what: string, got: number, want: number, tol: number) => { if (Math.abs(got - want) > tol) p.push(`${what}: ${got.toFixed(3)}, target ${want}`); };
+  for (const [t, want] of Object.entries(TARGET)) {
+    const g = Game.create("bigfloor", 5);
+    const at = g.state.map.entrances[0], r = rng(g.state, "check"), type = GUEST_TYPES[t];
+    const sizes: number[] = [];
+    for (let k = 0; k < 3000; k++) sizes.push(groupSize(r, type));
+    for (let k = 0; k < 3000; k++) spawnGroup(g, t, at, null, 1);
+    const gs = g.state.agents.filter((a) => a.g).map((a) => a.g!);
+    near(`${t} budget median`, med(gs.map((x) => x.bankroll)) / want.budget, 1, 0.08);
+    near(`${t} sober share`, gs.filter((x) => x.intend === 0).length / gs.length, want.sober, 0.03);
+    near(`${t} never-ATM share`, gs.filter((x) => !x.atm).length / gs.length, want.never, 0.03);
+    const drinkers = gs.filter((x) => x.intend > 0).map((x) => x.intend);
+    // Intent shifts a little with why they came (drink first +0.1, gamble -0.03), so allow for it.
+    near(`${t} drinkers' intended level (mean)`, drinkers.reduce((a, b) => a + b, 0) / drinkers.length, want.mean, 0.05);
+    near(`${t} alone`, sizes.filter((n) => n === 1).length / sizes.length, want.groups[0], 0.03);
+    near(`${t} in pairs`, sizes.filter((n) => n === 2).length / sizes.length, want.groups[1], 0.03);
+    if (t === "party" && sizes.some((n) => n < 4 || n > 8)) p.push("party group outside 4-8");
+    if (sizes.some((n) => n < 1 || n > 8)) p.push(`${t}: group size outside 1-8`);
+    for (const x of gs) {
+      if (![x.bankroll, x.stake, x.withdrawCap, x.atm, x.floorTime, x.intend, x.drift].every(Number.isFinite)) { p.push(`${t}: non-finite draw`); break; }
+      if (x.intend > INTOX_CAP || x.bankroll > (type.budget.cap ?? Infinity) || x.floorTime <= 0) { p.push(`${t}: draw outside its caps`); break; }
+    }
+  }
+  return p;
+}
+
 /** Random player activity from the smoke stream, so runs exercise invalidation paths and every command. */
 function fiddle(g: Game) {
   const r = rng(g.state, "smoke");
@@ -132,6 +200,7 @@ function fiddle(g: Game) {
   else if (roll < 0.75) g.dispatch({ type: "place", kind: r.pick(Object.keys(OBJECTS)), x, y, rot: r.int(0, 3) });
   else if (roll < 0.85) { if (g.state.objects.length) g.dispatch({ type: "remove", id: r.pick(g.state.objects).id }); }
   else if (roll < 0.93) g.dispatch({ type: "hire", role: r.pick(Object.keys(STAFF_ROLES)) });
+  else if (roll < 0.96) g.dispatch({ type: "setDrinks", price: r.int(0, 12) / 4, comp: r.int(0, 20) / 20, strength: r.pick(STRENGTHS) });
   else {
     const staff = g.state.agents.filter((a) => a.role !== "guest");
     if (staff.length) g.dispatch({ type: "fire", id: r.pick(staff).id });
@@ -180,7 +249,7 @@ export function exitChecks(): string[] {
 }
 
 export function smoke(opts: { days: number; seeds: number[]; scenario?: string }): { ok: boolean; problems: string[] } {
-  const problems: string[] = [...mathChecks(), ...exitChecks()];
+  const problems: string[] = [...mathChecks(), ...exitChecks(), ...generatorChecks()];
   const sc = opts.scenario ?? "horseshoe";
   for (const seed of opts.seeds) {
     const g = run(sc, seed, opts.days, (g, d) => {

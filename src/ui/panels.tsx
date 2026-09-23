@@ -6,12 +6,13 @@ import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
 import { STAFF_ROLES } from "../data/staff";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
-import { THOUGHTS } from "../data/thoughts";
+import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
 import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
 import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
-  Game, TICKS_PER_DAY, TICKS_PER_SECOND, type Agent, type Ledger,
+  Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
+  type Agent, type Ledger,
 } from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
 import type { Host } from "./host";
@@ -22,7 +23,7 @@ import { perfTest, type PerfResult } from "./perf";
 
 export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: number } | null;
 
-const TERRAIN_NAME: Record<number, string> = { [T.VOID]: "Unowned land", [T.FLOOR]: "Floor", [T.WALL]: "Wall", [T.DOOR]: "Door", [T.WATER]: "Water" };
+const TERRAIN_NAME: Record<number, string> = { [T.VOID]: "Unowned land", [T.FLOOR]: "Floor", [T.WALL]: "Wall", [T.DOOR]: "Door", [T.WATER]: "Water", [T.SIDEWALK]: "Sidewalk" };
 const FACING = ["down", "left", "up", "right"];
 
 export function BuildPanel({ tool, setTool, rot, setRot }: { tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void }) {
@@ -54,7 +55,7 @@ export function BuildPanel({ tool, setTool, rot, setRot }: { tool: Tool; setTool
 // ---------------------------------------------------------------------------------------------------------
 
 const SEEKING: Record<string, string> = {
-  bladder: "Looking for a restroom", thirst: "Looking for a bar", cage: "Looking for the cage", exit: "Looking for the way out",
+  bladder: "Looking for a restroom", thirst: "Looking for a bar", cage: "Looking for the cage", atm: "Looking for an ATM", exit: "Looking for the way out",
 };
 
 function roleDoing(g: Game, a: Agent): string {
@@ -64,9 +65,12 @@ function roleDoing(g: Game, a: Agent): string {
     case "play": return `Playing ${name}`;
     case "drink": return "Having a drink";
     case "restroom": return "In the restroom";
-    case "cage": return "At the cashier cage";
+    case "cage": return obj?.kind === "atm" ? "At the ATM" : "At the cashier cage";
     case "clean": return "Sweeping up";
     case "repair": return `Fixing ${name}`;
+    case "fetch": return "Picking up drinks";
+    case "serve": return "Serving a drink";
+    case "wait": return "Waiting for the others";
     case "walk":
       if (a.next === "leave") return "Heading home";
       if (a.next === "clean") return "Off to sweep up";
@@ -74,7 +78,10 @@ function roleDoing(g: Game, a: Agent): string {
       if (a.next === "play") return `Walking to ${name}`;
       if (a.next === "drink") return "Going for a drink";
       if (a.next === "restroom") return "Going to the restroom";
-      if (a.next === "cage") return "Going to the cage";
+      if (a.next === "cage") return obj?.kind === "atm" ? "Going to the ATM" : "Going to the cage";
+      if (a.next === "fetch") return "Off to the bar";
+      if (a.next === "serve") return "Bringing a drink";
+      if (a.next === "wait") return "Waiting for the others";
       return "Walking";
     case "wander": {
       if (a.role !== "guest") return "Patrolling";
@@ -105,6 +112,7 @@ export function StaffPanel({ host }: { host: Host }) {
         ))}
       </div>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
+      <DrinkPolicy g={g} />
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
@@ -116,18 +124,46 @@ export function StaffPanel({ host }: { host: Host }) {
   );
 }
 
+const STRENGTH_NAMES = ["Light", "Standard", "Strong"];
+
+function DrinkPolicy({ g }: { g: Game }) {
+  const d = g.state.drinks;
+  const set = (c: { price?: number; comp?: number; strength?: number }) => g.dispatch({ type: "setDrinks", ...c });
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Drink policy</p>
+      <div className="kv">
+        <b>Price</b>
+        <span className="num"><input type="range" min={0} max={3} step={0.25} value={d.price} onChange={(e) => set({ price: Number(e.target.value) })} /> {d.price.toFixed(2)}× ({money(DRINK_PRICE * d.price)})</span>
+        <b>Comped</b>
+        <span className="num"><input type="range" min={0} max={1} step={0.05} value={d.comp} onChange={(e) => set({ comp: Number(e.target.value) })} /> {Math.round(d.comp * 100)}% free to players</span>
+        <b>Strength</b>
+        <span>
+          <select value={d.strength} onChange={(e) => set({ strength: Number(e.target.value) })}>
+            {STRENGTHS.map((v, k) => <option key={v} value={v}>{STRENGTH_NAMES[k]}</option>)}
+          </select>
+        </span>
+      </div>
+    </>
+  );
+}
+
 export function GuestsPanel({ host }: { host: Host }) {
-  const s = host.game.state;
-  const guests = s.agents.filter((a) => a.role === "guest");
+  const g = host.game, s = g.state;
+  const onFloor = s.agents.filter((a) => a.role === "guest").length;
   const v = s.visits.yday;
-  const merged: Record<string, number> = {};
-  for (const src of [s.thoughts.yday, s.thoughts.today]) for (const [k, n] of Object.entries(src)) merged[k] = (merged[k] ?? 0) + n;
-  const list = Object.entries(merged).filter(([k]) => THOUGHTS[k]).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const pool = poolSummary(g);
+  const rates = thoughtRates(g);
+  const list = Object.entries(rates).filter(([k, n]) => THOUGHTS[k] && n >= 0.5).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const regulars = Object.entries(pool.regulars).map(([t, n]) => `${n} ${GUEST_TYPES[t]?.name.toLowerCase() ?? t}`).join(" · ");
   return (
     <>
       <div className="kv">
-        <b>On the floor</b><span className="num">{guests.length} guests</span>
+        <b>On the floor</b><span className="num">{onFloor} guests{guestCount(g) > onFloor ? ` · ${guestCount(g) - onFloor} on the way` : ""}</span>
         <b>Yesterday</b><span className="num">{v.arrived} came · {v.left} left · {v.broke} went broke</span>
+        <b>Walked past</b><span className="num">{v.walkedPast} yesterday · {s.visits.today.walkedPast} today</span>
+        <b>Regulars</b><span className="num">{regulars || "none yet"}</span>
+        {pool.chasers > 0 && <><b>Chasers</b><span className="num">{pool.chasers}</span></>}
       </div>
       <p className="muted" style={{ margin: "10px 0 6px" }}>Reputation</p>
       {Object.entries(s.rep).map(([t, r]) => (
@@ -137,10 +173,10 @@ export function GuestsPanel({ host }: { host: Host }) {
           <span className="num">{Math.round(r)}</span>
         </div>
       ))}
-      <p className="muted" style={{ margin: "10px 0 6px" }}>What guests are saying (today and yesterday)</p>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>What guests are saying (a day, over the last two)</p>
       {list.length === 0 && <p className="muted">Nothing yet.</p>}
       {list.map(([k, n]) => (
-        <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{n}</span><span>{THOUGHTS[k].text}</span></div>
+        <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text}</span></div>
       ))}
     </>
   );
@@ -245,17 +281,38 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       <h3>{moodFace(gd.mood)} {guestName(gd.name)}<button className="x" onClick={onClose}>✕</button></h3>
       <p>{roleDoing(g, a)}</p>
       <p className="muted">Here {days < 1 ? "since today" : `for ${days} day${days === 1 ? "" : "s"}`}.</p>
-      {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{THOUGHTS[t].text}”</p>)}
-      {host.debug && (
-        <div className="kv" style={{ marginTop: 8 }}>
-          <b>Type</b><span>{GUEST_TYPES[gd.type].name}</span>
-          <b>Wallet</b><span className="num">{money(gd.wallet)} of {money(gd.bankroll)}</span>
-          <b>Mood</b><span className="num">{gd.mood.toFixed(0)}</span>
-          <b>Needs</b><span className="num">B{gd.needs.bladder.toFixed(0)} T{gd.needs.thirst.toFixed(0)} H{gd.needs.hunger.toFixed(0)} F{gd.needs.fatigue.toFixed(0)}</span>
-          <b>Quit rule</b><span>{gd.quit}</span>
-          <b>Knows floor</b><span className="num">{(gd.know * 100).toFixed(0)}%{gd.memDate >= 0 ? " · regular" : " · first visit"}</span>
-        </div>
-      )}
+      {companionsText(g, a) && <p className="muted">{companionsText(g, a)}</p>}
+      {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && (
+        <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{wording(t, gd.type, gd.name)}”</p>
+      ))}
+      {host.debug && <GuestDebug g={g} a={a} />}
+    </div>
+  );
+}
+
+function companionsText(g: Game, a: Agent): string {
+  const gd = a.g!;
+  const with_ = g.state.agents.filter((b) => b !== a && b.g && b.g.group === gd.group);
+  if (!with_.length) return "";
+  const names = with_.slice(0, 3).map((b) => guestName(b.g!.name).split(" ")[0]);
+  return `Here with ${names.join(", ")}${with_.length > 3 ? ` and ${with_.length - 3} more` : ""}.`;
+}
+
+function GuestDebug({ g, a }: { g: Game; a: Agent }) {
+  const gd = a.g!, p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
+  const left = Math.max(0, (gd.floorTime - (g.state.tick - gd.mem.arrived)) / TICKS_PER_SECOND / 60);
+  return (
+    <div className="kv" style={{ marginTop: 8 }}>
+      <b>Type</b><span>{GUEST_TYPES[gd.type].name}{gd.lead ? "" : " · group member"}</span>
+      <b>Wallet</b><span className="num">{money(gd.wallet)} of {money(gd.bankroll)}{gd.withdrawn ? ` + ${money(gd.withdrawn)} ATM` : ""}</span>
+      <b>ATM</b><span className="num">{gd.atm ? `draws ~${money(gd.atm)} · ${gd.trips} trips · can draw ${money(gd.withdrawCap)}` : "never uses one"}</span>
+      <b>Stake</b><span className="num">{money(gd.stake)} a spin · rule {gd.quit}</span>
+      <b>Drink</b><span className="num">{gd.intox.toFixed(2)} now · means {gd.intend.toFixed(2)} (came {gd.mem.startIntend.toFixed(2)})</span>
+      <b>Mood</b><span className="num">{gd.mood.toFixed(0)}</span>
+      <b>Needs</b><span className="num">B{gd.needs.bladder.toFixed(0)} T{gd.needs.thirst.toFixed(0)} H{gd.needs.hunger.toFixed(0)} F{gd.needs.fatigue.toFixed(0)}</span>
+      <b>Time left</b><span className="num">{left.toFixed(1)} min</span>
+      <b>Knows floor</b><span className="num">{(gd.know * 100).toFixed(0)}%{gd.memDate >= 0 ? " · regular" : " · first visit"}</span>
+      {p && <><b>Person</b><span className="num">visit {p.visits + 1} · savings {money(p.savings)} · feels {p.score.toFixed(0)} · chase {p.chase.toFixed(2)}</span></>}
     </div>
   );
 }

@@ -28,7 +28,7 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - `main` is the live branch; every push to it publishes to GitHub Pages (https://rosenskis-png.github.io/Casino-tycoon/), which the owner plays as a home-screen web app.
 - Flow: work on the session's branch → `npm run check` green → push → open a PR to `main` → merge it once CI passes. Don't ask the owner to merge.
 - Push at every stopping point, even mid-task. The cloud workspace is wiped when idle; unpushed work is lost.
-- When a milestone is finished and merged: `git tag mN <merge commit> && git push origin mN`. The Milestone release workflow attaches that version's playable `index.html` to a GitHub Release, so any past milestone can be recovered and played.
+- When a milestone is finished and merged, run the `release.yml` workflow (workflow_dispatch) with `tag: mN` and `commit: <merge commit sha>`; sessions can't push tags directly. It creates the tag and a GitHub Release with that version's playable `index.html`, so any past milestone can be recovered and played.
 - `main` is protected against deletion and force pushes. Never rewrite its history.
 - Before every push: `npm run check` (typecheck, layer boundaries, headless Node sim run, single-file build, phone-size browser smoke test). Push only when green.
 - Visual changes: `npm run build && npm run shot -- out.png` (iPhone-size screenshot, `--landscape` optional). Look at it before handing off; send it to the owner when useful.

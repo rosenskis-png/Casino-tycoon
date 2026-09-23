@@ -1,12 +1,14 @@
 name: Milestone release
-# Pushing a milestone tag (m0, m1, ...) publishes a GitHub Release with that version's playable index.html attached.
-# Also runnable by hand for tags created before this workflow existed.
+# Publishes a GitHub Release for a milestone (m0, m1, ...) with that version's playable index.html attached.
+# Run it by hand (Claude dispatches it): tag = milestone name, commit = the merge commit that finished it.
+# Creates the tag if it doesn't exist yet. Pushing a milestone tag directly also works.
 on:
   push:
     tags: ["m*"]
   workflow_dispatch:
     inputs:
-      tag: { description: "Existing tag to release, e.g. m1", required: true }
+      tag: { description: "Milestone tag, e.g. m2", required: true }
+      commit: { description: "Commit to tag (needed only if the tag doesn't exist yet)", required: false }
 permissions:
   contents: write
 jobs:
@@ -14,15 +16,23 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      COMMIT: ${{ github.event.inputs.commit }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-        with: { ref: "${{ env.TAG }}" }
+        with:
+          ref: ${{ github.event.inputs.commit || github.event.inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build
       - run: cp dist/index.html "casino-tycoon-${TAG}.html"
-      - run: |
-          gh release view "$TAG" >/dev/null 2>&1 && gh release upload "$TAG" "casino-tycoon-${TAG}.html" --clobber \
-            || gh release create "$TAG" "casino-tycoon-${TAG}.html" --title "Milestone ${TAG#m}" --notes "Playable snapshot of milestone ${TAG#m}. Download the .html file and open it in a browser to play this version."
+      - name: Publish release
+        run: |
+          FILE="casino-tycoon-${TAG}.html"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber
+          else
+            gh release create "$TAG" "$FILE" --target "$(git rev-parse HEAD)" --title "Milestone ${TAG#m}" \
+              --notes "Playable snapshot of milestone ${TAG#m}. Download the .html file and open it to play this version."
+          fi

@@ -46,9 +46,12 @@ export interface GuestTypeDef {
   /**
    * Intoxication (0 sober, ~0.25 tipsy, ~0.5 drunk, ~0.8 wasted): the sober share (exactly 0), the drinkers'
    * intended level (skewed bell: mean, sd, cap), overshoot (median of how hard being drunk pushes the intended
-   * level up; the spread gives the few who run away), and the share who come in for a drink first.
+   * level up; the spread gives the few who run away), the share who come in for a drink first, how readily they
+   * take a drink a server offers (0-1, before thirst, price, comps and drink), and seconds to finish one.
    */
-  drinking: { sober: number; mean: number; sd: number; cap: number; overshoot: number; first: number };
+  drinking: { sober: number; mean: number; sd: number; cap: number; overshoot: number; first: number; accept: number; sip: number };
+  /** Seconds a first-timer spends browsing before settling on a machine (sightseeing; regulars less, by what they know). */
+  browse: number;
   /** Chance per visit, on an easy floor, that someone starts chasing their losses. */
   chase: number;
   /** (M9) Credit behavior. */
@@ -102,7 +105,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 2500, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
     tripCap: { median: 200, sigma: 0.6, min: 40, cap: 1500 },
     atm: { never: 0.35, draw: { median: 60, sigma: 0.5, min: 20 }, again: 0.35 },
-    drinking: { sober: 0.3, mean: 0.35, sd: 0.15, cap: 1.3, overshoot: 0.035, first: 0.12 },
+    drinking: { sober: 0.3, mean: 0.35, sd: 0.15, cap: 1.3, overshoot: 0.035, first: 0.12, accept: 0.35, sip: 80 },
+    browse: 40,
     chase: 0.01,
     credit: 0,
     games: { cherry: 0.5, liberty: 1, thunder: 0.6 },
@@ -123,7 +127,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 8000, sigma: 0.9, min: 500 }, income: { median: 200, sigma: 0.4, min: 50 },
     tripCap: { median: 100, sigma: 0.4, min: 20, cap: 400 },
     atm: { never: 0.75, draw: { median: 40, sigma: 0.4, min: 20 }, again: 0.2 },
-    drinking: { sober: 0.6, mean: 0.2, sd: 0.08, cap: 1.3, overshoot: 0.012, first: 0.08 },
+    drinking: { sober: 0.6, mean: 0.2, sd: 0.08, cap: 1.3, overshoot: 0.012, first: 0.08, accept: 0.2, sip: 100 },
+    browse: 50,
     chase: 0.003,
     credit: 0,
     games: { cherry: 1, liberty: 0.7, thunder: 0.2 },
@@ -144,7 +149,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 3000, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
     tripCap: { median: 300, sigma: 0.7, min: 50, cap: 2000 },
     atm: { never: 0.3, draw: { median: 100, sigma: 0.5, min: 20 }, again: 0.35 },
-    drinking: { sober: 0.15, mean: 0.45, sd: 0.2, cap: 1.3, overshoot: 0.04, first: 0.15 },
+    drinking: { sober: 0.15, mean: 0.45, sd: 0.2, cap: 1.3, overshoot: 0.04, first: 0.15, accept: 0.45, sip: 70 },
+    browse: 60,
     chase: 0.003,
     credit: 0,
     games: { cherry: 0.8, liberty: 0.4, thunder: 1 },
@@ -165,7 +171,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 2000, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
     tripCap: { median: 250, sigma: 0.6, min: 40, cap: 800 },
     atm: { never: 0.2, draw: { median: 80, sigma: 0.5, min: 20 }, again: 0.4 },
-    drinking: { sober: 0.05, mean: 0.65, sd: 0.2, cap: 1.3, overshoot: 0.035, first: 0.5 },
+    drinking: { sober: 0.05, mean: 0.65, sd: 0.2, cap: 1.3, overshoot: 0.035, first: 0.5, accept: 0.6, sip: 50 },
+    browse: 25,
     chase: 0,
     credit: 0,
     games: { cherry: 0.7, liberty: 0.3, thunder: 1 },

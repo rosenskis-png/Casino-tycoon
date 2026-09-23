@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · M3 revisions after the owner's first look (see docs/spec/guests.md)
+- **Browsing, not failing** (owner): new guests sightsee first, pulled by the surroundings their type likes, learning the layout faster and noting machines they like; regulars check their favorite spots in turn. Frustration only builds once they want to sit and can't, slower in a good mood. Replaces "3 failures and they go home".
+- **Guest numbers are sanity checks until near v1.0** (owner): the table in guests.md now shows current measurements plus which levers move each number; the agreed M3 targets stay as "design intent" for the tuning pass. Generator checks compare draws with the type data, not with fixed targets.
+- **Drinks** (owner): servers are the main source. A guest holds one drink at a time, sipped over a minute or two while doing anything else; intoxication wears off slowly. Guests go to a bar only when thirsty with money, and may have several there. Server offers are accepted by chance (type, thirst, level, price, comps, drink), so more servers and comps mean more chances. Servers carry 6, collect orders until full or time's up, pick up at their bar (a second a drink), deliver, and restart near the bar. Each bar has its own price, comps, strength and service area; servers are assigned to the least-served bar and can be reassigned.
+- Service areas are rooms (Claude's call): rooms already have names and M6 makes them purposeful; drawing areas by hand on a phone would be fiddly.
+- Servers ask everyone within 2 tiles at a stop and walk faster than other staff (Claude's call: one-guest-per-stop couldn't keep up with a busy floor).
+- Test floors must be realistic (owner): a hidden Test Floor scenario with every object, signs and servers is the measuring floor; the Big Floor gained ATMs and signs.
+
 ## 2026-09-23 · M3 built (Claude's calls while building; see docs/spec/guests.md)
 - **Money scale (flagged for the owner):** the agreed visit lengths and losses can't both hold at 10 wagers per round (a $90 budget lasted under a minute of play). `WAGERS_PER_ROUND` is now 4; running costs came down ~40% to match what a seat earns (wages $70/$110/$90, slot upkeep $2–4, bar $50, cage $35, restroom $15). Tutorial year-end cash with a tech and a bar: ~$7K–$15K (M2: $12K–$17K). Full balance stays M11.
 - The Lucky Horseshoe's arrival rates and market were scaled down (visits last ~2.5× longer, so the same arrivals packed the floor): ~60 guests on the floor with a tech and a bar, Locals reputation drifting to ~53.

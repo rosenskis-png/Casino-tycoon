@@ -13,6 +13,7 @@ import { rng } from "./rng";
 import { loadState, serialize } from "./save";
 import { footprint, seats } from "./geometry";
 import { MAX_PEDS } from "./street";
+import { TRAY } from "./staff";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
 import { spawnGroup, groupSize } from "./guests";
 
@@ -41,6 +42,7 @@ export function checkInvariants(g: Game): string[] {
   for (const o of s.objects) {
     const def = OBJECTS[o.kind];
     if (!def) { p.push(`object ${o.id} unknown kind ${o.kind}`); continue; }
+    if (def.serves === "thirst" && !o.bar) p.push(`bar ${o.id} has no drink policy`);
     if (objIds.has(o.id)) p.push(`duplicate object id ${o.id}`);
     objIds.add(o.id);
     for (const q of footprint(def, o.x, o.y, o.rot)) {
@@ -70,6 +72,7 @@ export function checkInvariants(g: Game): string[] {
     if (Math.abs(a.nx - a.x) + Math.abs(a.ny - a.y) > 1) p.push(`agent ${a.id} jumping`);
     if (a.t < 0 || a.t >= a.steps) p.push(`agent ${a.id} bad progress`);
     if (a.role !== "guest" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
+    if (a.role === "server" && (a.tray?.length ?? 0) > TRAY) p.push(`server ${a.id} carrying ${a.tray!.length} drinks`);
     if (a.role === "guest") {
       const gd = a.g;
       if (!gd || !GUEST_TYPES[gd.type]) { p.push(`guest ${a.id} missing data`); continue; }
@@ -85,6 +88,7 @@ export function checkInvariants(g: Game): string[] {
         else if (a.seat >= OBJECTS[o.kind].seats.length) p.push(`guest ${a.id} holds a seat that doesn't exist`);
       }
       if (a.hidden && a.act !== "restroom") p.push(`guest ${a.id} hidden while ${a.act}`);
+      if (!(gd.drink >= 0 && gd.drink <= 1)) p.push(`guest ${a.id} drink out of range`);
       if (gd.intox < 0 || gd.intox > INTOX_CAP + 1e-9 || gd.intend < 0 || gd.intend > INTOX_CAP + 1e-9) p.push(`guest ${a.id} intoxication out of range`);
       if (gd.withdrawn > gd.withdrawCap + 1e-9) p.push(`guest ${a.id} drew more than they have`);
       if (gd.pid >= 0) {
@@ -145,41 +149,36 @@ export function mathChecks(): string[] {
 }
 
 /**
- * Guest generators against the §11 starting targets (docs/spec/guests.md): thousands of draws through the real
- * arrival path on a fixed seed, checking medians and shares within a tolerance, and that every draw is finite
- * and inside its hard caps. What guests then *do* (visit length, loss, overshoot) is emergent and only reported,
- * by `npm run targets`.
+ * Guest generators against their own data (docs/spec/guests.md §Targets): thousands of draws through the real
+ * arrival path on a fixed seed, checking that medians and shares come out as the type data says (so a code bug
+ * shows, while retuning the data never breaks the check), and that every draw is finite and inside its caps.
+ * What guests then *do* is emergent and only reported, by `npm run targets`.
  */
 export function generatorChecks(): string[] {
   const p: string[] = [];
-  const TARGET: Record<string, { budget: number; sober: number; never: number; mean: number; groups: number[] }> = {
-    local: { budget: 90, sober: 0.3, never: 0.35, mean: 0.35, groups: [0.6, 0.35] },
-    retiree: { budget: 60, sober: 0.6, never: 0.75, mean: 0.2, groups: [0.4, 0.55] },
-    tourist: { budget: 180, sober: 0.15, never: 0.3, mean: 0.45, groups: [0.25, 0.5] },
-    party: { budget: 120, sober: 0.05, never: 0.2, mean: 0.65, groups: [0, 0] },
-  };
   const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-  const near = (what: string, got: number, want: number, tol: number) => { if (Math.abs(got - want) > tol) p.push(`${what}: ${got.toFixed(3)}, target ${want}`); };
-  for (const [t, want] of Object.entries(TARGET)) {
+  const near = (what: string, got: number, want: number, tol: number) => { if (Math.abs(got - want) > tol) p.push(`${what}: ${got.toFixed(3)}, data says ${want.toFixed(3)}`); };
+  for (const [t, type] of Object.entries(GUEST_TYPES)) {
     const g = Game.create("bigfloor", 5);
-    const at = g.state.map.entrances[0], r = rng(g.state, "check"), type = GUEST_TYPES[t];
+    const at = g.state.map.entrances[0], r = rng(g.state, "check");
     const sizes: number[] = [];
     for (let k = 0; k < 3000; k++) sizes.push(groupSize(r, type));
     for (let k = 0; k < 3000; k++) spawnGroup(g, t, at, null, 1);
     const gs = g.state.agents.filter((a) => a.g).map((a) => a.g!);
-    near(`${t} budget median`, med(gs.map((x) => x.bankroll)) / want.budget, 1, 0.08);
-    near(`${t} sober share`, gs.filter((x) => x.intend === 0).length / gs.length, want.sober, 0.03);
-    near(`${t} never-ATM share`, gs.filter((x) => !x.atm).length / gs.length, want.never, 0.03);
+    const b = type.budget, dr = type.drinking, gw = type.group, gsum = gw.reduce((a, x) => a + x, 0);
+    near(`${t} budget median`, med(gs.map((x) => x.bankroll)) / Math.max(b.min ?? 0, Math.min(b.cap ?? Infinity, b.median)), 1, 0.08);
+    near(`${t} sober share`, gs.filter((x) => x.intend === 0).length / gs.length, dr.sober, 0.03);
+    near(`${t} never-ATM share`, gs.filter((x) => !x.atm).length / gs.length, type.atm.never, 0.03);
+    // Intent shifts with why they came (drink first +0.1, gamble -0.03).
     const drinkers = gs.filter((x) => x.intend > 0).map((x) => x.intend);
-    // Intent shifts a little with why they came (drink first +0.1, gamble -0.03), so allow for it.
-    near(`${t} drinkers' intended level (mean)`, drinkers.reduce((a, b) => a + b, 0) / drinkers.length, want.mean, 0.05);
-    near(`${t} alone`, sizes.filter((n) => n === 1).length / sizes.length, want.groups[0], 0.03);
-    near(`${t} in pairs`, sizes.filter((n) => n === 2).length / sizes.length, want.groups[1], 0.03);
-    if (t === "party" && sizes.some((n) => n < 4 || n > 8)) p.push("party group outside 4-8");
-    if (sizes.some((n) => n < 1 || n > 8)) p.push(`${t}: group size outside 1-8`);
+    const wantMean = dr.mean + dr.first * 0.1 - (1 - dr.first) * 0.03;
+    near(`${t} drinkers' intended level (mean)`, drinkers.reduce((a, x) => a + x, 0) / drinkers.length, wantMean, 0.05);
+    near(`${t} alone`, sizes.filter((n) => n === 1).length / sizes.length, gw[0] / gsum, 0.03);
+    near(`${t} in pairs`, sizes.filter((n) => n === 2).length / sizes.length, (gw[1] ?? 0) / gsum, 0.03);
+    if (sizes.some((n) => n < 1 || n > 8 || !gw[n - 1])) p.push(`${t}: drew a group size its data rules out`);
     for (const x of gs) {
-      if (![x.bankroll, x.stake, x.withdrawCap, x.atm, x.floorTime, x.intend, x.drift].every(Number.isFinite)) { p.push(`${t}: non-finite draw`); break; }
-      if (x.intend > INTOX_CAP || x.bankroll > (type.budget.cap ?? Infinity) || x.floorTime <= 0) { p.push(`${t}: draw outside its caps`); break; }
+      if (![x.bankroll, x.stake, x.withdrawCap, x.atm, x.floorTime, x.intend, x.drift, x.browse].every(Number.isFinite)) { p.push(`${t}: non-finite draw`); break; }
+      if (x.intend > INTOX_CAP || x.bankroll > (b.cap ?? Infinity) || x.floorTime <= 0 || x.browse < 0) { p.push(`${t}: draw outside its caps`); break; }
     }
   }
   return p;
@@ -200,7 +199,14 @@ function fiddle(g: Game) {
   else if (roll < 0.75) g.dispatch({ type: "place", kind: r.pick(Object.keys(OBJECTS)), x, y, rot: r.int(0, 3) });
   else if (roll < 0.85) { if (g.state.objects.length) g.dispatch({ type: "remove", id: r.pick(g.state.objects).id }); }
   else if (roll < 0.93) g.dispatch({ type: "hire", role: r.pick(Object.keys(STAFF_ROLES)) });
-  else if (roll < 0.96) g.dispatch({ type: "setDrinks", price: r.int(0, 12) / 4, comp: r.int(0, 20) / 20, strength: r.pick(STRENGTHS) });
+  else if (roll < 0.96) {
+    const bars = g.amenities.thirst, servers = g.state.agents.filter((a) => a.role === "server");
+    if (bars.length) {
+      const bar = r.pick(bars).id;
+      g.dispatch({ type: "setBar", id: bar, price: r.int(0, 12) / 4, comp: r.int(0, 20) / 20, strength: r.pick(STRENGTHS), area: r.chance(0.5) ? -1 : y * w + x });
+      if (servers.length) g.dispatch({ type: "assignServer", id: r.pick(servers).id, bar });
+    }
+  }
   else {
     const staff = g.state.agents.filter((a) => a.role !== "guest");
     if (staff.length) g.dispatch({ type: "fire", id: r.pick(staff).id });

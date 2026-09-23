@@ -15,7 +15,7 @@ export type SimEvent =
   | { type: "arrived"; guestType: string; n: number; regular: number }
   | {
       type: "departed"; guestType: string; pid: number; lead: number; minutes: number; play: number; budget: number; lost: number;
-      intend: number; peak: number; atm: number; drinks: number; withdrawn: number; trips: number; score: number; why: string; chase: number;
+      intend: number; peak: number; atm: number; drinks: number; served: number; withdrawn: number; trips: number; score: number; why: string; chase: number;
     };
 
 /** bad: red, but queued like any other item (jackpots); urgent: red and jumps the queue. */

@@ -131,7 +131,10 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom"> = {
 };
 
 export function newObject(id: number, kind: string, x: number, y: number, rot: number, built = 0): PlacedObject {
-  return { id, kind, x, y, rot, broken: 0, last: { tick: -1, win: 0 }, st: { rounds: 0, coinIn: 0, paidOut: 0, sessions: 0, playTicks: 0, uses: 0 }, built };
+  const o: PlacedObject = { id, kind, x, y, rot, broken: 0, last: { tick: -1, win: 0 }, st: { rounds: 0, coinIn: 0, paidOut: 0, sessions: 0, playTicks: 0, uses: 0 }, built };
+  // Bars carry their own drink policy (docs/spec/guests.md §Drinks): standard price, no comps, standard strength, anywhere.
+  if (OBJECTS[kind]?.serves === "thirst") o.bar = { price: 1, comp: 0, strength: 1, area: -1 };
+  return o;
 }
 
 export const buildSystem: System = { id: "build", commands };

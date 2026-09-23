@@ -77,7 +77,7 @@ function bigFloor(): ScenarioDef {
       const amenity = (Math.floor((x - bx) / 15) + Math.floor((y - by) / 6)) % 7 === 3;
       if (amenity) {
         objects.push({ kind: "bar", x, y, rot: 0 }, { kind: "bar", x: x + 4, y, rot: 0 }, { kind: "restroom", x: x + 8, y: y + 2, rot: 2 });
-        objects.push({ kind: "cage", x, y: y + 3, rot: 2 });
+        objects.push({ kind: "cage", x, y: y + 3, rot: 2 }, { kind: "atm", x: x + 11, y: y + 3, rot: 2 }, { kind: "sign", x: x + 11, y, rot: 0 });
         continue;
       }
       const kinds = ["slot_liberty", "slot_cherry", "slot_thunder"];
@@ -98,6 +98,39 @@ function bigFloor(): ScenarioDef {
     walls: [], doors, water: [], entrances, sidewalks: [], objects, staff: { janitor: 20, tech: 20 },
     footfall: 0, street: {}, market: {},
     population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null,
+  };
+}
+
+/**
+ * Test Floor: a realistic, fully equipped casino on the tutorial lot for headless reports (`npm run targets`):
+ * slot banks with seats on the aisles in view of the door, a quiet back room, bars, restrooms, a cage and an ATM
+ * near the door, decor, scattered signs, and staff including drink servers. Measure guest behavior here, never
+ * on a bare or deliberately flawed floor (docs/spec/guests.md §Targets).
+ */
+function testFloor(): ScenarioDef {
+  const objects: ScenarioDef["objects"] = [];
+  const kinds = ["slot_liberty", "slot_cherry", "slot_thunder"];
+  // Back-to-back banks: machines face both aisles.
+  for (const y0 of [19, 23]) for (const x0 of [9, 19, 29]) for (let k = 0; k < 8; k++) {
+    objects.push({ kind: kinds[(k + x0) % 3], x: x0 + k, y: y0, rot: 2 }, { kind: kinds[(k + x0 + 1) % 3], x: x0 + k, y: y0 + 1, rot: 0 });
+  }
+  // A quiet back room of quarter machines.
+  objects.push(...row("slot_cherry", 39, 8, 8));
+  objects.push(
+    { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0 },
+    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 },
+    { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
+    { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
+    { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 47, y: 29, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
+    { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 45, y: 26, rot: 0 },
+    { kind: "sign", x: 7, y: 17, rot: 0 }, { kind: "sign", x: 23, y: 11, rot: 0 }, { kind: "sign", x: 38, y: 12, rot: 0 },
+  );
+  return {
+    id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 3, tech: 2, server: 8 },
+    footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
+    market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 } },
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 400, goals: null,
   };
 }
 
@@ -143,5 +176,6 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     goals: null,
   },
   bigfloor: bigFloor(),
+  testfloor: testFloor(),
 };
 export const DEFAULT_SCENARIO = "horseshoe";

@@ -40,7 +40,7 @@ export function makePerson(s: GameState, type: GuestTypeDef, r: Rng, score: numb
     id: s.nextId++, type: type.id, name: r.int(0, FIRST_NAMES.length * 26 - 1), look: r.int(0, 1 << 20),
     savings: Math.round(logNormal(r, type.savings)), income, cash: Math.round(income * range(r, [0.5, CASH_MONTHS])),
     know: regular ? Math.min(1, know * range(r, [0.6, 1.3])) : 0, last: regular ? 0 : -1, visits: regular ? r.int(1, 20) : 0,
-    score: Math.max(0, Math.min(100, score + range(r, [-10, 10]))), chase: 0,
+    score: Math.max(0, Math.min(100, score + range(r, [-10, 10]))), chase: 0, fav: [],
     // Regulars are already on a schedule: their next visit falls somewhere in their usual interval.
     next: regular ? Math.round(r.next() * type.returns.days.median * 2 * TICKS_PER_DAY) : -1,
     here: 0, ban: 0, mark: 0,
@@ -101,6 +101,8 @@ export function afterVisit(g: Game, a: Agent, score: number) {
   }
   p.know = gd.know;
   p.last = s.tick;
+  // A good visit's best seat becomes a favorite spot (best first, three kept).
+  if (gd.mem.favSeat >= 0 && score >= 0.5) p.fav = [gd.mem.favSeat, ...p.fav.filter((t) => t !== gd.mem.favSeat)].slice(0, 3);
   p.visits++;
   p.score += (score * 100 - p.score) * SCORE_RATE;
   // Chasing: starts rarely, and only on floors that make it easy to keep playing; then grows visit by visit.

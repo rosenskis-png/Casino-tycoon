@@ -68,7 +68,8 @@ function roleDoing(g: Game, a: Agent): string {
     case "cage": return obj?.kind === "atm" ? "At the ATM" : "At the cashier cage";
     case "clean": return "Sweeping up";
     case "repair": return `Fixing ${name}`;
-    case "fetch": return "Picking up drinks";
+    case "offer": return "Taking an order";
+    case "fetch": return `Picking up ${a.tray?.length ?? 0} drinks`;
     case "serve": return "Serving a drink";
     case "wait": return "Waiting for the others";
     case "walk":
@@ -79,6 +80,7 @@ function roleDoing(g: Game, a: Agent): string {
       if (a.next === "drink") return "Going for a drink";
       if (a.next === "restroom") return "Going to the restroom";
       if (a.next === "cage") return obj?.kind === "atm" ? "Going to the ATM" : "Going to the cage";
+      if (a.next === "offer") return `Taking orders (${a.tray?.length ?? 0} so far)`;
       if (a.next === "fetch") return "Off to the bar";
       if (a.next === "serve") return "Bringing a drink";
       if (a.next === "wait") return "Waiting for the others";
@@ -112,11 +114,11 @@ export function StaffPanel({ host }: { host: Host }) {
         ))}
       </div>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
-      <DrinkPolicy g={g} />
+      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar.</p>
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
-          <span style={{ flex: 1 }}>{STAFF_ROLES[a.role].name} #{a.id}<br /><small className="muted">{roleDoing(g, a)}</small></span>
+          <span style={{ flex: 1 }}>{STAFF_ROLES[a.role].name} #{a.id}{a.role === "server" ? ` · ${barName(g, a.bar ?? -1)}` : ""}<br /><small className="muted">{roleDoing(g, a)}</small></span>
           <button className="btn danger" onClick={() => g.dispatch({ type: "fire", id: a.id })}>Fire</button>
         </div>
       ))}
@@ -126,12 +128,29 @@ export function StaffPanel({ host }: { host: Host }) {
 
 const STRENGTH_NAMES = ["Light", "Standard", "Strong"];
 
-function DrinkPolicy({ g }: { g: Game }) {
-  const d = g.state.drinks;
-  const set = (c: { price?: number; comp?: number; strength?: number }) => g.dispatch({ type: "setDrinks", ...c });
+/** Rooms a bar's servers can be limited to: indoor rooms, by name (value: a tile in the room). */
+function roomChoices(g: Game): { tile: number; name: string }[] {
+  return g.rooms.rooms.filter((r) => r.indoor).map((r, k) => ({ tile: r.first, name: (r.meta >= 0 ? g.state.roomMeta[r.meta].name : "") || `Room ${k + 1}` }));
+}
+
+const barName = (g: Game, id: number) => {
+  const k = g.amenities.thirst.findIndex((o) => o.id === id);
+  return k >= 0 ? `Bar ${k + 1}` : "no bar";
+};
+
+/** Drink policy for one bar and its servers (in the bar's inspector). */
+function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
+  const o = g.objById.get(id);
+  if (!o?.bar) return null;
+  const d = o.bar;
+  const set = (c: { price?: number; comp?: number; strength?: number; area?: number }) => g.dispatch({ type: "setBar", id, ...c });
+  const rooms = roomChoices(g);
+  const areaRoom = d.area >= 0 ? g.rooms.roomOf[d.area] : -1;
+  const cur = rooms.find((r) => g.rooms.roomOf[r.tile] === areaRoom)?.tile ?? -1;
+  const servers = g.state.agents.filter((a) => a.role === "server" && a.bar === id).length;
   return (
     <>
-      <p className="muted" style={{ margin: "10px 0 6px" }}>Drink policy</p>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>{barName(g, id)}: drinks here and from its servers ({servers} assigned)</p>
       <div className="kv">
         <b>Price</b>
         <span className="num"><input type="range" min={0} max={3} step={0.25} value={d.price} onChange={(e) => set({ price: Number(e.target.value) })} /> {d.price.toFixed(2)}× ({money(DRINK_PRICE * d.price)})</span>
@@ -143,8 +162,29 @@ function DrinkPolicy({ g }: { g: Game }) {
             {STRENGTHS.map((v, k) => <option key={v} value={v}>{STRENGTH_NAMES[k]}</option>)}
           </select>
         </span>
+        <b>Servers work</b>
+        <span>
+          <select value={cur} onChange={(e) => set({ area: Number(e.target.value) })}>
+            <option value={-1}>Anywhere</option>
+            {rooms.map((r) => <option key={r.tile} value={r.tile}>{r.name}</option>)}
+          </select>
+        </span>
       </div>
     </>
+  );
+}
+
+/** Which bar a drink server works (in the server's inspector and the Staff tab). */
+function ServerBar({ g, a }: { g: Game; a: Agent }) {
+  if (a.role !== "server") return null;
+  if (!g.amenities.thirst.length) return <p className="muted">No bar to work from yet.</p>;
+  return (
+    <div className="row">
+      <span className="muted">Works</span>
+      <select value={a.bar ?? -1} onChange={(e) => g.dispatch({ type: "assignServer", id: a.id, bar: Number(e.target.value) })}>
+        {g.amenities.thirst.map((o) => <option key={o.id} value={o.id}>{barName(g, o.id)}</option>)}
+      </select>
+    </div>
   );
 }
 
@@ -270,6 +310,7 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       <div className="sheet">
         <h3>{STAFF_ROLES[a.role].name} #{a.id}<button className="x" onClick={onClose}>✕</button></h3>
         <p>{roleDoing(g, a)}</p>
+        <ServerBar g={g} a={a} />
         <div className="row"><button className="btn danger" onClick={() => { g.dispatch({ type: "fire", id: a.id }); onClose(); }}>Fire</button></div>
       </div>
     );
@@ -358,6 +399,7 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
         <>
           <p className="muted">{OBJECTS[obj.kind].desc}</p>
           <ObjectStats host={host} id={obj.id} />
+          <BarPolicyEditor g={g} id={obj.id} />
           <div className="row">
             <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(OBJECTS[obj.kind].cost / 2)} back</small></button>
           </div>

@@ -38,6 +38,16 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - Don't write tests that assert outcomes of random systems. Test invariants (no seat conflicts, finite numbers, saves reload) and exact math (a paytable's expected return equals its target).
 - The owner has a limited token budget: keep chat replies tight, don't re-read big files needlessly, and don't dump code into chat.
 
+## Working habits (learned the hard way)
+- **Design chats merge their docs to `main` before ending.** A build chat starts from `main`; a spec left on an unmerged branch has to be dug out.
+- **Owner feedback after a milestone ships** → a DECISIONS.md entry and the spec update go in the same PR as the code.
+- **Guest numbers are sanity checks until near v1.0, not tuning goals.** `npm run targets` plays the Test Floor and prints the reference table with ⚠ flags for logic errors (a type that never plays, never drinks, always gives up). Fix flags; don't chase the numbers. When behavior changes on purpose, refresh the measured column in `docs/spec/guests.md`.
+- **Measure only on a realistic floor**: the hidden Test Floor scenario (`src/data/scenarios.ts`: at least one of every object, signs, servers). Add every new object type to it. Never measure guest behavior on the tutorial (it's flawed on purpose) or an empty lot.
+- **Compare against the last release** for balance and speed: `git worktree add <scratchpad>/base mN`, symlink `node_modules`, run `npm run economy` / the Big Floor timing on both. Report steady-state ms/tick (the `npm run headless` figure includes the opening spawn burst).
+- **When an agreed number conflicts with an engine constant** (M3: visit length vs wagers per round), pick the least disruptive fix, log it in DECISIONS.md as flagged for the owner, and say so in the hand-off.
+- **Unreleased save schema:** if its shape changes after the fixture was written, delete and regenerate that fixture. Never touch a released schema's fixture.
+- Throwaway debug and profiling scripts go in the scratchpad, not `scripts/`.
+
 ## Engine conventions decided before M1
 - Art is data: sprites are palette-indexed text grids compiled into sprite sheets (atlases) at load; frames blit cached images. Never paint sprites pixel by pixel per frame (v0.2 did). The renderer stays swappable for WebGL if a perf test demands it.
 - Sound is data: short synth recipes played through Web Audio. No audio files.

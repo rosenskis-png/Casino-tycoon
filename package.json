@@ -10,7 +10,8 @@
     "boundaries": "node scripts/check-boundaries.mjs",
     "smoke": "node scripts/smoke.mjs",
     "shot": "node scripts/screenshot.mjs",
-    "check": "npm run typecheck && npm run boundaries && npm run build && npm run smoke"
+    "check": "npm run typecheck && npm run boundaries && npm run headless && npm run build && npm run smoke",
+    "headless": "node scripts/headless.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -21,6 +22,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "playwright-core": "^1.63.0",
+    "rolldown": "^1.2.9",
     "typescript": "~5.9",
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.3"

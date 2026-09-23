@@ -1,5 +1,5 @@
 // Headless smoke check (FOUNDATIONS §1): load the single-file build at phone size and fail on any error.
-// Once the engine exists this also drives N fast game days across seeds via window.__ct and checks invariants.
+// Also drives N fast game days across seeds via window.__ct and checks invariants (docs/spec/engine.md).
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -18,7 +18,7 @@ await page.goto(pathToFileURL(file).href);
 await page.waitForTimeout(1000);
 const hook = await page.evaluate(() => typeof window.__ct);
 if (hook !== "undefined") {
-  // Engine hook contract (defined in M1): __ct.smoke({ days, seeds }) returns { ok, problems[] }.
+  // Engine hook contract: __ct.smoke({ days, seeds }) returns { ok, problems[] }.
   const res = await page.evaluate(() => window.__ct.smoke({ days: 7, seeds: [1, 2] }));
   if (!res.ok) errors.push(...res.problems);
 }

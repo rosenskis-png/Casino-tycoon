@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Green light; M1 engine skeleton built
+- Owner said "green light" and asked for M1.
+- Hook cadences are tick / beat (1 s at 1×) / day / month / year, replacing the roadmap's "minute / hour", which predated the no-time-of-day clock. Why: there is no hour to hook.
+- Test walkers stand in for guests in M1 so pathing, crowd fields, rendering and the perf test have agents; they spawn indoors and wander. Guests replace them in M2.
+- Hidden-value overlays sit behind a Game-tab *Debug view* for engine testing only; the North Star rule (earned through research) holds for real play.
+- The population ceiling waits on the owner running *Perf test* on the iPhone. Dev-container Chromium: ~3,200 agents at 60 fps at every speed, limited by drawing.
+
 ## 2026-09-23 · RCT-style clock (see docs/spec/clock.md)
 Replaces the same-day "time and population" decision, which kept time of day.
 - No time of day or day of week. Calendar = date counter: 1 day = 10 s at 1×, 1 year ≈ 1 h. Owner's call, modeled on RollerCoaster Tycoon.

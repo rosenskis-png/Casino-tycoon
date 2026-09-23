@@ -7,7 +7,7 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 
 ## M1 · Engine skeleton ☐  (blocked on: "green light")
 - State, runtime caches, save/load + migration chain, autosave
-- Fixed-timestep clock and speeds per `docs/spec/time-and-population.md`, hook cadence (tick / minute / hour / day / month), dependency-ordered system registry
+- Fixed-timestep clock and speeds per `docs/spec/clock.md`, hook cadence (tick / minute / hour / day / month), dependency-ordered system registry
 - Command bus (validate → apply → log), event bus (sim → ticker, audio, fx, stats)
 - Named RNG streams
 - Grid: terrain, walls, doors, indoor/outdoor; room detection by flood fill

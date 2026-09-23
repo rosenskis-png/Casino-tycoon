@@ -27,7 +27,7 @@
 
 ## 2. Time
 
-> Clock numbers and speeds superseded by `docs/spec/time-and-population.md` (2026-09-23).
+> Superseded entirely by `docs/spec/clock.md` (2026-09-23): RCT-style calendar, no time of day, event-based play. Kept below for history.
 
 **Two clocks, deliberately decoupled.**
 - **Calendar clock:** hours, days, months, and years pass quickly, as in RollerCoaster Tycoon. At slow speed, one game day takes about 2 real minutes. A 3-year scenario takes about 36 hours at slow, 4.5 hours at medium, and 70 minutes at fast.
@@ -125,7 +125,7 @@ Every tile carries values for these qualities, computed from the objects, people
 Non-gambling workers on the floor, such as escorts, are separate from guest types. Underage guests are a behavior some guests have, not a type.
 
 Each type is a data entry with:
-- **Arrival curves** by hour, by day of week, and by season.
+- **Arrival curves** by season and event (no time of day; see `docs/spec/clock.md`).
 - **Group size and makeup.**
 - **Budget:** its distribution, ATM behavior, and credit behavior.
 - **Game preferences.**
@@ -348,7 +348,7 @@ There are two separate standings, each from 0 to 100, which recover slowly over 
 
 ## 14. Money, risk, and credit
 
-**Units:** US dollars, shown abbreviated ($48.2K, $3.1M). Magnitudes are grounded in real casinos:
+**Units:** US dollars, shown abbreviated ($48.2K, $3.1M). Magnitudes below are superseded by `docs/spec/clock.md`: guest-facing prices look real, casino-level money is tuned game money.
 - A tutorial casino has a few hundred thousand dollars.
 - Mid-game casinos operate in the millions.
 - Empire scenarios operate in the hundreds of millions.
@@ -423,7 +423,7 @@ Information is a resource: the player starts with symptoms only.
 
 ## 19. Calendar and events
 
-- Arrival curves by hour and day of week, plus seasons and holidays.
+- Arrival curves by season and holidays (no time of day; see `docs/spec/clock.md`).
 - **Scheduled events:** shows, fight nights, conventions, tournaments, sports events (surges at the sportsbook), and holidays. They are announced in advance on the ticker so the player can prepare staffing and layout.
 - Some events are scenario-specific (for example, the arena next door).
 
@@ -431,7 +431,7 @@ Information is a resource: the player starts with symptoms only.
 
 ## 20. Scenarios and progression
 
-> Scenario lengths and population sizes superseded by `docs/spec/time-and-population.md` (2026-09-23).
+> Scenario lengths, population sizes, and money magnitudes superseded by `docs/spec/clock.md` (2026-09-23).
 
 - **Structure:** a few scenarios are open at the start, and completing one unlocks the next. Tiers: early (small, few tools, teach reading symptoms), core (each built around one or two psychology ideas, each with a tempting wrong move that visibly fails), challenge (gimmicks, reversed incentives, extreme scale), and free play (open lot, adjustable conditions).
 - **Goals:** most scenarios have both a money goal (cash or worth, at a date) and a reputation goal (overall or for one guest type; checked at a date or held above a threshold over a window of months). Either may be the hard one. Challenge scenarios may use different goals.

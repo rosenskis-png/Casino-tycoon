@@ -29,7 +29,7 @@ Skill lives in five places:
 
 4. Surviving variance. Profit is certain only over the long run. Jackpots, whales, and hot streaks can sink a casino in a bad stretch. Insurance, table limits, cash on hand, and credit are how the player gets through.
 
-5. Running the clock. The casino never closes. Demand, crowds, and staffing needs change by the hour, the day of the week, the season, and the event calendar. A floor that is right on Saturday night can be wrong on Tuesday morning.
+5. Running the calendar. The casino never closes. Demand, crowds, and staffing needs change with the season, the event calendar, and the casino's own marketing. A floor that is right for convention week can be wrong for the slow months.
 
 ==================================================================
 THE CREATIVE CORE
@@ -69,7 +69,7 @@ GUESTS
 
 Guests are the center of the simulation and its main source of feedback. Each guest is an individual with:
 
-- A type, drawn from recognizable casino archetypes, each with its own tastes, budget, hours, games, drinking habits, and tolerances.
+- A type, drawn from recognizable casino archetypes, each with its own tastes, budget, seasons, games, drinking habits, and tolerances.
 - Company. Many guests arrive with others: couples, families, groups of friends, parties. Groups move and decide together, and what happens to one member affects the rest.
 - Intentions. Not everyone comes to gamble. Some come to eat, drink, see a show, dance, or pass through on their way somewhere else, and some of them end up gambling anyway.
 - A way of playing. How much they bet, how fast they play, whether they walk away when ahead or chase until broke, whether they nurse a cheap machine for free drinks. Two guests at the same machine can be worth very different amounts to the house.
@@ -155,9 +155,9 @@ The casino answers to two outside authorities, and they care about different thi
 TIME
 ==================================================================
 
-The casino runs day and night, across seasons and years. Different guests dominate different hours and days, and events such as shows, fights, conventions, and holidays send crowds onto the floor on a schedule. The player plans for rhythms, peaks, and dead hours, not a static state.
+The casino runs without end, across seasons and years. As in RollerCoaster Tycoon there is no time of day: the calendar counts days, months, and years, while guests live at floor pace and may happily gamble for what the calendar calls days or weeks. Seasons and events such as shows, fights, conventions, and holidays send crowds onto the floor on a schedule. The player plans for rhythms, peaks, and slow stretches, not a static state.
 
-As in RollerCoaster Tycoon, the calendar moves quickly while the floor moves at a human pace. What the player watches is a faithful summary of what the simulation is doing: a spin of the reels stands for all the play that happened in that moment, and it shows a jackpot only if one truly hit. The numbers are always exact. The player can pause or run the game at several speeds, and at the fastest speeds the animation may become more approximate, but the underlying math never changes.
+As in RollerCoaster Tycoon, the calendar moves quickly while the floor moves at a human pace. What the player watches is what the simulation is doing: each spin of the reels is a real round of wagers, and it shows a jackpot only if one truly hit. Money is game money, tuned for play the way RollerCoaster Tycoon's was, while the prices guests see look real. The numbers are always exact. The player can pause or run the game at several speeds, and at the fastest speeds the animation may become more approximate, but the underlying math never changes.
 
 ==================================================================
 PROGRESSION AND SCENARIOS

@@ -2,11 +2,15 @@
 
 Newest first. One entry per decision: date, what, why.
 
-## 2026-09-23 · Time and population (see docs/spec/time-and-population.md)
-- One guest is always one real person. Casinos are smaller than real ones instead, and goals are tuned to match. Owner's call.
-- Slow speed is 1 game hour = 30 s (a day = 12 min) so visits look human; medium 8×, fast 30×, and a new max speed ~120×.
-- Per-guest money stays in real dollars; scenario totals scale with the simulated population.
-- Scenario lengths: early 2–8 weeks, core 2–6 months, largest up to 1–3 years.
+## 2026-09-23 · RCT-style clock (see docs/spec/clock.md)
+Replaces the same-day "time and population" decision, which kept time of day.
+- No time of day or day of week. Calendar = date counter: 1 day = 10 s at 1×, 1 year ≈ 1 h. Owner's call, modeled on RollerCoaster Tycoon.
+- Floor at human pace; guests may gamble for calendar days or weeks.
+- Play is event-based: each visible round resolves a small fixed batch of real wagers (default 5). No off-screen simulation.
+- Guest-facing prices look real; casino-level money (wages, upkeep, goals) is tuned game money, stated monthly.
+- Speeds pause/1×/2×/4×/8×. Scenario deadlines in months and years.
+- One guest is always one person.
+- North Star skill 5 is now "Running the calendar" (seasons, events, marketing), and its Time section was updated to match.
 
 ## 2026-09-23 · Approach review (owner approved all)
 - Sprites as palette-indexed text data compiled to atlases at load, not per-frame pixel painting. Why: v0.2's approach won't scale to 20x maps and drains battery; text sprites stay editable and recolorable.

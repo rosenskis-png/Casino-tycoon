@@ -34,7 +34,7 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Signs (imperfect, no arrows to set). Floor knowledge per guest and familiarity per type, stale for anything built since a regular's last visit.
 - Save schema 3 (migration from 2). Exit guarantees checked by `npm run check`.
 
-## M3 · Guest model depth ☐  (design agreed: docs/spec/guests-m3.md; awaiting green light)
+## M3 · Guest model depth ◐  (design agreed: docs/spec/guests-m3.md; green light 2026-09-23)
 Population pool of real returning people (reputation for recurring types = their memory), chasing as a per-person trait, M3 roster (Locals, Retirees, Tourists, Party groups), sidewalk + entrance threshold with walk-by conversion, groups, bets as a fraction of budget with house-money / break-even / hot-machine effects, floor-time quit budget, ATM curve, continuous inhibition with overshoot, drink servers and drink policy (price multiplier, comped %, strength), thoughts averaged over ~2 days with no floor bubbles, red and rarer jackpot notices, groundwork fields for M4/M5.
 
 ## M3.1 · Art pass ☐

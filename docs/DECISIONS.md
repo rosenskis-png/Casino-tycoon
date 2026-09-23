@@ -2,6 +2,9 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Green light for M3
+The owner said "green light for M3" (build docs/spec/guests-m3.md).
+
 ## 2026-09-23 · M3 guest design (see docs/spec/guests-m3.md)
 - A type is who someone is. Group size, play style and chasing are drawn per person. Couples are a group size. Chasing is a hidden per-person level your floor can raise across visits, not a type.
 - A population pool of real returning people per scenario. Reputation for recurring types is the pool's memory; one-off types use word of mouth.

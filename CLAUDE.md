@@ -27,6 +27,9 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - The owner is new to GitHub and branches. Don't make them manage git: handle branches, PRs, and merges yourself, and explain any GitHub website steps click by click.
 - `main` is the live branch; every push to it publishes to GitHub Pages (https://rosenskis-png.github.io/Casino-tycoon/), which the owner plays as a home-screen web app.
 - Flow: work on the session's branch → `npm run check` green → push → open a PR to `main` → merge it once CI passes. Don't ask the owner to merge.
+- Push at every stopping point, even mid-task. The cloud workspace is wiped when idle; unpushed work is lost.
+- When a milestone is finished and merged, run the `release.yml` workflow (workflow_dispatch) with `tag: mN` and `commit: <merge commit sha>`; sessions can't push tags directly. It creates the tag and a GitHub Release with that version's playable `index.html`, so any past milestone can be recovered and played.
+- `main` is protected against deletion and force pushes. Never rewrite its history.
 - Before every push: `npm run check` (typecheck, layer boundaries, headless Node sim run, single-file build, phone-size browser smoke test). Push only when green.
 - Visual changes: `npm run build && npm run shot -- out.png` (iPhone-size screenshot, `--landscape` optional). Look at it before handing off; send it to the owner when useful.
 - Don't check or report when a merge goes live on Pages; the owner checks it (propagation takes a while).

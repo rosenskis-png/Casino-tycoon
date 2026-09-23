@@ -9,6 +9,7 @@ export type Speed = (typeof SPEEDS)[number];
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const YEAR_DAYS = 365;
+export const daysInMonth = (month: number) => MONTH_DAYS[month];
 
 export interface CalendarDate { year: number; month: number; day: number } // year from 1, month 0-11, day from 1
 

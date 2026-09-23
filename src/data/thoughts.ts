@@ -1,0 +1,37 @@
+// What guests say (NORTH_STAR: their thoughts are the player's main diagnostic tool). Generic on purpose:
+// one thought is noise, a room full of them is a diagnosis. `bad` thoughts and `notable` good ones get bubbles.
+export interface ThoughtDef { text: string; bad?: boolean; notable?: boolean }
+
+export const THOUGHTS: Record<string, ThoughtDef> = {
+  nrgHi: { text: "Too loud to think in here.", bad: true },
+  nrgLo: { text: "This place needs more buzz.", bad: true },
+  crwHi: { text: "Way too crowded in here.", bad: true },
+  crwLo: { text: "Where is everybody?", bad: true },
+  prsLo: { text: "This place looks run-down.", bad: true },
+  dirty: { text: "This floor is filthy.", bad: true },
+  trfHi: { text: "Too many people walking past me.", bad: true },
+  gNRG: { text: "Love the energy in here!" },
+  gCRW: { text: "Nice and uncrowded." },
+  gPRS: { text: "Classy little joint." },
+  gCLN: { text: "Spotless in here." },
+  gTRF: { text: "Great people-watching here." },
+  noRestroom: { text: "I really need a restroom!", bad: true },
+  line: { text: "The line is ridiculous.", bad: true },
+  noBar: { text: "I could really use a drink.", bad: true },
+  hungry: { text: "I'm starving.", bad: true },
+  noMachine: { text: "Every machine I like is taken.", bad: true },
+  broken: { text: "My machine broke down!", bad: true },
+  noCage: { text: "Where do I cash out around here?", bad: true },
+  bigWin: { text: "I just hit it big!", notable: true },
+  onARoll: { text: "I'm on a roll!" },
+  eaten: { text: "These machines are eating my money.", bad: true },
+  broke: { text: "I'm tapped out." },
+  atm: { text: "Just one more withdrawal..." },
+  tipsy: { text: "Whoa, the room is spinning.", bad: true },
+  goodDrink: { text: "Nice drink." },
+  tired: { text: "My feet are killing me.", bad: true },
+  goodTime: { text: "What a great place!", notable: true },
+  badTime: { text: "I'm never coming back here.", bad: true },
+  goodValue: { text: "My money lasted forever today." },
+  badValue: { text: "That went fast.", bad: true },
+};

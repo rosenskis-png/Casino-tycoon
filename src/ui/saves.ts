@@ -1,5 +1,6 @@
 // Save slots on top of platform/storage: autosave, one manual slot, and file export/import.
 import { Game, loadState } from "../sim";
+import { DEFAULT_SCENARIO } from "../data/scenarios";
 import { Store, exportFile, importFile } from "../platform/storage";
 
 export const AUTO_KEY = "ct.save.auto";
@@ -18,11 +19,8 @@ export function load(key = AUTO_KEY): { game: Game | null; error?: string } {
   }
 }
 
-/** Fresh sandbox with a crowd of test walkers so the engine has something to show (M1). */
-export function newGame(seed: number): Game {
-  const g = Game.create("sandbox", seed);
-  g.dispatch({ type: "spawnWalkers", n: 150 });
-  return g;
+export function newGame(seed: number, scenario = DEFAULT_SCENARIO): Game {
+  return Game.create(scenario, seed);
 }
 
 export const hasSave = (key: string) => Store.get(key) != null;

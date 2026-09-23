@@ -1,5 +1,5 @@
-// Performance test (ROADMAP M1): measures sim cost per tick and draw cost per frame at several crowd sizes on a
-// throwaway game, then estimates the most agents that hold 60 fps at each speed. Run it on the phone.
+// Performance test: measures sim cost per tick and draw cost per frame at several crowd sizes of real guests on a
+// throwaway free-play game, then estimates the most agents that hold 60 fps at each speed. Run it on the phone.
 import { Game, TICKS_PER_SECOND } from "../sim";
 import { Renderer } from "../render/renderer";
 import { Camera } from "../render/camera";
@@ -26,7 +26,12 @@ export async function perfTest(vw: number, vh: number, onProgress?: (msg: string
   for (const N of SIZES) {
     onProgress?.(`Testing ${N} agents…`);
     await pause();
-    while (g.state.agents.length < N) { g.dispatch({ type: "spawnWalkers", n: Math.min(5000, N - g.state.agents.length) }); g.step(); }
+    while (g.state.agents.length < N) {
+      const before = g.state.agents.length;
+      g.dispatch({ type: "spawnGuests", n: Math.min(5000, N - before) });
+      g.step();
+      if (g.state.agents.length <= before) break;
+    }
     for (let k = 0; k < 60; k++) g.step(); // let them spread
     let t = performance.now();
     for (let k = 0; k < 120; k++) g.step();

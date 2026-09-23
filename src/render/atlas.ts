@@ -1,23 +1,24 @@
 // Compiles data/art text sprites into one atlas canvas at load. Frames then blit cached pixels.
-import { LOOKS, LOOK_VARIANTS, OBJECT_SPRITES, PALETTE, PERSON, TILES, type SpriteDef } from "../data/art";
+import { EXTRA_SPRITES, OBJECT_SPRITES, PALETTE, PEOPLE, PERSON, SLOT_COLORS, SLOT_ROWS, TILES, type SpriteDef } from "../data/art";
 
 export interface Frame { x: number; y: number; w: number; h: number }
 
 export interface Atlas {
   canvas: HTMLCanvasElement;
   frames: Map<string, Frame>;
-  /** Shirt color per look variant, for simplified sprites at far zoom. */
-  lookColor: string[];
+  /** Shirt color per look variant of each people set, for simplified sprites at far zoom. */
+  lookColor: Record<string, string[]>;
 }
 
 interface Pending { key: string; rows: string[]; pal: Record<string, string>; flip: boolean }
 
-export function lookPalette(v: number): Record<string, string> {
+export function lookPalette(set: string, v: number): Record<string, string> {
+  const L = PEOPLE[set];
   return {
-    s: LOOKS.skin[v % LOOKS.skin.length],
-    h: LOOKS.hair[(v * 3 + 1) % LOOKS.hair.length],
-    t: LOOKS.shirt[(v * 7 + 2) % LOOKS.shirt.length],
-    n: LOOKS.pants[(v * 2 + 1) % LOOKS.pants.length],
+    s: L.skin[v % L.skin.length],
+    h: L.hair[(v * 3 + 1) % L.hair.length],
+    t: L.shirt[(v * 7 + 2) % L.shirt.length],
+    n: L.pants[(v * 2 + 1) % L.pants.length],
   };
 }
 
@@ -27,13 +28,23 @@ export function buildAtlas(): Atlas {
     items.push({ key, rows: def.rows, pal: { ...PALETTE, ...def.pal, ...extra }, flip });
   for (const [k, d] of Object.entries(TILES)) add(`tile:${k}`, d);
   for (const [k, d] of Object.entries(OBJECT_SPRITES)) add(`obj:${k}`, d);
-  const lookColor: string[] = [];
-  for (let v = 0; v < LOOK_VARIANTS; v++) {
-    const pal = lookPalette(v);
-    lookColor.push(pal.t);
-    for (const [f, rows] of Object.entries(PERSON)) {
-      add(`p:${v}:${f}`, { rows }, pal);
-      if (f.startsWith("side")) add(`p:${v}:left${f.slice(4)}`, { rows }, pal, true);
+  for (const [k, d] of Object.entries(EXTRA_SPRITES)) add(`obj:${k}`, d);
+  for (const [model, pal] of Object.entries(SLOT_COLORS)) {
+    add(`slot:${model}:front`, { rows: SLOT_ROWS.front }, pal);
+    add(`slot:${model}:back`, { rows: SLOT_ROWS.back }, pal);
+    add(`slot:${model}:left`, { rows: SLOT_ROWS.side }, pal);
+    add(`slot:${model}:right`, { rows: SLOT_ROWS.side }, pal, true);
+  }
+  const lookColor: Record<string, string[]> = {};
+  for (const [set, L] of Object.entries(PEOPLE)) {
+    lookColor[set] = [];
+    for (let v = 0; v < L.variants; v++) {
+      const pal = lookPalette(set, v);
+      lookColor[set].push(pal.t);
+      for (const [f, rows] of Object.entries(PERSON)) {
+        add(`p:${set}:${v}:${f}`, { rows }, pal);
+        if (f.startsWith("side")) add(`p:${set}:${v}:left${f.slice(4)}`, { rows }, pal, true);
+      }
     }
   }
   // Shelf packing into a fixed-width sheet.

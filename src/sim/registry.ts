@@ -1,11 +1,17 @@
-// System registry: each system plugs into the clock with hooks at its cadence and runs after its dependencies.
+// System registry: each system plugs into the clock with hooks at its cadence, runs after its dependencies,
+// and brings its own command handlers.
 import type { Game } from "./game";
+import type { CommandHandler } from "./commands";
 
 export interface System {
   id: string;
   deps?: string[];
+  /** Command handlers this system owns, by command type. */
+  commands?: Record<string, CommandHandler<any>>;
   /** Build runtime caches from saved state (new game and load). */
   init?(g: Game): void;
+  /** After the layout changed (terrain or objects at these tiles); engine caches are already refreshed. */
+  layout?(g: Game, tiles: number[]): void;
   tick?(g: Game): void;
   /** Once per real second at 1× (TICKS_PER_BEAT). */
   beat?(g: Game): void;

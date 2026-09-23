@@ -5,9 +5,9 @@ Status key: ☐ not started · ◐ in progress · ☑ done. Each milestone ends 
 ## M0 · Prep ☑
 Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, headless phone smoke test, CI, docs, v0.2 reference archived, `main` branch, GitHub Pages publishing, home-screen web app manifest and icon, storage adapter with save export/import, screenshot tool, session-start dependency hook.
 
-## M1 · Engine skeleton ☐  (blocked on: "green light", clock/population decision)
+## M1 · Engine skeleton ☐  (blocked on: "green light")
 - State, runtime caches, save/load + migration chain, autosave
-- Fixed-timestep clock, speeds, hook cadence (tick / minute / hour / day / month), dependency-ordered system registry
+- Fixed-timestep clock and speeds per `docs/spec/time-and-population.md`, hook cadence (tick / minute / hour / day / month), dependency-ordered system registry
 - Command bus (validate → apply → log), event bus (sim → ticker, audio, fx, stats)
 - Named RNG streams
 - Grid: terrain, walls, doors, indoor/outdoor; room detection by flood fill
@@ -16,6 +16,7 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Sprite pipeline: text sprites → atlas; procedural sound pipeline
 - Renderer: chunked static layers, 4 zoom levels, camera, touch pan/pinch
 - UI shell: top bar, ticker + log, tab bar, inspector frame
+- Perf test: max agents at 60 fps on a phone at each speed (sets the population ceiling)
 - `window.__ct` debug hook: headless N-day runner + invariant checks used by the smoke test
 
 ## M2 · Vertical slice ☐

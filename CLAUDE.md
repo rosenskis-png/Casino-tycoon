@@ -29,6 +29,7 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - Flow: work on the session's branch → `npm run check` green → push → open a PR to `main` → merge it once CI passes. Don't ask the owner to merge.
 - Before every push: `npm run check` (typecheck, layer boundaries, single-file build, headless phone smoke test). Push only when green.
 - Visual changes: `npm run build && npm run shot -- out.png` (iPhone-size screenshot, `--landscape` optional). Look at it before handing off; send it to the owner when useful.
+- This sandbox can't reach github.io: confirm a deploy through the Pages workflow run's result, not by fetching the site.
 - Quick previews may also go out as a private Artifact of `dist/index.html`; the Pages link is the real play build (saves persist there).
 - One chat per milestone keeps token costs down; the repo docs carry context between chats. Update ROADMAP.md and DECISIONS.md before ending a milestone.
 - Don't write tests that assert outcomes of random systems. Test invariants (no seat conflicts, finite numbers, saves reload) and exact math (a paytable's expected return equals its target).

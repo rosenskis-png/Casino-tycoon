@@ -44,6 +44,10 @@ export class Game {
   slotSectors = new Map<number, PlacedObject[]>();
   /** Amenities by what they serve. */
   amenities: Record<"thirst" | "bladder" | "cage", PlacedObject[]> = { thirst: [], bladder: [], cage: [] };
+  /** Objects that block sight, per tile (walls and closed doors are checked from terrain). */
+  opaque = new Uint8Array(0);
+  /** Wayfinding signs. */
+  signs: PlacedObject[] = [];
   /** Seat tile indices per object. */
   seatTiles = new Map<number, number[]>();
   /** Cheapest one-credit round on any placed slot model (Infinity when there are none). */
@@ -66,11 +70,12 @@ export class Game {
     const map = buildScenarioMap(def);
     const n = map.w * map.h;
     const rep: Record<string, number> = {};
-    for (const t of Object.keys(def.population)) if (GUEST_TYPES[t]) rep[t] = def.rep[t] ?? 50;
+    const familiar: Record<string, number> = {};
+    for (const t of Object.keys(def.population)) if (GUEST_TYPES[t]) { rep[t] = def.rep[t] ?? 50; familiar[t] = GUEST_TYPES[t].familiarity.start; }
     const state: GameState = {
       schema: SCHEMA_VERSION, scenario: def.id, seed: seed >>> 0, tick: 0, rng: {}, nextId: 1,
       cash: def.startCash, map, objects: [], agents: [], wanderPoints: [],
-      traffic: new Array(n).fill(0), dirt: new Array(n).fill(0), roomMeta: [], log: [], rep,
+      traffic: new Array(n).fill(0), dirt: new Array(n).fill(0), roomMeta: [], log: [], rep, familiar,
       finance: { month: { start: def.startCash }, history: [], total: { start: def.startCash } },
       thoughts: { today: {}, yday: {} },
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0 } },
@@ -95,7 +100,8 @@ export class Game {
 
   rebuildOccupancy() {
     const { w, h } = this.state.map;
-    const occ = new Int32Array(w * h), objAt = new Int32Array(w * h), seatAt = new Int32Array(w * h);
+    const occ = new Int32Array(w * h), objAt = new Int32Array(w * h), seatAt = new Int32Array(w * h), opaque = new Uint8Array(w * h);
+    this.signs = [];
     this.objById.clear();
     this.slotSectors.clear();
     this.seatTiles.clear();
@@ -105,6 +111,7 @@ export class Game {
       const def = OBJECTS[o.kind];
       this.objById.set(o.id, o);
       if (def.serves) this.amenities[def.serves].push(o);
+      if (def.guide) this.signs.push(o);
       if (def.slot) {
         const key = (o.y >> 4) * 4096 + (o.x >> 4);
         let list = this.slotSectors.get(key);
@@ -116,6 +123,7 @@ export class Game {
       for (const p of footprint(def, o.x, o.y, o.rot)) {
         objAt[p.y * w + p.x] = o.id;
         if (def.blocks) occ[p.y * w + p.x] = o.id;
+        if (def.opaque) opaque[p.y * w + p.x] = 1;
       }
       const st: number[] = [];
       for (const s of seats(def, o.x, o.y, o.rot)) {
@@ -127,6 +135,7 @@ export class Game {
     this.occ = occ;
     this.objAt = objAt;
     this.seatAt = seatAt;
+    this.opaque = opaque;
   }
 
   /** Called by commands after changing terrain or occupancy: refreshes engine caches, then tells systems. */

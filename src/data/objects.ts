@@ -16,6 +16,10 @@ export interface ObjectDef {
   upkeep: number;
   /** Whether guests can walk through its footprint. */
   blocks: boolean;
+  /** Blocks guests' line of sight (slot banks, closed-in amenities). Walls always do (docs/spec/navigation.md). */
+  opaque?: boolean;
+  /** A wayfinding sign: roughly points guests toward whatever they are looking for. */
+  guide?: boolean;
   /** Where it may stand. */
   place: "indoor" | "outdoor" | "any";
   emits: Emission[];
@@ -38,17 +42,17 @@ const FRONT: SeatDef[] = [{ dx: 0, dy: 1, kind: "stool" }];
 
 export const OBJECTS: Record<string, ObjectDef> = {
   slot_cherry: {
-    id: "slot_cherry", name: "Cherry Parade", cat: "game", w: 1, h: 1, cost: 300, upkeep: 3, blocks: true, place: "indoor",
+    id: "slot_cherry", name: "Cherry Parade", cat: "game", w: 1, h: 1, cost: 300, upkeep: 3, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "slot_cherry", art: "facing", seats: FRONT, slot: "cherry",
     desc: "Quarter video slot. Lots of small hits, some smaller than the bet.",
   },
   slot_liberty: {
-    id: "slot_liberty", name: "Liberty Bell", cat: "game", w: 1, h: 1, cost: 400, upkeep: 4, blocks: true, place: "indoor",
+    id: "slot_liberty", name: "Liberty Bell", cat: "game", w: 1, h: 1, cost: 400, upkeep: 4, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1, radius: 2 }], sprite: "slot_liberty", art: "facing", seats: FRONT, slot: "liberty",
     desc: "Dollar three-reel. Quiet, steady, and the best payback on the floor.",
   },
   slot_thunder: {
-    id: "slot_thunder", name: "Thunder Jackpot", cat: "game", w: 1, h: 1, cost: 700, upkeep: 6, blocks: true, place: "indoor",
+    id: "slot_thunder", name: "Thunder Jackpot", cat: "game", w: 1, h: 1, cost: 700, upkeep: 6, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 3, radius: 4 }], sprite: "slot_thunder", art: "facing", seats: FRONT, slot: "thunder",
     desc: "Loud, rare, huge wins. A jackpot here can dent your cash.",
   },
@@ -60,14 +64,14 @@ export const OBJECTS: Record<string, ObjectDef> = {
     desc: "Three stools and a bartender. Drinks loosen bets. Messy.",
   },
   restroom: {
-    id: "restroom", name: "Restrooms", cat: "amenity", w: 2, h: 2, cost: 900, upkeep: 25, blocks: true, place: "indoor",
+    id: "restroom", name: "Restrooms", cat: "amenity", w: 2, h: 2, cost: 900, upkeep: 25, blocks: true, opaque: true, place: "indoor",
     emits: [], sprite: "restroom", art: "whole",
     seats: [{ dx: 0, dy: 2, kind: "hidden" }, { dx: 1, dy: 2, kind: "hidden" }],
     serves: "bladder", use: [5, 9],
     desc: "Two stalls. The doors face the front.",
   },
   cage: {
-    id: "cage", name: "Cashier Cage", cat: "amenity", w: 2, h: 1, cost: 1500, upkeep: 60, blocks: true, place: "indoor",
+    id: "cage", name: "Cashier Cage", cat: "amenity", w: 2, h: 1, cost: 1500, upkeep: 60, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "cage", art: "tiled",
     seats: [{ dx: 0, dy: 1, kind: "stand" }, { dx: 1, dy: 1, kind: "stand" }],
     serves: "cage", use: [3, 5],
@@ -82,6 +86,11 @@ export const OBJECTS: Record<string, ObjectDef> = {
     id: "neon", name: "Neon Sign", cat: "decor", w: 1, h: 1, cost: 300, upkeep: 3, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 6, radius: 6 }], sprite: "neon", art: "whole", seats: [],
     desc: "Loud light. Energy for some, a headache for others.",
+  },
+  sign: {
+    id: "sign", name: "Sign", cat: "decor", w: 1, h: 1, cost: 80, upkeep: 0, blocks: true, guide: true, place: "any",
+    emits: [], sprite: "sign", art: "whole", seats: [],
+    desc: "Points guests toward whatever they're looking for, roughly. Guests have to see it.",
   },
   fountain: {
     id: "fountain", name: "Fountain", cat: "decor", w: 2, h: 2, cost: 1500, upkeep: 8, blocks: true, place: "any",

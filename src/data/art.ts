@@ -92,6 +92,12 @@ export const OBJECT_SPRITES: Record<string, SpriteDef> = {
     ],
     pal: { X: "#ffffff" },
   },
+  sign: tile([
+    "................", "..kkkkkkkkkkkk..", "..kppppppppppk..", "..kppPpppppPpk..",
+    "..kpPPPPpPPPPk..", "..kppPpppppPpk..", "..kppppppppppk..", "..kkkkkkkkkkkk..",
+    ".......kk.......", ".......yk.......", ".......yk.......", ".......yk.......",
+    ".......yk.......", "......kyyk......", ".....kYYYYk.....", "................",
+  ], { p: "#1e5a3c", P: "#f4efe4" }),
 };
 
 /** Person frames, 8×12: down/up/side × stand/step. Left is side mirrored. */
@@ -136,7 +142,7 @@ export const SLOT_COLORS: Record<string, Record<string, string>> = {
 
 /** Flat colors for objects at the Wide and Overview zoom levels, where they are baked into the floor image. */
 export const OBJECT_MAP_COLORS: Record<string, string> = {
-  counter: "#8a5a2a", cage: "#d4a64a", restroom: "#3f7f9a", plant: "#2d6a3e", neon: "#ff4fa0", fountain: "#9fd8f0",
+  counter: "#8a5a2a", cage: "#d4a64a", restroom: "#3f7f9a", plant: "#2d6a3e", neon: "#ff4fa0", sign: "#1e5a3c", fountain: "#9fd8f0",
 };
 
 export const EXTRA_SPRITES: Record<string, SpriteDef> = {

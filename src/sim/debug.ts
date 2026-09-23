@@ -152,8 +152,35 @@ function run(scenario: string, seed: number, days: number, onDay?: (g: Game, d: 
   return g;
 }
 
+/**
+ * Wayfinding guarantees (docs/spec/navigation.md): with every exit walled off, guests who want to leave stay,
+ * trapped; once the exits reopen, every one of them finds a way out.
+ */
+export function exitChecks(): string[] {
+  const p: string[] = [];
+  const g = Game.create("horseshoe", 9);
+  g.dispatch({ type: "spawnGuests", n: 150 });
+  for (let t = 0; t < 200; t++) g.step();
+  const s = g.state, ents = s.map.entrances, was = ents.map((e) => s.map.terrain[e]);
+  const guests = () => s.agents.filter((a) => a.role === "guest");
+  for (const a of guests()) Object.assign(a, { act: "idle", seat: -1, target: -1, hidden: 0, timer: 0 }), (a.g!.why = "test");
+  for (const e of ents) s.map.terrain[e] = T.WALL;
+  g.tilesChanged(ents);
+  const n = guests().length;
+  for (let t = 0; t < 1500; t++) g.step();
+  if (guests().length !== n) p.push(`exits: ${n - guests().length} guests left through walled-off exits`);
+  if (!guests().some((a) => a.g!.trapped)) p.push("exits: walled-in guests never noticed they were trapped");
+  ents.forEach((e, k) => (s.map.terrain[e] = was[k]));
+  g.tilesChanged(ents);
+  for (let t = 0; t < 12000 && guests().some((a) => a.g!.why === "test"); t++) g.step();
+  const stuck = guests().filter((a) => a.g!.why === "test").length;
+  if (stuck) p.push(`exits: ${stuck} guests never found an open exit`);
+  p.push(...checkInvariants(g).map((q) => `exits: ${q}`));
+  return p;
+}
+
 export function smoke(opts: { days: number; seeds: number[]; scenario?: string }): { ok: boolean; problems: string[] } {
-  const problems: string[] = mathChecks();
+  const problems: string[] = [...mathChecks(), ...exitChecks()];
   const sc = opts.scenario ?? "horseshoe";
   for (const seed of opts.seeds) {
     const g = run(sc, seed, opts.days, (g, d) => {

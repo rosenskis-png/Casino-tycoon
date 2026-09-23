@@ -2,6 +2,12 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Green light for M2.5; wayfinding built
+- Owner said "green light".
+- Regulars: no per-object memory for now. Real returning individuals come in a later milestone. Until then each guest has a floor knowledge meter that grows while they're here, and it carries into later visits through a per-type familiarity. A regular only knows things built before their last visit.
+- Signs are just objects. The player doesn't set arrows (too much micromanagement). A sign imperfectly points guests toward whatever they're looking for.
+- Sight is ray-cast only when a guest decides what to do (no cache): simpler, and cheap enough at 5,000 guests.
+
 ## 2026-09-23 · M2.5: navigation and wayfinding before M3 (see docs/spec/navigation.md)
 - Owner: guests knowing the path to every destination kills the point of layouts. Inserted M2.5 before M3; the M3 guest discussion resumes after it.
 - Guests no longer choose from the whole floor. They act on what they can see, what they remember, and what signs say, then walk known routes on the existing path fields.

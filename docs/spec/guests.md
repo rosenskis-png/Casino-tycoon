@@ -15,9 +15,10 @@ Type, group, intention (gamble / drink), name, bankroll and wallet, withdrawals 
 
 ## What a guest does
 - Arrives at a street entrance, then decides. Order: leave (exhausted, miserable, starving, or already leaving) → restroom when bladder ≥ 70 → bar when thirsty (or came for a drink) → withdraw at the cage when they can't afford any machine and are the ATM type → pick a machine → otherwise wander and retry (3 failures and they go home).
+- Guests only know what they can see, remember, or read on signs; finding things is in docs/spec/navigation.md.
 - Machine choice: appeal to their type × 2 + surroundings at the seat × 0.5 − distance / 25 + a little randomness. Only machines whose minimum bet they can cover.
 - Playing: rounds come from the gaming system. Between rounds they check the quit rule, needs (restroom or bar only when one exists), money, and whether the machine broke.
-- Leaving: guests holding $20+ after playing cash out at the cage first; with no cage they complain. Walled-in guests leave anyway.
+- Leaving: guests holding $20+ after playing cash out at the cage first; with no cage they complain. Guests with no walkable way out are trapped (docs/spec/navigation.md).
 - Litter: walking guests drop litter now and then (more after drinks); drinks spill at the bar.
 
 ## Thoughts

@@ -53,6 +53,10 @@ export function BuildPanel({ tool, setTool, rot, setRot }: { tool: Tool; setTool
 
 // ---------------------------------------------------------------------------------------------------------
 
+const SEEKING: Record<string, string> = {
+  bladder: "Looking for a restroom", thirst: "Looking for a bar", cage: "Looking for the cage", exit: "Looking for the way out",
+};
+
 function roleDoing(g: Game, a: Agent): string {
   const obj = a.target >= 0 ? g.objById.get(a.target) : undefined;
   const name = obj ? OBJECTS[obj.kind].name : "";
@@ -69,10 +73,14 @@ function roleDoing(g: Game, a: Agent): string {
       if (a.next === "repair") return `On the way to fix ${name}`;
       if (a.next === "play") return `Walking to ${name}`;
       if (a.next === "drink") return "Going for a drink";
-      if (a.next === "restroom") return "Looking for the restroom";
+      if (a.next === "restroom") return "Going to the restroom";
       if (a.next === "cage") return "Going to the cage";
       return "Walking";
-    case "wander": return a.role === "guest" ? "Looking around" : "Patrolling";
+    case "wander": {
+      if (a.role !== "guest") return "Patrolling";
+      if (a.g!.trapped) return "Trapped inside";
+      return SEEKING[a.g!.seek] ?? "Looking around";
+    }
     case "arrive": return "Just arrived";
     default: return "Thinking";
   }
@@ -245,6 +253,7 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
           <b>Mood</b><span className="num">{gd.mood.toFixed(0)}</span>
           <b>Needs</b><span className="num">B{gd.needs.bladder.toFixed(0)} T{gd.needs.thirst.toFixed(0)} H{gd.needs.hunger.toFixed(0)} F{gd.needs.fatigue.toFixed(0)}</span>
           <b>Quit rule</b><span>{gd.quit}</span>
+          <b>Knows floor</b><span className="num">{(gd.know * 100).toFixed(0)}%{gd.memDate >= 0 ? " · regular" : " · first visit"}</span>
         </div>
       )}
     </div>

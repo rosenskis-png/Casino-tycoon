@@ -3,7 +3,7 @@
 Newest first. One entry per decision: date, what, why.
 
 ## 2026-09-23 · Safety net (post-M1 review)
-- `main` protected by a GitHub ruleset: no deletion, no force pushes (owner set it up).
+- `main` protected by a GitHub ruleset: no deletion, no force pushes (owner set it up 2026-09-23).
 - Each finished milestone gets a git tag (`m0`, `m1`, …); a workflow attaches that version's playable `index.html` to a GitHub Release.
 - Push at every stopping point.
 - M2 starts with three engine fixes (per-system commands, layout hook, save fixtures); see ROADMAP.

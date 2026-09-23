@@ -541,4 +541,4 @@ Information is a resource: the player starts with symptoms only.
 
 - **Guest model:** roster, parameter values, drinking profiles, drama appetites.
 - **Per-system detail as each is reached:** incident catalog specifics, suspicion tool tiers, theme list and synergy table, games catalog specifics, slot designer interface, staff roster details, phone interface layout, scenario designs and tutorial, art and audio direction.
-- **Whether every visible guest is one real guest** at the largest scales, decided after the engine performance test.
+- ~~Whether every visible guest is one real guest~~ Decided 2026-09-23: yes, at all scales (iPhone perf test; see DECISIONS).

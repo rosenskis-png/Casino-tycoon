@@ -2,12 +2,17 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-23 · Population ceiling from the iPhone perf test
+- iPhone results with test walkers: sim 0.09 ms/tick and draw 0.3 ms (Default zoom) / 1.7 ms (Overview) at 5,000 agents. The estimate was ~32–36K at every speed, but that is extrapolated from 5,000. What was actually measured: 20,000 walkers held 60 fps (sim ~1.1 ms, draw ~1.9 ms per frame).
+- Result: agent count doesn't limit the planned 2–3K peak. "Every guest is one real guest" holds at all scales (closes that FOUNDATIONS §26 item). The real ceiling will come from guest logic cost; re-run the perf test once M2 guests exist. The perf test now measures up to 20,000 instead of extrapolating.
+- Workflow: after merging, don't check or report that Pages is live; the owner checks it.
+
 ## 2026-09-23 · Green light; M1 engine skeleton built
 - Owner said "green light" and asked for M1.
 - Hook cadences are tick / beat (1 s at 1×) / day / month / year, replacing the roadmap's "minute / hour", which predated the no-time-of-day clock. Why: there is no hour to hook.
 - Test walkers stand in for guests in M1 so pathing, crowd fields, rendering and the perf test have agents; they spawn indoors and wander. Guests replace them in M2.
 - Hidden-value overlays sit behind a Game-tab *Debug view* for engine testing only; the North Star rule (earned through research) holds for real play.
-- The population ceiling waits on the owner running *Perf test* on the iPhone. Dev-container Chromium: ~3,200 agents at 60 fps at every speed, limited by drawing.
+- Population ceiling: see the iPhone perf entry above.
 
 ## 2026-09-23 · RCT-style clock (see docs/spec/clock.md)
 Replaces the same-day "time and population" decision, which kept time of day.

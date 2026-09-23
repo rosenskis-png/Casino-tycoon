@@ -10,7 +10,7 @@ export interface PerfResult {
   budgetMs: number;
 }
 
-const SIZES = [250, 1000, 2500, 5000];
+const SIZES = [250, 1000, 2500, 5000, 10_000, 20_000];
 const BUDGET_MS = 12; // of 16.7 ms per 60 fps frame, leaving room for the browser and UI
 
 const pause = () => new Promise((r) => setTimeout(r, 0));

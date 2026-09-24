@@ -185,6 +185,8 @@ Each type is a data entry with:
 
 ### 7.1 Slot designer (creative centerpiece)
 
+Detailed plan: docs/spec/designer.md (M8, M8.5, M8.6).
+
 **Parameters the player sets:**
 - Target payback percentage.
 - Volatility.
@@ -541,5 +543,5 @@ Information is a resource: the player starts with symptoms only.
 ## 26. Open design discussions
 
 - **Guest model:** roster, parameter values, drinking profiles, drama appetites.
-- **Per-system detail as each is reached:** ~~incident catalog specifics~~ (M4: docs/spec/incidents.md), ~~suspicion tool tiers~~ (M5: docs/spec/cheats.md), ~~theme list and synergy table~~ (M6.5: docs/spec/themes.md), ~~games catalog specifics~~ (M7: docs/spec/tables.md), slot designer interface, staff roster details, phone interface layout, scenario designs and tutorial, ~~art and audio direction~~ (docs/spec/art.md; M10: docs/spec/audio.md, docs/spec/play.md).
+- **Per-system detail as each is reached:** ~~incident catalog specifics~~ (M4: docs/spec/incidents.md), ~~suspicion tool tiers~~ (M5: docs/spec/cheats.md), ~~theme list and synergy table~~ (M6.5: docs/spec/themes.md), ~~games catalog specifics~~ (M7: docs/spec/tables.md), ~~slot designer interface~~ (M8 plan: docs/spec/designer.md), staff roster details, phone interface layout, scenario designs and tutorial, ~~art and audio direction~~ (docs/spec/art.md; M10: docs/spec/audio.md, docs/spec/play.md).
 - ~~Whether every visible guest is one real guest~~ Decided 2026-09-23: yes, at all scales (iPhone perf test; see DECISIONS).

@@ -108,5 +108,16 @@ Whale bankrolls are sized to game money (a variance crisis means several months 
 - Generated music from data through a small sequencer: a title screen with the main theme, five nightclub tracks (picked per club, heard from the dance floor), and show-lounge music during shows.
 - Play it yourself: slots, video poker, blackjack, roulette, craps, baccarat and keno, full screen, with the object's real rules, paytables and limits, casino cash on an "Owner's play" line, and a guest's odds (checked exactly). No poker, bingo or sportsbook; no vibration.
 - Save schema 14 (migration from 13): a hand in progress, a club's track.
-## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)
+## M8 · Slot designer: the designer and the base game ☐  (plan: docs/spec/designer.md; waiting for the green light)
+Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot machines, in three parts (one chat and release each).
+- A design's eight sections: concept (name, theme, symbols), reels (3×1 classic to 6×4 ways; wilds, stacks), money (denomination, bets), math (payback, hit rate, volatility, with a budget bar showing where every point of payback goes), features, jackpots, show (lights, sound, signature call, small-win celebration, near misses, anticipation, roll-up, speed), cabinet (slant, upright, stepper, tall, giant 2×2; colors; toppers).
+- Exact math: a closed-form payback budget, base games solved exactly, features exact by construction and drawn step by step, events the play screen shows as drawn. Free spins with every enhancer; fixed jackpots.
+- The lab: par sheet, session simulator, **Excitement / Intensity / Drain** ratings from a test panel of the scenario's own guests, panel verdict, a test run with free credits.
+- Guests judge designs by what they can feel, never payback directly; excitement buys hold; thoughts name designs. Stock models become designs (calibrated), plus Buffalo-, Cleopatra- and Double Diamond-style stock games.
+- Compiled cabinet sprites; a new realistic play-it-yourself slot screen; certification, legal limits, uncertified machines and the inspector; stats and performance index; a design library across saves with share codes; Lucky Dragon and Classic Vegas themes. Save schema 15.
+## M8.5 · Slot designer: bonuses and progressives ☐
+- Hold & spin, pick, wheel (and the topper wheel), cascades, collectors, offers, mystery features, each with its own play screen.
+- Standalone, linked (banks with a sign of live meters) and must-hit-by progressives; bet eligibility; meters as liabilities; hunters. Onlookers at big bonuses; hidden pairings. Lightning Link- and wheel-style stock games.
+## M8.6 · Slot designer: the market ☐
+- Novelty and ageing, boredom and favorites, floor variety, fans who come for a design; a yearly Slot Expo of trends; rival makers' releases to buy, study and copy; guests' wishes; records and Evergreens; research projects; Test Floor and sanity flags per design.
 ## M11 · Scenarios, tutorial, balance ☐

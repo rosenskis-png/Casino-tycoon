@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M8.5 (owner's answers)
+- Owner said "green light for m8.5" and agreed to the plan, with changes:
+  - **Big meters draw guests even without a bank sign**, just less; a sign strengthens the pull.
+  - **More ability to move the ratings:** today most designs land at Excitement 3–6 and Intensity 2–5 (Drain already spans 0–10). Designs should be able to reach the whole 0–10 scale on both.
+  - **Performance index** gets a short in-game explanation next to it, and it should be a lifetime figure over every machine of that design in the casino (theoretical win), not one that swings with each jackpot.
+  - **Design sales (M8.6):** total units sold is a hidden number fixed at the sale, reached along an S-curve of random length, so royalties climb while the player wonders how big it gets. Most sell 10–30, some 100+, very rarely thousands (the scenario winner). Each sold design is its own budget line.
+  - Word of mouth and sales stay in M8.6; the maker's cut on theoretical edge is agreed; offer thresholds agreed.
+
 ## 2026-09-24 · M8.5 planned with the owner's notes (see docs/spec/designer.md, last two sections)
 - Owner's notes after playing M8 folded into the plan: spaces in names, logo fonts, face layout, slam-stop keeps the win, no early reveal (slots and tables), word of mouth, linked progressives shared by every machine of a design with a pull that grows per doubling of meter ÷ bet, thought history per game kind for 6 months, and slot makers buying the player's own designs (one-time cash 10–100× cabinet price, 25–75% of the edge kept, 1–3% royalties on outside wins, wide-area progressives after a sale, a decent chance of a new offer after a decline).
 - **Claude's calls (owner can overrule):** word of mouth and sale offers go in M8.6 (they need fans and novelty); M8.5 records design origin so they work later. After a sale the maker's cut is on theoretical edge, not actual win. "Layout and size of screen elements" read as the machine face (designer) plus a game-wide interface size. Linked banks no longer need to stand together; the bank sign becomes a placeable display.
@@ -362,4 +370,4 @@ Replaces the same-day "time and population" decision, which kept time of day.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- Green light for M8.5 (plan in docs/spec/designer.md, last two sections).
+- Nothing pending.

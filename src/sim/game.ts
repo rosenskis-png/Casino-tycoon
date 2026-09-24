@@ -81,6 +81,8 @@ export class Game {
   lastDesign = "";
   /** (M8.5) Slots in a big bonus now, and the tick it ends (onlookers gather). Runtime only. */
   bonusNow = new Map<number, number>();
+  /** (M8.5) Bank signs on the floor. */
+  bankSigns: PlacedObject[] = [];
   readonly rooms = new RoomIndex();
   /**
    * Door rules (M6): restricted doors (tiles), and one path cache per set of them a person can pass. With no
@@ -187,6 +189,7 @@ export class Game {
     const { w, h } = this.state.map;
     const occ = new Int32Array(w * h), objAt = new Int32Array(w * h), seatAt = new Int32Array(w * h), opaque = new Uint8Array(w * h);
     this.signs = [];
+    this.bankSigns = [];
     this.objById.clear();
     this.slotSectors.clear();
     this.seatTiles.clear();
@@ -200,6 +203,7 @@ export class Game {
       if (def.serves) this.amenities[def.serves].push(o);
       if (def.serves === "cage") this.amenities.atm.push(o);
       if (def.guide) this.signs.push(o);
+      if (o.kind === "bank_sign") this.bankSigns.push(o);
       if (def.slot || def.game) {
         const key = (o.y >> 4) * 4096 + (o.x >> 4);
         let list = this.slotSectors.get(key);

@@ -176,7 +176,7 @@ function resolve(g: Game, a: Agent) {
   const inf = slot ? slotInfo(g.state, o) : undefined;
   const host: MeterHost | null = inf && (hasMeters(inf.c) || inf.c.col) ? { meters: g.state.meters, own: o, id: inf.id } : null;
   const ws: Wager[] = [];
-  let near = 0, feats = 0, extra = 0, jps = 0, voided = 0, big = false;
+  let near = 0, feats = 0, extra = 0, jps = 0, voided = 0, big = false, seen = "";
   for (let k = 0; k < WAGERS_PER_ROUND; k++) {
     if (host) prepSpin(host, inf!.c, bet, r);
     lastSpin.kind = 0; lastSpin.level = -1; lastSpin.voided = -1; lastSpin.secs = 0; lastSpin.spins = 0; lastSpin.feat = "";
@@ -190,6 +190,7 @@ function resolve(g: Game, a: Agent) {
     // A design's features (and named jackpots) that actually paid this guest, and the time they take to play out.
     if (x > 0 && kind === 1) {
       feats++;
+      seen = feat;
       extra += feat === "fs" ? lastSpin.spins * FS_SPIN * m.spin * TICKS_PER_SECOND : lastSpin.secs * 0.5 * TICKS_PER_SECOND;
       if ((feat !== "fs" && feat !== "collect") || x >= 50) big = true;
     } else if (lastSpin.secs > 0) extra += lastSpin.secs * 0.5 * TICKS_PER_SECOND;
@@ -209,6 +210,7 @@ function resolve(g: Game, a: Agent) {
     gd.game = inf.id;
     if (feats) {
       gd.sf = (gd.sf ?? 0) + feats;
+      gd.sfk = seen;
       g.bus.emit({ type: "sound", id: inf.d.show.call, x: o.x, y: o.y });
       // A big bonus draws a crowd (onlookers, like a hot craps table).
       if (big) g.bonusNow.set(o.id, g.state.tick + Math.max(extra, 8 * TICKS_PER_SECOND));

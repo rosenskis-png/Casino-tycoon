@@ -5,7 +5,20 @@ export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<strin
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
   // Slot designs (M8, docs/spec/designer.md §5): "{game}" is the design's name.
-  slotBonus: { text: "Loved the free spins on {game}!", alt: ["{game} paid out in the bonus!", "That bonus on {game} was a ride."] },
+  slotBonus: { text: "Loved the bonus on {game}!", alt: ["{game} paid out in the bonus!", "That bonus on {game} was a ride."] },
+  // (M8.5) Bonus features, meters, hunters.
+  slotFree: { text: "Loved the free spins on {game}!", alt: ["Those free games on {game}!"] },
+  slotOrbs: { text: "Those orbs on {game} kept coming!", alt: ["Three more spins… come on, {game}!", "Almost filled the screen on {game}!"] },
+  slotWheel: { text: "Spun the wheel on {game}!", alt: ["That wheel on {game} is the best part."], voice: { party: ["WHEEL! {game}!"] } },
+  slotPick: { text: "Picked my way to a prize on {game}.", alt: ["The pick bonus on {game} is fun."] },
+  slotOffer: { text: "Took the offer on {game}. Should I have?", alt: ["Deal or no deal on {game}!"] },
+  slotCollect: { text: "Filled the meter on {game}!", alt: ["Almost there on {game}'s meter."] },
+  slotTumble: { text: "Watching {game} tumble is addictive.", alt: ["{game}'s cascades keep going!"] },
+  slotMeter: { text: "The jackpot on {game} is huge!", alt: ["Look at that meter on {game}!", "{game}'s Grand is getting big."], voice: { retiree: ["That jackpot on {game} could change my life."] } },
+  slotMaxBet: { text: "Hit the jackpot on {game} on a small bet!", alt: ["All that for nothing: I wasn't on max bet on {game}."], bad: true },
+  slotHunt: { text: "{game}'s meter is about to pop.", alt: ["Time to camp on {game}."] },
+  slotWatch: { text: "Someone's in a huge bonus over there!", alt: ["Look at that machine go!", "Everyone's watching that slot."] },
+  slotHunted: { text: "Meter's gone on {game}. On to the next.", alt: ["Nothing left in {game} for me."] },
   slotLove: { text: "{game} is my new favorite.", alt: ["Everything about {game} just works.", "I could play {game} all night."] },
   slotTop: { text: "Imagine hitting the top prize on {game}.", alt: ["That jackpot on {game}!"] },
   slotNoBonus: { text: "Never saw the bonus on {game}.", alt: ["{game}'s bonus never comes."], bad: true },

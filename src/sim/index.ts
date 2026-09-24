@@ -26,6 +26,9 @@ export {
   compiledOf, compiledById, designById, designIdOf, perfIndex, panelMix, statsOf, machinesOf, cantUse, certified, certPending, illegal, sanitize,
   designLocks, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind, PERF_INDEX_HELP,
 } from "./design";
+export { opinionsOf, gameKey, OPINION_MONTHS, type OpinionSummary } from "./opinions";
+export { huntEdge, topMeter, signDesign, collectHuntAt } from "./design";
+export { meterPull } from "./guests";
 export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";
 export { judge, feelOf } from "./design/appeal";

@@ -15,6 +15,9 @@ import type { CommandTable } from "../commands";
 import type { System } from "../registry";
 import type { DesignStats, GameState, PlacedObject } from "../state";
 import { compile, mathKey, type Compiled } from "./compile";
+import { hasMeters, maxBetOf, meterValue } from "./meters";
+import type { Game } from "../game";
+import { pruneOpinions } from "../opinions";
 import { designById, designIdOf, isStock } from "./lookup";
 import { researched } from "../research";
 import { post } from "../finance";
@@ -32,6 +35,8 @@ declare module "../commands" {
     /** Switch a machine to another design with the same cabinet (a conversion kit). */
     designConvert: { obj: number; id: string };
     designDelete: { id: string };
+    /** (M8.5) Which game a bank sign shows ("" = the nearest linked game). */
+    signShow: { obj: number; id: string };
   }
 }
 
@@ -219,7 +224,11 @@ export function sanitize(d: SlotDesign): SlotDesign {
 /** Whether two designs differ only in looks (name, theme, colors, lights, sound): no new version, no certification. */
 export const sameMath = (a: SlotDesign, b: SlotDesign) => mathKey(a) === mathKey(b);
 
-const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "designConvert" | "designDelete"> = {
+const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "designConvert" | "designDelete" | "signShow"> = {
+  signShow: {
+    validate: (g, c) => (g.objById.get(c.obj)?.kind !== "bank_sign" ? "Not a bank sign" : c.id && !designById(g.state, c.id) ? "Unknown game" : null),
+    apply(g, c) { const o = g.objById.get(c.obj)!; if (c.id) o.design = c.id; else delete o.design; },
+  },
   designSave: {
     validate: (_g, c) => (c.d && typeof c.d === "object" ? null : "No design"),
     apply(g, c) {
@@ -280,6 +289,9 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
     apply(g, c) {
       const o = g.objById.get(c.obj)!;
       o.design = c.id;
+      // A new game starts with fresh meters and an empty collector (what was on them goes with the old game).
+      delete o.meter;
+      delete o.col;
       post(g, "build", -CONVERT_FEE);
       const st = statsOf(g.state, c.id);
       if (st.born < 0) st.born = Math.floor(g.state.tick / TICKS_PER_DAY);
@@ -296,6 +308,7 @@ export const designSystem: System = {
   id: "designs",
   deps: ["news"],
   commands,
+  month(g) { pruneOpinions(g.state); },
   day(g) {
     const s = g.state;
     for (const [id, rec] of Object.entries(s.designs)) {
@@ -304,6 +317,8 @@ export const designSystem: System = {
       void id;
     }
     for (const st of Object.values(s.dstats)) { st.rWin *= 0.97; st.rDays *= 0.97; }
+    // A linked meter with no machines left goes with them (its liability released).
+    if (s.meters) for (const id of Object.keys(s.meters)) if (!s.objects.some((o) => OBJECTS[o.kind]?.slot && designIdOf(o) === id)) delete s.meters[id];
     for (const o of s.objects) {
       if (!OBJECTS[o.kind]?.slot) continue;
       const st = statsOf(s, designIdOf(o));
@@ -313,6 +328,59 @@ export const designSystem: System = {
     }
   },
 };
+
+// ---------------------------------------------------------------------------------------------------------
+// (M8.5) Hunters, meters' pull, bank signs.
+
+/** Share of a collector's meter past which playing it is worth it for a hunter (its prize outweighs the edge). */
+export function collectHuntAt(c: Compiled): number {
+  const Jc = c.budget.collect;
+  return Jc > 0 ? 1 - Jc / (1 - c.d.rtp + Jc) : 1;
+}
+/**
+ * How far a machine is past the point where an advantage player profits (0 or less: not worth it): a must-hit-by
+ * meter near its cap (the hit point is hidden, so hunters camp once it's 85% of the way), or a collector kept full.
+ */
+export function huntEdge(s: GameState, o: PlacedObject): number {
+  const inf = slotInfo(s, o);
+  if (!inf) return 0;
+  const c = inf.c;
+  let best = -1;
+  const m = s.meters?.[inf.id], top = maxBetOf(c);
+  c.levels.forEach((l, i) => {
+    if (l.kind !== "mhb" || !m) return;
+    const seed = l.x * top, cap = l.cap * top;
+    best = Math.max(best, (m.v[i] - seed) / Math.max(1e-9, cap - seed) - 0.85);
+  });
+  if (c.col) best = Math.max(best, (o.col ?? 0) / c.col.N - collectHuntAt(c));
+  return best;
+}
+/** The biggest meter (dollars) a guest betting `stake` can win on a machine. */
+export function topMeter(s: GameState, o: PlacedObject, stake: number): number {
+  const inf = slotInfo(s, o);
+  if (!inf || !hasMeters(inf.c)) return 0;
+  const c = inf.c, h = { meters: s.meters, own: o, id: inf.id };
+  let top = 0;
+  c.levels.forEach((l, i) => {
+    if (l.kind === "fixed" || (l.max && stake < maxBetOf(c) - 1e-9)) return;
+    top = Math.max(top, meterValue(h, c, i));
+  });
+  return top;
+}
+/** The design a bank sign shows: its own choice, else the nearest linked game within 6 tiles. */
+export function signDesign(g: Game, sign: PlacedObject): string | null {
+  const s = g.state;
+  if (sign.design && designById(s, sign.design)) return sign.design;
+  let best: string | null = null, bd = 7;
+  for (const o of s.objects) {
+    if (!OBJECTS[o.kind]?.slot) continue;
+    const d = Math.max(Math.abs(o.x - sign.x), Math.abs(o.y - sign.y));
+    if (d >= bd) continue;
+    const c = slotInfo(s, o)?.c;
+    if (c && c.levels.some((l) => l.kind === "linked" || l.kind === "mhb")) { best = designIdOf(o); bd = d; }
+  }
+  return best;
+}
 
 /** Fee to certify here now. */
 export const certFee = (s: GameState) => (researched(s, "fastcert") ? CERT.fastFee : CERT.fee);

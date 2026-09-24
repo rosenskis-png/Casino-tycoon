@@ -16,7 +16,9 @@ import { limitsNow, tableOpen } from "./tables";
 import { stakeMult } from "./amenities";
 import { fmtMoney, news } from "./news";
 import { compiledOf } from "./design";
-import { spinFull } from "./design/spin";
+import { spinFull, type Outcome } from "./design/spin";
+import { afterSpin, hasMeters, prepSpin, type MeterHost } from "./design/meters";
+import { designIdOf } from "./design/lookup";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -219,7 +221,7 @@ function stakeOf(g: Game, y: YourPlay, o: PlacedObject, c: { act: string; bet?: 
 /** Which moves make sense now (the UI's buttons follow this; commands re-check it). */
 export function yourMoves(y: YourPlay): string[] {
   switch (y.fam) {
-    case "slot": return ["spin"];
+    case "slot": return y.phase === "act" ? ["take", "leave"] : ["spin"];
     case "vpoker": return y.phase === "act" ? ["draw"] : ["deal"];
     case "roulette": return ["spin"];
     case "craps": return ["roll"];
@@ -233,6 +235,13 @@ export function yourMoves(y: YourPlay): string[] {
       return m;
     }
   }
+}
+
+/** A slot spin settled (after any offer): paid, with news of a jackpot or a huge win. */
+function slotPaid(g: Game, y: YourPlay, cd: ReturnType<typeof compiledOf> & object, out: Outcome, stake: number, won: number) {
+  const lv = out.mhb ? out.mhb.level : out.level;
+  const big = lv >= 0 ? `the ${levelName(cd.levels.length, lv, cd.lay.win === "classic").toLowerCase()} on ${cd.d.name}` : won >= 500 * stake ? `a huge win on ${cd.d.name}` : undefined;
+  pay(g, y, stake, won, big);
 }
 
 function pay(g: Game, y: YourPlay, wagered: number, won: number, big?: string) {
@@ -295,11 +304,30 @@ const commands: CommandTable<"yours"> = {
       if (stake) { post(g, "yours", -stake); y.out += stake; }
       switch (y.fam) {
         case "slot": {
-          // The design's real math, played out with everything it shows (docs/spec/designer.md §9).
-          const cd = compiledOf(s, o)!, out = spinFull(cd, r);
+          const cd = compiledOf(s, o)!;
+          // (M8.5) An offer: take this one, or leave it for the next (the last is the prize). Every offer is fair.
+          if (c.act === "take" || c.act === "leave") {
+            const out = y.spin!, of = out.offer!, k = y.offerAt ?? 0;
+            if (c.act === "leave" && k < of.length - 2) { y.offerAt = k + 1; break; }
+            const at = c.act === "take" ? k : of.length - 1;
+            y.offerAt = at;
+            y.offerTook = c.act === "take" ? 1 : 0;
+            slotPaid(g, y, cd, out, y.out, (out.x + of[at]) * y.out);
+            break;
+          }
+          // The design's real math, played out with everything it shows (docs/spec/designer.md §9), on this machine's
+          // own meters and collector (M8.5).
+          const host: MeterHost = { meters: s.meters, own: o, id: designIdOf(o) };
+          const live = hasMeters(cd) || !!cd.col;
+          if (live) prepSpin(host, cd, stake, r);
+          const out = spinFull(cd, r);
+          if (live) {
+            const a = afterSpin(host, cd, stake, out.x > 0 ? out.level : -1, r);
+            if (a.x) { out.mhb = { level: a.level, x: a.x }; out.x += a.x; }
+          }
           y.spin = out;
-          const big = out.kind === "jackpot" ? `the ${levelName(cd.pJ.length, out.level, cd.lay.win === "classic").toLowerCase()} on ${cd.d.name}` : out.x >= 500 ? `a huge win on ${cd.d.name}` : undefined;
-          pay(g, y, stake, out.x * stake, big);
+          if (out.offer) { y.phase = "act"; y.offerAt = 0; y.offerTook = 0; break; }
+          slotPaid(g, y, cd, out, stake, out.x * stake);
           break;
         }
         case "vpoker": {

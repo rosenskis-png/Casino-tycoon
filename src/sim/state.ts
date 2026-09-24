@@ -191,6 +191,9 @@ export interface GuestData {
   /** (M8.5) Jackpots hit on too small a bet this session; a must-hit-by hunter (a share of Locals). */
   voided?: number;
   hunter?: number;
+  /** (M8.5) The kind of the last feature they saw this session (free spins, hold & spin, …); watching a slot's bonus (1) or a table (0). */
+  sfk?: string;
+  look?: number;
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
   thoughtTick: number;
@@ -561,6 +564,8 @@ export interface YourPlay {
   total: { wagered: number; won: number };
   /** Slots: the last spin with everything it showed (M8). Video poker: the hand, held positions, cards out. Blackjack: hands, dealer, hand in play. */
   spin?: Outcome; cards?: number[]; held?: number[]; used?: number[];
+  /** (M8.5) Slots: the offer on the table (index into the spin's offers) and whether it was taken. */
+  offerAt?: number; offerTook?: number;
   hands?: { cards: number[]; bet: number; done: number }[]; dealer?: number[]; cur?: number;
   /** Roulette: the pocket (37 = 00) and bets. Craps: point, line bets [pass, don't pass], odds, dice. */
   pocket?: number; bets?: Record<string, number>;

@@ -49,6 +49,6 @@ No game code until the owner says the literal words "green light" in chat. Tooli
 - Throwaway debug and profiling scripts go in the scratchpad, not `scripts/`.
 
 ## Engine conventions decided before M1
-- Art is data: sprites are palette-indexed text grids compiled into sprite sheets (atlases) at load; frames blit cached images. Never paint sprites pixel by pixel per frame (v0.2 did). The renderer stays swappable for WebGL if a perf test demands it.
+- Art follows docs/spec/art.md (style rules, palette, sizes, checklist). Art is data: sprites are palette-indexed text grids compiled into sprite sheets (atlases) at load; frames blit cached images. Never paint sprites pixel by pixel per frame (v0.2 did). The renderer stays swappable for WebGL if a perf test demands it.
 - Sound is data: short synth recipes played through Web Audio. No audio files.
 - Saves: stored via `src/platform/storage.ts`, with export/import to a file as a backup. Call `requestPersistence()` at startup.

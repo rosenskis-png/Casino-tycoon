@@ -26,10 +26,10 @@ export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: nu
 const TERRAIN_NAME: Record<number, string> = { [T.VOID]: "Unowned land", [T.FLOOR]: "Floor", [T.WALL]: "Wall", [T.DOOR]: "Door", [T.WATER]: "Water", [T.SIDEWALK]: "Sidewalk" };
 const FACING = ["down", "left", "up", "right"];
 
-export function BuildPanel({ tool, setTool, rot, setRot }: { tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void }) {
-  const b = (t: Tool, label: string, sub?: string) => (
+export function BuildPanel({ tool, setTool, rot, setRot, thumb }: { tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string) => { url: string; w: number; h: number } }) {
+  const b = (t: Tool, label: string, sub?: string, img?: { url: string; w: number; h: number }) => (
     <button key={t} className={`btn ${tool === t ? "on" : ""}`} onClick={() => setTool(tool === t ? "inspect" : t)}>
-      {label}{sub && <small>{sub}</small>}
+      {img && <img className="thumb" src={img.url} width={img.w * 2} height={img.h * 2} alt="" />}{label}{sub && <small>{sub}</small>}
     </button>
   );
   return (
@@ -44,7 +44,7 @@ export function BuildPanel({ tool, setTool, rot, setRot }: { tool: Tool; setTool
       {OBJECT_CATS.map((c) => (
         <Fragment key={c.id}>
           <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}</p>
-          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id).map((o) => b(`place:${o.id}`, o.name, `${money(o.cost)} · ${money(o.upkeep)}/mo`))}</div>
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id).map((o) => b(`place:${o.id}`, o.name, `${money(o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
         </Fragment>
       ))}
       {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6)]?.desc}</p>}

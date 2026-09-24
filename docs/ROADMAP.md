@@ -45,8 +45,12 @@ Repo, toolchain (Vite + TS + React + single-file build), layer-boundary check, h
 - Big Floor headless: ~1.9 ms/tick at 5,000 guests (M2.5: ~1.4). Re-run the in-app Perf test on the phone.
 - Revisions after the owner's first look: browsing and favorite spots instead of fail counts; drinks in hand, per-bar policy and service areas, server order rounds (trays of 6); guest numbers reframed as sanity checks with levers; realistic Test Floor scenario. Save schema 5.
 
-## M3.1 · Art pass ☐
+## M3.1 · Art pass ☑
 Type outfits and silhouettes (cheats and chasers never distinguishable), flushed drunk sprites, sidewalk look, and a general art review.
+- Style guide and pipeline in docs/spec/art.md ("Velvet Night"): palette ramps, 3/4 view, top-left light, auto outline, value budget, sizes, facings, animation and zoom rules, and an add-an-asset checklist.
+- Every sprite redrawn: carpet, walls (interior and exterior faces, autotiled edges), doors, grass, sidewalk, slots (3 facings, lamp chase, scrolling reels), bar with bartender, cage with teller, restrooms, ATM, palm, neon, sign, fountain (animated), stools, litter.
+- Paper-doll people with type silhouettes, staff props, drinks in hand, flushed faces, 4-step walk and seated poses.
+- Baked contact shadows, wall shadows and light pools; real sprites at Wide zoom; build-menu pictures.
 
 ## M4 · Incidents, house rules, authorities ☐
 ## M5 · Cheats, suspicion tools, enforcement, luck tags ☐

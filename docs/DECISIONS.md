@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M3.1 art pass (Claude's calls; owner delegated style; see docs/spec/art.md)
+- **Style "Velvet Night"**: top-down 3/4 pixel art at 16 px/tile, light from the top-left, a compiler-added 1 px ink outline on everything that stands, quiet dark floors, and the brightest pixels reserved for light sources. Written up as rules and a checklist in docs/spec/art.md.
+- **People are paper dolls**: pose + outfit + hair/hat + accessories, with shades derived by the compiler. Type silhouettes: locals casual, retirees shorter with grey/puffed hair and cardigans, tourists sun hats, loud shirts and cameras, party guests blazers or short dresses. Staff read by uniform plus a prop (mop, toolbox, tray). Party makeup (sex) now shows. Cheats and chasers look like everyone else.
+- **Drink is visible**: a glass or soda in hand while holding a drink, flushed faces from tipsy (0.25) and drunk (0.5), plus the existing stagger.
+- **Rotation shows**: bar, cage, ATM and restrooms now have front/back/side art (before, only slots did).
+- **Floor light and shade** are baked into the cached chunks: contact shadows, wall shadows, and colored light pools from neon, slots, bar, cage, ATM and fountain. Wide zoom now shows real object sprites instead of flat squares.
+- Decor animations (neon flicker, fountain, bartender, slot lamps, palm sway) run on real time so fast-forward doesn't strobe them; sim-driven ones (walking, reels, wins) stay on ticks.
+- The build menu shows a picture of each object.
+- No gameplay code changed; saves are unaffected.
+
 ## 2026-09-23 · M3 revisions after the owner's first look (see docs/spec/guests.md)
 - **Browsing, not failing** (owner): new guests sightsee first, pulled by the surroundings their type likes, learning the layout faster and noting machines they like; regulars check their favorite spots in turn. Frustration only builds once they want to sit and can't, slower in a good mood. Replaces "3 failures and they go home".
 - **Guest numbers are sanity checks until near v1.0** (owner): the table in guests.md now shows current measurements plus which levers move each number; the agreed M3 targets stay as "design intent" for the tuning pass. Generator checks compare draws with the type data, not with fixed targets.

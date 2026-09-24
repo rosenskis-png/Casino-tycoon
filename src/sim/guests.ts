@@ -36,6 +36,7 @@ import { compiledOf, huntEdge, signDesign, slotInfo, statsOf, topMeter } from ".
 import { judged } from "./design/appeal";
 import { SLOT_TASTES } from "../data/slotTastes";
 import { gameKey, noteSessionEnd, noteThought } from "./opinions";
+import { fanOf, marketFactor, marketSession, personalPull } from "./design/market";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -727,7 +728,8 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   const mult = stakeMult(g, o);
   if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * (m.minCredits ?? 1) * mult)) return 0;
   if (def.game) return (type.games[def.game] ?? 0) + type.rules * rulesScore(def.game, o.rules) * 0.5;
-  return slotAppeal(g, gd.type, o, inf) + (inf?.prog ? meterPull(g, gd.type, gd.stake, o, inf) : 0);
+  // (M8.6) A regular's own history with the design: bored of it, or a fan.
+  return slotAppeal(g, gd.type, o, inf) + (inf?.prog ? meterPull(g, gd.type, gd.stake, o, inf) : 0) + (inf ? personalPull(g, gd, inf.id) : 0);
 }
 
 /**
@@ -752,6 +754,8 @@ export function slotAppeal(g: Game, type: string, o: import("./state").PlacedObj
   if (!info) return 0;
   let v = info.ap.get(type);
   if (v === undefined) info.ap.set(type, (v = judged(info.c, type).appeal));
+  // (M8.6) Word of mouth, novelty and variety: how the design stands on this floor today.
+  v *= marketFactor(g, info.id, type);
   const th = g.fields.themes;
   if (th.active) {
     const dom = th.dom[o.y * g.state.map.w + o.x];
@@ -816,7 +820,7 @@ function groupSeats(g: Game, a: Agent): number[] {
 function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = false, found?: Candidate[]): boolean {
   const w = g.state.map.w, gd = a.g!, tick = g.state.tick;
   const mates = groupSeats(g, a);
-  const cheap = compSeeking(g, gd);
+  const cheap = compSeeking(g, gd), fan = fanOf(g, gd);
   let best = -1, bestScore = -Infinity, far = false, hot = false, badRules = false;
   for (const c of found ?? candidates(g, a, type)) {
     if (liked && !c.seen) continue;
@@ -846,6 +850,8 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
     if (cheap) score += cheapGame(g, o) ? 1.5 : -0.5;
     // (M8.5) Hunters look for a meter about to pop or a collector someone left nearly full.
     if (gd.hunter && OBJECTS[o.kind].slot) score += huntEdge(g.state, o) > 0 ? 4 : -1.2;
+    // (M8.6) A fan heads for their game.
+    if (fan && OBJECTS[o.kind].slot && slotInfo(g.state, o)?.id === fan) score += 0.8;
     // Rules-aware guests (M7) remark on a table's rules when they see bad ones.
     if (c.seen && type.rules && OBJECTS[o.kind].game && rulesScore(OBJECTS[o.kind].game!, o.rules) <= -0.5) badRules = true;
     if (score > bestScore) { bestScore = score; best = c.o; far = c.seen && d > 6; hot = isHot; }
@@ -857,6 +863,10 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
   if (gd.hunter && OBJECTS[bo.kind].slot && huntEdge(g.state, bo) > 0) {
     gd.game = slotInfo(g.state, bo)?.id;
     if (r.chance(0.5)) { think(g, a, "slotHunt"); noteThought(g.state, gameKey(bo), "slotHunt"); }
+  } else if (fan && gd.mem.rounds === 0 && OBJECTS[bo.kind].slot && slotInfo(g.state, bo)?.id === fan && r.chance(0.5)) {
+    gd.game = fan;
+    think(g, a, "slotCameFor");
+    noteThought(g.state, fan, "slotCameFor");
   } else if (pull > 0.12 && r.chance(0.3)) { gd.game = slotInfo(g.state, bo)?.id; think(g, a, "slotMeter"); noteThought(g.state, gameKey(bo), "slotMeter"); }
   else if (hot && r.chance(0.5)) think(g, a, "hot");
   else if (bg && type.rules && rulesScore(bg, bo.rules) >= 0.5 && r.chance(0.2)) think(g, a, "goodRules");
@@ -1162,7 +1172,10 @@ function noteSession(g: Game, a: Agent) {
   const score = secs * (gd.mood / 100);
   if (secs >= 30 && gd.mood >= 55 && score > gd.mem.favScore) { gd.mem.favScore = score; gd.mem.favSeat = a.y * g.state.map.w + a.x; }
   const o = g.objById.get(a.target);
-  if (o && OBJECTS[o.kind].slot) slotRemark(g, a, o, secs);
+  if (o && OBJECTS[o.kind].slot) {
+    slotRemark(g, a, o, secs);
+    marketSession(g, a, o, secs, (id) => { think(g, a, id); noteThought(g.state, gameKey(o), id); });
+  }
   noteSessionEnd(g.state, gameKey(o), gd.mood);
 }
 

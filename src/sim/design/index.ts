@@ -230,7 +230,12 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
     apply(g, c) { const o = g.objById.get(c.obj)!; if (c.id) o.design = c.id; else delete o.design; },
   },
   designSave: {
-    validate: (_g, c) => (c.d && typeof c.d === "object" ? null : "No design"),
+    validate(g, c) {
+      if (!c.d || typeof c.d !== "object") return "No design";
+      // (M8.6) A sold design's math belongs to its maker; its looks are still yours.
+      const rec = g.state.designs[c.d.id];
+      return rec?.sale && !sameMath(rec.d, sanitize(c.d)) ? `Sold to ${rec.sale.maker}: its math and features are theirs now` : null;
+    },
     apply(g, c) {
       const s = g.state, d = sanitize(c.d);
       d.name = d.name.trim() || "Untitled";
@@ -299,7 +304,8 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
     },
   },
   designDelete: {
-    validate: (g, c) => (!g.state.designs[c.id] ? "Not one of your designs" : machinesOf(g.state, c.id).length ? "Still on the floor" : null),
+    validate: (g, c) => (!g.state.designs[c.id] ? "Not one of your designs" : machinesOf(g.state, c.id).length ? "Still on the floor"
+      : g.state.designs[c.id].sale ? "Sold designs stay on your books" : g.state.offer?.id === c.id ? "An offer for it is waiting" : null),
     apply(g, c) { delete g.state.designs[c.id]; },
   },
 };

@@ -19,7 +19,7 @@ import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayba
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
-  formatDate, describeGoals, goalStatus, monthlyCosts, worth, meterDebt, covers, compiledOf, designIdOf, designById, cantUse, designLocks, cabKind, LEDGER_LABELS, MONTH_NAMES,
+  formatDate, describeGoals, goalStatus, monthlyCosts, worth, meterDebt, covers, compiledOf, designIdOf, designById, cantUse, designLocks, cabKind, ledgerLabel, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
@@ -441,12 +441,12 @@ export function ResearchPanel({ host }: { host: Host }) {
   );
 }
 
-function LedgerRows({ l }: { l: Ledger }) {
+function LedgerRows({ g, l }: { g: Game; l: Ledger }) {
   const rows = Object.entries(l).filter(([, v]) => Math.abs(v) >= 0.5);
   const net = rows.filter(([k]) => !NOT_INCOME.has(k)).reduce((a, [, v]) => a + v, 0);
   return (
     <div className="kv">
-      {rows.map(([k, v]) => <Fragment key={k}><b>{LEDGER_LABELS[k] ?? k}</b><span className={`num ${v < 0 ? "neg" : ""}`}>{money(v)}</span></Fragment>)}
+      {rows.map(([k, v]) => <Fragment key={k}><b>{ledgerLabel(g, k)}</b><span className={`num ${v < 0 ? "neg" : ""}`}>{money(v)}</span></Fragment>)}
       <b>Net</b><span className={`num ${net < 0 ? "neg" : ""}`}>{money(net)}</span>
     </div>
   );
@@ -467,11 +467,11 @@ export function FinancePanel({ host }: { host: Host }) {
       </div>
       <Credit g={g} />
       <p className="muted" style={{ margin: "10px 0 6px" }}>This month ({date[0].split(" ")[1]}, {date[1]})</p>
-      <LedgerRows l={f.month} />
+      <LedgerRows g={g} l={f.month} />
       {[...f.history].reverse().slice(0, 3).map((h) => (
         <Fragment key={`${h.year}-${h.month}`}>
           <p className="muted" style={{ margin: "10px 0 6px" }}>{MONTH_NAMES[h.month]}, Year {h.year}</p>
-          <LedgerRows l={h.l} />
+          <LedgerRows g={g} l={h.l} />
         </Fragment>
       ))}
     </>

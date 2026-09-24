@@ -9,7 +9,8 @@ import type { Game } from "./game";
 import type { System } from "./registry";
 import type { Agent, GameState, GuestData, PlacedObject } from "./state";
 import { slotInfo, statsOf } from "./design";
-import { lastSpin } from "./design/compile";
+import { lastSpin, spinCtx } from "./design/compile";
+import { recordJackpot, saleFees, saleLine, saleOf } from "./design/market";
 import { afterSpin, hasMeters, prepSpin, type MeterHost } from "./design/meters";
 import { judged } from "./design/appeal";
 import { rng, type Rng } from "./rng";
@@ -97,7 +98,7 @@ export function minRoundOf(s: GameState, o: PlacedObject): number {
 }
 
 /** One wager: the model it was drawn from (for the suspicion tools), the bet, and the payout multiple (negative: rigged). */
-export interface Wager { m: SlotModel; bet: number; x: number; ev?: number; v?: number; h?: number }
+export interface Wager { m: SlotModel; bet: number; x: number; ev?: number; v?: number; h?: number; cov?: number }
 
 /**
  * Books a guest's round: wallet, visit memory (money, what the math expected, how it felt), the object's stats,
@@ -112,9 +113,10 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
     const pay = Math.abs(w.x) * w.bet;
     won += pay;
     wagered += w.bet;
+    // (M8.6) A wide-area jackpot on a sold design is the maker's to pay (posted before this), not the insurer's.
     if (over) {
       bank.insExp += expectedExcess(w.m, w.bet, over);
-      if (pay > over) claim += pay - over;
+      if (pay - (w.cov ?? 0) > over) claim += pay - (w.cov ?? 0) - over;
     }
     const st = w.h === undefined ? payStats(w.m) : { v: w.v!, h: w.h };
     gd.mem.ev += w.ev ?? w.bet * w.m.rtp;
@@ -176,17 +178,28 @@ function resolve(g: Game, a: Agent) {
   const inf = slot ? slotInfo(g.state, o) : undefined;
   const host: MeterHost | null = inf && (hasMeters(inf.c) || inf.c.col) ? { meters: g.state.meters, own: o, id: inf.id } : null;
   const ws: Wager[] = [];
+  // (M8.6) A sold design: the maker takes its cut and the meters' increments, and pays their jackpots.
+  const sale = inf ? saleOf(g.state, inf.id) : undefined;
+  let inc = 0, covered = 0;
   let near = 0, feats = 0, extra = 0, jps = 0, voided = 0, big = false, seen = "";
   for (let k = 0; k < WAGERS_PER_ROUND; k++) {
     if (host) prepSpin(host, inf!.c, bet, r);
     lastSpin.kind = 0; lastSpin.level = -1; lastSpin.voided = -1; lastSpin.secs = 0; lastSpin.spins = 0; lastSpin.feat = "";
     let x = wagerPay(g, gd, m, drawPay, r);
     const kind = lastSpin.kind as number, feat = lastSpin.feat as string;
+    let mhb = 0;
     if (host) {
       const a = afterSpin(host, inf!.c, bet, x !== 0 ? lastSpin.level : -1, r);
-      if (a.x) { x = x < 0 ? x - a.x : x + a.x; jps++; }
+      if (a.x) { x = x < 0 ? x - a.x : x + a.x; jps++; mhb = a.x * bet; }
     }
-    ws.push({ m, bet, x });
+    let cv = sale ? mhb : 0;
+    if (sale && host) {
+      for (const l of inf!.c.levels) if (l.kind !== "fixed") inc += l.inc * bet;
+      const lv = lastSpin.level as number, l = inf!.c.levels[lv];
+      if (x > 0 && lv >= 0 && lastSpin.voided < 0 && l && (l.kind === "sa" || l.kind === "linked")) cv += (spinCtx.mx[lv] ?? 0) * bet;
+    }
+    ws.push({ m, bet, x, cov: cv || undefined });
+    covered += cv;
     // A design's features (and named jackpots) that actually paid this guest, and the time they take to play out.
     if (x > 0 && kind === 1) {
       feats++;
@@ -199,7 +212,10 @@ function resolve(g: Game, a: Agent) {
     // Near misses: some losing spins are shown as just missing (docs/spec/designer.md §2).
     if (x === 0 && m.nearMiss && r.chance(m.nearMiss)) near++;
   }
+  if (sale && covered) post(g, saleLine(inf!.id), covered);
   const { won, wagered, jackpot } = settle(g, a, o, ws, "slots");
+  if (sale) saleFees(g, inf!.id, sale, wagered, inf!.c.d.rtp, inc);
+  if (jackpot && inf) recordJackpot(g, inf.id, won);
   // How the round felt: a feature, a real win, a win smaller than the stake, a near miss.
   gd.mem.feel += feats ? 1.5 : won >= wagered ? 1 : won > 0 ? (m.ldwFeel ?? 0.3) * (won / wagered) : Math.min(1, near * 0.1);
   o.last = { tick: g.state.tick, win: jackpot ? 2 : feats ? 3 : won > 0 ? 1 : 0 };

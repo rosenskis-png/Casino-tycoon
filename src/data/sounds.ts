@@ -60,6 +60,7 @@ export const SOUNDS: Record<string, SoundRecipe> = {
   glass: [{ wave: "sine", f0: 2637, dur: 0.18, gain: 0.04 }, { wave: "sine", f0: 3951, dur: 0.12, gain: 0.02 }],
   applause: [{ wave: "noise", f0: 3500, dur: 1.4, gain: 0.12, a: 0.3 }, { wave: "noise", f0: 2200, at: 0.2, dur: 1.1, gain: 0.08, a: 0.2 }],
   roar: [{ wave: "noise", f0: 1500, dur: 0.9, gain: 0.14, a: 0.15 }, { wave: "sawtooth", f0: 220, f1: 330, dur: 0.4, gain: 0.03, a: 0.1 }],
+  coin: [{ wave: "triangle", f0: 2350, f1: 2500, dur: 0.035, gain: 0.04 }, { wave: "sine", f0: 3520, at: 0.015, dur: 0.05, gain: 0.025 }],
   lose: [{ wave: "triangle", f0: 330, f1: 262, dur: 0.18, gain: 0.06 }],
   bigwin: [
     { wave: "square", f0: 523, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 659, at: 0.08, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 784, at: 0.16, dur: 0.08, gain: 0.07 },

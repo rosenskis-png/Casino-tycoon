@@ -23,3 +23,12 @@ You play the object's real model, paytable, rules and limits (×5 in a high-limi
 - **Baccarat:** a fresh 8-deck shoe each coup with the real third-card rule; bets on player, banker (less the table's commission) and tie (8 to 1), each within the limits. Enumerating the whole shoe gives the guests' banker and player chances.
 - **Keno:** pick 4, 6 or 8 of 80; 20 balls; the guests' paytable.
 - In blackjack and video poker, your decisions count. Perfect play does better than an average guest, as a sharp guest does. An owner-set rule that gives the player an edge is accepted (see DECISIONS).
+
+## Look and feel (hotfix, 2026-09-24)
+Animation is UI only: the sim result is the same, and it shows when the animation ends.
+- **Slots:** a cabinet with marquee lamps that chase while spinning and flash on a win; three reel windows with blurred strips that stop left to right with a bounce, showing the symbols above and below; a payline; winning symbols and the paytable row pulse.
+- **Cards:** dealt from the shoe in turn (blackjack: player, dealer, player, dealer), sliding in and turning face up in 3D; the dealer's hole card turns over when shown and later cards come one by one. Real faces (corner indexes, a big pip, framed court cards). In video poker only the replaced cards are dealt again; the made hand lights up in the paytable.
+- **Roulette:** a real wheel (single- or double-zero order) turns while the ball runs the other way, drops and bounces into the result's pocket (about 4 s). The wheel, result and history stay pinned over the board; winning spots light up.
+- **Craps:** real dice tumble across the felt, bounce off the back wall and settle; the total shows.
+- **Baccarat:** cards dealt in order with the third-card draws; the winning side glows. **Keno:** balls pop out into a tray (a chime on a catch) and light the board.
+- **Chips** look like casino chips (edge spots, a color per size). A win counts up with coin ticks and a gold glow; a big win (10× the bet, or a named jackpot) rains coins.

@@ -63,6 +63,13 @@ A person frame = **pose** (region letters) → **outfit** (region → color lett
 
 ## 7. Floor, walls, light (renderer, baked into chunk caches)
 - Carpet alternates two tiles in a checkerboard (motif / plain) so the repeat is 32 px.
+- Floors (hotfix, 2026-09-24): outdoor ground is desert sand (`sand`, with pebbles, scrub and a rut; muted for
+  night). Indoors, the general floor (and a room with no purpose) keeps the burgundy harlequin; each purpose has
+  its own floor, built from a per-pixel rule at load (`ROOM_FLOORS` in `src/data/art.ts`): bar amber Deco
+  lattice, restaurant navy with gold florets, high-limit purple with gold medallions, club black arcade carpet with
+  dim neon, show room theater red with gold bands, smoking room burnt olive tweed, enforcement room bare concrete
+  (seams, a crack, a drain, a stain), back office grey-blue carpet tiles. Street entrances draw as a paved apron.
+  The renderer redraws when a room's extent or purpose changes.
 - Walls autotile: cap only when another wall is below; interior `wallface` (damask + wainscot) when the tile below is indoor floor; exterior `wallout` (stucco + stone) when it's outdoors. Ink edges where a wall meets non-wall. Walls shade the floor below (4 px) and to the right (2 px).
 - Contact shadows under every object (footprint offset down-right; ellipse for poles and round things). People get a small alpha shadow.
 - **Light pools**: objects listed in `LIGHTS` add a colored pool (radius in tiles, strength, optional offset toward the front), computed per art pixel in 12 steps. Only light sources get one.

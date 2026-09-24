@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Hotfix: look, layout freedom, bigger Free Play lot (owner; "green light")
+- **Play-it-yourself screens look and move like the real games** (owner: more realistic, more satisfying): reel strips, dealt and flipping cards, a real roulette wheel and ball, tumbling dice, keno balls, casino chips, counting wins and a coin shower. See docs/spec/play.md.
+- **The whole building is the player's** (owner): the shell and the scenario's doors can be demolished, doors go in any wall, and new street entrances can be built beside the sidewalk ($500). Claude's call: indoors is now derived (floor the open air can't reach), so walling in lot ground makes an extension and a hole to the outside makes a room outdoors until closed. Entrances can't be removed (not asked for; keeps guests' way home simple).
+- **Free Play Lot is about 8× bigger** (owner asked 5–10×): 156×108 owned tiles around the same building, with the two land parcels moved east. Existing Free Play saves keep their map.
+- **Outdoor ground is Vegas sand, not grass; every room purpose but the general floor has its own floor**, concrete for the enforcement room (owner). See docs/spec/art.md.
+- **Janitors sweep in half the time** (owner): 1 s per spot at skill 1.
+- No save schema change: indoors is recomputed only when walls change, and old saves' `fixed` shell flags are ignored for walls and doors.
+
 ## 2026-09-24 · Main menu from the Game tab (owner)
 - Owner asked for a way back to the title screen (scenarios, sound). The Game tab has a **Main menu** button that asks first: **Save and go** (saves over the autosave), **Go without saving** (goes back to the last autosave) or Cancel.
 

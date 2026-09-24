@@ -427,12 +427,29 @@ export function smoke(opts: { days: number; seeds: number[]; scenario?: string }
   for (const p of SCENARIOS.sandbox.parcels ?? []) lg.dispatch({ type: "buyParcel", id: p.id });
   lg.step();
   if (lg.state.parcels.length !== (SCENARIOS.sandbox.parcels ?? []).length) problems.push("land: parcels didn't sell");
-  lg.dispatch({ type: "place", kind: "pool", x: 58, y: 10, rot: 0, w: 8, h: 6 });
-  lg.dispatch({ type: "place", kind: "tiki_torch", x: 57, y: 10, rot: 0 });
+  lg.dispatch({ type: "place", kind: "pool", x: 160, y: 10, rot: 0, w: 8, h: 6 });
+  lg.dispatch({ type: "place", kind: "tiki_torch", x: 159, y: 10, rot: 0 });
   lg.dispatch({ type: "spawnGuests", n: 60 });
   for (let t = 0; t < TICKS_PER_DAY; t++) lg.step();
   if (!lg.state.objects.some((o) => o.kind === "pool")) problems.push("land: couldn't build on bought land");
   problems.push(...checkInvariants(lg).map((q) => `land: ${q}`));
+  // Extensions (hotfix, 2026-09-24): walls around lot ground make it indoors, a hole in the building's shell joins
+  // it to the floor, and a new entrance off the sidewalk lets guests in; a day must stay clean.
+  const eg = Game.create("sandbox", 5), ew = eg.state.map.w;
+  const ring: number[] = [];
+  for (let x = 50; x <= 62; x++) ring.push(88 * ew + x, 99 * ew + x);
+  for (let y = 88; y <= 99; y++) ring.push(y * ew + 50);
+  eg.dispatch({ type: "build", what: "wall", tiles: ring });
+  eg.step();
+  if (eg.state.map.outdoor[93 * ew + 55]) problems.push("extension: walled-in lot ground stayed outdoors");
+  eg.dispatch({ type: "build", what: "demolish", tiles: [90, 91, 92, 93, 94, 95, 96].map((y) => y * ew + 62) });
+  eg.dispatch({ type: "build", what: "entrance", tiles: [109 * ew + 40] });
+  eg.step();
+  if (eg.rooms.roomOf[93 * ew + 55] !== eg.rooms.roomOf[85 * ew + 80]) problems.push("extension: opening the shell didn't join the floor");
+  if (!eg.state.map.entrances.includes(109 * ew + 40)) problems.push("extension: the new entrance wasn't built");
+  eg.dispatch({ type: "spawnGuests", n: 60 });
+  for (let t = 0; t < TICKS_PER_DAY; t++) eg.step();
+  problems.push(...checkInvariants(eg).map((q) => `extension: ${q}`));
   // The Test Floor has every kind of object, door rule and room purpose (M6): a day on it must stay clean too.
   run("testfloor", 3, 1, (g, d) => { for (const q of checkInvariants(g)) problems.push(`test floor day ${d + 1}: ${q}`); });
   return { ok: problems.length === 0, problems: problems.slice(0, 30) };

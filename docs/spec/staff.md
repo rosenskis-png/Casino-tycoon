@@ -5,6 +5,7 @@
 ## Pay and skill
 - **Pay is set per role** in the Staff tab, from 60% to 160% of the market wage in 10% steps (default 100%). Everyone in the role earns it. There is no hiring screen: a hire walks in at once, as before.
 - Each hire has a hidden personal knack (0.8–1.2, uniform). **Skill = knack × pay^0.6 × morale factor** (0.8 at morale 0, 1 at 50, 1.2 at 100), held to 0.4–1.8. The staff card shows it as a word: Poor, Fair, Good, Great, Excellent.
+- A janitor sweeps a spot in 1 s at skill 1 (halved by the owner, 2026-09-24).
 - What skill does: walking pace (steps ÷ √skill), work time ÷ skill (sweeping, repairs, taking and serving drinks, a guard dealing with an incident), a dealer's round length ÷ √skill, and how likely guards, pit bosses and surveillance operators are to catch someone (× skill; an operator watches 8 × skill cameras).
 
 ## Morale (0–100, shown on the card and as a role average)

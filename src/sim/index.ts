@@ -2,7 +2,7 @@
 export { Game } from "./game";
 export type { CommandRecord } from "./game";
 export type { Command } from "./commands";
-export type { GameState, Agent, PlacedObject, NewsItem, GuestData, Ledger, Person, Ped } from "./state";
+export type { GameState, Agent, PlacedObject, NewsItem, GuestData, Ledger, Person, Ped, Incident, HouseRules } from "./state";
 export { SCHEMA_VERSION } from "./state";
 export type { SimEvent, NewsLevel } from "./events";
 export { serialize, loadState } from "./save";
@@ -20,3 +20,6 @@ export { newcomerRates, poolSummary, person } from "./pool";
 export { pedSpot, curbAppeal } from "./street";
 export { DRINK_PRICE, STRENGTHS } from "./drinks";
 export { modelOf, betOf } from "./gaming";
+export { incidentRates, incidentOf, LADDER, LADDER_NAMES, CALL_AFTER } from "./incidents";
+export { cutoff } from "./drinks";
+export { isStaff } from "./staff";

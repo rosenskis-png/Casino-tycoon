@@ -2,6 +2,7 @@
 // takes one a server offers. A guest holds one drink at a time and sips it over a minute or two (sim/guests.ts),
 // so intoxication climbs gradually; servers raise it mostly by offering often (more chances to say yes).
 import { GUEST_TYPES } from "../data/guests";
+import { CUTOFF } from "../data/incidents";
 import { OBJECTS } from "../data/objects";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
@@ -24,12 +25,19 @@ declare module "./commands" {
 export const DRINK_PRICE = 7;
 export const DRINK_COST = 1.5;
 /** Intoxication a whole standard drink adds (sipped in over its drinking time), and the M3 ceiling. */
-export const DRINK_UNIT = 0.16;
+export const DRINK_UNIT = 0.25;
 export const INTOX_CAP = 1.3;
 export const STRENGTHS = [0.6, 1, 1.4];
 export const DEFAULT_BAR: BarPolicy = { price: 1, comp: 0, strength: 1, area: -1 };
+/** A guest down to this much of their drink will order the next one ("another?"); the last of the old one goes down when it arrives. */
+export const NEXT_AT = 0.25;
+/** Holding a drink with more than a few sips left: not ordering another yet. */
+export const handsFull = (gd: GuestData) => gd.drink > NEXT_AT;
 
 export const barPolicy = (o: PlacedObject | undefined): BarPolicy => o?.bar ?? DEFAULT_BAR;
+
+/** Intoxication above which bars and servers stop serving, from the house rule on drunkenness (docs/spec/incidents.md). */
+export const cutoff = (g: Game) => CUTOFF[g.state.rules.intox] ?? Infinity;
 
 /** Comp-seekers nurse cheap machines, but only while some bar comps drinks. */
 export function compSeeking(g: Game, gd: GuestData): boolean {
@@ -54,11 +62,12 @@ export function rollComp(g: Game, gd: GuestData, pol: BarPolicy): boolean {
  * Sober guests only take soft drinks when thirsty. Nobody takes a second while holding one.
  */
 export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean): number {
-  if (gd.drink > 0 || gd.why) return 0;
+  if (handsFull(gd) || gd.why) return 0;
   const type = GUEST_TYPES[gd.type];
   const thirst = 0.4 + gd.needs.thirst / 100;
   if (!gd.intend) return Math.min(0.9, type.drinking.accept * 0.5 * thirst * (gd.needs.thirst >= 50 ? 1.5 : 0.4) * (comped ? 1.5 : 1));
-  const want = gd.intox < gd.intend ? 1.3 : 0.6;
+  // The further below the level they mean to reach, the readier they are; past it, reluctant.
+  const want = gd.intox < gd.intend ? 1 + 2 * (gd.intend - gd.intox) : 0.6;
   const price = comped ? 1.8 : Math.max(0.2, 1.3 - 0.3 * pol.price);
   return Math.min(0.95, type.drinking.accept * thirst * want * price * (1 + gd.intox));
 }
@@ -69,9 +78,12 @@ export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean): nu
  */
 export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: "bar" | "server", comped: boolean): boolean {
   const gd = a.g!, pol = barPolicy(o), r = rng(g.state, "drinks");
-  if (gd.drink > 0) return false;
+  if (handsFull(gd)) return false;
+  if (gd.intox >= cutoff(g)) { if (r.chance(0.5)) think(g, a, "cutOff"); return false; }
   const price = comped ? 0 : priceAt(pol, gd);
   if (price > gd.wallet) return false;
+  // The last sips of the old one go down in one.
+  if (gd.drink > 0) gd.intox = Math.min(INTOX_CAP, gd.intox + gd.drink * gd.dStr * DRINK_UNIT);
   if (price) { gd.wallet -= price; post(g, "bar", price); }
   post(g, "drinks", -DRINK_COST);
   gd.drink = 1;

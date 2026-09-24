@@ -103,6 +103,22 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // 5 → 6 (M4): incidents, house rules and the police. Nothing in progress; default rules (moderate), police
+  // standing 75. Guests gain the incident fields and a lift from fun things seen; people count ejections.
+  5: (s) => {
+    s.incidents = [];
+    s.incidentDays = [{}];
+    s.rules = { intox: 2, disorder: 2, misconduct: 2 };
+    s.auth = { police: { standing: 75, stage: 0, calls: 0, raidAt: -1e9, inspectAt: -1 }, regulator: { standing: 100, stage: 0 }, closedUntil: -1, revoked: 0 };
+    for (const p of s.pool) p.ejects = 0;
+    for (const a of s.agents) {
+      const g = a.g;
+      if (a.role !== "guest" || !g) continue;
+      Object.assign(g, { buzz: 0, warned: 0, unans: 0, called: 0, incAt: 0 });
+      g.mem.ejected = 0;
+    }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

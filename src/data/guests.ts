@@ -2,6 +2,7 @@
 // drinking. Group size, play style and chasing are drawn per person from the ranges a type sets, so types overlap
 // at the edges. Distribution numbers are the M3 starting targets (docs/spec/guests.md §Targets), tuned headless.
 import type { Channel } from "./fields";
+import type { IncidentCat } from "./incidents";
 
 /** A quality a guest reacts to: the hidden field channels plus DIRT (litter near them). */
 export type Taste = Extract<Channel, "NRG" | "CRW" | "PRS" | "TRF"> | "DIRT";
@@ -61,11 +62,16 @@ export interface GuestTypeDef {
   prefs: Partial<Record<Taste, Pref>>;
   /** Walk-in appeal: how readily a passer-by of this type steps inside (times the entrance's curb appeal). */
   walkIn: number;
-  /** (M4) Incident tendencies, tolerance for others' incidents, reaction to leniency per house-rule category. */
-  incidents: Record<string, number>;
-  tolerance: Record<string, number>;
-  leniency: Record<string, number>;
-  /** (M4) Appetite for drama: low-drama guests are the ones who file reports. */
+  /**
+   * Incidents (docs/spec/incidents.md), per category: how readily a cause turns into an incident for this type
+   * (1 = the catalog's rate), and tolerance for seeing one (0 = the full bother, 1 = unbothered, above 1 = fun to
+   * watch). Types react to what they see and to being policed, never to the house-rule setting itself.
+   */
+  incidents: Record<IncidentCat, number>;
+  tolerance: Record<IncidentCat, number>;
+  /** How much being warned, cut off or thrown out (or seeing a friend thrown out) bothers them, 0-1. */
+  policed: number;
+  /** Appetite for drama, 0-1: low-drama guests are the ones who report incidents to staff. */
   drama: number;
   /** (M5) Share who are cheats. Cheats never look any different. */
   cheat: number;
@@ -105,14 +111,16 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 2500, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
     tripCap: { median: 200, sigma: 0.6, min: 40, cap: 1500 },
     atm: { never: 0.35, draw: { median: 60, sigma: 0.5, min: 20 }, again: 0.35 },
-    drinking: { sober: 0.3, mean: 0.35, sd: 0.15, cap: 1.3, overshoot: 0.035, first: 0.12, accept: 0.35, sip: 80 },
+    drinking: { sober: 0.3, mean: 0.35, sd: 0.15, cap: 1.3, overshoot: 0.1, first: 0.12, accept: 0.35, sip: 80 },
     browse: 40,
     chase: 0.01,
     credit: 0,
     games: { cherry: 0.5, liberty: 1, thunder: 0.6 },
     prefs: { NRG: { ideal: 5, tol: 5, w: 0.6 }, CRW: { ideal: 2, tol: 3, w: 0.8 }, DIRT: { ideal: 0, tol: 2, w: 0.9 }, PRS: { ideal: 1, tol: 3, w: 0.3 } },
     walkIn: 0.25,
-    incidents: {}, tolerance: {}, leniency: {}, drama: 0.4, cheat: 0.01, repSensitivity: 1, comps: 0.5,
+    incidents: { intox: 1, disorder: 1, misconduct: 0.8, celebration: 1, social: 0.6 },
+    tolerance: { intox: 0.4, disorder: 0.2, misconduct: 0.1, celebration: 1, social: 0.8 }, policed: 0.5,
+    drama: 0.4, cheat: 0.01, repSensitivity: 1, comps: 0.5,
     play: { stake: [0.005, 0.012], pace: [0.9, 1.2], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.2], lossLimit: [0.6, 1], compSeek: 0.2 },
     needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.13 },
     secPerDollar: 6,
@@ -127,14 +135,16 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 8000, sigma: 0.9, min: 500 }, income: { median: 200, sigma: 0.4, min: 50 },
     tripCap: { median: 100, sigma: 0.4, min: 20, cap: 400 },
     atm: { never: 0.75, draw: { median: 40, sigma: 0.4, min: 20 }, again: 0.2 },
-    drinking: { sober: 0.6, mean: 0.2, sd: 0.08, cap: 1.3, overshoot: 0.012, first: 0.08, accept: 0.2, sip: 100 },
+    drinking: { sober: 0.6, mean: 0.2, sd: 0.08, cap: 1.3, overshoot: 0.03, first: 0.08, accept: 0.2, sip: 100 },
     browse: 50,
     chase: 0.003,
     credit: 0,
     games: { cherry: 1, liberty: 0.7, thunder: 0.2 },
     prefs: { NRG: { ideal: 2, tol: 4, w: 1 }, CRW: { ideal: 1, tol: 2, w: 1 }, DIRT: { ideal: 0, tol: 1, w: 1.2 }, PRS: { ideal: 3, tol: 3, w: 0.5 } },
     walkIn: 0.15,
-    incidents: {}, tolerance: {}, leniency: {}, drama: 0.1, cheat: 0.005, repSensitivity: 1.2, comps: 0.7,
+    incidents: { intox: 0.5, disorder: 0.4, misconduct: 0.3, celebration: 0.8, social: 0.3 },
+    tolerance: { intox: 0.1, disorder: 0, misconduct: 0, celebration: 0.8, social: 0.5 }, policed: 0.1,
+    drama: 0.1, cheat: 0.005, repSensitivity: 1.2, comps: 0.7,
     play: { stake: [0.004, 0.009], pace: [0.7, 1], quit: { winGoal: 3, lossLimit: 4, broke: 0.5, jackpot: 1 }, winGoal: [0.3, 0.8], lossLimit: [0.5, 0.9], compSeek: 0.4 },
     needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.1 },
     secPerDollar: 12,
@@ -149,14 +159,16 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 3000, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
     tripCap: { median: 300, sigma: 0.7, min: 50, cap: 2000 },
     atm: { never: 0.3, draw: { median: 100, sigma: 0.5, min: 20 }, again: 0.35 },
-    drinking: { sober: 0.15, mean: 0.45, sd: 0.2, cap: 1.3, overshoot: 0.04, first: 0.15, accept: 0.45, sip: 70 },
+    drinking: { sober: 0.15, mean: 0.45, sd: 0.2, cap: 1.3, overshoot: 0.12, first: 0.15, accept: 0.45, sip: 70 },
     browse: 60,
     chase: 0.003,
     credit: 0,
     games: { cherry: 0.8, liberty: 0.4, thunder: 1 },
     prefs: { NRG: { ideal: 10, tol: 6, w: 1 }, CRW: { ideal: 4, tol: 3, w: 0.5 }, PRS: { ideal: 5, tol: 4, w: 0.8 }, DIRT: { ideal: 0, tol: 1.5, w: 1 }, TRF: { ideal: 3, tol: 3, w: 0.4 } },
     walkIn: 0.35,
-    incidents: {}, tolerance: {}, leniency: {}, drama: 0.5, cheat: 0.01, repSensitivity: 0.8, comps: 0.3,
+    incidents: { intox: 1.1, disorder: 0.8, misconduct: 0.8, celebration: 1.3, social: 1 },
+    tolerance: { intox: 0.6, disorder: 0.3, misconduct: 0.2, celebration: 1, social: 1 }, policed: 0.6,
+    drama: 0.5, cheat: 0.01, repSensitivity: 0.8, comps: 0.3,
     play: { stake: [0.01, 0.022], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.05 },
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.18 },
     secPerDollar: 2.2,
@@ -171,14 +183,16 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     savings: { median: 2000, sigma: 1, min: 100 }, income: { median: 300, sigma: 0.5, min: 50 },
     tripCap: { median: 250, sigma: 0.6, min: 40, cap: 800 },
     atm: { never: 0.2, draw: { median: 80, sigma: 0.5, min: 20 }, again: 0.4 },
-    drinking: { sober: 0.05, mean: 0.65, sd: 0.2, cap: 1.3, overshoot: 0.035, first: 0.5, accept: 0.6, sip: 50 },
+    drinking: { sober: 0.05, mean: 0.65, sd: 0.2, cap: 1.3, overshoot: 0.15, first: 0.5, accept: 0.6, sip: 50 },
     browse: 25,
     chase: 0,
     credit: 0,
     games: { cherry: 0.7, liberty: 0.3, thunder: 1 },
     prefs: { NRG: { ideal: 12, tol: 6, w: 1.2 }, CRW: { ideal: 6, tol: 4, w: 0.6 }, PRS: { ideal: 3, tol: 4, w: 0.3 }, DIRT: { ideal: 0, tol: 3, w: 0.5 } },
     walkIn: 0.3,
-    incidents: {}, tolerance: {}, leniency: {}, drama: 0.9, cheat: 0.01, repSensitivity: 0.6, comps: 0.3,
+    incidents: { intox: 1.5, disorder: 1.3, misconduct: 1.4, celebration: 1.5, social: 1.6 },
+    tolerance: { intox: 1.1, disorder: 0.6, misconduct: 0.5, celebration: 1.2, social: 1.2 }, policed: 1,
+    drama: 0.9, cheat: 0.01, repSensitivity: 0.6, comps: 0.3,
     play: { stake: [0.009, 0.02], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.02 },
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.4, fatigue: 0.15 },
     secPerDollar: 3.3,

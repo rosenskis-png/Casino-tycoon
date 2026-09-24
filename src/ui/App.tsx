@@ -9,7 +9,7 @@ import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
 import { save } from "./saves";
-import { BuildPanel, FinancePanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
+import { AuthoritiesPanel, BuildPanel, FinancePanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
   { id: "build", icon: "🔨", label: "Build" },
@@ -18,11 +18,14 @@ const TABS = [
   { id: "finance", icon: "💰", label: "Finance" },
   { id: "policies", icon: "📜", label: "Policies", when: "M9" },
   { id: "research", icon: "🔬", label: "Research", when: "M9" },
-  { id: "authorities", icon: "⚖️", label: "Authorities", when: "M4" },
+  { id: "authorities", icon: "⚖️", label: "Authorities" },
   { id: "goals", icon: "🏆", label: "Goals" },
   { id: "game", icon: "⚙️", label: "Game" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
+
+/** Incidents loud enough to hear from anywhere on the floor. */
+const INCIDENT_SOUND: Record<string, string> = { fight: "fight", cheer: "cheer", round: "cheer", vomit: "retch", passout: "thud" };
 
 const SPEED_LABEL: Record<Speed, string> = { 0: "❚❚", 1: "1×", 2: "2×", 4: "4×", 8: "8×" };
 
@@ -61,6 +64,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         if (e.type === "sound") sound(e.id);
         else if (e.type === "jackpot") sound("jackpot");
         else if (e.type === "broken") sound("broken");
+        else if (e.type === "incident" && INCIDENT_SOUND[e.kind]) sound(INCIDENT_SOUND[e.kind]);
         else if (e.type === "news") { ticker.push({ level: e.level, text: e.text }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
         else if (e.type === "commandRejected") {
           setToast(e.reason);
@@ -162,6 +166,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
             tab === "guests" ? <GuestsPanel host={host} /> :
             tab === "finance" ? <FinancePanel host={host} /> :
             tab === "goals" ? <GoalsPanel host={host} /> :
+            tab === "authorities" ? <AuthoritiesPanel host={host} /> :
             <Placeholder when={(TABS.find((t) => t.id === tab) as { when?: string }).when ?? ""} />}
         </div>
       )}

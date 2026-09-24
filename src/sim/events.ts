@@ -16,10 +16,12 @@ export type SimEvent =
   | {
       type: "departed"; guestType: string; pid: number; lead: number; minutes: number; play: number; budget: number; lost: number;
       intend: number; peak: number; atm: number; drinks: number; served: number; withdrawn: number; trips: number; score: number; why: string; chase: number;
-    };
+      warned: number; ejected: number;
+    }
+  | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 
-/** bad: red, but queued like any other item (jackpots); urgent: red and jumps the queue. */
-export type NewsLevel = "info" | "good" | "bad" | "urgent";
+/** warn: yellow (reports); bad: red, but queued like any other item (jackpots, police); urgent: red and jumps the queue. */
+export type NewsLevel = "info" | "good" | "warn" | "bad" | "urgent";
 
 export class EventBus {
   private queue: SimEvent[] = [];

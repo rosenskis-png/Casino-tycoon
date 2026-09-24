@@ -2,7 +2,7 @@
 import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export interface MapState {
   w: number;
@@ -103,6 +103,8 @@ export interface GuestData {
     wagered: number; won: number; cashed: number; feel: number; rounds: number; served: number; comped: number;
     early: number; startIntend: number; peak: number; atmYes: number; exitHops: number; barAt: number;
     offerAt: number; sitAt: number; favSeat: number; favScore: number;
+    /** 1 once security threw them out. */
+    ejected: number;
   };
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
@@ -118,8 +120,18 @@ export interface GuestData {
   frus: number;
   liked: number[];
   favAt: number;
-  /** Short-lived annoyance from events (broken machine, line, no seat), decays each beat. */
+  /** Short-lived annoyance from events (broken machine, line, no seat, incidents seen), decays each beat. */
   annoy: number;
+  /** Short-lived lift from something fun they saw (a winner cheering, a free round), decays each beat. */
+  buzz: number;
+  /**
+   * Incidents (docs/spec/incidents.md): warnings from security this visit, their reports that went unanswered,
+   * 1 once they've called the police, and the tick before which they won't start another incident.
+   */
+  warned: number;
+  unans: number;
+  called: number;
+  incAt: number;
   /** Why they are leaving, once they are. */
   why: string;
   /** Tick they started waiting for their group to go (broke or done), or -1. */
@@ -170,6 +182,8 @@ export interface Person {
   next: number;
   /** 1 while on the way in or on the floor. */
   here: number;
+  /** Times security has thrown them out. */
+  ejects: number;
   /** (M5) Banned and marked flags. */
   ban: number;
   mark: number;
@@ -201,12 +215,15 @@ export interface Ped {
 
 export type Activity =
   | "arrive" | "walk" | "wander" | "play" | "drink" | "restroom" | "cage" | "leave"
-  | "idle" | "wait" | "clean" | "repair" | "offer" | "fetch" | "serve";
+  | "idle" | "wait" | "clean" | "repair" | "offer" | "fetch" | "serve"
+  // M4: a guard on the way to (or dealing with) an incident; a guest passed out or fighting; a paramedic treating.
+  | "respond" | "out" | "fight" | "treat";
 
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {
   id: number;
-  role: "guest" | "janitor" | "tech" | "server";
+  /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;
@@ -225,12 +242,56 @@ export interface Agent {
   timer: number;
   /** 1 while out of sight (restroom stall). */
   hidden: number;
-  /** Drink servers: their bar (object id), orders on the tray (guest ids), and when order-taking ends. */
+  /** Drink servers: their bar (object id), orders on the tray (guest ids), and when order-taking ends (officers: when their visit ends). */
   bar?: number;
   tray?: number[];
   due?: number;
   g?: GuestData;
 }
+
+/** An incident in progress (docs/spec/incidents.md). Ended ones are only counted. */
+export interface Incident {
+  id: number;
+  kind: string;
+  /** Where it happens, who started it, and who else is in it (-1 none). */
+  tile: number;
+  actor: number;
+  other: number;
+  start: number;
+  /** Tick it ends on its own (-1: passed out, lasts until someone comes). */
+  end: number;
+  /** Guard on the way (agent id) or -1; 1 once security dealt with it. */
+  guard: number;
+  handled: number;
+  /** Guests who reported it to staff. */
+  reporters: number[];
+  /** Paramedic called (passing out, nobody came); 1 once a police officer on the floor saw it. */
+  medic: number;
+  seen: number;
+}
+
+/** House rules per policed incident category: 0 ignore, 1 lenient, 2 moderate, 3 strict. */
+export type HouseRules = Record<"intox" | "disorder" | "misconduct", number>;
+
+/** Standing with each outside authority, 0-100 (docs/spec/incidents.md §Authorities). */
+export interface Authorities {
+  police: {
+    standing: number;
+    /** Step on the ladder reached: 0 none, 1 warned, 2 fines, 3 inspections, 4 raided. */
+    stage: number;
+    /** Police calls ever, the last raid, and when the next routine inspection is due. */
+    calls: number;
+    raidAt: number;
+    inspectAt: number;
+  };
+  regulator: { standing: number; stage: number };
+  /** Closed by the authorities until this tick (-1 open); `revoked` once the license was lost. */
+  closedUntil: number;
+  revoked: number;
+}
+
+/** Closed by the police (a raid, or the license revoked): nobody comes in. */
+export const isClosed = (s: GameState) => s.auth.closedUntil > s.tick;
 
 export interface RoomMeta { anchor: number; name: string; purpose: RoomPurpose }
 
@@ -276,6 +337,11 @@ export interface GameState {
   };
   /** Thought counts by id per day: today first, then the previous days (kept THOUGHT_DAYS). */
   thoughts: Record<string, number>[];
+  /** Incidents in progress; counts by kind per day (today first, kept THOUGHT_DAYS), plus reports and police calls under "_reports", "_calls". */
+  incidents: Incident[];
+  incidentDays: Record<string, number>[];
+  rules: HouseRules;
+  auth: Authorities;
   /** Visit counters: today and yesterday. */
   visits: { today: VisitStats; yday: VisitStats };
   outcome: "" | "won" | "lost";

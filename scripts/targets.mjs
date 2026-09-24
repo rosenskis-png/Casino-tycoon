@@ -9,12 +9,22 @@ const seed = Number(process.argv[3] || 1);
 const sim = await loadSim();
 const g = sim.Game.create("testfloor", seed);
 
-const dep = {}, arr = {};
+const dep = {}, arr = {}, inc = {}, incAll = {};
+let policeLow = 100, policeHigh = 0;
 g.bus.on((e) => {
+  if (e.type === "incident") { ((inc[e.guestType] ??= {})[e.kind] = (inc[e.guestType][e.kind] ?? 0) + 1); incAll[e.kind] = (incAll[e.kind] ?? 0) + 1; }
   if (e.type === "departed") (dep[e.guestType] ??= []).push(e);
   if (e.type === "arrived") (arr[e.guestType] ??= []).push(e);
 });
-for (let d = 0; d < days; d++) { for (let t = 0; t < sim.TICKS_PER_DAY; t++) g.step(); g.bus.flush(); }
+const totals = {};
+for (let d = 0; d < days; d++) {
+  for (let t = 0; t < sim.TICKS_PER_DAY; t++) g.step();
+  g.bus.flush();
+  const p = g.state.auth.police.standing;
+  policeLow = Math.min(policeLow, p); policeHigh = Math.max(policeHigh, p);
+  // Reports, police calls and ejections are counted by the sim per day; add up yesterday's.
+  if (d > 0) for (const [k, n] of Object.entries(g.state.incidentDays[1] ?? {})) if (k.startsWith("_")) totals[k] = (totals[k] ?? 0) + n;
+}
 
 const med = (xs) => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
 const share = (xs, f) => (xs.length ? xs.filter(f).length / xs.length : NaN);
@@ -42,6 +52,10 @@ row("draw per trip", (d) => usd(med(d.filter((e) => e.trips).map((e) => e.withdr
 row("group 1 / 2 / 3+", (_d, a) => a.length ? `${pct(share(a, (e) => e.n === 1))}/${pct(share(a, (e) => e.n === 2))}/${pct(share(a, (e) => e.n >= 3))}` : "–");
 row("regular arrivals", (_d, a) => pct(share(a, (e) => e.regular)));
 row("visit score", (d) => f2(med(d.map((e) => e.score))));
+row("warned / thrown out", (d) => `${pct(share(d, (e) => e.warned > 0))} / ${pct(share(d, (e) => e.ejected))}`);
+const CATS = { intox: ["loud", "stumble", "spill", "vomit", "passout"], disorder: ["argument", "fight", "yell", "breakdown"], misconduct: ["urinate"], celebration: ["cheer", "round"], social: ["flirt", "recruit"] };
+for (const [cat, kinds] of Object.entries(CATS))
+  row(`${cat} per 100 guests`, (d, _a, t) => d.length ? f1((100 * kinds.reduce((x, k) => x + (inc[t]?.[k] ?? 0), 0)) / d.length) : "–");
 row("why leaders left", (d0) => {
   const d = d0.filter((e) => e.lead);
   const c = {};
@@ -59,6 +73,8 @@ for (const r of rows) console.log(r.map((c, k) => String(c).padEnd(widths[k])).j
 const s = g.state, pool = sim.poolSummary(g);
 console.log(`\nafter ${days} days: ${s.agents.filter((a) => a.role === "guest").length} on the floor, pool ${pool.size}, regulars ${JSON.stringify(pool.regulars)}, chasers ${pool.chasers}`);
 console.log(`reputation ${Object.entries(s.rep).map(([t, r]) => `${t} ${r.toFixed(0)}`).join(", ")}; cash ${Math.round(s.cash)}; walked past yesterday ${s.visits.yday.walkedPast}`);
+console.log(`incidents: ${Object.entries(incAll).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(", ")}`);
+console.log(`reports ${totals._reports ?? 0}, police calls ${totals._calls ?? 0}, thrown out ${totals._ejected ?? 0}, paramedics ${totals._medic ?? 0}; police standing ${Math.round(policeLow)}–${Math.round(policeHigh)}, now ${Math.round(g.state.auth.police.standing)} (${sim.LADDER_NAMES[g.state.auth.police.stage]})`);
 const bad = sim.checkInvariants(g);
 if (bad.length) { console.error(bad.slice(0, 10).join("\n")); process.exit(1); }
 
@@ -74,4 +90,8 @@ for (const t of types) {
   if (share(d, (e) => e.why === "restroom") > 0.2) flags.push(`${t}: over a fifth leave for a restroom`);
   if (d.some((e) => ![e.minutes, e.lost, e.peak, e.score].every(Number.isFinite))) flags.push(`${t}: non-finite numbers`);
 }
+// Incidents: every M4 category fires, guards do something, and the police notice anything at all.
+for (const [cat, kinds] of Object.entries(CATS)) if (!kinds.some((k) => incAll[k])) flags.push(`no ${cat} incidents at all`);
+if (!totals._ejected && !Object.values(dep).flat().some((e) => e.warned)) flags.push("guards never warned or threw anyone out");
+if (policeHigh - policeLow < 0.5) flags.push("police standing never moved");
 console.log(flags.length ? `\n⚠ ${flags.join("\n⚠ ")}` : "\nno sanity flags");

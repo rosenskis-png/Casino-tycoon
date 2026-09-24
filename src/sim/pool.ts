@@ -6,7 +6,7 @@ import { GUEST_TYPES, FIRST_NAMES, recurring, type GuestTypeDef } from "../data/
 import { SCENARIOS, type ScenarioDef } from "../data/scenarios";
 import type { Game } from "./game";
 import type { System } from "./registry";
-import type { Agent, GameState, Person } from "./state";
+import { isClosed, type Agent, type GameState, type Person } from "./state";
 import { rng, type Rng } from "./rng";
 import { logNormal, range } from "./dist";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
@@ -43,7 +43,7 @@ export function makePerson(s: GameState, type: GuestTypeDef, r: Rng, score: numb
     score: Math.max(0, Math.min(100, score + range(r, [-10, 10]))), chase: 0, fav: [],
     // Regulars are already on a schedule: their next visit falls somewhere in their usual interval.
     next: regular ? Math.round(r.next() * type.returns.days.median * 2 * TICKS_PER_DAY) : -1,
-    here: 0, ban: 0, mark: 0,
+    here: 0, ejects: 0, ban: 0, mark: 0,
   };
   return p;
 }
@@ -104,6 +104,7 @@ export function afterVisit(g: Game, a: Agent, score: number) {
   // A good visit's best seat becomes a favorite spot (best first, three kept).
   if (gd.mem.favSeat >= 0 && score >= 0.5) p.fav = [gd.mem.favSeat, ...p.fav.filter((t) => t !== gd.mem.favSeat)].slice(0, 3);
   p.visits++;
+  if (gd.mem.ejected && gd.pid === p.id) p.ejects++;
   p.score += (score * 100 - p.score) * SCORE_RATE;
   // Chasing: starts rarely, and only on floors that make it easy to keep playing; then grows visit by visit.
   const e = easiness(a);
@@ -165,7 +166,8 @@ export const poolSystem: System = {
   beat(g) {
     const s = g.state, sc = SCENARIOS[s.scenario];
     const r = rng(s, "pool");
-    const full = guestCount(g) >= sc.maxGuests;
+    // Closed by the police: nobody comes in (regulars due now try again later).
+    const full = guestCount(g) >= sc.maxGuests || isClosed(s);
     // Regulars whose day has come.
     for (const p of s.pool) {
       if (p.here || p.next < 0 || p.next > s.tick) continue;
@@ -174,6 +176,7 @@ export const poolSystem: System = {
     }
     // People coming on purpose for the first time (or giving the place another try); one-off types straight
     // from the street, recurring types from the pool's free people.
+    if (isClosed(s)) return;
     const ra = rng(s, "arrivals");
     for (const [t, lambda] of Object.entries(newcomerRates(g))) {
       const type = GUEST_TYPES[t];

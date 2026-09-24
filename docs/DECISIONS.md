@@ -2,6 +2,26 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M4 built (Claude's calls; see docs/spec/incidents.md)
+- Catalog rates, tolerances, `policed` and `drama` values, the police costs and ladder numbers, fines ($100–$1,500), paramedics ($200), closures (3 days; 30 on losing the license) are starting values, tuned only against sanity flags.
+- House rules cover the three policed categories (drunkenness, disorder, misconduct); celebration and social aren't policed. Default Moderate. The drunkenness rule also sets the bar/server cut-off (Moderate 0.8+, Strict 0.5+).
+- Losing the license marks the scenario lost; the casino reopens after 30 days with standing 30, matching how a missed deadline lets you keep playing.
+- The regulator has a standing and a line in the Authorities tab only (its causes are M5/M8).
+- Reports: 0.06 × (1 − drama)² per bothered witness, so a busy Test Floor sees about one every ~30 s of real time; only the first report of an incident reaches the ticker (yellow).
+- **Flagged for the owner:** incidents cost Tourists and Party guests 0.1–0.4 min of play on the Test Floor (annoyance from what they see, frustration in a bad mood). That's the designed cost of an unruly floor; levers are type `tolerance`, guards, and stricter rules.
+- A spill empties the glass. Test Floor: two guards, one strong-drinks bar (a quarter comped), and two more restrooms (the drinking fix filled the old ones: tourists were leaving for lines).
+- Police standing recovers 0.2 a day; a call costs 6, a paramedic 5, a fight 3. Tuned so a deliberately unmanaged drunk floor loses its license within ~250 days while the tutorial and a guarded floor never slip.
+- Big Floor steady state: 1.92 → 2.01 ms/tick at 5,000 guests.
+
+## 2026-09-24 · Green light for M4: incidents, house rules, police (see docs/spec/incidents.md)
+- Owner said "green light" for M4.
+- **Incidents come from causes** (owner): each needs a condition the player can see and change (drunk + holding a drink → spill; bad mood next to a drunk → argument → fight; chaser deep in the hole → breakdown; bursting, drunk and no restroom → a planter). Type data only scales how likely a condition turns into an incident.
+- **Guests react to being policed and to what they see** (owner), not to the house-rule setting itself. The type field `leniency` becomes `policed` (how much being warned, cut off or ejected bothers them).
+- **Police calls** (owner): only a guest who has reported several incidents that all went unanswered calls the police (3 unanswered reports; Claude's number for "multiple"). No per-room tally.
+- **Drinking fix** (owner): trays hold 10 and servers ask everyone within 6 tiles. That alone didn't move intoxication (the bottleneck was a dry gap between drinks and 4-5 minute visits), so also (Claude's calls, flagged for the owner): guests order the next drink when down to the last quarter, servers offer again after 30 s (was 45) and head to the bar 12 s after the first order (was 20), readiness to accept grows with how far below their intended level a guest is, one standard drink adds 0.25 (was 0.16), and overshoot medians roughly tripled. Test Floor: 30% of party drinkers now get drunk (0.5+), 9% wasted, ~3% reach pass-out territory; locals and tourists ~7% drunk.
+- **Police can lose you the scenario** (owner): standing 0 revokes the license.
+- Deferred: vice (needs the hotel elevator, M6), underage (needs minors), drugs (M9 policies), bribery (M11), regulator triggers (M5/M8; M4 shows its standing only).
+
 ## 2026-09-24 · M3.1 art pass (Claude's calls; owner delegated style; see docs/spec/art.md)
 - **Style "Velvet Night"**: top-down 3/4 pixel art at 16 px/tile, light from the top-left, a compiler-added 1 px ink outline on everything that stands, quiet dark floors, and the brightest pixels reserved for light sources. Written up as rules and a checklist in docs/spec/art.md.
 - **People are paper dolls**: pose + outfit + hair/hat + accessories, with shades derived by the compiler. Type silhouettes: locals casual, retirees shorter with grey/puffed hair and cardigans, tourists sun hats, loud shirts and cameras, party guests blazers or short dresses. Staff read by uniform plus a prop (mop, toolbox, tray). Party makeup (sex) now shows. Cheats and chasers look like everyone else.

@@ -761,7 +761,7 @@ export class Renderer {
         const sway = Math.min(0.35, (intox - 0.2) * 0.5) * Math.sin((tick + alpha) * 0.25 + a.id);
         if (a.nx !== a.x) fy += sway; else fx += sway;
       }
-      const set = a.role === "guest" ? a.g!.type : a.role;
+      const set = a.role === "guest" ? (a.g!.vip ? "whale" : a.g!.type) : a.role;
       const sex = a.g ? a.g.sex & 1 : (a.look >> 2) & 1;
       let dir: string, pose: string;
       const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest" || a.act === "deal");

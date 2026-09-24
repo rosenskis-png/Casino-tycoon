@@ -172,6 +172,21 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const a of s.agents) if (a.role === "guest" && a.g) Object.assign(a.g, { skill: 1, counter: 0 });
     return s;
   },
+  // 10 → 11 (M9): staff depth, money and risk, the regulator's schedule, whales. Everyone on staff is a typical,
+  // honest hire on market pay; bars and cages have honest crews; no debt, skim, insurance or comps yet.
+  10: (s) => {
+    const ROLES = ["janitor", "tech", "server", "guard", "operator", "dealer", "pitboss", "enforcer"];
+    for (const a of s.agents) {
+      if (a.role === "guest" && a.g) Object.assign(a.g, { vip: 0, comp: 0, unpaid: 0 });
+      else if (ROLES.includes(a.role)) a.st = { q: 1, crook: 0, morale: 50, busy: 0, beats: 0, zone: -1 };
+    }
+    for (const o of s.objects) if (o.kind === "bar" || o.kind === "cage" || o.bar) o.crook = 0;
+    s.crew = { pay: {}, shrink: {}, hist: [] };
+    s.bank = { loan: 0, emergency: 0, skim: 0, evaded: 0, insure: 0, insExp: 0, emergencies: 0, broke: 0, unpaid: 0, low: 0, comps: { meal: 0, show: 0, back: 0 }, given: 0 };
+    s.reg = { next: -1, here: -1, suspendAt: -1e9 };
+    s.whale = { next: -1, due: null, id: -1, game: "", bankroll: 0, name: 0, bet: 0 };
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

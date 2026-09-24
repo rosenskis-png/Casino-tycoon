@@ -7,11 +7,15 @@ import type { System } from "./registry";
 import { fmtMoney, news } from "./news";
 import { priceOf } from "./geometry";
 import { SCENARIOS } from "../data/scenarios";
+import { wageFor } from "./crew";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", tables: "Table win", poker: "Poker rake", keno: "Keno & bingo", bar: "Bar sales", build: "Construction", sales: "Sold objects",
   wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics", recovered: "Recovered from cheats",
   food: "Food sales", foodCost: "Food costs", shows: "Show tickets", cover: "Cover charges", doors: "Door fees", poolFees: "Pool entry", land: "Land",
+  tax: "Gaming tax", interest: "Loan interest", loanFees: "Loan fees", borrowed: "Borrowed", repaid: "Repaid", insurance: "Insurance claims",
+  premium: "Insurance premium", comps: "Comps", shrink_bar: "Shrinkage: bar", shrink_cage: "Shrinkage: cage", shrink_tables: "Shrinkage: tables",
+  shrink_machines: "Shrinkage: machines",
 };
 const HISTORY_MONTHS = 24;
 
@@ -26,19 +30,26 @@ export function post(g: Game, cat: string, amount: number) {
 
 export function monthlyCosts(g: Game): { wages: number; upkeep: number } {
   let wages = 0, upkeep = 0;
-  for (const a of g.state.agents) wages += STAFF_ROLES[a.role]?.wage ?? 0;
+  for (const a of g.state.agents) if (STAFF_ROLES[a.role]) wages += wageFor(g, a.role);
   for (const o of g.state.objects) upkeep += priceOf(o).upkeep;
   return { wages, upkeep };
 }
 
-/** Cash plus what everything placed would sell for. */
-export function worth(g: Game): number {
-  let v = g.state.cash;
+/** What everything placed would sell for, plus land (which keeps what was paid for it). */
+export function assetsOf(g: Game): number {
+  let v = 0;
   for (const o of g.state.objects) v += priceOf(o).cost / 2;
-  // Land keeps what was paid for it.
   for (const p of SCENARIOS[g.state.scenario]?.parcels ?? []) if (g.state.parcels.includes(p.id)) v += p.price;
   return v;
 }
+
+/** Cash plus what everything placed would sell for, less debt (M9). */
+export function worth(g: Game): number {
+  return g.state.cash + assetsOf(g) - g.state.bank.loan - g.state.bank.emergency;
+}
+
+/** Ledger lines that move money without being income or cost (kept out of a month's net). */
+export const NOT_INCOME = new Set(["start", "borrowed", "repaid"]);
 
 export const financeSystem: System = {
   id: "finance",
@@ -47,16 +58,14 @@ export const financeSystem: System = {
     const d = dateOfDay(Math.floor((g.state.tick - 1) / TICKS_PER_DAY));
     const share = TICKS_PER_BEAT / (daysInMonth(d.month) * TICKS_PER_DAY);
     const { wages, upkeep } = monthlyCosts(g);
-    const before = g.state.cash;
     post(g, "wages", -wages * share);
     post(g, "upkeep", -upkeep * share);
-    if (before >= 0 && g.state.cash < 0) news(g, "urgent", "Cash is below zero. Nothing can be built until it recovers.");
   },
   month(g) {
     const f = g.state.finance;
     const prev = dateOfDay(Math.floor(g.state.tick / TICKS_PER_DAY) - 1);
     f.history.push({ year: prev.year, month: prev.month, l: f.month });
-    const net = Object.entries(f.month).filter(([k]) => k !== "start").reduce((a, [, v]) => a + v, 0);
+    const net = Object.entries(f.month).filter(([k]) => !NOT_INCOME.has(k)).reduce((a, [, v]) => a + v, 0);
     news(g, "info", `${MONTH_NAMES[prev.month]} books closed: ${net >= 0 ? "+" : ""}${fmtMoney(net)}.`, true);
     if (f.history.length > HISTORY_MONTHS) f.history.shift();
     f.month = {};

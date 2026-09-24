@@ -16,6 +16,7 @@ import { canSee } from "./wayfinding";
 import { companions, depart, release, sendHome, think, THOUGHT_DAYS } from "./guests";
 import { cutoff, handsFull, serveDrink, DRINK_PRICE } from "./drinks";
 import { post } from "./finance";
+import { inZone, skillOf } from "./crew";
 import { fmtMoney, news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 
@@ -350,7 +351,7 @@ function needsGuard(s: GameState, inc: Incident): boolean {
 // ---------------------------------------------------------------------------------------------------------
 // Guards, officers and paramedics.
 
-function spawnVisitor(g: Game, role: "officer" | "medic"): Agent | null {
+export function spawnVisitor(g: Game, role: "officer" | "medic" | "inspector"): Agent | null {
   const s = g.state, ents = s.map.entrances.filter((e) => g.walkable(e));
   if (!ents.length) return null;
   const r = rng(s, "police"), at = r.pick(ents), w = s.map.w, x = at % w, y = (at - x) / w;
@@ -362,7 +363,7 @@ function spawnVisitor(g: Game, role: "officer" | "medic"): Agent | null {
   return a;
 }
 
-function leaveFloor(g: Game, a: Agent) {
+export function leaveFloor(g: Game, a: Agent) {
   const ents = g.state.map.entrances, w = g.state.map.w;
   let best = -1, bd = Infinity;
   for (const e of ents) {
@@ -374,8 +375,17 @@ function leaveFloor(g: Game, a: Agent) {
   go(a, best, "leave");
 }
 
-function patrol(g: Game, a: Agent, r: Rng) {
+export function patrol(g: Game, a: Agent, r: Rng) {
   const pts = g.state.wanderPoints;
+  // M9: a guard kept to a room patrols there (and still runs to trouble anywhere).
+  const zone = a.st?.zone ?? -1;
+  if (zone >= 0) {
+    const w = g.state.map.w;
+    if (!inZone(g, a, a.y * w + a.x)) { if (g.walkable(zone)) go(a, zone, "idle"); return; }
+    const t = nearbyTile(g, "police", a.x, a.y, 6, a);
+    if (t >= 0 && inZone(g, a, t)) go(a, t, "idle");
+    return;
+  }
   const t = r.chance(0.6) ? nearbyTile(g, "police", a.x, a.y, 10, a) : -1;
   if (t >= 0) go(a, t, "idle");
   else if (pts.length) go(a, r.pick(pts), "idle");
@@ -412,7 +422,7 @@ function guardTick(g: Game, grid: () => Grid, a: Agent, r: Rng) {
     if (!inc || !who || inc.handled) { a.act = "idle"; a.target = -1; return; }
     // They moved (a loud drunk wandering off): follow.
     if (Math.abs(who.x - a.x) + Math.abs(who.y - a.y) > 2) { go(a, who.y * w + who.x, "respond"); return; }
-    if (a.timer === 0) { a.timer = RESOLVE_SECS * SEC; return; }
+    if (a.timer === 0) { a.timer = Math.max(1, Math.round((RESOLVE_SECS * SEC) / skillOf(g, a))); return; }
     if (--a.timer > 0) return;
     resolve(g, grid(), inc);
     a.act = "idle"; a.target = -1; a.timer = 0;
@@ -535,7 +545,7 @@ function revoke(g: Game) {
 }
 
 /** Closed: everyone is sent home (the passed out carried out) and nobody comes in until it reopens. */
-function close(g: Game, days: number) {
+export function close(g: Game, days: number) {
   const s = g.state;
   s.auth.closedUntil = s.tick + days * TICKS_PER_DAY;
   for (const inc of [...s.incidents]) { inc.handled = 1; s.incidents.splice(s.incidents.indexOf(inc), 1); }

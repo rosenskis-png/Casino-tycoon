@@ -92,7 +92,7 @@ export function checkInvariants(g: Game): string[] {
     if (!g.walkable(a.y * w + a.x)) p.push(`agent ${a.id} on unwalkable tile ${a.x},${a.y}`);
     if (Math.abs(a.nx - a.x) + Math.abs(a.ny - a.y) > 1) p.push(`agent ${a.id} jumping`);
     if (a.t < 0 || a.t >= a.steps) p.push(`agent ${a.id} bad progress`);
-    if (a.role !== "guest" && a.role !== "officer" && a.role !== "medic" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
+    if (a.role !== "guest" && a.role !== "officer" && a.role !== "medic" && a.role !== "inspector" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
     if (a.role === "server" && (a.tray?.length ?? 0) > TRAY) p.push(`server ${a.id} carrying ${a.tray!.length} drinks`);
     if (a.role === "dealer" && a.act === "deal") {
       const o = s.objects.find((o) => o.id === a.target), st = o && objSeats(o)[a.seat];

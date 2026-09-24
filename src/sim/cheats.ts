@@ -29,6 +29,7 @@ import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { fmtMoney, news } from "./news";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
+import { honest, skillOf } from "./crew";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -191,12 +192,18 @@ function dropSpot(g: Game, who: Agent, from: number): number {
   return d >= 0 ? d : nearestOf(g, who, from, exits(g));
 }
 
-/** Share of cameras a surveillance operator at a desk is watching, 0-1. */
-export function coverage(g: Game): { cams: number; watching: number; share: number } {
-  let cams = 0, watching = 0;
+/**
+ * Share of cameras surveillance operators at a desk are watching, 0-1: each watches CAMS_PER_OPERATOR × their
+ * skill (M9). `honestOnly`: what is really watched (a crooked operator looks away); the Authorities tab shows all.
+ */
+export function coverage(g: Game, honestOnly = false): { cams: number; watching: number; share: number } {
+  let cams = 0, watching = 0, eyes = 0;
   for (const o of g.state.objects) if (o.kind === "camera") cams++;
-  for (const a of g.state.agents) if (a.role === "operator" && a.act === "watch") watching++;
-  return { cams, watching, share: cams ? Math.min(1, (CAMS_PER_OPERATOR * watching) / cams) : 0 };
+  for (const a of g.state.agents) if (a.role === "operator" && a.act === "watch") {
+    watching++;
+    if (!honestOnly || honest(a)) eyes += CAMS_PER_OPERATOR * skillOf(g, a);
+  }
+  return { cams, watching, share: cams ? Math.min(1, eyes / cams) : 0 };
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -212,11 +219,12 @@ function cheatBeat(g: Game, a: Agent, guards: Agent[], camShare: number) {
     if (!seated || gd.held) { gd.spell = 0; gd.spellAt = s.tick + r.int(HONEST_SECS[0], HONEST_SECS[1]) * SEC; return; }
     const here = a.y * w + a.x;
     let h = CATCH_BASE + CATCH_CAMERA * g.fields.get("SRVH", here) * camShare;
-    for (const q of guards) if (Math.abs(q.x - a.x) + Math.abs(q.y - a.y) <= GUARD_SIGHT && canSee(g, here, q.y * w + q.x)) h += CATCH_GUARD;
-    // At a table (M7): pit bosses in view, and the table's own dealer.
+    for (const q of guards) if (Math.abs(q.x - a.x) + Math.abs(q.y - a.y) <= GUARD_SIGHT && canSee(g, here, q.y * w + q.x)) h += CATCH_GUARD * skillOf(g, q);
+    // At a table (M7): pit bosses in view, and the table's own dealer (M9: unless the dealer is a crook).
     const o = g.objById.get(a.target);
     if (o && OBJECTS[o.kind].cat === "table") {
-      h += CATCH_PIT * pitBossesWatching(g, a) + (s.agents.some((q) => q.role === "dealer" && q.act === "deal" && q.target === o.id) ? CATCH_DEALER : 0);
+      const dealer = s.agents.find((q) => q.role === "dealer" && q.act === "deal" && q.target === o.id);
+      h += CATCH_PIT * pitBossesWatching(g, a) + (dealer && honest(dealer) ? CATCH_DEALER * skillOf(g, dealer) : 0);
     }
     if (gd.mark & 1) h *= MARKED;
     if (r.chance(h)) return caught(g, a);
@@ -230,13 +238,13 @@ function cheatBeat(g: Game, a: Agent, guards: Agent[], camShare: number) {
   gd.spell = r.int(SPELL_SECS[0], SPELL_SECS[1]);
 }
 
-/** Pit bosses on the floor with this guest in view (within PIT_SIGHT tiles). */
+/** Honest pit bosses on the floor with this guest in view (within PIT_SIGHT tiles), each weighed by skill (M9). */
 export function pitBossesWatching(g: Game, a: Agent): number {
   const w = g.state.map.w, here = a.y * w + a.x;
   let n = 0;
   for (const q of g.state.agents) {
-    if (q.role !== "pitboss" || Math.abs(q.x - a.x) + Math.abs(q.y - a.y) > PIT_SIGHT) continue;
-    if (canSee(g, here, q.y * w + q.x)) n++;
+    if (q.role !== "pitboss" || !honest(q) || Math.abs(q.x - a.x) + Math.abs(q.y - a.y) > PIT_SIGHT) continue;
+    if (canSee(g, here, q.y * w + q.x)) n += skillOf(g, q);
   }
   return n;
 }
@@ -697,8 +705,8 @@ export const cheatSystem: System = {
         if (pits) counterBeat(g, a);
       }
       if (!gd?.cheat || (!gd.spell && !gd.take)) continue;
-      guards ??= s.agents.filter((q) => q.role === "guard" && q.act !== "enforce");
-      if (share < 0) share = coverage(g).share;
+      guards ??= s.agents.filter((q) => q.role === "guard" && q.act !== "enforce" && honest(q));
+      if (share < 0) share = coverage(g, true).share;
       cheatBeat(g, a, guards, share);
     }
     if (s.enf.jobs.some((j) => j.stage === 0)) assignJobs(g, byIdOf(g));

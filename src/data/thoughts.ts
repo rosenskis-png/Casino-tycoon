@@ -4,6 +4,9 @@
 export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<string, string[]>; bad?: boolean }
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
+  // Money (M9, docs/spec/money.md).
+  comped: { text: "They comped me! Nice.", alt: ["Look at that, it's on the house.", "Free dinner for my trouble."], voice: { highroller: ["About time they took care of me."] } },
+  unpaid: { text: "They won't pay my winnings!", alt: ["I won fair and square and they can't pay?", "I'm calling the gaming commission."], bad: true },
   // Tables (M7, docs/spec/tables.md). Only rules-aware types remark on rules.
   badRules: { text: "Those table rules are a rip-off.", alt: ["Six to five blackjack? No thanks.", "The rules here are terrible."], bad: true },
   goodRules: { text: "Good rules at this table.", alt: ["Now that's a fair game.", "Single zero. Nice."] },

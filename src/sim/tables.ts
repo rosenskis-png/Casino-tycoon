@@ -19,6 +19,8 @@ import { TICKS_PER_SECOND } from "./clock";
 import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
 import { drawPay, isTable, limitsOf, settle, tableDefOf, wantBet, type Wager } from "./gaming";
+import { THEFT } from "../data/staff";
+import { greed, inZone, skillOf, steal } from "./crew";
 import { hash01, sharedPay, wagerPay } from "./cheats";
 import { stakeMult, purposeOf } from "./amenities";
 import { seatHolders } from "./guests";
@@ -45,18 +47,24 @@ export function dealerSeats(o: PlacedObject): number[] {
   return out;
 }
 
-const openSets = new WeakMap<Game, { tick: number; open: Set<number> }>();
-/** Tables whose every dealer spot has a dealer at work. */
-export function openTables(g: Game): Set<number> {
+const openSets = new WeakMap<Game, { tick: number; open: Set<number>; at: Map<number, Agent[]> }>();
+function dealing(g: Game) {
   let c = openSets.get(g);
-  if (c && c.tick === g.state.tick) return c.open;
-  const at = new Map<number, number>();
-  for (const a of g.state.agents) if (a.role === "dealer" && a.act === "deal" && a.target >= 0) at.set(a.target, (at.get(a.target) ?? 0) + 1);
+  if (c && c.tick === g.state.tick) return c;
+  const at = new Map<number, Agent[]>();
+  for (const a of g.state.agents) if (a.role === "dealer" && a.act === "deal" && a.target >= 0) {
+    const l = at.get(a.target);
+    if (l) l.push(a); else at.set(a.target, [a]);
+  }
   const open = new Set<number>();
-  for (const o of g.tables) if ((at.get(o.id) ?? 0) >= dealerSeats(o).length) open.add(o.id);
-  openSets.set(g, (c = { tick: g.state.tick, open }));
-  return open;
+  for (const o of g.tables) if ((at.get(o.id)?.length ?? 0) >= dealerSeats(o).length) open.add(o.id);
+  openSets.set(g, (c = { tick: g.state.tick, open, at }));
+  return c;
 }
+/** Tables whose every dealer spot has a dealer at work. */
+export const openTables = (g: Game): Set<number> => dealing(g).open;
+/** The dealers working a table now. */
+export const dealersAt = (g: Game, o: PlacedObject): Agent[] => dealing(g).at.get(o.id) ?? [];
 export const tableOpen = (g: Game, o: PlacedObject) => !isTable(o.kind) || openTables(g).has(o.id);
 
 function dealerTick(g: Game, a: Agent) {
@@ -114,7 +122,9 @@ function pitTick(g: Game, a: Agent) {
     if (--a.timer > 0) return;
   }
   const r = rng(g.state, "staff");
-  const o = g.tables.length ? g.tables[r.int(0, g.tables.length - 1)] : null;
+  // M9: a pit boss kept to a room watches only the tables in it.
+  const w = g.state.map.w, mine = a.st && a.st.zone >= 0 ? g.tables.filter((t) => inZone(g, a, t.y * w + t.x)) : g.tables;
+  const o = mine.length ? mine[r.int(0, mine.length - 1)] : null;
   const t = o ? spotNear(g, a, o, r) : nearbyTile(g, "staff", a.x, a.y, 10, a);
   if (t >= 0) go(a, t, "wait");
   else { a.act = "wait"; a.timer = RECHECK * SEC; }
@@ -328,10 +338,11 @@ function deal(g: Game, o: PlacedObject, byId: Map<number, Agent>) {
     }
   }
   const result = new Array(seats.length).fill(0);
-  let anyWin = false, anyBig = false;
+  let anyWin = false, anyBig = false, bets = 0;
   for (const p of players) {
     const gd = p.a.g!;
     const { won, wagered, jackpot } = settle(g, p.a, o, p.ws, def.ledger);
+    bets += wagered;
     gd.mem.feel += won >= wagered ? 1 : (0.3 * won) / wagered;
     result[p.k] = won > wagered + 1e-9 ? 2 : 1;
     anyWin ||= won > wagered;
@@ -341,7 +352,17 @@ function deal(g: Game, o: PlacedObject, byId: Map<number, Agent>) {
   tbl.at = tick;
   tbl.out = out;
   tbl.seats = result;
-  tbl.next = tick + Math.round(def.round * SEC);
+  // M9: a skilled dealer deals faster; a crooked one palms chips now and then.
+  const dealers = dealersAt(g, o);
+  let skill = 0;
+  for (const d of dealers) skill += skillOf(g, d);
+  tbl.next = tick + Math.round((def.round * SEC) / Math.sqrt(dealers.length ? skill / dealers.length : 1));
+  const cr = rng(s, "crew");
+  for (const d of dealers) {
+    if (!d.st?.crook || !cr.chance(greed(d, THEFT.dealer.p))) continue;
+    steal(g, "tables", Math.max(1, Math.round(bets * THEFT.dealer.share)), d.y * w + d.x, `palming chips at ${OBJECTS[o.kind].name}`, d, undefined, true);
+    break;
+  }
   o.last = { tick, win: anyBig ? 2 : anyWin ? 1 : 0 };
   // The whole craps table wins together: players and onlookers cheer.
   if (fam === "craps") {

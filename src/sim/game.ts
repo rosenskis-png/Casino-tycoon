@@ -29,10 +29,14 @@ import { poolSystem, seedPool } from "./pool";
 import { streetSystem } from "./street";
 import { incidentSystem, newAuthorities, DEFAULT_RULES } from "./incidents";
 import { cheatSystem, newEnforcement } from "./cheats";
+import { crewAmenity, crewSystem, newCrew } from "./crew";
+import { bankSystem, newBank } from "./bank";
+import { newRegulator, regulatorSystem } from "./regulator";
+import { newWhale, whaleSystem } from "./whales";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem,
 ];
 
 export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
@@ -103,6 +107,7 @@ export class Game {
       incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES }, auth: newAuthorities(), enf: newEnforcement(),
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "", parcels: [],
+      crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
     };
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);
@@ -113,6 +118,7 @@ export class Game {
     for (const r of def.rooms ?? []) state.roomMeta.push({ anchor: r.y * map.w + r.x, name: r.name, purpose: r.purpose });
     seedPool(state, def);
     const g = new Game(state);
+    for (const o of state.objects) crewAmenity(g, o);
     for (const [role, k] of Object.entries(def.staff)) for (let i = 0; i < k; i++) hireStaff(g, role);
     news(g, "info", `Welcome to ${def.name}.`);
     return g;
@@ -268,6 +274,7 @@ export class Game {
       this.bus.emit({ type: "day", day });
       const date = dateOfDay(day);
       if (date.day === 1) {
+        for (const sys of this.systems) sys.closeMonth?.(this);
         for (const sys of this.systems) sys.month?.(this);
         this.bus.emit({ type: "month", month: date.month, year: date.year });
         if (date.month === 0) for (const sys of this.systems) sys.year?.(this);

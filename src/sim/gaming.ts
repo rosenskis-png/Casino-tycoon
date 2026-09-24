@@ -15,6 +15,7 @@ import { fmtMoney, news } from "./news";
 import { compSeeking } from "./drinks";
 import { payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
+import { earnComps, ensureCash, expectedExcess, stiff } from "./bank";
 
 /** Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
 const TICKER_JACKPOT = 1000;
@@ -98,12 +99,18 @@ export interface Wager { m: SlotModel; bet: number; x: number; ev?: number; v?: 
  * the ledger, and big-win news. Returns what came back and whether it held a jackpot.
  */
 export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: string): { won: number; wagered: number; jackpot: boolean } {
-  const gd = a.g!;
-  let won = 0, wagered = 0, top = 0, topBet = 0, topM: SlotModel | null = null;
+  const gd = a.g!, bank = g.state.bank;
+  // M9: jackpot insurance covers each payout above the line (not pool prizes: those are other players' money).
+  const pool = !!tableDefOf(o.kind)?.pool, over = pool ? 0 : bank.insure;
+  let won = 0, wagered = 0, top = 0, topBet = 0, topM: SlotModel | null = null, claim = 0;
   for (const w of ws) {
     const pay = Math.abs(w.x) * w.bet;
     won += pay;
     wagered += w.bet;
+    if (over) {
+      bank.insExp += expectedExcess(w.m, w.bet, over);
+      if (pay > over) claim += pay - over;
+    }
     const st = w.h === undefined ? payStats(w.m) : { v: w.v!, h: w.h };
     gd.mem.ev += w.ev ?? w.bet * w.m.rtp;
     gd.mem.v += w.v !== undefined ? w.v : w.bet * w.bet * st.v;
@@ -112,6 +119,11 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
     gd.mem.hvar += st.h * (1 - st.h);
     // A rigged win (negative) is never a jackpot.
     if (w.x > 0 && w.x >= w.m.jackpotX && pay > top * topBet) { top = w.x; topBet = w.bet; topM = w.m; }
+  }
+  // M9: a payout the house can't cover, even with emergency credit, goes unpaid (what cash covers is paid).
+  if (won > wagered && !pool) {
+    const short = ensureCash(g, won - wagered - claim);
+    if (short > 0) { won -= short; stiff(g, a, short); }
   }
   gd.wallet += won - wagered;
   if (gd.wallet < 0 && gd.wallet > -1e-6) gd.wallet = 0;
@@ -122,6 +134,8 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
   o.st.coinIn += wagered;
   o.st.paidOut += won;
   post(g, ledger, wagered - won);
+  if (claim) post(g, "insurance", claim);
+  earnComps(g, a);
   const jackpot = top > 0;
   if (jackpot) {
     gd.mem.bigWin++;

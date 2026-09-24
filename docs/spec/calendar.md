@@ -21,7 +21,7 @@ Each type's arrivals follow its month curve (`arrival.season`, since M2): Retire
 | Convention | 4 a year | 4–7 | Conventioneers ×40 (a day is 10 real seconds: a convention is under a minute of play, so the wave has to be strong to show) |
 | Poker tournament | 2 a year | 2 | Locals ×1.3, High rollers ×1.5, poker ×3 (only with a poker table) |
 
-- The tutorial gets the holidays, the big game and fight nights (no conventions: it has no Conventioneers).
+- Every scenario gets every event its population fits: the tutorial has no Conventioneers, so no conventions.
 
 ## Marketing (Policies tab)
 Campaigns run for 1, 3 or 6 months, cost a monthly fee (accrued like wages, a ledger line) and multiply one or two types' arrivals while they run. The effect shows in who comes, nothing else.

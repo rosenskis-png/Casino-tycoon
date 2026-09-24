@@ -12,7 +12,7 @@ Tap a door the player built to open its card. Scenario doors and entrances can't
 | Open | everyone |
 | Staff only | all staff, police and paramedics, and guests being escorted |
 | Locked | nobody |
-| Card holders | staff (as above) and returning guests (people who have visited before). M9's player's club replaces "returning" with membership. |
+| Card holders | staff (as above) and returning guests (people who have visited before). With the player's club (M9.5 research) the door reads "Club members"; members are still returning guests. |
 | Dress code: *type* | staff (as above) and guests of one type. Types already look different; the card names the look ("Locals"). |
 | One staff role | only that role (e.g. enforcers only) |
 

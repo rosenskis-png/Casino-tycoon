@@ -303,7 +303,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     tolerance: { intox: 0.1, disorder: 0.05, misconduct: 0.1, celebration: 1, social: 0.6 }, policed: 0.8,
     drama: 0.1, cheat: 0.002, repSensitivity: 1.2, comps: 0.6,
     play: { stake: [0.01, 0.02], pace: [0.8, 1.1], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.5], lossLimit: [0.5, 0.8], compSeek: 0 },
-    needs: { bladder: 0.35, hunger: 0.2, thirst: 0.3, fatigue: 0.22 },
+    needs: { bladder: 0.25, hunger: 0.2, thirst: 0.3, fatigue: 0.22 },
     secPerDollar: 2.5,
     comeFor: { dine: 0.4, show: 0.3, club: 0, pool: 0.5 }, smokers: 0.05, theming: 1,
   },

@@ -1,7 +1,9 @@
 // A slot's help screens (docs/spec/designer.md §9): the real paytable at the current bet, the features, the lines,
 // and the rules, as real machines show them.
 import { useState } from "react";
-import { FS_COUNTS, FS_ENH, LAYOUTS, SCATTER, SCATTER_PAYS, WILD, levelName } from "../../data/designer";
+import {
+  BONUS_OFFER, BONUS_PICK, BONUS_WHEEL, CASCADE_LADDER, COLLECT_SIZES, FS_COUNTS, FS_ENH, LAYOUTS, ORB, PIECE, SCATTER, SCATTER_PAYS, WILD, levelName,
+} from "../../data/designer";
 import type { Compiled } from "../../sim/design/compile";
 import { Sym } from "./symbols";
 
@@ -40,11 +42,42 @@ export function Help({ c, bet, onClose }: { c: Compiled; bet: number; onClose: (
                 <p>{c.split.map((_, k) => `${k + 3} scatters award ${FS_COUNTS[d.fs!.count].n[k]} free games`).join("; ")}.{d.fs.retrigger ? " Free games can be won again during free games." : ""}</p>
                 <p>{FS_ENH[d.fs.enh].desc}</p>
               </>
-            ) : <p>No free games on this machine.</p>}
-            {c.pJ.length > 0 && (
+            ) : null}
+            {d.hns && c.hns && (
+              <>
+                <h4>Hold & spin</h4>
+                <p><Sym d={d} code={ORB} size={18} /> {c.hns.start} or more orbs start the feature with 3 respins. Orbs lock in place; each new orb resets the respins to 3. Orbs show credits{c.feats.find((f) => f.id === "hns")?.lv.length ? " or a jackpot" : ""}.{c.hns.grand >= 0 ? ` Fill all ${c.hns.spots} spots to win the ${levelName(c.levels.length, c.hns.grand)}.` : ""}</p>
+              </>
+            )}
+            {d.pick && c.pick && (
+              <>
+                <h4>Pick bonus</h4>
+                <p><Sym d={d} code={BONUS_PICK} size={18} /> 3 bonus symbols start it. {c.pick.mode === "match" ? "Pick tiles until three of a jackpot match; that jackpot is won." : "Pick tiles to reveal prizes until you find collect."}</p>
+              </>
+            )}
+            {d.wheel && (
+              <>
+                <h4>Wheel bonus</h4>
+                <p><Sym d={d} code={BONUS_WHEEL} size={18} /> 3 wheel symbols spin the {d.cab.topper === "wheel" ? "wheel on top of the machine" : "wheel"}; it awards the segment it lands on.</p>
+              </>
+            )}
+            {d.offer && (
+              <>
+                <h4>Offer bonus</h4>
+                <p><Sym d={d} code={BONUS_OFFER} size={18} /> 3 case symbols start it: up to four offers, take one or play on for the next. Refuse them all and you win the final prize. Every offer is worth, on average, what refusing it is.</p>
+              </>
+            )}
+            {d.cascade && c.cas && <><h4>Cascades</h4><p>Winning symbols vanish and new ones drop in; a new win pays again{d.cascade.climb ? `, with the multiplier climbing ${CASCADE_LADDER.map((m) => `×${m}`).join(", ")}` : ""}.</p></>}
+            {d.collect && c.col && <><h4>Collector</h4><p><Sym d={d} code={PIECE} size={18} /> Pieces land now and then and fill the meter on this machine ({COLLECT_SIZES[d.collect.size]} to fill). It stays with the machine between players. A full meter pays {c.col.prize === "super" ? "super free games with every win ×3" : fmt(c.col.x * bet)}.</p></>}
+            {d.mystery && c.mys && <><h4>Mystery</h4><p>{c.mys.kind === "mult" ? "Now and then a win is multiplied ×2, ×3 or ×5 at random." : "Now and then a wild storm sweeps extra wilds onto the reels."}</p></>}
+            {c.levels.length > 0 && (
               <>
                 <h4>Jackpots</h4>
-                {c.pJ.map((_, i) => <p key={i}><b>{levelName(c.pJ.length, i, classic)}</b> {fmt(c.jx[i] * bet)} for {classic ? "3 jackpot symbols on the line" : `${3 + i} jackpot symbols anywhere`}. Jackpots scale with the bet.</p>)}
+                {c.levels.map((l, i) => (
+                  <p key={i}><b>{levelName(c.levels.length, i, classic)}</b> {l.kind === "fixed" ? `${fmt(l.x * bet)} for ` : l.kind === "mhb" ? `a mystery progressive (starts at ${fmt(l.x * d.maxBet * d.denom)}; must hit by ${fmt(l.cap * d.maxBet * d.denom)}), won at random on any bet. ` : `a ${l.kind === "linked" ? "linked progressive shared by every machine of this game" : "progressive on this machine"} (starts at ${fmt(l.x * d.maxBet * d.denom)}), won by `}
+                    {l.kind !== "mhb" && (l.how === "hns" ? (i === c.hns?.grand ? "filling the hold & spin screen" : "a jackpot orb in hold & spin") : l.how === "wheel" ? "its segment on the wheel" : l.how === "pick" ? "matching three in the pick bonus" : l.how === "mystery" ? "chance, on any spin" : classic ? "3 jackpot symbols on the line" : `${3 + i} jackpot symbols anywhere`)}
+                    {l.kind === "fixed" ? ". Jackpots scale with the bet." : l.kind !== "mhb" ? (l.max ? ". Largest bet only." : ". A smaller bet wins it less often.") : ""}</p>
+                ))}
               </>
             )}
           </div>

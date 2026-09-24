@@ -307,12 +307,15 @@ const TOPPER_FRONT: Record<string, string[]> = {
   sign: ["....JJJJ", "...JIoIo", "...JIIFF"],
   dome: ["......oI", ".....oII", ".....JJJ"],
   figure: [".......J", "......JI", "....JJIF", ".....JIJ", "....J..J"],
+  // (M8.5) A wheel on top: lamps round the rim, colored segments, a stand.
+  wheel: ["......JJ", "....JJIo", "...JoFIF", "...JIFFF", "...JoFIF", "....JJIo", "......JJ", ".......J"],
 };
 const TOPPER_SIDE: Record<string, string[]> = {
   none: [],
   sign: [".....JJJJJ......", ".....IoIoJ......", ".....JJJJJ......"],
   dome: [".......oI.......", "......oIIo......", "......JJJJ......"],
   figure: ["........J.......", ".......JIJ......", "......JIFIJ.....", ".......JIJ......", "......J...J....."],
+  wheel: [".......JJ.......", "......JIoJ......", "......JFFJ......", "......JIoJ......", ".......JJ.......", "........J.......", "........J.......", "........J......."],
 };
 /** Doubles a sprite's pixels (the giant's topper). */
 const dbl = (rows: string[]) => rows.flatMap((r) => { const w = [...r].map((c) => c + c).join(""); return [w, w]; });

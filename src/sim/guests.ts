@@ -349,7 +349,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     mem: {
       arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, cashed: 0,
       feel: 0, rounds: 0, served: 0, comped: 0, early: 0, startIntend: intend, peak: 0, atmYes: 0, exitHops: 0, barAt: 0,
-      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0, fun: 0, spent: 0, eatAt: 0,
+      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0, fun: 0, spent: 0, eatAt: 0, thrill: 0,
     },
     // First-timers sightsee before settling; regulars less, the better they know the place.
     browse: 0, frus: 0, liked: [], favAt: 0,
@@ -359,6 +359,8 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
     door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0, minor: 0, drugs: 0, high: 0,
+    // Set later in a visit; made here so every guest has the same shape (hot loops stay fast).
+    extra: 0, game: "", sf: 0, voided: 0, hunter: 0, sfk: "", look: 0,
   };
   // (M8.5) A share of Locals are advantage players: always the same people (from their seed), never an extra draw.
   if (typeId === "local" && gd.kseed % 10 === 3) gd.hunter = 1;
@@ -725,19 +727,19 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   const mult = stakeMult(g, o);
   if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * (m.minCredits ?? 1) * mult)) return 0;
   if (def.game) return (type.games[def.game] ?? 0) + type.rules * rulesScore(def.game, o.rules) * 0.5;
-  return slotAppeal(g, gd.type, o, inf) + meterPull(g, gd.type, gd.stake, o);
+  return slotAppeal(g, gd.type, o, inf) + (inf?.prog ? meterPull(g, gd.type, gd.stake, o, inf) : 0);
 }
 
 /**
  * (M8.5) A big progressive meter pulls guests in (owner): each doubling of the biggest meter they could win, against
  * their own bet, adds the same, so every dollar counts for less; a bank sign showing it nearby carries it further.
  */
-export function meterPull(g: Game, type: string, stake: number, o: import("./state").PlacedObject): number {
-  const top = topMeter(g.state, o, stake);
+export function meterPull(g: Game, type: string, stake: number, o: import("./state").PlacedObject, info = slotInfo(g.state, o)): number {
+  const top = topMeter(g.state, o, stake, info);
   if (top <= 0) return 0;
   const dbl = Math.min(6, Math.log2(top / (Math.max(0.01, stake) * 200)));
   if (dbl <= 0) return 0;
-  const id = slotInfo(g.state, o)?.id;
+  const id = info?.id;
   const signed = g.bankSigns.some((b) => Math.max(Math.abs(b.x - o.x), Math.abs(b.y - o.y)) <= 10 && signDesign(g, b) === id);
   return 0.025 * Math.min(1.5, SLOT_TASTES[type]?.dream ?? 0.5) * dbl * (signed ? 1.6 : 1);
 }

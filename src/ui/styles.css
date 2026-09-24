@@ -188,3 +188,6 @@ select,input[type=text]{font:inherit;font-size:16px;background:#120a07;color:var
 @keyframes ballin{from{transform:translateY(-30px) scale(.3);opacity:0}}
 .keno-tray .catch{margin-left:6px;color:var(--gold)}
 .keno .drawn,.keno .hit{animation:winpop .3s both}
+/* (M8.5) Interface size (platform/display.ts): panels, bars and play screens scale; the floor zooms on its own. */
+.ui-s .top,.ui-s .ticker,.ui-s .tabs,.ui-s .sheet,.ui-s .dz,.ui-s .play,.ui-s .toast{zoom:.88}
+.ui-l .top,.ui-l .ticker,.ui-l .tabs,.ui-l .sheet,.ui-l .dz,.ui-l .play,.ui-l .toast{zoom:1.14}

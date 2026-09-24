@@ -56,7 +56,7 @@ export function compiledById(s: GameState, id: string): Compiled | undefined {
   return c;
 }
 /** Per-machine cache (runtime): the design it plays, compiled, and each type's appeal. Checked against the design object. */
-interface SlotInfo { o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array }
+interface SlotInfo { o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array; prog: boolean }
 const infos = new Map<number, SlotInfo>();
 export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   const inf = infos.get(o.id);
@@ -64,7 +64,7 @@ export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   if (inf && inf.o === o && (o.design === undefined || (s.designs[o.design]?.d ?? STOCK_DESIGNS[o.design]) === inf.d)) return inf;
   const id = designIdOf(o), c = compiledById(s, id);
   if (!c) return undefined;
-  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme) };
+  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme), prog: hasMeters(c) };
   if (infos.size > 50000) infos.clear();
   infos.set(o.id, n);
   return n;
@@ -356,9 +356,9 @@ export function huntEdge(s: GameState, o: PlacedObject): number {
   return best;
 }
 /** The biggest meter (dollars) a guest betting `stake` can win on a machine. */
-export function topMeter(s: GameState, o: PlacedObject, stake: number): number {
-  const inf = slotInfo(s, o);
-  if (!inf || !hasMeters(inf.c)) return 0;
+export function topMeter(s: GameState, o: PlacedObject, stake: number, info = slotInfo(s, o)): number {
+  const inf = info;
+  if (!inf || !inf.prog) return 0;
   const c = inf.c, h = { meters: s.meters, own: o, id: inf.id };
   let top = 0;
   c.levels.forEach((l, i) => {

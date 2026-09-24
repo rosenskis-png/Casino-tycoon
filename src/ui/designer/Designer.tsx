@@ -166,7 +166,7 @@ function More({ d, rec, rigged, g, toast, setD, c, act }: { d: SlotDesign; rec: 
             }}>Copy share code</button>
             <div className="dz-code">
               <input value={code} placeholder="Paste a share code" onChange={(e) => setCode(e.target.value)} />
-              <button className="btn" onClick={() => { const nd = parseCode(code); if (!nd) { toast("That isn't a design code"); return; } setD(sanitize({ ...nd, id: "" })); setOpen(false); toast(`Loaded ${nd.name}`); }}>Load</button>
+              <button className="btn" onClick={() => { const nd = parseCode(code); if (!nd) { toast("That isn't a design code"); return; } setD(sanitize({ ...nd, id: "", origin: "imported" })); setOpen(false); toast(`Loaded ${nd.name}`); }}>Load</button>
             </div>
             <button className={`btn ${rigged ? "on" : "danger"}`} disabled={!rec} onClick={() => { if (act({ type: "designRun", id: d.id, on: !rigged })) toast(rigged ? "Stopped running uncertified" : "Running uncertified: place it any time. The inspector tests machines."); setOpen(false); }}>
               {rigged ? "Stop running uncertified" : "Run uncertified"}<small>skip the lab (illegal: the regulator's inspector tests machines)</small>

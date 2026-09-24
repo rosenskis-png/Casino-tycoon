@@ -5,10 +5,12 @@ import { SOUND_CATS } from "../data/sounds";
 import { THEME_TRACK } from "../data/music";
 import { onAudio, play, setSound, soundSettings, unlockAudio } from "../platform/audio";
 import { MusicPlayer } from "../platform/music";
+import { UI_SIZES, setUiSize, uiSize } from "../platform/display";
 
 /** Master volume, mute and one slider per category. */
 export function SoundSettings() {
   const [s, set] = useState(soundSettings());
+  const [ui, setUi] = useState(uiSize());
   const upd = (n: Parameters<typeof setSound>[0]) => { setSound(n); set(soundSettings()); };
   return (
     <div className="kv mixer">
@@ -18,6 +20,8 @@ export function SoundSettings() {
       <span><button className="btn" style={{ minHeight: 32 }} onClick={() => { unlockAudio(); window.setTimeout(() => play("jackpot"), 60); }}>Play a sound</button></span>
       <b>Volume</b>
       <span><input type="range" min={0} max={1} step={0.05} value={s.master} onChange={(e) => upd({ master: Number(e.target.value) })} /></span>
+      <b>Interface</b>
+      <span className="dz-chips">{UI_SIZES.map((n, i) => <button key={n} className={i === ui ? "on" : ""} onClick={() => { setUiSize(i); setUi(i); }}>{n}</button>)}</span>
       {SOUND_CATS.map((c) => (
         <Fragment2 key={c.id} name={c.name}>
           <input type="range" min={0} max={1} step={0.05} value={s.cats[c.id]} onChange={(e) => upd({ cat: [c.id, Number(e.target.value)] })} onPointerUp={() => play(c.id === "ui" ? "click" : c.id === "games" ? "reels" : c.id === "crowd" ? "cheer" : "chime")} />

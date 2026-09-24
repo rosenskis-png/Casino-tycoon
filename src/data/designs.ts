@@ -48,6 +48,48 @@ export const STOCK_DESIGNS: Record<string, SlotDesign> = {
     jackpots: [{ x: 10, every: 300 }, { x: 50, every: 2500 }, { x: 250, every: 30000 }, { x: 2000, every: 900000 }],
     show: show({ lights: 3, light: 5, sound: 3, call: "call_dragon", ldw: 2, speed: 2 }), cab: { type: "giant", body: 0, topper: "figure" },
   },
+  // (M8.5) The bonus genres: a Lightning Link-style hold & spin with linked Major and Grand, a Wheel of Fortune-style
+  // topper wheel, and one each for cascades, collectors and picks.
+  ember: {
+    id: "ember", name: "Ember Link", theme: "tiki", set: 0, layout: "l20", denom: 0.01, minBet: 50, maxBet: 500,
+    rtp: 0.9, hit: 0.34, vol: 0.4, wild: "plain", stacks: false, fs: { every: 170, count: 1, retrigger: true, enh: "none" },
+    hns: { every: 85, land: 1, values: 1 },
+    jackpots: [{ x: 10, every: 350, how: "hns" }, { x: 50, every: 3000, how: "hns" }, { x: 250, every: 40000, kind: "linked", inc: 0.004, how: "hns" }, { x: 2500, every: 1500000, kind: "linked", inc: 0.006, how: "hns" }],
+    show: show({ lights: 3, light: 5, sound: 3, call: "call_tiki", ldw: 2, speed: 2 }), cab: { type: "tall", body: 2, topper: "sign" },
+    look: { font: 0, fx: 1, top: 0, meters: 1, reels: 1, deck: 0 }, origin: "stock",
+  },
+  grandwheel: {
+    id: "grandwheel", name: "Grand Wheel", theme: "deco", set: 0, layout: "r33", denom: 0.25, minBet: 4, maxBet: 12,
+    rtp: 0.91, hit: 0.2, vol: 0.35, wild: "x2", stacks: false, fs: null, wheel: { every: 90, spread: 1 },
+    jackpots: [{ x: 1000, every: 300000, kind: "linked", inc: 0.005, how: "wheel" }],
+    show: show({ lights: 3, light: 0, sound: 3, call: "call_deco", ldw: 0, rollup: 1 }), cab: { type: "upright", body: 3, topper: "wheel" },
+    look: { font: 2, fx: 1, top: 1, meters: 1, reels: 1, deck: 0 }, origin: "stock",
+  },
+  tumble: {
+    id: "tumble", name: "Neon Tumble", theme: "atomic", set: 0, layout: "w243", denom: 0.01, minBet: 25, maxBet: 250,
+    rtp: 0.9, hit: 0.32, vol: 0.5, wild: "plain", stacks: false, fs: null, cascade: { chain: 1, climb: true }, mystery: { kind: "mult", every: 25 },
+    jackpots: [], show: show({ lights: 3, light: 2, sound: 3, call: "call_atomic", ldw: 2, speed: 2 }), cab: { type: "upright", body: 7, topper: "dome" },
+    look: { font: 1, fx: 4, top: 1, meters: 2, reels: 2, deck: 0 }, origin: "stock",
+  },
+  prospector: {
+    id: "prospector", name: "Prospector's Haul", theme: "goldrush", set: 1, layout: "l20", denom: 0.01, minBet: 40, maxBet: 400,
+    rtp: 0.9, hit: 0.35, vol: 0.45, wild: "plain", stacks: false, fs: { every: 180, count: 1, retrigger: true, enh: "x2" },
+    collect: { size: 1, every: 400, prize: "super", x: 50 }, jackpots: [],
+    show: show({ lights: 2, light: 0, sound: 2, call: "call_goldrush", ldw: 1 }), cab: { type: "upright", body: 10, topper: "figure" },
+    look: { font: 4, fx: 1, top: 0, meters: 1, reels: 1, deck: 0 }, origin: "stock",
+  },
+  treasure: {
+    id: "treasure", name: "Treasure Cove", theme: "pirate", set: 0, layout: "l20", denom: 0.01, minBet: 40, maxBet: 400,
+    rtp: 0.9, hit: 0.34, vol: 0.45, wild: "plain", stacks: false, fs: null, pick: { every: 200, mode: "match", size: 1 }, offer: { every: 220, size: 1 },
+    jackpots: [{ x: 10, every: 600, how: "pick" }, { x: 40, every: 4000, how: "pick" }, { x: 150, every: 25000, how: "pick" }, { x: 250, every: 0, kind: "mhb", inc: 0.004, cap: 2 }],
+    show: show({ lights: 2, light: 0, sound: 2, call: "call_pirate", ldw: 1 }), cab: { type: "upright", body: 6, topper: "sign" },
+    look: { font: 9, fx: 0, top: 0, meters: 1, reels: 1, deck: 0 }, origin: "stock",
+  },
 };
+// (M8.5) Every stock design, and any copy of one, comes from its maker.
+for (const d of Object.values(STOCK_DESIGNS)) d.origin = "stock";
 /** Research needed before a stock design can be placed (data/research.ts). */
-export const STOCK_RESEARCH: Record<string, string> = { thunder: "bigslots", stampede: "freespins", sphinx: "freespins", lantern: "freespins" };
+export const STOCK_RESEARCH: Record<string, string> = {
+  thunder: "bigslots", stampede: "freespins", sphinx: "freespins", lantern: "freespins",
+  ember: "holdspin", grandwheel: "bonusgames", tumble: "cascades", prospector: "cascades", treasure: "bonusgames",
+};

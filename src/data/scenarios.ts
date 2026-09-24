@@ -150,7 +150,7 @@ function testFloor(): ScenarioDef {
     objects.push({ kind: kinds[(k + x0) % 3], x: x0 + k, y: y0, rot: 2 }, { kind: kinds[(k + x0 + 1) % 3], x: x0 + k, y: y0 + 1, rot: 0 });
   }
   // A quiet back room of quarter machines, and (M8) a few classic steppers.
-  objects.push(...row("slot_cherry", 39, 8, 4), ...designed("slot_stepper", "diamond", 43, 8, 4));
+  objects.push(...designed("slot_upright", "tumble", 39, 8, 2), ...designed("slot_upright", "prospector", 41, 8, 2), ...designed("slot_stepper", "diamond", 43, 8, 4));
   // The east wing (M6): a high-limit room (next to the quiet back room), a show lounge and a club off the floor;
   // a restaurant, a smoking room and a card holders' lounge bar beyond them, with restrooms.
   objects.push(
@@ -159,7 +159,10 @@ function testFloor(): ScenarioDef {
     { kind: "club", x: 51, y: 23, rot: 0, w: 9, h: 5 }, { kind: "restroom", x: 51, y: 28, rot: 0, w: 3, h: 2 },
     { kind: "restroom", x: 69, y: 10, rot: 0, w: 3, h: 2 }, { kind: "restroom", x: 69, y: 28, rot: 0, w: 3, h: 2 },
     { kind: "restaurant", x: 63, y: 6, rot: 0, w: 6, h: 4 },
-    ...designed("slot_tall", "stampede", 63, 16, 4, 0), ...designed("slot_upright", "sphinx", 67, 16, 4, 0), ...row("slot_liberty", 63, 19, 8, 2),
+    ...designed("slot_tall", "stampede", 63, 16, 4, 0), ...designed("slot_upright", "sphinx", 67, 16, 4, 0),
+    // M8.5: a linked hold & spin bank with its sign, a topper-wheel game, a pick-and-offer game.
+    ...designed("slot_tall", "ember", 63, 19, 3, 2), ...designed("slot_upright", "grandwheel", 66, 19, 3, 2), ...designed("slot_upright", "treasure", 69, 19, 2, 2),
+    { kind: "bank_sign", x: 63, y: 20, rot: 0, design: "ember" },
     { kind: "bar", x: 64, y: 24, rot: 0, w: 5, h: 3 }, { kind: "plant", x: 72, y: 24, rot: 0 },
     { kind: "sign", x: 60, y: 20, rot: 0 }, { kind: "sign", x: 47, y: 19, rot: 0 }, { kind: "sign", x: 47, y: 7, rot: 0 },
   );

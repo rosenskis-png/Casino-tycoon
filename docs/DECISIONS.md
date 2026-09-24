@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8 planned: the slot designer in three parts (readiness defaults for the owner)
+- Owner: M8 should be a long, complex build: the creative core, as deep and rewarding as RCT's coaster builder, able to make games that play like Buffalo, Lightning Link or Dragon Link, with a rating that rewards good and creative design and punishes poor choices, and never goes stale. Plan in docs/spec/designer.md; parts in ROADMAP.
+- **Flagged, NORTH_STAR conflict:** NORTH_STAR says "The game never tells the player whether a creation is good. Guests show them." The owner asked for a rating. Proposed resolution: RCT-style **Excitement / Intensity / Drain**, where Excitement is measured from a test panel of the scenario's own guests (the floor's hidden guest model, run without a room), and Intensity and Drain are plain math. Never labelled good or bad; the floor stays the truth. NORTH_STAR is unchanged until the owner confirms.
+- Questions put to the owner:
+  1. The ratings above, and amending NORTH_STAR's line to allow them.
+  2. **Three parts:** M8 designer and base game (with free spins), M8.5 bonuses and progressives, M8.6 the market (novelty, trends, rival releases, fans).
+  3. **Symbols as emoji** on styled tiles in the play screen (they look like real rendered slot symbols on an iPhone, no art cost); the floor stays pixel art.
+  4. **Certification:** a new design costs $1,500 and 7 days; running one uncertified (any payback, near misses above chance) is the rigging dark lever the inspector can catch.
+  5. **Market churn** (novelty fading, a yearly Slot Expo of trends, rival releases): what keeps the player redesigning. Any of it unwelcome?
+- Defaults (from the M8 readiness check, plus Claude's): guests never perceive payback directly, only through outcomes, and regulars build a "tight" name for draining designs; near misses extend play for chasers; small wins celebrated as wins please Tourists, Party and Families and put off Locals and High rollers; excitement makes money lost feel better spent; stock models become editable designs calibrated to today's appeal; one design library on the phone across all saves, with share codes; a Lucky Dragon (Asian fortune) theme; bright cartoon themes draw children; hunters (advantage players) on must-hit-by meters and kept collectors.
+
 ## 2026-09-24 · Hotfix: look, layout freedom, bigger Free Play lot (owner; "green light")
 - **Play-it-yourself screens look and move like the real games** (owner: more realistic, more satisfying): reel strips, dealt and flipping cards, a real roulette wheel and ball, tumbling dice, keno balls, casino chips, counting wins and a coin shower. See docs/spec/play.md.
 - **The whole building is the player's** (owner): the shell and the scenario's doors can be demolished, doors go in any wall, and new street entrances can be built beside the sidewalk ($500). Claude's call: indoors is now derived (floor the open air can't reach), so walling in lot ground makes an extension and a hole to the outside makes a room outdoors until closed. Entrances can't be removed (not asked for; keeps guests' way home simple).

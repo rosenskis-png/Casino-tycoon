@@ -2,6 +2,10 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M9 split into M9 and M9.5 (planning; details wait for the green light)
+- Owner allowed two parts. Claude's split: M9 is inside the house (staff depth and honesty, the regulator, credit and insurance, whales and comps: leaks and variance); M9.5 is outside it (calendar and events, marketing, research tree and player's club, new crowds, vice). See ROADMAP.
+- Why this seam: M9's parts all feed each other (theft needs audits, audits feed the regulator, whales test credit), and M9.5's research tree has to gate things that already exist, including M9's.
+
 ## 2026-09-24 · M8 (slot designer) moved after M10
 - Owner: build M9 next; the slot designer is mostly standalone. Order is now M9 → M10 → M8 → M11. Milestone names and tags keep their numbers.
 - Claude's call: M8 stays before M11, not after it, because balance tuning has to include player designs.

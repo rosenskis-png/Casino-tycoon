@@ -14,6 +14,8 @@ export function SoundSettings() {
     <div className="kv mixer">
       <b>Sound</b>
       <span><button className={`btn ${s.muted ? "" : "on"}`} style={{ minHeight: 32 }} onClick={() => upd({ muted: !s.muted })}>{s.muted ? "Off" : "On"}</button></span>
+      <b>Test</b>
+      <span><button className="btn" style={{ minHeight: 32 }} onClick={() => { unlockAudio(); window.setTimeout(() => play("jackpot"), 60); }}>Play a sound</button></span>
       <b>Volume</b>
       <span><input type="range" min={0} max={1} step={0.05} value={s.master} onChange={(e) => upd({ master: Number(e.target.value) })} /></span>
       {SOUND_CATS.map((c) => (
@@ -41,7 +43,7 @@ export function TitleScreen({ awake: wasAwake, hasGame, scenario, onContinue, on
   const wake = () => { if (!awake) { unlockAudio(); setAwake(true); } };
   const go = (f: () => void) => { play("click"); f(); };
   return (
-    <div className="title" onPointerDown={wake}>
+    <div className="title" onClick={wake}>
       <div className="marquee">
         <div className="bulbs" />
         <h1>CASINO<br />TYCOON</h1>

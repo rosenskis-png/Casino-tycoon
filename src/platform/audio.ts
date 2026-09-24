@@ -23,6 +23,8 @@ const MAX_VOICES = 24;
 const unlockers = new Set<() => void>();
 
 export function unlockAudio() {
+  // iOS 17+: play through the silent switch like a game, not like a ringtone.
+  try { const s = (navigator as unknown as { audioSession?: { type: string } }).audioSession; if (s && s.type !== "playback") s.type = "playback"; } catch { /* unsupported */ }
   if (!ctx) {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
@@ -37,7 +39,15 @@ export function unlockAudio() {
     for (let i = 0; i < d.length; i++) { x = (x * 1103515245 + 12345) & 0x7fffffff; d[i] = x / 0x3fffffff - 1; }
     applyVolume();
   }
-  if (ctx.state === "suspended") void ctx.resume();
+  if (ctx.state !== "running") {
+    // Suspended, or "interrupted" after a call or backgrounding on iOS. A silent buffer played inside the tap
+    // is what unlocks older iOS versions.
+    void ctx.resume().then(() => { for (const f of unlockers) f(); }, () => {});
+    const b = ctx.createBufferSource();
+    b.buffer = ctx.createBuffer(1, 1, 22050);
+    b.connect(ctx.destination);
+    b.start(0);
+  }
   for (const f of unlockers) f();
 }
 /** Runs `f` once audio is available (now, if it already is), and again on every later unlock. */

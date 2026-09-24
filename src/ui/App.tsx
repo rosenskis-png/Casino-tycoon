@@ -112,13 +112,15 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     const autosave = setInterval(() => { if (h.speed > 0) save(h.game); }, 30_000);
     const offHidden = onHidden(() => save(h.game));
     const unlock = () => unlockAudio();
-    window.addEventListener("pointerdown", unlock);
+    // iPhone Safari only starts audio from these (not pointerdown): try on every one until it's running.
+    const UNLOCK_EVENTS = ["pointerdown", "touchend", "click", "keydown"];
+    for (const ev of UNLOCK_EVENTS) window.addEventListener(ev, unlock, true);
     h.start();
     (window as unknown as { __ctHost?: Host }).__ctHost = h;
     return () => {
       h.stop(); input.dispose(); unsub(); offGame(); offHidden(); floor.dispose();
       clearInterval(tickT); clearInterval(autosave);
-      window.removeEventListener("pointerdown", unlock);
+      for (const ev of UNLOCK_EVENTS) window.removeEventListener(ev, unlock, true);
     };
   }, [initial, bootNote]);
 

@@ -4,6 +4,7 @@ import { OBJECTS } from "../data/objects";
 import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { SCENARIOS } from "../data/scenarios";
 import type { Game } from "./game";
+import { cabKind, cabOfKind, cantUse, designById, designLocks } from "./design";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
 import type { PlacedObject } from "./state";
@@ -21,7 +22,7 @@ declare module "./commands" {
     /** entrance: a new way in from the sidewalk, on lot ground beside it. */
     build: { what: "wall" | "door" | "demolish" | "entrance"; tiles: number[] };
     /** w × h: a sized amenity's front width and depth (its own frame); omitted for fixed-size objects. */
-    place: { kind: string; x: number; y: number; rot: number; w?: number; h?: number };
+    place: { kind: string; x: number; y: number; rot: number; w?: number; h?: number; design?: string };
     remove: { id: number };
     setRoom: { tile: number; name?: string; purpose?: RoomPurpose };
     /** A restaurant's price multiplier, a show's ticket or a club's cover charge. */
@@ -54,9 +55,9 @@ const REFUSED: Record<Build, string> = {
 };
 
 /** A placement as a Placed (size only for sized amenities). */
-export function placed(kind: string, x: number, y: number, rot: number, w?: number, h?: number): Placed {
+export function placed(kind: string, x: number, y: number, rot: number, w?: number, h?: number, design?: string): Placed {
   const def = OBJECTS[kind];
-  return def?.sized ? { kind, x, y, rot: rot & 3, w: w ?? def.w, h: h ?? def.h } : { kind, x, y, rot: rot & 3 };
+  return def?.sized ? { kind, x, y, rot: rot & 3, w: w ?? def.w, h: h ?? def.h } : design !== undefined ? { kind, x, y, rot: rot & 3, design } : { kind, x, y, rot: rot & 3 };
 }
 
 /** Footprint and seat tiles for a placement, or a player-readable reason it can't go there. */
@@ -149,20 +150,31 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
     validate(g, c) {
       // M9.5: some things need research first.
       if (locked(g.state, c.kind)) return `Needs research: ${RESEARCH[projectFor(c.kind)].name}`;
-      const p = placed(c.kind, c.x, c.y, c.rot, c.w, c.h);
+      // M8: a slot cabinet plays a design (certified, or run uncertified), placed as its own cabinet.
+      if (c.design !== undefined) {
+        const d = designById(g.state, c.design);
+        if (!d || !OBJECTS[c.kind]?.slot) return "Unknown design";
+        if (cabKind(d) !== c.kind) return "Wrong cabinet for that design";
+        const locks = designLocks(g.state, d, c.design);
+        if (locks.length) return `Needs research: ${RESEARCH[locks[0]]?.name ?? locks[0]}`;
+        const why = cantUse(g.state, c.design);
+        if (why) return why;
+      } else if (OBJECTS[c.kind]?.slot && cabOfKind(c.kind) && !["slot_cherry", "slot_liberty", "slot_thunder"].includes(c.kind)) return "Pick a design";
+      const p = placed(c.kind, c.x, c.y, c.rot, c.w, c.h, c.design);
       const f = placement(g, p);
       if (typeof f === "string") return f;
-      if (priceOf(p).cost > g.state.cash) return "Not enough cash";
+      if (priceOf(p, g.state).cost > g.state.cash) return "Not enough cash";
       return null;
     },
     apply(g, c) {
-      const p = placed(c.kind, c.x, c.y, c.rot, c.w, c.h);
+      const p = placed(c.kind, c.x, c.y, c.rot, c.w, c.h, c.design);
       const f = placement(g, p) as { tiles: number[]; seats: number[] };
       const id = g.state.nextId++;
       const o = newObject(id, c.kind, c.x, c.y, c.rot & 3, g.state.tick, p.w, p.h);
+      if (c.design !== undefined) o.design = c.design;
       crewAmenity(g, o);
       g.state.objects.push(o);
-      post(g, "build", -priceOf(p).cost);
+      post(g, "build", -priceOf(p, g.state).cost);
       g.rebuildOccupancy();
       g.tilesChanged([...f.tiles, ...f.seats]);
       g.bus.emit({ type: "objectPlaced", id, kind: c.kind, x: c.x, y: c.y });
@@ -176,7 +188,7 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
       const w = g.state.map.w;
       const tiles = [...objectTiles(o, w), ...objSeats(o).map((s) => s.y * w + s.x)];
       g.state.objects = g.state.objects.filter((x) => x.id !== c.id);
-      post(g, "sales", priceOf(o).cost / 2);
+      post(g, "sales", priceOf(o, g.state).cost / 2);
       g.rebuildOccupancy();
       g.tilesChanged(tiles);
       g.bus.emit({ type: "objectRemoved", id: o.id, x: o.x, y: o.y });

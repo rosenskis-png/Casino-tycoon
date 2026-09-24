@@ -213,6 +213,15 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.yours = null;
     return s;
   },
+  // 14 → 15 (M8): no player slot designs yet (machines keep their stock designs); a slot seat's old reels are dropped
+  // (a slot spin settles at once, so nothing is out).
+  14: (s) => {
+    s.designs = {};
+    s.nextDesign = 1;
+    s.dstats = {};
+    if (s.yours?.fam === "slot") delete s.yours.reels;
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

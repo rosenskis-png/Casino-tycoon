@@ -4,11 +4,13 @@
 // their definition's size and seats.
 import { OBJECTS, type ObjectDef, type SeatDef } from "../data/objects";
 import { sizedLayout, tierFor, type Cell } from "./layout";
+import { slotPrice } from "./design/lookup";
+import type { GameState } from "./state";
 
 export interface Seat { x: number; y: number; kind: SeatDef["kind"]; /** Facing after rotation (0 down, 1 left, 2 up, 3 right). */ f: number }
 
 /** Anything with a kind, position, rotation and (for sized amenities) a size. */
-export interface Placed { kind: string; x: number; y: number; rot: number; w?: number; h?: number }
+export interface Placed { kind: string; x: number; y: number; rot: number; w?: number; h?: number; design?: string }
 
 /** Local (dx, dy) in the rotation-0 frame of a w×h box → offset in the rotated footprint. */
 function turn(dx: number, dy: number, w: number, h: number, rot: number): [number, number] {
@@ -88,7 +90,10 @@ export function sizeTier(p: Placed): number {
 }
 
 /** Build cost and monthly upkeep for an object at its size. */
-export function priceOf(p: Placed): { cost: number; upkeep: number } {
+/** Build price and monthly upkeep. Slots (M8) cost what their design's cabinet does; pass the state to look it up. */
+export function priceOf(p: Placed, s?: GameState): { cost: number; upkeep: number } {
+  const sp = slotPrice(s, p.kind, p.design);
+  if (sp) return sp;
   const { def, d, L } = frame(p);
   if (!def.sized || !L) return { cost: def.cost, upkeep: def.upkeep };
   const [cb, ct] = def.sized.cost, [ub, us, uf] = def.sized.upkeep;

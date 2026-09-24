@@ -5,6 +5,7 @@
 // read only the score (sim/guests.ts). Runtime cache, rebuilt on layout and purpose changes; never saved.
 import { OBJECTS } from "../data/objects";
 import { SYNERGY, THEME_IDS, THEME_RADIUS, type Place } from "../data/themes";
+import { designById } from "./design/lookup";
 import { T } from "../data/terrain";
 import type { Game } from "./game";
 import { objSize } from "./geometry";
@@ -63,6 +64,12 @@ export class ThemeField {
     this.sources = [];
     let themedAny = false;
     for (const o of this.g.state.objects) {
+      // M8: a designed slot themes its spot a little, like a weak decor piece (docs/spec/designer.md §2).
+      if (o.design && OBJECTS[o.kind].slot) {
+        const d = designById(this.g.state, o.design), k = d ? THEME_IDS.indexOf(d.theme as never) : -1;
+        if (k >= 0) { themedAny = true; this.sources.push({ k, kind: 0, cx: o.x, cy: o.y, s: 0.8 }); }
+        continue;
+      }
       const tags = OBJECTS[o.kind].tags;
       if (!tags) continue;
       const { w, h } = objSize(o), cx = o.x + (w - 1) / 2, cy = o.y + (h - 1) / 2;

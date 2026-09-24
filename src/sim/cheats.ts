@@ -92,6 +92,8 @@ export function tagGuest(g: Game, gd: GuestData, p: Person | null, leader: Guest
 const stats = new Map<string, { v: number; h: number }>();
 /** Variance of one wager's payout multiple on this model, and its hit frequency. */
 export function payStats(m: SlotModel): { v: number; h: number } {
+  // Designed slots carry their exact numbers (M8).
+  if (m.stats) return m.stats;
   let st = stats.get(m.id);
   if (!st) {
     let e2 = 0, h = 0;

@@ -43,7 +43,7 @@ export interface ScenarioDef {
    */
   market: Record<string, { size: number; regulars: number }>;
   /** Starting objects; a bar may start with its own drink policy (price multiplier, comped share, strength). */
-  objects: { kind: string; x: number; y: number; rot: number; w?: number; h?: number; bar?: { price?: number; comp?: number; strength?: number } }[];
+  objects: { kind: string; x: number; y: number; rot: number; w?: number; h?: number; bar?: { price?: number; comp?: number; strength?: number }; design?: string }[];
   /** Land for sale (M6.5): unowned tiles in these rects become owned outdoor ground when bought. */
   parcels?: Parcel[];
   /** Door rules set by the scenario (data/terrain DOOR_STATE; docs/spec/construction.md). */
@@ -62,6 +62,8 @@ export interface ScenarioDef {
   tools: number;
   /** (M9) Gaming tax on the month's gaming win, 0-1; whether whales come (docs/spec/money.md). */
   tax: number;
+  /** (M8) Legal minimum payback for slots (default 0.8, docs/spec/designer.md §10). */
+  minRtp?: number;
   whales?: boolean;
   /** (M9.5) Scheduled events allowed (default: all that fit its population); research projects done at the start. */
   events?: string[];

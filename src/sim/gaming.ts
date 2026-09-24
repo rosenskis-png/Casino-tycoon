@@ -3,11 +3,14 @@
 // starts rounds (sets the timer) and decides between them; this system only runs the math. Slots and video
 // poker are machines; tables deal their own rounds (sim/tables.ts) and book them through `settle` here.
 import { OBJECTS } from "../data/objects";
-import { SLOT_MODELS, WAGERS_PER_ROUND, type SlotModel } from "../data/games";
+import { WAGERS_PER_ROUND, type SlotModel } from "../data/games";
 import { TABLE_GAMES, ruleOf, vpModel, type TableDef } from "../data/tables";
 import type { Game } from "./game";
 import type { System } from "./registry";
-import type { Agent, GuestData, PlacedObject } from "./state";
+import type { Agent, GameState, GuestData, PlacedObject } from "./state";
+import { compiledOf, designIdOf, statsOf } from "./design";
+import { lastSpin } from "./design/compile";
+import { judged } from "./design/appeal";
 import { rng, type Rng } from "./rng";
 import { post } from "./finance";
 import { TICKS_PER_SECOND } from "./clock";
@@ -40,8 +43,9 @@ export const limitsOf = (o: PlacedObject): [number, number] => {
 export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1): number {
   // A cheat mid-spell bets the most the machine takes.
   if (gd.spell > 0) return m.maxCredits;
-  if (compSeeking(g, gd)) return 1;
-  return Math.max(1, Math.min(m.maxCredits, Math.round(wantBet(gd) / (m.denom * mult))));
+  const lo = m.minCredits ?? 1;
+  if (compSeeking(g, gd)) return lo;
+  return Math.max(lo, Math.min(m.maxCredits, Math.round(wantBet(gd) / (m.denom * mult))));
 }
 
 /** What a guest would like to bet per wager now: their stake, loosened by drink and swung by how it's going. */
@@ -52,8 +56,9 @@ export function wantBet(gd: GuestData): number {
   return gd.stake * (1 + 0.6 * gd.intox) * (1 + 0.4 * gd.high) * swing;
 }
 
-/** Payout multiple for one wager: inverse-CDF lookup on the paytable. */
+/** Payout multiple for one wager: inverse-CDF lookup on the paytable (M8 designs: one spin played out). */
 export function drawPay(m: SlotModel, r: Rng): number {
+  if (m.draw) return m.draw(r);
   let u = r.next();
   for (const q of m.pays) {
     if (u < q.p) return q.x;
@@ -62,7 +67,7 @@ export function drawPay(m: SlotModel, r: Rng): number {
   return 0;
 }
 
-export const betOf = (m: SlotModel, credits: number) => m.denom * Math.max(1, Math.min(m.maxCredits, credits));
+export const betOf = (m: SlotModel, credits: number) => m.denom * Math.max(m.minCredits ?? 1, Math.min(m.maxCredits, credits));
 export const roundTicks = (m: SlotModel, pace: number) => Math.max(20, Math.round((m.spin * TICKS_PER_SECOND) / pace));
 
 const vpCache = new Map<string, SlotModel>();
@@ -74,20 +79,18 @@ function vpFor(o: PlacedObject, skill: number): SlotModel {
   return m;
 }
 
-/** The machine model an object plays for this guest (slots: the model; video poker: by the player's skill). */
-export function machineModel(o: PlacedObject, gd?: GuestData): SlotModel | undefined {
+/** The machine model an object plays for this guest (slots: its design's; video poker: by the player's skill). */
+export function machineModel(s: GameState, o: PlacedObject, gd?: GuestData): SlotModel | undefined {
   const def = OBJECTS[o.kind];
-  if (def?.slot) return SLOT_MODELS[def.slot];
+  if (def?.slot) return compiledOf(s, o)?.model;
   if (def?.game === "vpoker") return vpFor(o, gd?.skill ?? 1);
   return undefined;
 }
-/** The slot model behind an object kind (slots only; the UI's paytable figures). */
-export const modelOf = (kind: string): SlotModel | undefined => (OBJECTS[kind]?.slot ? SLOT_MODELS[OBJECTS[kind].slot!] : undefined);
 
 /** Least money one round costs at this object, before a high-limit room (Infinity when it isn't a game). */
-export function minRoundOf(o: PlacedObject): number {
+export function minRoundOf(s: GameState, o: PlacedObject): number {
   const def = OBJECTS[o.kind];
-  if (def?.slot) return SLOT_MODELS[def.slot].denom * WAGERS_PER_ROUND;
+  if (def?.slot) { const m = machineModel(s, o); return m ? m.denom * (m.minCredits ?? 1) * WAGERS_PER_ROUND : Infinity; }
   if (def?.game) return limitsOf(o)[0] * WAGERS_PER_ROUND;
   return Infinity;
 }
@@ -153,11 +156,15 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
   return { won, wagered, jackpot };
 }
 
+/** Seconds a free spin takes on the floor, as a share of a round (one wager's time). */
+const FS_SPIN = 1 / WAGERS_PER_ROUND;
+
 function resolve(g: Game, a: Agent) {
   const o = g.objById.get(a.target);
   const gd = a.g;
-  const m = o && machineModel(o, gd);
+  const m = o && machineModel(g.state, o, gd);
   if (!o || !m || !gd) return;
+  const slot = !!OBJECTS[o.kind].slot;
   const r = rng(g.state, "gaming");
   // Bet what they'd like to, or less when that's all the wallet covers. A high-limit room multiplies the stakes.
   const mult = stakeMult(g, o);
@@ -165,17 +172,31 @@ function resolve(g: Game, a: Agent) {
   if (bet * WAGERS_PER_ROUND > gd.wallet + 1e-9) return;
   // Luck and cheating bend what each wager pays (docs/spec/cheats.md); the suspicion tools compare against the math.
   const ws: Wager[] = [];
-  let near = 0;
+  let near = 0, feats = 0, fsSpins = 0, jps = 0;
   for (let k = 0; k < WAGERS_PER_ROUND; k++) {
+    lastSpin.kind = 0;
     const x = wagerPay(g, gd, m, drawPay, r);
     ws.push({ m, bet, x });
-    // Near-miss hook (M8 slot designer): some losing spins are shown as just missing.
+    // A design's free spins (and named jackpots) that actually paid this guest.
+    const kind = lastSpin.kind as number;
+    if (x > 0 && kind === 1) { feats++; fsSpins += lastSpin.spins; }
+    if (x > 0 && kind === 2) jps++;
+    // Near misses: some losing spins are shown as just missing (docs/spec/designer.md §2).
     if (x === 0 && m.nearMiss && r.chance(m.nearMiss)) near++;
   }
   const { won, wagered, jackpot } = settle(g, a, o, ws, "slots");
-  // How the round felt: a real win, a win smaller than the stake (the slot designer's hook), a near miss.
-  gd.mem.feel += won >= wagered ? 1 : won > 0 ? (m.ldwFeel ?? 0.3) * (won / wagered) : Math.min(1, near * 0.1);
-  o.last = { tick: g.state.tick, win: jackpot ? 2 : won > 0 ? 1 : 0 };
+  // How the round felt: a feature, a real win, a win smaller than the stake, a near miss.
+  gd.mem.feel += feats ? 1.5 : won >= wagered ? 1 : won > 0 ? (m.ldwFeel ?? 0.3) * (won / wagered) : Math.min(1, near * 0.1);
+  o.last = { tick: g.state.tick, win: jackpot ? 2 : feats ? 3 : won > 0 ? 1 : 0 };
+  if (slot) {
+    const c = compiledOf(g.state, o)!, id = designIdOf(o), st = statsOf(g.state, id);
+    st.coinIn += wagered; st.paidOut += won; st.rounds++; st.feats += feats; st.jps += jps; st.rWin += wagered - won;
+    gd.game = id;
+    if (feats) { gd.sf = (gd.sf ?? 0) + feats; gd.extra = (gd.extra ?? 0) + Math.round(fsSpins * FS_SPIN * m.spin * TICKS_PER_SECOND); g.bus.emit({ type: "sound", id: c.d.show.call, x: o.x, y: o.y }); }
+    // Excitement buys hold: time on a thrilling machine counts for more in the visit's value (docs/spec/designer.md §5).
+    const ex = judged(c, gd.type).excitement;
+    gd.mem.thrill = (gd.mem.thrill ?? 0) + (m.spin * TICKS_PER_SECOND) * (0.06 * ex - 0.3);
+  }
   if (!jackpot && won >= wagered * 4) g.bus.emit({ type: "sound", id: "win", x: o.x, y: o.y });
   if (!o.broken && r.chance(m.breakChance)) {
     o.broken = 1;

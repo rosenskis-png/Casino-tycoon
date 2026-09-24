@@ -4,6 +4,20 @@
 export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<string, string[]>; bad?: boolean }
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
+  // Slot designs (M8, docs/spec/designer.md §5): "{game}" is the design's name.
+  slotBonus: { text: "Loved the free spins on {game}!", alt: ["{game} paid out in the bonus!", "That bonus on {game} was a ride."] },
+  slotLove: { text: "{game} is my new favorite.", alt: ["Everything about {game} just works.", "I could play {game} all night."] },
+  slotTop: { text: "Imagine hitting the top prize on {game}.", alt: ["That jackpot on {game}!"] },
+  slotNoBonus: { text: "Never saw the bonus on {game}.", alt: ["{game}'s bonus never comes."], bad: true },
+  slotWeak: { text: "The bonus on {game} pays nothing.", alt: ["All that for a tiny bonus on {game}?"], bad: true },
+  slotAte: { text: "{game} ate my money fast.", alt: ["{game} is a money shredder."], bad: true },
+  slotWild: { text: "{game} is too wild for me.", alt: ["Way too streaky, {game}."], bad: true },
+  slotTame: { text: "{game} is a bit tame.", alt: ["Nothing ever happens on {game}."], bad: true },
+  slotLoud: { text: "{game} is too loud and flashy.", alt: ["All those lights on {game} hurt my eyes."], voice: { retiree: ["Goodness, {game} is loud."] }, bad: true },
+  slotDull: { text: "{game} is dull to look at.", alt: ["{game} could use some sparkle."], bad: true },
+  slotComplex: { text: "{game} is too complicated.", alt: ["I don't get how {game} works."], voice: { retiree: ["All these rules on {game}, I can't follow."] }, bad: true },
+  slotLdw: { text: "Stop celebrating when I lose, {game}.", alt: ["{game} makes a fuss over nothing."], bad: true },
+  slotNoBonusAt: { text: "{game} has no bonus to play for.", bad: true },
   // Vice and drugs (M9.6).
   escortSeen: { text: "Is she working the room?", alt: ["That guy is definitely working.", "Escorts, in here?"], voice: { party: ["Now this place has everything."] } },
   getARoom: { text: "Get a room, you two.", alt: ["Right here? Really?"], voice: { retiree: ["Well, I never."] }, bad: true },

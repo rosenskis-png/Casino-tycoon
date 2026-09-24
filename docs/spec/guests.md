@@ -1,4 +1,4 @@
-# Guests (M3, revised)
+# Guests (M3, revised; drinking retuned in M4)
 
 Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.ts` (sidewalk and entrance), `drinks.ts` (drink policy and serving), `dist.ts` (distribution draws), with types in `src/data/guests.ts` and thoughts in `src/data/thoughts.ts`. Design agreed with the owner 2026-09-23 (history in DECISIONS.md); wayfinding is in `navigation.md`.
 
@@ -56,17 +56,18 @@ Real guests new to a place look around first; regulars head for their spots.
 - Out of money, the chance of another trip = type base (0.2–0.4) + 0.3 × how far down they are + 0.5 × intox + 0.6 × chase (+0.1 in a bad mood, −0.3 after a win), then × 0.6 per trip already made (softened for chasers).
 
 ## Drinking: an inhibition spectrum
-- Intoxication 0–1.3 (≈0.25 tipsy, 0.5 drunk, 0.8 wasted; above 1 is pass-out territory for M4). It wears off slowly, 0.02 per floor-minute.
-- **A drink in hand:** a guest holds one drink at a time and sips it over their type's drinking time (Locals 80 s, Retirees 100, Tourists 70, Party 50) while doing anything else (playing, walking, waiting). Each sip eases thirst and adds its share of 0.16 × strength intoxication (drinkers; sober guests get soft drinks at half price). An empty glass is sometimes dropped as litter.
+- Intoxication 0–1.3 (≈0.25 tipsy, 0.5 drunk, 0.8 wasted; 1+ can pass out, docs/spec/incidents.md). It wears off slowly, 0.02 per floor-minute.
+- **A drink in hand:** a guest holds one drink at a time and sips it over their type's drinking time (Locals 80 s, Retirees 100, Tourists 70, Party 50) while doing anything else (playing, walking, waiting). Each sip eases thirst and adds its share of 0.25 × strength intoxication (drinkers; sober guests get soft drinks at half price; was 0.16 before M4). Down to the last quarter, they'll take the next one; when it arrives the rest of the old one goes down in one. An empty glass is sometimes dropped as litter.
 - Each guest draws an **intended level**: sober guests exactly 0; drinkers a right-skewed bell (mean/sd: Locals 0.35/0.15, Retirees 0.2/0.08, Tourists 0.45/0.2, Party 0.65/0.2), +0.1 if they came to drink, −0.03 if they came to gamble.
-- **Overshoot:** each second the intended level rises by drift × intox / 60, with drift log-normal per person (medians 0.035 / 0.012 / 0.04 / 0.035, sigma 1.2): most stay near their bell, a few run away. Servers and comped drinks exploit that slope.
-- Shows as a sideways stagger when walking (renderer) and as thoughts (tipsy, drunk, wasted). Flushed sprites wait for the M3.1 art pass; spills, fights and passing out arrive with M4.
+- **Overshoot:** each second the intended level rises by drift × intox / 60, with drift log-normal per person (medians 0.1 / 0.03 / 0.12 / 0.15, sigma 1.2; roughly tripled in M4): most stay near their bell, a few run away. Servers and comped drinks exploit that slope.
+- Shows as a sideways stagger when walking, flushed faces at 0.25 and 0.5, and thoughts (tipsy, drunk, wasted). Spills, loud drunks, vomiting, passing out and fights are incidents (docs/spec/incidents.md).
+- **Cut-off:** the house rule on drunkenness stops bars and servers serving anyone at 0.8+ (Moderate) or 0.5+ (Strict); Lenient and Ignore serve anyone ("They cut me off!").
 
 ## Drinks: bars, servers, policy
 Servers are the main way drinks reach guests; bars serve whoever walks up.
 - **Going to the bar:** only with nothing in hand, money for a drink, and real thirst (70+, or 55+ for a drinker still below their level). Came-to-drink guests head there first. At the bar they sit and drink; when one is finished they order another while still below their level (or thirsty), with money and floor time left, up to 4 a sitting. A full bar, or not being able to pay, puts them off for 60 s.
-- **Server offers:** a guest says yes with chance = type readiness (Locals 0.35, Retirees 0.2, Tourists 0.45, Party 0.6) × thirst (0.4 + thirst/100) × 1.3 below their level (0.6 at or above it) × price (1.8 if the drink is comped, else 1.3 − 0.3 × price multiplier) × (1 + intox), at most 95%. Sober guests take soft drinks mostly when thirsty. Nobody takes one while holding one; anyone asked isn't asked again for 45 s. More servers and more comps mean more chances to say yes, which is how they push intoxication up.
-- **Server loop** (`staff.ts`): each server works one bar. Take orders: walk to the nearest eligible guest (starting near the bar, settled guests first) and ask everyone within 2 tiles ("Cocktails?"), until the tray holds 6 or 20 s have passed since the first order. Fetch: walk to the bar; the bartender pours one a second. Deliver: nearest guest first, skipping anyone who left or already has a drink (servers know where everyone is). Then start again near the bar. Servers walk faster than other staff.
+- **Server offers:** a guest says yes with chance = type readiness (Locals 0.35, Retirees 0.2, Tourists 0.45, Party 0.6) × thirst (0.4 + thirst/100) × (1 + 2 × how far below their level they are) (0.6 at or above it) × price (1.8 if the drink is comped, else 1.3 − 0.3 × price multiplier) × (1 + intox), at most 95%. Sober guests take soft drinks mostly when thirsty. Nobody takes one while holding more than a quarter of one; anyone asked isn't asked again for 30 s. More servers and more comps mean more chances to say yes, which is how they push intoxication up.
+- **Server loop** (`staff.ts`): each server works one bar. Take orders: walk to the nearest eligible guest (starting near the bar, settled guests first) and ask everyone within 6 tiles ("Cocktails?"), until the tray holds 10 or 12 s have passed since the first order (owner, M4: was 2 tiles, 6 drinks, 20 s). Fetch: walk to the bar; the bartender pours one a second. Deliver: nearest guest first, skipping anyone who left or already has a drink (servers know where everyone is). Then start again near the bar. Servers walk faster than other staff.
 - **Per-bar policy** (tap a bar): price multiplier 0–3× on the $7 base; comped share 0–100% (for guests who've played); strength Light 0.6 / Standard 1 / Strong 1.4; and where its servers work: anywhere, or one room (rooms are named in the room inspector). Each drink costs the house $1.50 ("Drink costs"). Pricey or weak drinks draw complaints.
 - **Assignment:** a new server takes the bar with the fewest servers; tap a server to move them to another bar. Servers whose bar is sold move to the least-served one.
 
@@ -75,7 +76,8 @@ Servers are the main way drinks reach guests; bars serve whoever walks up.
 - **Visit score** = 0.35 × average mood + 0.3 × value + 0.15 × feel + 0.2 × needs met. Value = seconds played per dollar lost against the type's good-value rate (Locals 6 s/$, Retirees 12, Tourists 2.2, Party 3.3), 1 for winners, 0 for a visit with under 30 s of play. Feel = 0.2 + 1.6 × average round feel + 0.3 for a jackpot. Needs = 1 − unmet / 3 (leaving because nothing suited them counts as unmet).
 - **Thoughts** are counted by id per day; the Guests tab shows each as a rate per day averaged over the last two days. Each has 2–3 wordings plus type voices (`alt`, `voice`), shown only on the guest's own card, the same wording each time for that guest. **Floor thought bubbles are gone.**
 - New thoughts: hot machine, quick spin, time to go, quitting while ahead, my limit, win it back, waiting, drunk/wasted, free drink, served, pricey, weak, no ATM.
-- Groundwork fields in type data for M4/M5: `drama` (low-drama guests will file reports), `leniency`, `incidents`, `tolerance`, `cheat` share. Cheats never look any different.
+- Incident fields in type data (M4, docs/spec/incidents.md): `incidents` and `tolerance` per category, `policed`, `drama`. Groundwork for M5: `cheat` share. Cheats never look any different.
+- Mood also gains a short-lived `buzz` from fun things seen (a winner cheering, a free round), the mirror of `annoy`; both decay 0.5 a second.
 
 ## Notifications
 Jackpots are red ("bad" news level: red but queued normally). Only jackpots of $1,000+ or 500× the bet reach the ticker; the rest go to the log. The monthly "books closed" line is log-only too.
@@ -86,24 +88,26 @@ Jackpots are red ("bad" news level: red but queued normally). Only jackpots of $
 ## Reference numbers and levers (sanity checks)
 Until the game is near v1.0 these numbers are **sanity checks, not tuning goals** (owner, 2026-09-23): mechanics still to come will move them. Use them to catch logic errors: a type that never plays, never drinks, always gives up, or a number that jumps for no reason after a change. The "design intent" column is the agreed M3 starting target, kept for the eventual tuning pass.
 
-Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M3 revisions build:
+Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M4 build (guards on moderate house rules; one bar pours strong drinks, a quarter comped):
 
 | | Locals | Retirees | Tourists | Party | Levers (↑ raises it) |
 |---|---|---|---|---|---|
-| Visit length (min) | 4.0 | 4.5 | 4.5 | 4.5 | ↑ `minutes`, ↑ `budget`, ↓ `play.stake`, ↓ quit-rule weights `winGoal`/`lossLimit`, ↑ `WAIT_LONG`, ↓ need rates (`needs`); `WAGERS_PER_ROUND` ↓ |
-| Playing (min) | 1.9 | 2.0 | 0.9 | 0.8 | ↓ `browse`, more signs/visible machines, ↑ bar and restroom capacity |
-| Loss per visit | $60 | $35 | $74 | $58 | ↑ `play.stake`, ↑ `WAGERS_PER_ROUND`, lower paytable `rtp`, ↑ visit length |
-| Budget (median) | $90 | $60 | $185 | $120 | `budget.median` / `sigma` / `cap` |
-| Sober share | 30% | 61% | 13% | 4% | `drinking.sober` |
-| Drinkers' intended level (median) | 0.31 | 0.16 | 0.42 | 0.68 | `drinking.mean` / `sd`, intent shift in `spawnGuest` |
-| Drinks per drinker (median) | 1 | 0 | 1 | 1 | ↑ servers, ↑ bar policy `comp`, ↓ `price`, ↑ `drinking.accept`, ↓ `drinking.sip`, ↓ `OFFER_AGAIN`, ↑ `TRAY` |
-| Drinks from servers | 79% | 76% | 90% | 86% | ratio of servers to bar stools |
-| Drinkers' peak intox (median) | 0.11 | 0.00 | 0.14 | 0.14 | drinks per drinker, ↑ `DRINK_UNIT`, ↑ strength, ↓ `SOBER_PER_MIN` |
-| Overshoot > 0.3 | 0% | 0% | 0% | 0% | ↑ `drinking.overshoot` (drift), more drinks |
-| Never uses ATM | 39% | 78% | 28% | 24% | `atm.never` |
-| ATM draw per trip | $60 | $50 | $80 | $130 | `atm.draw` |
-| Group 1 / 2 / 3+ | 63/33/5% | 43/53/3% | 29/49/22% | 4–8 | `group` weights |
-| Visit score | 0.55 | 0.55 | 0.48 | 0.46 | layout, `secPerDollar`, visit score weights in `visitScore` |
+| Visit length (min) | 4.6 | 4.5 | 4.6 | 4.5 | ↑ `minutes`, ↑ `budget`, ↓ `play.stake`, ↓ quit-rule weights `winGoal`/`lossLimit`, ↑ `WAIT_LONG`, ↓ need rates (`needs`); `WAGERS_PER_ROUND` ↓ |
+| Playing (min) | 2.0 | 2.0 | 0.7 | 0.4 | ↓ `browse`, more signs/visible machines, ↑ bar and restroom capacity, fewer incidents in view (↑ `tolerance`, guards, stricter rules) |
+| Loss per visit | $55 | $38 | $26 | $0 | ↑ `play.stake`, ↑ `WAGERS_PER_ROUND`, lower paytable `rtp`, ↑ visit length |
+| Budget (median) | $90 | $60 | $175 | $135 | `budget.median` / `sigma` / `cap` |
+| Sober share | 27% | 61% | 12% | 6% | `drinking.sober` |
+| Drinkers' intended level (median) | 0.32 | 0.17 | 0.40 | 0.68 | `drinking.mean` / `sd`, intent shift in `spawnGuest` |
+| Drinks per drinker (median) | 1 | 1 | 1 | 2 | ↑ servers, ↑ bar policy `comp`, ↓ `price`, ↑ `drinking.accept`, ↓ `drinking.sip`, ↓ `OFFER_AGAIN`, ↑ `TRAY`, ↑ `OFFER_REACH` |
+| Drinks from servers | 79% | 69% | 93% | 89% | ratio of servers to bar stools |
+| Drinkers' peak intox (median) | 0.22 | 0.16 | 0.23 | 0.44 | drinks per drinker, ↑ `DRINK_UNIT`, ↑ strength, ↓ `SOBER_PER_MIN`, looser cut-off |
+| Overshoot > 0.3 | 8% | 4% | 4% | 2% | ↑ `drinking.overshoot` (drift), more drinks |
+| Never uses ATM | 38% | 74% | 31% | 26% | `atm.never` |
+| ATM draw per trip | $60 | $60 | $100 | $65 | `atm.draw` |
+| Group 1 / 2 / 3+ | 62/33/5% | 46/49/5% | 23/52/25% | 4–8 | `group` weights |
+| Visit score | 0.57 | 0.54 | 0.46 | 0.39 | layout, `secPerDollar`, visit score weights in `visitScore`, incidents seen, being policed |
+
+Drunk tails (drinkers, scratch diagnostic): 30% of party drinkers reach 0.5+, 6–9% 0.8+, 1–3% 1.0+; Locals and Tourists 7–19% reach 0.5+. Incidents per 100 guests and warnings/ejections are in the same report (docs/spec/incidents.md). Party numbers rest on ~30 groups per run and swing a lot between seeds; incidents cost Tourists and Party guests 0.1–0.4 min of play on this floor (measured with incidents switched off), the designed cost of an unruly floor.
 
 Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $110 / $90; overshoot 5 / 1 / 10 / 20%; ATM draw $60 / $40 / $100 / $80; returning 85% every 3–20 days (median 7) / 70% every 7–30 (median 14) / 5% / none; chasing onset on an easy floor 1% / 0.3%.
 
@@ -112,6 +116,8 @@ Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $
 - **Test floors must be realistic.** Measure on the Test Floor scenario (at least one of every object, signs, servers), never on the tutorial or an empty lot, or wayfinding failures swamp everything else.
 
 ## Save
+Schema 6 (M4): see docs/spec/incidents.md.
+
 Schema 5 (migration from 4): drink policy moves from the casino to each bar; guests gain a drink in hand, browsing time, frustration (replacing the fail count), liked machines and favorite-spot tracking; people gain favorite spots; servers gain a bar and start a fresh round.
 
 Schema 4 (migration from 3): guests gain person id, group/leader, stake, floor time, intended level and drift, ATM traits, chasing and waiting; drink counts become intoxication. The per-type familiarity becomes a seeded pool whose regulars know the floor that well. State gains the pool, pedestrians, drink policy, and thought counts by day; the sidewalk is added to the map.

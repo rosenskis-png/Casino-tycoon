@@ -121,7 +121,7 @@ function testFloor(): ScenarioDef {
   objects.push(
     // The back-corner bar pours strong drinks, a quarter of them free: the rowdy end of the floor.
     { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0, bar: { strength: 1.4, comp: 0.25 } },
-    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 },
+    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 }, { kind: "restroom", x: 31, y: 6, rot: 0 },
     { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
     { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 47, y: 29, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },

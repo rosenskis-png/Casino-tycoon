@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M4 built (Claude's calls; see docs/spec/incidents.md)
+- Catalog rates, tolerances, `policed` and `drama` values, the police costs and ladder numbers, fines ($100–$1,500), paramedics ($200), closures (3 days; 30 on losing the license) are starting values, tuned only against sanity flags.
+- House rules cover the three policed categories (drunkenness, disorder, misconduct); celebration and social aren't policed. Default Moderate. The drunkenness rule also sets the bar/server cut-off (Moderate 0.8+, Strict 0.5+).
+- Losing the license marks the scenario lost; the casino reopens after 30 days with standing 30, matching how a missed deadline lets you keep playing.
+- The regulator has a standing and a line in the Authorities tab only (its causes are M5/M8).
+- Reports: 0.06 × (1 − drama)² per bothered witness, so a busy Test Floor sees about one every ~30 s of real time; only the first report of an incident reaches the ticker (yellow).
+- **Flagged for the owner:** incidents cost Tourists and Party guests 0.1–0.4 min of play on the Test Floor (annoyance from what they see, frustration in a bad mood). That's the designed cost of an unruly floor; levers are type `tolerance`, guards, and stricter rules.
+- A spill empties the glass. Test Floor: two guards, one strong-drinks bar (a quarter comped), and two more restrooms (the drinking fix filled the old ones: tourists were leaving for lines).
+- Big Floor steady state: 1.92 → 2.01 ms/tick at 5,000 guests.
+
 ## 2026-09-24 · Green light for M4: incidents, house rules, police (see docs/spec/incidents.md)
 - Owner said "green light" for M4.
 - **Incidents come from causes** (owner): each needs a condition the player can see and change (drunk + holding a drink → spill; bad mood next to a drunk → argument → fight; chaser deep in the hole → breakdown; bursting, drunk and no restroom → a planter). Type data only scales how likely a condition turns into an incident.

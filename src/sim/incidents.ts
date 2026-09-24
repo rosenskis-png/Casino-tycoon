@@ -126,6 +126,7 @@ function begin(g: Game, grid: Grid, kind: string, a: Agent, other: Agent | null)
   if (def.mess) s.dirt[inc.tile] = Math.max(s.dirt[inc.tile], def.mess);
   if (def.thought && r.chance(0.6)) think(g, a, def.thought);
   if (kind === "fight") adjustPolice(g, -COST_FIGHT);
+  if (kind === "spill") a.g!.drink = 0;
   if (kind === "passout" || kind === "fight") {
     for (const b of other ? [a, other] : [a]) {
       release(g, b);

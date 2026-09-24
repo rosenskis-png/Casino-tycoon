@@ -54,7 +54,7 @@ A person frame = **pose** (region letters) → **outfit** (region → color lett
 - Regions: `s/S` skin, `e` eyes, `u/U` torso, `c` chest center, `a/A` upper arms, `w/W` forearms, `x` hands, `l/L` hips, `g/G` shins, `f` feet.
 - Final letters: `t/T` top, `j/J` jacket or accent, `n/N` bottoms, `h/H` hair, `q/Q` hat, `f` shoes, `w/P` white, `o` lens, `y` red detail. Uppercase shades are **derived** by the compiler (cloth cools, skin warms); never list shades in look data.
 - Poses: `down0-2`, `up0-2`, `side0-2` (0 stand, 1-2 strides; walk cycle 1-0-2-0), and seated `downs`, `ups`, `sides`.
-- **Type silhouettes** (the M3.1 brief): Locals casual (tees, jeans, caps). Retirees one row shorter, puffed grey/lavender hair or bald, cardigans, pastels, glasses. Tourists wide sun hats, loud patterned shirts, shorts, cameras. Party guests dark blazers and quiffs, or bright short dresses. Staff read by uniform and a prop: janitor grey coverall + mop, tech orange vest + toolbox, server black vest + bow tie + tray.
+- **Type silhouettes** (the M3.1 brief): Locals casual (tees, jeans, caps). Retirees one row shorter, puffed grey/lavender hair or bald, cardigans, pastels, glasses. Tourists wide sun hats, loud patterned shirts, shorts, cameras. Party guests dark blazers and quiffs, or bright short dresses. Staff read by uniform and a prop: janitor grey coverall + mop, tech orange vest + toolbox, server black vest + bow tie + tray, security guard black suit + radio. Visitors: police officer navy with a cap and belt, paramedic white with a red belt.
 - A new type = one `PEOPLE` entry (colors + styles per sex). A new outfit = one `OUTFITS` line. A new hat or hairstyle = one `HAIR` entry with down/up/side.
 - Drink shows three ways: glass or soda in hand (`drink > 0`), flushed face overlay at `intox` ≥ 0.25 and ≥ 0.5, and the existing stagger.
 
@@ -86,4 +86,4 @@ A person frame = **pose** (region letters) → **outfit** (region → color lett
 ## Not yet done (candidates for later)
 - UI tab icons are still emoji; a pixel icon set drawn from the atlas would match the world.
 - Water tiles are static; a 2-frame ripple would need animated terrain.
-- Table games (M7), themes (M6) and incidents (M4) will each need their own sprites under these rules.
+- Table games (M7) and themes (M6) will each need their own sprites under these rules. Incidents (M4) drew marks over heads (`inc:*` in EXTRA_SPRITES), a lying pose (the standing frame rotated), vomit, and guard/officer/paramedic looks.

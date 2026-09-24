@@ -52,7 +52,13 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Paper-doll people with type silhouettes, staff props, drinks in hand, flushed faces, 4-step walk and seated poses.
 - Baked contact shadows, wall shadows and light pools; real sprites at Wide zoom; build-menu pictures.
 
-## M4 · Incidents, house rules, authorities ☐
+## M4 · Incidents, house rules, authorities ☑  (see docs/spec/incidents.md)
+- Incident catalog as data, each from a cause the player can see: drunkenness (loud, stumbling, spills, vomiting, passing out), disorder (arguments that turn into fights, yelling at staff, breakdowns), misconduct (planters), celebration (cheering, buying a round), social (flirting, another round). Vice, underage and drugs deferred.
+- Witnesses react by type tolerance; low-drama guests report; a guest with 3 unanswered reports calls the police.
+- House rules per category (Ignore / Lenient / Moderate / Strict); security guards warn or throw people out; bars and servers cut off drunk guests; guests mind being policed.
+- Police standing and ladder: warning, fines, inspections, raid and closure, license revoked (scenario lost). Officers and paramedics walk the floor. Regulator standing shown (triggers in M5/M8).
+- Drinking fix: trays of 10, servers ask within 6 tiles, the next drink ordered at the last quarter, stronger drink unit; people now actually get drunk.
+- Authorities tab, incident art (marks, lying down, scuffles, vomit), guard/officer/paramedic figures, sounds. Save schema 6 (migration from 5).
 ## M5 · Cheats, suspicion tools, enforcement, luck tags ☐
 ## M6 · Construction: walls, rooms with purposes, outdoors, parcels, theming ☐
 ## M7 · Games catalog and table rules ☐

@@ -10,6 +10,7 @@ Newest first. One entry per decision: date, what, why.
 - Reports: 0.06 × (1 − drama)² per bothered witness, so a busy Test Floor sees about one every ~30 s of real time; only the first report of an incident reaches the ticker (yellow).
 - **Flagged for the owner:** incidents cost Tourists and Party guests 0.1–0.4 min of play on the Test Floor (annoyance from what they see, frustration in a bad mood). That's the designed cost of an unruly floor; levers are type `tolerance`, guards, and stricter rules.
 - A spill empties the glass. Test Floor: two guards, one strong-drinks bar (a quarter comped), and two more restrooms (the drinking fix filled the old ones: tourists were leaving for lines).
+- Police standing recovers 0.2 a day; a call costs 6, a paramedic 5, a fight 3. Tuned so a deliberately unmanaged drunk floor loses its license within ~250 days while the tutorial and a guarded floor never slip.
 - Big Floor steady state: 1.92 → 2.01 ms/tick at 5,000 guests.
 
 ## 2026-09-24 · Green light for M4: incidents, house rules, police (see docs/spec/incidents.md)

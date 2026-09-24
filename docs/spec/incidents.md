@@ -19,7 +19,7 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
 | Vomiting | intox ≥ 0.9 | 0.006 | −10 | leaves vomit (litter 12; janitors go for it first) |
 | Passing out | intox ≥ 1.0 | 0.02 | −6 | lies on the floor until a guard or paramedic comes |
 | Argument | mood < 35 next to another guest (2 tiles, not their group), one of them drunk | 0.004 × (1 + intox) | −5 | two guests; unanswered, 30% × (1 + worse intox) × type becomes a fight |
-| Fight | an argument nobody stopped | — | −14 | two guests stop and fight; −1 police standing |
+| Fight | an argument nobody stopped | — | −14 | two guests stop and fight; −3 police standing |
 | Yelling at staff | intox ≥ 0.5, annoyance ≥ 12, staff within 3 tiles | 0.004 | −4 | |
 | Breakdown | chaser (≥ 0.3) down 70%+ of their money | 0.002 | −3 | then they go home |
 | Planter | bladder ≥ 85, intox ≥ 0.4, no restroom to be had (none, gave up, lost, or in a line), a planter within 4 tiles | 0.03 | −9 | leaves a puddle |
@@ -54,10 +54,10 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
 
 ## Reports and police calls
 - An incident that ends with nobody dealing with it counts as unanswered for each reporter still here: "I told the staff and nobody came." At 3 unanswered, that guest calls the police (once per visit).
-- **Passed out and nobody comes** within 45 s: someone calls the paramedics. A paramedic walks in and carries them out ($200, −3 police standing).
+- **Passed out and nobody comes** within 45 s: someone calls the paramedics. A paramedic walks in and carries them out ($200, −5 police standing).
 
 ## Police
-- Standing 0–100, starts at 75, recovers 0.3 a day. Costs: a police call −6, a paramedic −3, a fight −1, and anything an officer on the floor sees −2 × its police weight (plus a $100 fine for the serious ones).
+- Standing 0–100, starts at 75, recovers 0.2 a day. Costs: a police call −6, a paramedic −5, a fight −3, and anything an officer on the floor sees −2 × its police weight (plus a $100 fine for the serious ones).
 - **Ladder** (a step is reached below its line, and left again 5 points above it):
   - below 60: a warning.
   - below 45: a $500 fine, and every police call from then on costs $400.
@@ -75,7 +75,7 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
 - Guest card: the incident they're in, warnings, unanswered reports and whether they called the police.
 
 ## Measured (Test Floor, 300 days, seed 1; `npm run targets`)
-Two guards, Moderate rules, one strong-drinks bar (a quarter comped). Incidents per 100 guests, drunkenness / disorder / misconduct / celebration / social: Locals 15.5 / 0.6 / 0.9 / 12.1 / 3.3, Retirees 0.7 / 0.7 / 0.2 / 7.6 / 0.2, Tourists 7.3 / 0.3 / 1.7 / 6.3 / 1.7, Party 33.7 / 1.1 / 7.4 / 3.2 / 7.9. About 3% of guests warned and under 1% thrown out; police standing stays at the top. With no guards, every rule on Ignore and strong free drinks, the ladder runs its course in ~200 days (paramedics, calls, warning, fines, inspections, a raid). The tutorial (a strong half-comped bar, no guards) saw no police calls in a year.
+Two guards, Moderate rules, one strong-drinks bar (a quarter comped). Incidents per 100 guests, drunkenness / disorder / misconduct / celebration / social: Locals 15.5 / 0.6 / 0.9 / 12.1 / 3.3, Retirees 0.7 / 0.7 / 0.2 / 7.6 / 0.2, Tourists 7.3 / 0.3 / 1.7 / 6.3 / 1.7, Party 33.7 / 1.1 / 7.4 / 3.2 / 7.9. About 3% of guests warned and under 1% thrown out; police standing stays at the top. With no guards, every rule on Ignore and strong free drinks, the ladder runs its whole course within ~250 days, about 40 minutes of real play (paramedics, warning, fine, inspections, a raid, the license revoked). The tutorial (a strong half-comped bar, no guards) saw no police calls in a year.
 
 Flags in `npm run targets`: a category that never fires, guards that never warn or throw anyone out, a police standing that never moves.
 

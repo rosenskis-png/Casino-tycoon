@@ -1097,14 +1097,15 @@ export const guestSystem: System = {
     const s = g.state;
     const r = rng(s, "guests");
     // Each guest's once-a-second update falls on its own tick, so 5,000 guests don't all update at once.
+    const out = gone(g);
     for (const a of s.agents) {
-      if (a.role !== "guest") continue;
+      // Carried out by paramedics (or the casino closed) since last tick: already gone.
+      if (a.role !== "guest" || out.has(a.id)) continue;
       if ((a.id + s.tick) % TICKS_PER_BEAT === 0) guestBeat(g, a, r);
       guestTick(g, a);
       const gd = a.g!;
       if (gd.intox > gd.mem.peak) gd.mem.peak = gd.intox;
     }
-    const out = gone(g);
     if (out.size) { s.agents = s.agents.filter((a) => !out.has(a.id)); out.clear(); groupMaps.delete(g); }
   },
   beat(g) { groupsBeat(g); },

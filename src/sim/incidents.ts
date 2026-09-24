@@ -48,8 +48,8 @@ const TREAT_SECS = 4;
 /** Intoxication at which a strict drunkenness rule has a guard show the guest out. */
 const WASTED = 0.8;
 /** Police standing: what each thing costs, the recovery per day, the ladder, fines and closures. */
-const COST_CALL = 6, COST_MEDIC = 3, COST_FIGHT = 1;
-const RECOVER_PER_DAY = 0.3;
+const COST_CALL = 6, COST_MEDIC = 5, COST_FIGHT = 3;
+const RECOVER_PER_DAY = 0.2;
 /** Standing below which each step of the ladder is reached; a step is left again 5 points above it. */
 export const LADDER = [60, 45, 30, 15];
 export const LADDER_NAMES = ["Good standing", "Warned", "Fined", "Under inspection", "Raided"];
@@ -417,7 +417,9 @@ function guardTick(g: Game, grid: () => Grid, a: Agent, r: Rng) {
     return;
   }
   if (isWalking(a)) return;
-  if (a.act !== "idle") a.act = "idle";
+  // Free again (done, or the way there was blocked): let go of any incident so another guard, or a paramedic, can come.
+  a.act = "idle";
+  a.target = -1;
   if (!s.incidents.length || !assign(g, grid(), a)) patrol(g, a, r);
 }
 

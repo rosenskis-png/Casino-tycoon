@@ -830,6 +830,23 @@ export const DECOR_SPRITES: Record<string, SpriteDef> = {
     "................", "..mmmmmmmmmm....", ".mMMMMMMMMMmm...", ".mMmmmmmmmmMmy..", ".mMMMMMMMMMmm...",
     "..mmmmmmmmmm....", "...44.....44....", "..4334...4334...", "..4334...4334...", "...44.....44....",
   ]),
+  // Lucky Dragon (M8.6): a red lantern (a light), a bronze guardian lion, blue-and-white porcelain, a lacquer screen.
+  dragon_lantern: S(M([
+    ".......7", "......88", "....OOOO", "...OOOqO", "...OOqqO", "...88888", "...OOqqO", "...OOOqO",
+    "....OOOO", "......88", ".......7", ".......7", ".......7", ".....444", "....4444",
+  ], { O: "R", 8: "7", 4: "3" })),
+  dragon_lion: S(M([
+    "....6.6.", "...69898", "..698989", "..69w8k8", "..698888", "..6988KK", "...69898", "....6988",
+    "...69878", "..698878", "..68.688", ".TTTTTTT", "tTTTTTTT", ".sssssss",
+  ], { 9: "8", 8: "7", 7: "6", T: "t", t: "s" })),
+  dragon_vase: S(M([
+    ".....www", "......wA", "......wA", ".....wwA", "...wwAAA", "..wAwwwA", "..wAAwAw", "..wwAAAA",
+    "..wAwwwA", "...wAAww", "....wwww", ".....444", "....4444",
+  ], { w: "P", A: "D", 4: "3" }), { A: "#2c4a9a", D: "#1c2f6a" }),
+  dragon_screen: S(["3333333333333333", ...[
+    "RRRRRRRRRRRR", "R99RRRRRRRRR", "R9R8RRRRR8RR", "RR88RRRR8R8R", "RRRR8RR8RRR8", "RRRRR88RRRRR",
+    "RRRRRRRRRRRR", "RR7RR7RR7RR7", "RRRRRRRRRRRR",
+  ].map((p) => `3${p.slice(0, 4)}3${p.slice(4, 8)}3${p.slice(8).replace(/R/g, "r")}3`), "3333333333333333", ".3...........3.."]),
   // Outdoors (M6.5): pool water and deck, loungers, garden hedges, flower beds, benches and path, umbrellas
   // over outdoor tables, and a for-sale sign on unowned land.
   water: S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 3 * y) % 23 === 0 ? "V" : (y % 5 === 2 && (x + y) % 8 < 3) ? "v" : "U")).join("")), undefined, false),
@@ -1205,6 +1222,7 @@ export const LIGHTS: Record<string, LightDef> = {
   stage: { color: "#ffe0a0", r: 3.2, k: 0.45, front: 0.6 },
   djbooth: { color: "#ff4fa0", r: 4, k: 0.55 },
   tiki_torch: { color: "#ffb050", r: 2.2, k: 0.45 },
+  dragon_lantern: { color: "#ff6a3a", r: 2, k: 0.4 },
   med_brazier: { color: "#ff9a40", r: 2.4, k: 0.45 },
   atom_star: { color: "#ff4fa0", r: 3, k: 0.55 },
   rat_marquee: { color: "#ffd23f", r: 2.6, k: 0.45 },

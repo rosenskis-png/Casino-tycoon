@@ -41,7 +41,7 @@ const CITIES = ["Laughlin", "Reno", "Atlantic City", "Biloxi", "Lake Tahoe", "Me
 /** Tuning (docs/spec/designer.md "As built in M8.6"). */
 export const MARKET = {
   /** Bass curve per day at full suitability: innovation (being new on the floor) and imitation (word of mouth). */
-  p: 0.003, q: 0.035,
+  p: 0.002, q: 0.028,
   /** Awareness a new design starts with: your own, with Game launches researched, a stock game (a known brand). */
   launch: 0.05, launchParty: 0.25, launchStock: 0.4,
   /** Unaware guests still see the machine: appeal × (base + (1 - base) × awareness). */
@@ -75,12 +75,18 @@ interface Cache {
   wishes: Record<string, string>;
 }
 const caches = new WeakMap<Game, Cache>();
+let version = 0, lastG: Game | null = null, lastC: Cache | null = null;
 
 function cache(g: Game): Cache {
+  if (g === lastG && lastC) return lastC;
   let c = caches.get(g);
   if (!c) { c = rebuild(g); caches.set(g, c); }
+  lastG = g;
+  lastC = c;
   return c;
 }
+/** Changes whenever market factors may have, in any game (per-machine caches compare it). */
+export const marketVersion = () => version;
 
 /** The main mechanic a design is sold on (its first feature, else its way of winning). */
 const mechanic = (d: SlotDesign) => featuresOf(d)[0] ?? LAYOUTS[d.layout].win;
@@ -103,6 +109,13 @@ function rebuild(g: Game): Cache {
     m[p.type] = (m[p.type] ?? 0) + 1;
     c.fans.set(p.fan, m);
   }
+  // Visitors who became fans count too (rounded).
+  for (const [id, st] of Object.entries(s.dstats)) {
+    if (!st.ff) continue;
+    const m = c.fans.get(id) ?? {};
+    for (const [t, n] of Object.entries(st.ff)) if (Math.round(n)) m[t] = (m[t] ?? 0) + Math.round(n);
+    c.fans.set(id, m);
+  }
   // A game with a following is a reason to come (only while it's on the floor).
   for (const [id, m] of c.fans) {
     if (!c.share.has(id)) continue;
@@ -112,7 +125,14 @@ function rebuild(g: Game): Cache {
   return c;
 }
 /** Forget the cache (the floor or the pool changed). */
-export const marketChanged = (g: Game) => caches.delete(g);
+export const marketChanged = (g: Game) => { caches.delete(g); if (lastG === g) lastC = null; version++; };
+/** A fan won or lost: counted now; the draw it adds waits for the day's rebuild. */
+function fanDelta(g: Game, id: string | undefined, type: string, d: number) {
+  if (!id) return;
+  const m = cache(g).fans.get(id) ?? {};
+  m[type] = Math.max(0, (m[type] ?? 0) + d);
+  cache(g).fans.set(id, m);
+}
 
 /** Awareness of a design among a type, 0-1 (designs placed before the market existed are known to all). */
 export function awareness(st: DesignStats | undefined, type: string): number {
@@ -185,9 +205,19 @@ export function marketSession(g: Game, a: Agent, o: PlacedObject, secs: number, 
   const wish = cache(g).wishes[gd.type];
   if (wish && r.chance(0.04)) think(wish);
   else if (samey(g, id) && r.chance(0.05)) think("slotSame");
-  if (gd.pid < 0 || secs < 30) return;
-  const p = person(g, gd.pid);
-  if (!p) return;
+  if (secs < 30) return;
+  const p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
+  if (!p) {
+    // A visitor who loved it: a fan out in the world (they tell people back home).
+    const c = compiledById(s, id);
+    if (c && secs >= 60 && gd.mood >= 60 && r.chance(Math.min(0.2, Math.max(0, judged(c, gd.type).appeal - 0.5) * 0.4))) {
+      const before = Math.round((st.ff ??= {})[gd.type] ?? 0);
+      st.ff[gd.type] = (st.ff[gd.type] ?? 0) + 1;
+      fanDelta(g, id, gd.type, Math.round(st.ff[gd.type]) - before);
+      think("slotFan");
+    }
+    return;
+  }
   const dp = (p.dp ??= {});
   dp[id] = (dp[id] ?? 0) + 1;
   const keys = Object.keys(dp);
@@ -196,8 +226,8 @@ export function marketSession(g: Game, a: Agent, o: PlacedObject, secs: number, 
   if (!c) return;
   const tt = SLOT_TASTES[gd.type] ?? SLOT_TASTES.local, ap = judged(c, gd.type).appeal;
   if (p.fan === id) {
-    if (gd.mood < 35 && r.chance(0.25)) { p.fan = undefined; marketChanged(g); }
-    else if (!st.ever && dp[id] >= MARKET.boredAt && r.chance(0.1 * tt.bore)) { p.fan = undefined; marketChanged(g); think("slotPlayedOut"); }
+    if (gd.mood < 35 && r.chance(0.25)) { p.fan = undefined; fanDelta(g, id, p.type, -1); }
+    else if (!st.ever && dp[id] >= MARKET.boredAt && r.chance(0.1 * tt.bore)) { p.fan = undefined; fanDelta(g, id, p.type, -1); think("slotPlayedOut"); }
     return;
   }
   if (secs < 60 || gd.mood < 60) return;
@@ -205,7 +235,7 @@ export function marketSession(g: Game, a: Agent, o: PlacedObject, secs: number, 
   // A fan of another game switches only for one they like clearly better.
   const old = p.fan ? compiledById(s, p.fan) : undefined;
   if (old && machinesOf(s, p.fan!).length) chance = ap > judged(old, gd.type).appeal + 0.15 ? chance / 2 : 0;
-  if (chance > 0 && r.chance(chance)) { p.fan = id; marketChanged(g); think("slotFan"); }
+  if (chance > 0 && r.chance(chance)) { fanDelta(g, p.fan, p.type, -1); p.fan = id; fanDelta(g, id, p.type, 1); think("slotFan"); }
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -507,9 +537,9 @@ export const marketSystem: System = {
       if (!st.aw) launch(g, designIdOf(o));
       st.md = (st.md ?? 0) + 1;
     }
-    marketChanged(g);
     spread(g);
-    marketChanged(g);
+    // Days are short: appeal follows awareness weekly (and at once when the floor changes).
+    if (Math.floor(s.tick / DAY) % 7 === 0) marketChanged(g);
     if (s.offer && s.tick >= s.offer.until) decline(g, true);
     outsidePlay(g);
   },
@@ -524,7 +554,8 @@ export const marketSystem: System = {
       st.mo = 0;
       st.md = 0;
     }
-    // Memories of games played fade: a month away makes an old favorite fresher.
+    // Visitors' enthusiasm fades; memories of games played fade (a month away makes an old favorite fresher).
+    for (const st of Object.values(s.dstats)) if (st.ff) for (const t of Object.keys(st.ff)) st.ff[t] *= 0.97;
     for (const p of s.pool) {
       if (!p.dp) continue;
       for (const k of Object.keys(p.dp)) if ((p.dp[k] *= 0.85) < 0.5) delete p.dp[k];

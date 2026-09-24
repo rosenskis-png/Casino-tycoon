@@ -37,6 +37,7 @@ import { money } from "./format";
 import { AUTO_KEY, MANUAL_KEY, exportSave, hasSave, importSave, load, newGame, save } from "./saves";
 import { perfTest, type PerfResult } from "./perf";
 import { BankSignCard, Opinions, SlotLive } from "./designer/Opinions";
+import { DesignMarket } from "./designer/Market";
 
 export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: number } | null;
 
@@ -933,6 +934,7 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
           <TableCard g={g} id={obj.id} />
           <ObjectStats host={host} id={obj.id} />
           {OBJECTS[obj.kind].slot && <SlotLive g={g} o={obj} />}
+          {OBJECTS[obj.kind].slot && <DesignMarket g={g} id={designIdOf(obj)} />}
           <BankSignCard g={g} o={obj} />
           <Opinions g={g} o={obj} />
           <TypeBreakdown g={g} id={obj.id} />

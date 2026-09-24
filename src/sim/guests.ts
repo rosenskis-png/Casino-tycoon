@@ -36,7 +36,7 @@ import { compiledOf, huntEdge, signDesign, slotInfo, statsOf, topMeter } from ".
 import { judged } from "./design/appeal";
 import { SLOT_TASTES } from "../data/slotTastes";
 import { gameKey, noteSessionEnd, noteThought } from "./opinions";
-import { fanOf, marketFactor, marketSession, personalPull } from "./design/market";
+import { fanOf, marketFactor, marketSession, marketVersion, personalPull } from "./design/market";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -752,10 +752,15 @@ export function meterPull(g: Game, type: string, stake: number, o: import("./sta
  */
 export function slotAppeal(g: Game, type: string, o: import("./state").PlacedObject, info = slotInfo(g.state, o)): number {
   if (!info) return 0;
-  let v = info.ap.get(type);
-  if (v === undefined) info.ap.set(type, (v = judged(info.c, type).appeal));
   // (M8.6) Word of mouth, novelty and variety: how the design stands on this floor today.
-  v *= marketFactor(g, info.id, type);
+  const ver = marketVersion();
+  if (info.mv !== ver) { info.am.clear(); info.mv = ver; }
+  let v = info.am.get(type);
+  if (v === undefined) {
+    let base = info.ap.get(type);
+    if (base === undefined) info.ap.set(type, (base = judged(info.c, type).appeal));
+    info.am.set(type, (v = base * marketFactor(g, info.id, type)));
+  }
   const th = g.fields.themes;
   if (th.active) {
     const dom = th.dom[o.y * g.state.map.w + o.x];

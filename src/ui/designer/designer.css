@@ -83,3 +83,14 @@
 .dz-feat .head b{font-size:15px}
 .dz-stat{margin:4px 0;font:600 12px/1.35 ui-monospace,Menlo,monospace;color:#ffd23f}
 .dz-chips.fonts button{font-size:15px}
+/* (M8.6) The market: life curve, the maker's letter. */
+.mk-curve{margin:6px 0 2px}
+.mk-curve svg{display:block;margin-top:2px}
+.mk-axis{stroke:rgba(255,255,255,.25);stroke-width:1}
+.mk-bar{fill:#c9a24a}
+.mk-bar.now{fill:#c9a24a;opacity:.55}
+.mk-lbl{fill:var(--cream2,#cdbf9e);font-size:9px;text-anchor:middle}
+.mk-lbl.start{text-anchor:start}.mk-lbl.end{text-anchor:end}
+.mk-letter{border:1px solid #c9a24a;border-radius:8px;padding:10px;margin:0 0 10px;background:rgba(201,162,74,.08)}
+.mk-letter p{margin:6px 0}
+.mk-more{padding:4px 0 8px;border-bottom:1px solid rgba(255,255,255,.08)}

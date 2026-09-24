@@ -574,6 +574,8 @@ export interface DesignStats {
   hm?: number[];
   fans?: number;
   ever?: number;
+  /** (M8.6) Visitors who became fans, by type (they don't come back, but they tell people); fades as they forget. */
+  ff?: Record<string, number>;
 }
 /**
  * (M8) A slot design in this casino: the design, when its certification finishes (0 never submitted; a tick in

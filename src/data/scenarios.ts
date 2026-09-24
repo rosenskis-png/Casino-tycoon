@@ -187,6 +187,8 @@ function testFloor(): ScenarioDef {
     d("rat_chair", 62, 29), d("deco_urn", 72, 27), d("rat_lamp", 70, 24),
     d("riv_lemon", 70, 6), d("riv_amphora", 71, 8), d("riv_cypress", 62, 11),
     d("pirate_chest", 47, 21), d("tiki_idol", 42, 21),
+    // M8.6: Lucky Dragon pieces along the bingo room's outer wall (its door at x 42 kept clear).
+    d("dragon_lantern", 37, 17), d("dragon_lion", 39, 17), d("dragon_vase", 45, 17), d("dragon_screen", 47, 17),
   );
   // Outdoors (M6.5): a garden, a pool with a patio bar and a patio restaurant, tiki torches and a parasol.
   objects.push(

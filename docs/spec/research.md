@@ -24,8 +24,9 @@
 | Amenities | Outdoors | $6,000 | | pool, garden, patio bar |
 | Themes | Old Vegas | $3,000 | | Rat Pack Lounge, Neon Atomic, Gold Rush |
 | Themes | Ancient worlds | $3,000 | | Ancient Rome, Ancient Egypt, Medieval |
-| Themes | Luxury | $4,000 | | Gilded Deco, Modern Luxe, Riviera |
+| Themes | Luxury | $4,000 | | Gilded Deco, Modern Luxe, Riviera, Lucky Dragon (its decor since M8.6) |
 | Themes | Just for fun | $3,000 | | Tropical Tiki, Pirate Cove, Rock & Roll |
+| Games | Game launches (M8.6) | $3,000 | | a new game you place starts known to a quarter of your guests, not a handful |
 | Staff tools | Cameras | $3,000 | | cameras |
 | Information | Suspicion tools 2 / 3 / 4 | $2,000 / $4,000 / $6,000 | the tier before | one more suspicion tool tier (above the scenario's own) |
 | Information | Crowd maps | $2,500 | | overlays: foot traffic, crowding, noise and energy |
@@ -35,6 +36,7 @@
 | Information | Heatmaps | $3,000 | | revenue and play-time heatmaps over the games |
 | Information | Player's club | $5,000 | | the club (below) |
 | Information | Guest breakdowns | $3,000 | Player's club | machine and table stats by guest type |
+| Information | Market research (M8.6) | $3,000 | | each design's awareness and fans by guest type; what each type wishes the floor had |
 
 - Anything not in the tree (slots Cherry Parade and Liberty Bell, the bar, restrooms, cage, ATM, plain decor, signs, dumpsters) is always available. A locked item shows in the Build menu with its project's name and can't be placed. Already-placed items stay.
 - Overlays are chosen in the Game tab; the Debug view still shows everything.

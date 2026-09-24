@@ -24,13 +24,13 @@ export { DRINK_PRICE, STRENGTHS } from "./drinks";
 export { betOf, machineModel, limitsOf, isTable, tableDefOf } from "./gaming";
 export {
   compiledOf, compiledById, designById, designIdOf, perfIndex, panelMix, statsOf, machinesOf, cantUse, certified, certPending, illegal, sanitize,
-  designLocks, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind, PERF_INDEX_HELP,
+  designLocks, sameMath, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind, PERF_INDEX_HELP,
 } from "./design";
 export { opinionsOf, gameKey, OPINION_MONTHS, type OpinionSummary } from "./opinions";
 export { huntEdge, topMeter, signDesign, collectHuntAt } from "./design";
 export { meterPull } from "./guests";
 export {
-  awareness, ageDays, fansOf, fanCount, wishes, saleBlocks, saleOf, installs, saleLine, marketFactor, MARKET, SALE_RULES, MAKERS,
+  awareness, ageDays, marketVersion, fansOf, fanCount, wishes, saleBlocks, saleOf, installs, saleLine, marketFactor, MARKET, SALE_RULES, MAKERS,
 } from "./design/market";
 export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";
@@ -53,3 +53,4 @@ export { STOCK_DESIGNS } from "../data/designs";
 export { newDesign } from "../data/designer";
 export { cantPlay, yourFam, yourMoves, bjTotal, rankOf, vpHand, vpX, VP_HANDS, bacTotal, rouletteX } from "./yours";
 export type { YourPlay, YourFam } from "./state";
+export { SCENARIOS } from "../data/scenarios";

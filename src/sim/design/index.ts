@@ -56,7 +56,11 @@ export function compiledById(s: GameState, id: string): Compiled | undefined {
   return c;
 }
 /** Per-machine cache (runtime): the design it plays, compiled, and each type's appeal. Checked against the design object. */
-interface SlotInfo { o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array; prog: boolean }
+interface SlotInfo {
+  o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array; prog: boolean;
+  /** (M8.6) Appeal × the market factor by type, valid for market version `mv`. */
+  am: Map<string, number>; mv: number;
+}
 const infos = new Map<number, SlotInfo>();
 export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   const inf = infos.get(o.id);
@@ -64,7 +68,7 @@ export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   if (inf && inf.o === o && (o.design === undefined || (s.designs[o.design]?.d ?? STOCK_DESIGNS[o.design]) === inf.d)) return inf;
   const id = designIdOf(o), c = compiledById(s, id);
   if (!c) return undefined;
-  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme), prog: hasMeters(c) };
+  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme), prog: hasMeters(c), am: new Map(), mv: -1 };
   if (infos.size > 50000) infos.clear();
   infos.set(o.id, n);
   return n;

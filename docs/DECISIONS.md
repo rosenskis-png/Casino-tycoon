@@ -2,6 +2,19 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8.6 built: the market (Claude's calls; see docs/spec/designer.md "As built in M8.6")
+- Word of mouth (awareness by guest type on a Bass curve), a novelty bump by how different a design is from the floor, boredom and favorites per regular, fans who come for their game and draw more of their type, floor variety, wishes, records and Evergreens, Game launches and Market research projects, the life curve on each design's card, and slot makers' offers with everything after a sale (fees on theoretical edge, hidden units on an S-curve, royalties, wide-area meters the maker pays, math locked, its own budget line, the library remembers).
+- **Flagged for the owner: fans.** A scenario's whole pool of regulars is 100–400 people, so "50 fans" from regulars alone was out of reach. Visitors who fall for a game now count as fans too (they fade as they forget). The 50-fan bar is unchanged.
+- **Flagged: royalties follow the plan's formula**, so they scale with this floor's win per machine: a median sale pays a trickle, thousands of installs pay about what the whole slot floor wins. The one-time cash (10–100× the cabinet price) is large next to that. Easy to retune in `SALE_RULES`/`makeOffer` if it plays wrong.
+- A declined (or lapsed) offer's re-offer roll failing means no more offers for that design; appeal follows awareness weekly (a game day is 200 ticks); awareness starts at 5% (25% with Game launches), 40% for stock games, full for everything already on the floor.
+- The Lucky Dragon decor owed since M8: lantern, guardian lion, porcelain vase, lacquer screen.
+- Test Floor: no sanity flags; guest numbers within run-to-run noise of m8.5; Big Floor steady state within ~2% of m8.5. Tutorial year-end cash moves with jackpot luck as before.
+- Save schema 17 (migration from 16).
+- Noticed, not fixed: two research projects share the id `club` (Nightclub and Player's club), so the later one wins and the nightclub needs no research.
+
+## 2026-09-24 · Slot Expo and rival releases dropped (owner)
+- Owner, at the start of the M8.6 build: get rid of the Slot Expo (yearly trends) and rival makers' releases. Everything else in M8.6 stays.
+
 ## 2026-09-24 · Green light for M8.6
 - Owner said "green light on m8.6". Plan: docs/spec/designer.md §6, §13 (M8.6) and "M8.6 additions" (word of mouth, sale offers with the owner's revisions in the M8.5 green-light entry). Built in its own chat (one chat per milestone).
 

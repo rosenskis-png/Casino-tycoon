@@ -2,6 +2,19 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M10 built (Claude's calls; see docs/spec/audio.md, docs/spec/play.md)
+- **Same odds as a guest, checked exactly:** roulette, baccarat (every 8-deck shoe enumerated), craps (real dice) and keno return what the guests' models say, and video poker classifies all 2,598,960 hands correctly.
+- **The craps field bet is dropped** (it was in the plan): its edge isn't one a guest faces. Lay odds on don't pass are allowed at true odds.
+- **A video poker royal pays 800 at any number of coins**, as the guests' model does. Slots take one wager per spin, where a guest's round is four.
+- **You play your own hand:** no seat taken, and the table's shared outcome and guests are untouched. A table must have its dealer and a machine must be working. You can't leave mid-hand, but selling the object refunds what was out.
+- **A title screen at every launch** ("Tap to start", because iPhone needs a tap before audio). It pauses the floor until Continue.
+- **Nightclub music plays whenever the game runs.** Only the two loudest music sources play at once. The floor goes quiet when paused and drops to half while you play.
+- **Door sounds are dropped** (they were in the plan): with doors on every route they'd be constant noise.
+- Big Floor headless: ~8.0 ms/tick against m9.6's ~7.9 on the same machine (two runs each; noise).
+
+## 2026-09-24 · Green light for M10
+- Owner said "green light for m10".
+
 ## 2026-09-24 · M10 plan: owner's answers
 - Owner accepts that winnings at your own games come from nowhere.
 - **Same odds as guests:** you play the object's real rules and paytable with ordinary luck, never rigged either way. In blackjack and video poker your own decisions still count, as they do for a sharp guest.

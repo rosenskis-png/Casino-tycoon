@@ -16,6 +16,7 @@ import type { SlotModel } from "../data/games";
 import { GUEST_TYPES } from "../data/guests";
 import { TICKS_PER_DAY } from "./clock";
 import { Game } from "./game";
+import { yoursMathChecks, yoursPlayChecks } from "./yourschecks";
 import { rng } from "./rng";
 import { loadState, serialize } from "./save";
 import { objCells, objSeats, seatCount, sizeOk, dims } from "./geometry";
@@ -408,7 +409,7 @@ export function exitChecks(): string[] {
 }
 
 export function smoke(opts: { days: number; seeds: number[]; scenario?: string }): { ok: boolean; problems: string[] } {
-  const problems: string[] = [...mathChecks(), ...exitChecks(), ...generatorChecks()];
+  const problems: string[] = [...mathChecks(), ...yoursMathChecks(), ...yoursPlayChecks(), ...exitChecks(), ...generatorChecks()];
   const sc = opts.scenario ?? "horseshoe";
   for (const seed of opts.seeds) {
     const g = run(sc, seed, opts.days, (g, d) => {

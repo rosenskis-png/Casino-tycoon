@@ -25,8 +25,11 @@ import {
   locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
   priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules,
+  cantPlay, yourFam,
 } from "../sim";
-import { isMuted, setMuted } from "../platform/audio";
+import { play } from "../platform/audio";
+import { SoundSettings } from "./title";
+import { CLUB_TRACKS, TRACKS } from "../data/music";
 import type { Host } from "./host";
 import type { Tool } from "./input";
 import { money } from "./format";
@@ -883,7 +886,9 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
       {obj && (
         <>
           <p className="muted">{OBJECTS[obj.kind].desc}</p>
+          <PlayHere host={host} id={obj.id} />
           <AmenityCard g={g} id={obj.id} />
+          <ClubTrack g={g} id={obj.id} />
           <TableCard g={g} id={obj.id} />
           <ObjectStats host={host} id={obj.id} />
           <TypeBreakdown g={g} id={obj.id} />
@@ -922,6 +927,32 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
         ) : null;
       })()}
       {host.debug && <HiddenValues g={g} tile={i} />}
+    </div>
+  );
+}
+
+/** Sit down and play it yourself (docs/spec/play.md): real rules and limits, casino cash, not while paused. */
+function PlayHere({ host, id }: { host: Host; id: number }) {
+  const g = host.game, o = g.objById.get(id);
+  if (!o || !yourFam(o.kind)) return null;
+  const why = host.speed === 0 ? "Unpause to play" : cantPlay(g, o);
+  return (
+    <div className="row">
+      <button className="btn on" disabled={!!why} onClick={() => { play("click"); g.dispatch({ type: "yours", act: "open", id }); }}>Play it yourself<small>{why ?? "with the casino's cash"}</small></button>
+    </div>
+  );
+}
+
+/** A nightclub's music (docs/spec/audio.md). */
+function ClubTrack({ g, id }: { g: Game; id: number }) {
+  const o = g.objById.get(id);
+  if (!o || OBJECTS[o.kind].serves !== "club") return null;
+  return (
+    <div className="kv">
+      <b>Music</b>
+      <span><select value={o.track ?? 0} onChange={(e) => g.dispatch({ type: "setTrack", id, track: Number(e.target.value) })}>
+        {CLUB_TRACKS.map((t, k) => <option key={t} value={k}>{TRACKS[t].name}</option>)}
+      </select></span>
     </div>
   );
 }
@@ -1038,8 +1069,8 @@ export function GamePanel({ host }: { host: Host }) {
         <button className="btn" disabled={!hasSave(MANUAL_KEY)} onClick={() => { const r = load(MANUAL_KEY); replace(r.game, r.error); }}>Load save</button>
         <button className="btn" onClick={() => exportSave(g)}>Export<small>backup file</small></button>
         <button className="btn" onClick={async () => { const r = await importSave(); replace(r.game, r.error, "Imported."); }}>Import<small>backup file</small></button>
-        <button className="btn" onClick={() => { setMuted(!isMuted()); refresh(); }}>{isMuted() ? "Sound off" : "Sound on"}</button>
       </div>
+      <div style={{ marginTop: 8 }}><SoundSettings /></div>
       <div className="row" style={{ marginTop: 8 }}>
         <select value={scenario} onChange={(e) => setScenario(e.target.value)} style={{ flex: 1 }}>
           {Object.values(SCENARIOS).filter((s) => !s.hidden).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

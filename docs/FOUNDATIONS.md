@@ -503,7 +503,8 @@ Information is a resource: the player starts with symptoms only.
   - Sounds for each game (reels, dice, cards, chips).
   - Jackpot fanfares, crowd noise, incident sounds, and interface clicks.
   - Master and category volume controls, and mute.
-  - Haptics on jackpots and placements where supported.
+  - ~~Haptics on jackpots and placements where supported.~~ Dropped (owner, M10): no vibration.
+  - Music (M10): a main theme, nightclub tracks, show music, all generated from data.
 
 ---
 
@@ -540,5 +541,5 @@ Information is a resource: the player starts with symptoms only.
 ## 26. Open design discussions
 
 - **Guest model:** roster, parameter values, drinking profiles, drama appetites.
-- **Per-system detail as each is reached:** ~~incident catalog specifics~~ (M4: docs/spec/incidents.md), ~~suspicion tool tiers~~ (M5: docs/spec/cheats.md), ~~theme list and synergy table~~ (M6.5: docs/spec/themes.md), ~~games catalog specifics~~ (M7: docs/spec/tables.md), slot designer interface, staff roster details, phone interface layout, scenario designs and tutorial, art and audio direction.
+- **Per-system detail as each is reached:** ~~incident catalog specifics~~ (M4: docs/spec/incidents.md), ~~suspicion tool tiers~~ (M5: docs/spec/cheats.md), ~~theme list and synergy table~~ (M6.5: docs/spec/themes.md), ~~games catalog specifics~~ (M7: docs/spec/tables.md), slot designer interface, staff roster details, phone interface layout, scenario designs and tutorial, ~~art and audio direction~~ (docs/spec/art.md; M10: docs/spec/audio.md, docs/spec/play.md).
 - ~~Whether every visible guest is one real guest~~ Decided 2026-09-23: yes, at all scales (iPhone perf test; see DECISIONS).

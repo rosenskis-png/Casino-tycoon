@@ -36,10 +36,11 @@ import { newWhale, whaleSystem } from "./whales";
 import { calendarSystem, newCalendar } from "./calendar";
 import { newResearch, researchSystem } from "./research";
 import { viceSystem } from "./vice";
+import { yoursSystem } from "./yours";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem, yoursSystem,
 ];
 
 export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
@@ -111,7 +112,7 @@ export class Game {
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
-      cal: newCalendar(), ads: [], research: newResearch(def),
+      cal: newCalendar(), ads: [], research: newResearch(def), yours: null,
     };
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);

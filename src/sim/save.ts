@@ -208,6 +208,11 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const a of s.agents) if (a.role === "guest" && a.g) Object.assign(a.g, { drugs: 0, high: 0 });
     return s;
   },
+  // 13 → 14 (M10): nobody is sitting at a game of their own; clubs play their first track (a missing `track`).
+  13: (s) => {
+    s.yours = null;
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

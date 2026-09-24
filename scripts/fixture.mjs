@@ -68,5 +68,15 @@ if (sim.SCHEMA_VERSION >= 12) {
   g.dispatch({ type: "advertise", id: "radio", months: 3 });
 }
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
+if (sim.SCHEMA_VERSION >= 14) {
+  // M10: saved mid-hand at your own blackjack table (a slot if the table has no dealer).
+  const bj = g.state.objects.find((o) => o.kind === "blackjack" && !g.check({ type: "yours", act: "open", id: o.id }));
+  const slot = g.state.objects.find((o) => o.kind.startsWith("slot"));
+  g.dispatch({ type: "yours", act: "open", id: (bj ?? slot).id });
+  g.step();
+  if (bj) g.dispatch({ type: "yours", act: "deal", bet: sim.limitsNow(g, bj)[0] });
+  else g.dispatch({ type: "yours", act: "spin", bet: 1 });
+  g.step();
+}
 writeFileSync(file, sim.serialize(g));
 console.log(`wrote ${file} (${g.state.agents.length} agents, ${g.state.objects.length} objects)`);

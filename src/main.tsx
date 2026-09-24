@@ -17,6 +17,8 @@ Object.assign(window, {
   __ct: {
     smoke,
     perf: () => perfTest(390, 700),
+    /** Starts a scenario (screenshots of hidden floors). */
+    scenario: (id: string) => (window as unknown as { __ctHost?: { setGame(g: Game): void } }).__ctHost?.setGame(newGame(Date.now(), id)),
     get game() { return (window as unknown as { __ctHost?: { game: Game } }).__ctHost?.game; },
   },
 });

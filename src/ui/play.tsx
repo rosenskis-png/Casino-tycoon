@@ -246,6 +246,7 @@ function Slots({ g, o, onBusy }: { g: Game; o: PlacedObject; onBusy: (b: boolean
   return (
     <>
       <Machine c={c} credit={g.state.cash} bet={bet} onBusy={(b) => onBusy(b, bet)} meters={meters} col={o.col ?? 0}
+        resume={g.state.yours?.phase === "act" && g.state.yours.spin?.offer ? { vals: g.state.yours.spin.offer, k: g.state.yours.offerAt ?? 0, bet: g.state.yours.out } : null}
         onBet={(dir) => setLv((k) => (dir === "max" ? levels.length - 1 : Math.max(0, Math.min(levels.length - 1, k + dir))))}
         onOffer={(act) => { const e = g.dispatch({ type: "yours", act }); if (e) setErr(e); }}
         spin={() => {

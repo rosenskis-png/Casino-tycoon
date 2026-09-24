@@ -36,6 +36,8 @@ export interface MachineProps {
   col?: number;
   /** (M8.5) An offer answered: take it or leave it; `pay` (× bet) once it's settled. */
   onOffer?(act: "take" | "leave", pay: number | null): void;
+  /** (M8.5) An offer still waiting (a reloaded game): its walk and the offer on the table. */
+  resume?: { vals: number[]; k: number; bet: number } | null;
 }
 
 interface Orb2 { x: number; lv: number; fresh?: boolean }
@@ -623,6 +625,19 @@ export function Machine(p: MachineProps) {
     const t = setInterval(() => setView((v) => ({ ...v, cycle: (v.cycle + 1) % v.wins.length })), 1100);
     return () => clearInterval(t);
   }, [busy, view.wins.length]);
+  // A reloaded game with an offer still on the table: straight back to it.
+  useEffect(() => {
+    const r = p.resume;
+    if (!r) return;
+    offerRef.current = { vals: r.vals, bet: r.bet };
+    credit0.current = p.credit;
+    winRef.current = 0;
+    outRef.current = null;
+    phases.current = [{ wait: true, run: () => 0 }];
+    pi.current = 0;
+    setBusy(true);
+    setView((v) => ({ ...v, mode: "offer", offer: { vals: r.vals, k: r.k, state: "ask" } }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Idle: the collector shows the machine's own progress.
   useEffect(() => { if (!busy) setView((v) => ({ ...v, col: p.col ?? 0 })); }, [p.col, busy]);
 
@@ -696,7 +711,7 @@ export function Machine(p: MachineProps) {
           {view.mode === "hns" && view.hns ? <HnsBoard v={view.hns} reels={lay.reels} rows={rows} bet={p.bet} c={c} />
             : view.mode === "pick" && view.pick ? <PickBoard v={view.pick} bet={p.bet} c={c} />
             : view.mode === "wheel" && view.wheel && !topperWheel ? <div className="sm-wheelbox"><WheelDisk segs={view.wheel.segs} turn={view.wheel.turn} spinning={view.wheel.spinning} bet={p.bet} c={c} /></div>
-            : view.mode === "offer" && view.offer ? <OfferBoard v={view.offer} bet={p.bet} onAnswer={answerOffer} />
+            : view.mode === "offer" && view.offer ? <OfferBoard v={view.offer} bet={offerRef.current?.bet ?? p.bet} onAnswer={answerOffer} />
             : (
             <div className={`sm-reels ${shownWins.length ? "showing" : ""} ${view.drop ? "drop" : ""}`}>
               {view.grid.map((col, r) => (

@@ -11,7 +11,7 @@ import { Host } from "./host";
 import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
-import { AUTO_KEY, newGame, save } from "./saves";
+import { AUTO_KEY, load, newGame, save } from "./saves";
 import { AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
@@ -50,6 +50,8 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const titleRef = useRef(title);
   titleRef.current = title;
   const floorRef = useRef<FloorAudio | null>(null);
+  /** Audio is unlocked after the first title screen, so a return to it plays the theme straight away. */
+  const titleAwake = useRef(false);
   const tickerRef = useRef(new Ticker());
   const [, force] = useState(0);
 
@@ -133,7 +135,20 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const cur = tickerRef.current.current;
   const playing = !!g?.state.yours && !title;
   if (floorRef.current) floorRef.current.duck = playing ? 0.5 : 1;
+  /** Back to the title screen (Game tab): save first, or go back to the last save. */
+  const toMenu = (keep: boolean) => {
+    if (!host) return;
+    if (keep) save(host.game, AUTO_KEY);
+    else { const r = load(AUTO_KEY); if (r.game) host.setGame(r.game); }
+    host.setSpeed(0);
+    if (floorRef.current) floorRef.current.enabled = false;
+    setTab(null);
+    setSel(null);
+    titleAwake.current = true;
+    setTitle(true);
+  };
   const leaveTitle = () => {
+    titleAwake.current = true;
     setTitle(false);
     if (floorRef.current) floorRef.current.enabled = true;
     host?.setSpeed(1);
@@ -183,7 +198,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>
           {tab === "build" ? <BuildPanel host={host} tool={tool} setTool={setTool} rot={rot} setRot={setRot} thumb={(k) => host.renderer.thumbnail(k)} /> :
-            tab === "game" ? <GamePanel host={host} /> :
+            tab === "game" ? <GamePanel host={host} onMenu={toMenu} /> :
             tab === "staff" ? <StaffPanel host={host} /> :
             tab === "guests" ? <GuestsPanel host={host} /> :
             tab === "finance" ? <FinancePanel host={host} /> :
@@ -201,7 +216,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
           </button>
         ))}
       </nav>}
-      {host && title && <TitleScreen hasGame={host.game.state.tick > 0} scenario={host.game.state.scenario} onContinue={leaveTitle}
+      {host && title && <TitleScreen awake={titleAwake.current} hasGame={host.game.state.tick > 0} scenario={host.game.state.scenario} onContinue={leaveTitle}
         onNew={(id) => { const n = newGame(Date.now(), id); host.setGame(n); save(n, AUTO_KEY); leaveTitle(); }} />}
     </div>
   );

@@ -2,6 +2,9 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Main menu from the Game tab (owner)
+- Owner asked for a way back to the title screen (scenarios, sound). The Game tab has a **Main menu** button that asks first: **Save and go** (saves over the autosave), **Go without saving** (goes back to the last autosave) or Cancel.
+
 ## 2026-09-24 · M10 built (Claude's calls; see docs/spec/audio.md, docs/spec/play.md)
 - **Same odds as a guest, checked exactly:** roulette, baccarat (every 8-deck shoe enumerated), craps (real dice) and keno return what the guests' models say, and video poker classifies all 2,598,960 hands correctly.
 - **The craps field bet is dropped** (it was in the plan): its edge isn't one a guest faces. Lay odds on don't pass are allowed at true odds.

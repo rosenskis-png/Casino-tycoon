@@ -28,8 +28,8 @@ function Fragment2({ name, children }: { name: string; children: ReactNode }) {
   return <><b>{name}</b><span>{children}</span></>;
 }
 
-export function TitleScreen({ hasGame, scenario, onContinue, onNew }: { hasGame: boolean; scenario: string; onContinue: () => void; onNew: (scenario: string) => void }) {
-  const [awake, setAwake] = useState(false);
+export function TitleScreen({ awake: wasAwake, hasGame, scenario, onContinue, onNew }: { awake?: boolean; hasGame: boolean; scenario: string; onContinue: () => void; onNew: (scenario: string) => void }) {
+  const [awake, setAwake] = useState(!!wasAwake);
   const [pane, setPane] = useState<"" | "new" | "sound">("");
   const [pick, setPick] = useState(scenario in SCENARIOS && !SCENARIOS[scenario].hidden ? scenario : Object.values(SCENARIOS).find((s) => !s.hidden)!.id);
   useEffect(() => {

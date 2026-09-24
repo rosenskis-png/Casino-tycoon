@@ -18,7 +18,7 @@ Sound is data (`src/data/sounds.ts`, `src/data/music.ts`), played by `src/platfo
 
 ## Music
 - Tracks are tempo, key, one chord per bar and 16-step patterns: drums, bass, pad, arpeggio and lead (`data/music.ts` explains the notation). A small look-ahead sequencer plays them.
-- **Main theme** ("Casino Tycoon", swing lounge in F) plays on the title screen once you tap to start. iPhone needs that tap before any audio.
+- **Main theme** ("Casino Tycoon", swing lounge in F) plays on the title screen once you tap to start. The Game tab's **Main menu** returns there, after asking whether to save first. iPhone needs that tap before any audio.
 - **Nightclubs:** each club's card picks a track: House, Disco, Electro, Latin or Hip hop (`PlacedObject.track`, `setTrack`). It plays from the club while the game runs, placed like any floor sound but carrying 1.4× as far.
 - **Show lounges** play "Showtime" while a show is on.
 - Only the two loudest music sources play at once. A source you can't hear keeps time silently.

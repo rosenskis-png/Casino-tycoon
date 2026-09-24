@@ -96,7 +96,11 @@ Whale bankrolls are sized to game money (a variance crisis means several months 
 - Conventioneers (waves with conventions) and Families (children who never gamble or drink, stay with the adults, and sometimes feed a machine: underage gambling).
 - Research: monthly funding and a tree of 26 projects (games, amenities, themes, cameras, suspicion tiers, overlays, heatmaps, the player's club, guest breakdowns). The tutorial starts with none; the open scenarios start with every building project.
 - Player's club: guest types and value on the card, who's on the floor by type, targeted comps. Research and Policies tabs. Save schema 12 (migration from 11).
-- **Cut** (flagged): the hotel elevator with vice, and a drug policy. Unscheduled.
+- Vice, the hotel elevator and drugs moved to M9.6.
+## M9.6 · Vice, drugs, the hotel elevator ☑  (see docs/spec/vice.md)
+- A hotel elevator in Free Play and the Test Floor: hotel guests arrive and leave by it; a hotel-room comp.
+- Vice and Drugs house rules. Escorts work the floor (more the laxer the rule), pitch guests and may leave with one, up in the elevator for a room fee; hookups in quiet spots; drug use (high: bigger bets, no tiredness; overdoses). Guests react by type; police and reports as for other incidents.
+- Staff caught stealing are replaced automatically (owner). Save schema 13 (migration from 12).
 
 ## M10 · Audio, play-the-games-yourself ☐
 ## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)

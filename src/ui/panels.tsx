@@ -99,6 +99,7 @@ const SEEKING: Record<string, string> = {
 
 function roleDoing(g: Game, a: Agent): string {
   if (a.role === "inspector") return a.act === "leave" || a.next === "leave" ? "Leaving with their notes" : "Auditing the casino";
+  if (a.role === "escort") return a.act === "offer" ? "Talking to a guest" : a.next === "leave" ? "Leaving" : "Working the floor";
   const obj = a.target >= 0 ? g.objById.get(a.target) : undefined;
   const name = obj ? OBJECTS[obj.kind].name : "";
   switch (a.act) {
@@ -478,11 +479,11 @@ export function PoliciesPanel({ host }: { host: Host }) {
             {SKIM_LEVELS.map((v) => <option key={v} value={v}>{v ? `Keep ${Math.round(v * 100)}% off the books` : "Honest books"}</option>)}
           </select>
         </span>
-        {COMP_KINDS.map((k) => (
+        {COMP_KINDS.filter((k) => k !== "room" || s.map.lift >= 0).map((k) => (
           <Fragment key={k}>
             <b>{COMP_NAMES[k]}</b>
             <span>
-              <select value={b.comps[k]} onChange={(e) => g.dispatch({ type: "setComp", kind: k, at: Number(e.target.value) })}>
+              <select value={b.comps[k] ?? 0} onChange={(e) => g.dispatch({ type: "setComp", kind: k, at: Number(e.target.value) })}>
                 {COMP_AT.map((v) => <option key={v} value={v}>{v ? `After ${money(v)} of expected loss` : "Off"}</option>)}
               </select>
             </span>
@@ -531,7 +532,7 @@ export function GoalsPanel({ host }: { host: Host }) {
   );
 }
 
-const RULE_CATS = ["intox", "disorder", "misconduct"] as const;
+const RULE_CATS = ["intox", "disorder", "misconduct", "vice", "drugs"] as const;
 
 /** Standing with the police and the regulator, the house rules, and what's been happening (docs/spec/incidents.md). */
 export function AuthoritiesPanel({ host }: { host: Host }) {
@@ -622,12 +623,12 @@ export function LogSheet({ game, onClose }: { game: Game; onClose: () => void })
 
 function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: () => void }) {
   const g = host.game;
-  if (a.role === "officer" || a.role === "medic" || a.role === "inspector") {
+  if (a.role === "officer" || a.role === "medic" || a.role === "inspector" || a.role === "escort") {
     return (
       <div className="sheet">
-        <h3>{a.role === "officer" ? "Police officer" : a.role === "medic" ? "Paramedic" : "Gaming inspector"}<button className="x" onClick={onClose}>✕</button></h3>
+        <h3>{a.role === "officer" ? "Police officer" : a.role === "medic" ? "Paramedic" : a.role === "escort" ? "Escort" : "Gaming inspector"}<button className="x" onClick={onClose}>✕</button></h3>
         <p>{roleDoing(g, a)}</p>
-        <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : a.role === "medic" ? "Here for a guest who passed out." : "From the gaming regulator: they audit the books and the games, and report when they leave."}</p>
+        <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : a.role === "medic" ? "Here for a guest who passed out." : a.role === "escort" ? "Working the floor. Your vice rule decides whether security shows them out." : "From the gaming regulator: they audit the books and the games, and report when they leave."}</p>
       </div>
     );
   }

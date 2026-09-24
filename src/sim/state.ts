@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export interface MapState {
   w: number;
@@ -19,6 +19,8 @@ export interface MapState {
   entrances: number[];
   /** Door rule details (M6): the type or role a DRESS or ROLE door admits, and a fee for guests walking through. */
   gates: Gate[];
+  /** (M9.6) The hotel elevator's tile (also an entrance), or -1. */
+  lift: number;
 }
 
 /** One door's rule details (docs/spec/construction.md). Only doors with an arg or a fee have one. */
@@ -95,7 +97,7 @@ export interface GuestData {
   /** Trapped behind doors they can't pass: the tick it started (-1 not), and 1 once staff let them out. */
   trapAt: number;
   esc: number;
-  /** Paid this visit (bits): 1 a club's cover, 2 the pool. */
+  /** Paid this visit (bits): 1 a club's cover, 2 the pool; (M9.6) 4 an escort already asked them. */
   paid: number;
   name: number;
   /** Visit budget on arrival and money in hand now (dollars). */
@@ -229,6 +231,9 @@ export interface GuestData {
   unpaid: number;
   /** (M9.5) 1 for a child in a family: no money, never gambles or drinks, stays near the adults. */
   minor: number;
+  /** (M9.6) 0 never uses drugs, else uses this visit + 1; how high they are now (1 just used, fading to 0). */
+  drugs: number;
+  high: number;
 }
 
 /**
@@ -323,7 +328,7 @@ export interface StaffData {
 export interface Agent {
   id: number;
   /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
-  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector";
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector" | "escort";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;
@@ -375,7 +380,7 @@ export interface Incident {
 }
 
 /** House rules per policed incident category: 0 ignore, 1 lenient, 2 moderate, 3 strict. */
-export type HouseRules = Record<"intox" | "disorder" | "misconduct", number>;
+export type HouseRules = Record<"intox" | "disorder" | "misconduct" | "vice" | "drugs", number>;
 
 /** Standing with each outside authority, 0-100 (docs/spec/incidents.md §Authorities). */
 export interface Authorities {
@@ -515,7 +520,7 @@ export interface Bank {
   low: number;
   /** Comp thresholds on theoretical loss (0 = off), and comps given this month. */
   /** `only`: with the player's club (M9.5), comps go to one guest type ("" = everyone). */
-  comps: { meal: number; show: number; back: number; only?: string };
+  comps: { meal: number; show: number; back: number; room?: number; only?: string };
   given: number;
 }
 

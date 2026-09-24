@@ -40,7 +40,7 @@ const OFFER_AGAIN = 30 * TICKS_PER_SECOND;
 
 export function hireStaff(g: Game, role: string): Agent | null {
   const s = g.state;
-  const ents = s.map.entrances.filter((e) => g.walkable(e));
+  const ents = s.map.entrances.filter((e) => g.walkable(e) && e !== s.map.lift);
   if (!ents.length || !STAFF_ROLES[role]) return null;
   const r = rng(s, "staff");
   const at = r.pick(ents), w = s.map.w;

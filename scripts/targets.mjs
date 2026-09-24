@@ -177,6 +177,11 @@ console.log(`events: ${Object.entries(m95.events).map(([k, n]) => `${k} ${n}`).j
 if (days >= 60 && !Object.keys(m95.events).length) flags.push("no event ever started");
 if (m95.kidPlayed) flags.push("a child wagered money");
 if (days >= 60 && !m95.kids) flags.push("no family ever brought children");
+// M9.6: vice, drugs, the hotel elevator.
+const esc = Object.values(dep).flat().filter((e) => e.why === "escort").length, hotel = Object.values(dep).flat().filter((e) => e.hotel).length;
+console.log(`vice: escort pitches ${incAll.solicit ?? 0}, left with an escort ${esc}, hookups ${incAll.hookup ?? 0}, drug use ${incAll.drugs ?? 0}; hotel rooms ${usd(tot.rooms ?? 0)}; came by the elevator ${hotel}`);
+if (days >= 60 && !incAll.solicit) flags.push("no escort ever worked the floor");
+if (days >= 60 && !hotel) flags.push("nobody came by the hotel elevator");
 for (const [k, want] of [["bingo", 0.3]]) { const h = hold[k]; if (h?.in && Math.abs((h.in - h.out) / h.in - want) > 1e-6) flags.push(`${k} hold isn't exactly ${want * 100}%`); }
 if (hold.poker?.in && (hold.poker.in - hold.poker.out) / hold.poker.in > 0.1 + 1e-9) flags.push("poker took more than its rake");
 if (!Object.values(at).some((m) => Object.keys(m).some((k) => k !== "slots" && k !== "vpoker"))) flags.push("nobody plays tables");

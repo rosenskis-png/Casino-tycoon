@@ -121,6 +121,12 @@ function enter(g: Game, type: string, pid: number, n: number, k: number): boolea
  */
 export function comeIn(g: Game, type: string, pid: number, n: number) {
   const s = g.state, st = street(g), r = rng(s, "street");
+  // Hotel guests (M9.6) come down the elevator.
+  const lift = s.map.lift;
+  if (lift >= 0 && g.walkable(lift) && rng(s, "hotel").chance(GUEST_TYPES[type]?.hotel ?? 0)) {
+    const k = s.map.entrances.indexOf(lift);
+    if (enter(g, type, pid, n, k)) return;
+  }
   const gates = st.gates.filter((gt) => g.walkable(s.map.entrances[gt.ent]));
   if (gates.length && s.peds.length < MAX_PEDS) {
     const gate = r.pick(gates), wk = st.walks[gate.walk];

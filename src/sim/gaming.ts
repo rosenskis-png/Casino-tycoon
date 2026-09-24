@@ -48,7 +48,8 @@ export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1): numb
 export function wantBet(gd: GuestData): number {
   const rel = (gd.mem.won - gd.mem.wagered) / Math.max(1, gd.bankroll + gd.withdrawn);
   const swing = rel > 0 ? 1 + 0.8 * Math.min(1, rel) : 1 + 0.5 * Math.min(1, -rel) * (0.5 + gd.chase);
-  return gd.stake * (1 + 0.6 * gd.intox) * swing;
+  // High (M9.6): up to 40% more.
+  return gd.stake * (1 + 0.6 * gd.intox) * (1 + 0.4 * gd.high) * swing;
 }
 
 /** Payout multiple for one wager: inverse-CDF lookup on the paytable. */

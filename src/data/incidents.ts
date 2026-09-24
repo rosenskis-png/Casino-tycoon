@@ -2,7 +2,7 @@
 // player can see and change (sim/incidents.ts checks the triggers); a guest type's `incidents` only scales how
 // often a cause turns into one. Vice (M6), underage guests and drugs (M9) join the catalog later.
 
-export type IncidentCat = "intox" | "disorder" | "misconduct" | "celebration" | "social";
+export type IncidentCat = "intox" | "disorder" | "misconduct" | "celebration" | "social" | "vice" | "drugs";
 
 export interface IncidentCatDef { id: IncidentCat; name: string; desc: string; policed: boolean }
 export const INCIDENT_CATS: Record<IncidentCat, IncidentCatDef> = {
@@ -11,6 +11,9 @@ export const INCIDENT_CATS: Record<IncidentCat, IncidentCatDef> = {
   misconduct: { id: "misconduct", name: "Misconduct", desc: "Relieving themselves in the planters; children at the machines.", policed: true },
   celebration: { id: "celebration", name: "Celebration", desc: "Big winners cheering and buying rounds.", policed: false },
   social: { id: "social", name: "Social", desc: "Flirting, talking others into another drink.", policed: false },
+  // M9.6 (docs/spec/vice.md).
+  vice: { id: "vice", name: "Vice", desc: "Escorts working the floor, couples hooking up.", policed: true },
+  drugs: { id: "drugs", name: "Drugs", desc: "Guests using something in a quiet corner.", policed: true },
 };
 
 /** House rules, per policed category: how strictly security steps in (FOUNDATIONS §10). */
@@ -71,5 +74,9 @@ export const INCIDENTS: Record<string, IncidentDef> = {
   recruit: { id: "recruit", cat: "social", name: "Another round?", mood: 2, secs: 6, reach: 3, reportable: false, respond: 0, police: 0, text: "{name} talked someone into another drink." },
   // M9.5: a child playing a machine (docs/spec/incidents.md). Officers take it seriously.
   underage: { id: "underage", cat: "misconduct", name: "Underage gambling", mood: -4, secs: 12, reach: 6, reportable: true, respond: 1, police: 2, seen: "underageSeen", text: "A child is playing a slot machine." },
+  // M9.6: vice and drugs (docs/spec/vice.md). An escort's pitch has the escort as the actor.
+  solicit: { id: "solicit", cat: "vice", name: "Escort working the floor", mood: -2, secs: 8, reach: 5, reportable: true, respond: 2, police: 1.5, seen: "escortSeen", text: "An escort is working the floor." },
+  hookup: { id: "hookup", cat: "vice", name: "Hooking up", mood: -3, secs: 10, reach: 5, reportable: true, respond: 2, police: 1, seen: "getARoom", text: "{name} is hooking up in a corner." },
+  drugs: { id: "drugs", cat: "drugs", name: "Drug use", mood: -4, secs: 5, reach: 4, reportable: true, respond: 1, police: 3, seen: "drugsSeen", thought: "high", text: "{name} took something." },
   escort: { id: "escort", cat: "intox", name: "Shown out", mood: 0, secs: 30, reach: 0, reportable: false, respond: 3, police: 0, text: "{name} was shown out.", hidden: true },
 };

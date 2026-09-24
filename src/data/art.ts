@@ -950,6 +950,14 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
   "inc:sick": S(["........", "........", "........", ".gggggg.", ".gggggg.", ".gggggg."], { g: "#58a85a66" }, false),
   "inc:heart": S(["x.x", "xxx", ".x."]),
   "inc:coin": S([".qq.", "q99q", "q97q", ".qq."]),
+  "inc:high": S(["..Z..", "Z.w.Z", ".wZw.", "Z.w.Z", "..Z.."], undefined, false),
+  // M9.6: the hotel elevator, brass doors with a lit floor indicator, standing against the wall behind its tile.
+  lift: S([
+    "..888888888888..", "..899999999998..", "..8yy0yyyy0yy8..", "..899999999998..",
+    "..8MMMMnMMMMM8..", "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..",
+    "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..", "..8MNNMnMNNMM8..",
+    "..8MMMMnMMMMM8..", "..899999999998..",
+  ]),
   "inc:cheer": S(["x...q", "..z..", "q...x", ".x.z."], undefined, false),
   "inc:cheer~1": S(["..q..", "z...x", "..x..", "q...z"], undefined, false),
   "inc:zzz": S(["NNN", "..N", ".N.", "NNN"]),
@@ -1239,6 +1247,12 @@ export const PEOPLE: Record<string, LookSet> = {
     variants: 12, skin: SKINS, hair: HAIRS, shoes: ["#101014", "#3a2418"],
     top: ["#2a3050", "#3a3e48", "#1c2238", "#5a4a3a"], bottom: ["#26262e", "#2a3050"], accent: ["#e8e4dc", "#5a9ad0"], hat: ["#141418"],
     styles: [[{ o: "blazer", h: "short", x: ["badge"] }, { o: "blazer", h: "bald", x: ["badge", "glasses"] }], [{ o: "blazer", h: "bob", x: ["badge"] }, { o: "blazer", h: "bun", x: ["badge"] }]],
+  },
+  // M9.6: escorts (short dresses or open shirts, bright; revealing only at pixel scale).
+  escort: {
+    variants: 8, skin: SKINS, hair: [...HAIRS, "#f0e0a0", "#c02050"], shoes: ["#c0283c", "#101014", "#e8c860"],
+    top: ["#e8228a", "#c0283c", "#8a3cf0", "#f0f0f0", "#101014"], bottom: ["#141418", "#26262e"], accent: ["#e8c860", "#f6f1e6"], hat: ["#141418"],
+    styles: [[{ o: "tee", h: "quiff" }, { o: "blazer", h: "quiff" }], [{ o: "dress", h: "long" }, { o: "dress", h: "bob" }]],
   },
   // M9: the gaming regulator's inspector (grey suit, glasses), and a whale (white and gold, unmistakable).
   inspector: {

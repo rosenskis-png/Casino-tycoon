@@ -29,7 +29,7 @@
 - They come with 1–3 companions (High rollers), play only their game (a host shows them the way), stay 20–30 minutes (2–3× a high roller), and leave after losing 80% or winning 50% of the bankroll. The ticker reports what the house won or lost.
 
 ## Comps
-- Per comp (Policies tab): a free meal, a free show, a come-back offer. Each is Off or given once a guest's **theoretical loss** (what the math expects them to lose: wagered − expected return) this visit passes $5, $20 or $100.
+- Per comp (Policies tab): a free meal, a free show, a come-back offer, and (M9.6, where there's a hotel elevator) a hotel room: the stay runs half as long again, for $40. Each is Off or given once a guest's **theoretical loss** (what the math expects them to lose: wagered − expected return) this visit passes $5, $20 or $100.
 - Meal and show comps make their next meal or ticket free (the food still costs the house). The come-back offer is given as a regular leaves: $10 of free play (a ledger line), their next visit comes about 40% sooner, and disposition +2.
 - A comped guest gets a lift (buzz × their type's taste for comps) and may say so.
 

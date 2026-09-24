@@ -13,6 +13,7 @@ import { canSee } from "./wayfinding";
 import { post } from "./finance";
 import { fmtMoney, news } from "./news";
 import { coverage } from "./cheats";
+import { hireStaff } from "./staff";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -112,12 +113,21 @@ export function steal(g: Game, area: ShrinkArea, amount: number, tile: number, w
   const { p, by } = catchChance(g, tile, atTable, thief);
   if (rng(s, "crew").chance(Math.min(1, p))) {
     const who = thief ? `${STAFF_ROLES[thief.role].name} #${thief.id}` : crew && OBJECTS[crew.kind].serves === "cage" ? "a cage teller" : "a bartender";
-    news(g, "warn", `${by} caught ${who} ${what} (${fmtMoney(amount)}). ${thief ? "Fired." : "Replaced."}`);
-    if (thief) removeStaff(g, thief);
+    news(g, "warn", `${by} caught ${who} ${what} (${fmtMoney(amount)}). ${thief ? "Fired; a replacement is on the way." : "Replaced."}`);
+    if (thief) replace(g, thief);
     else if (crew) crew.crook = rng(s, "crew").chance(STAFF.amenityCrook) ? 1 : 0;
     return;
   }
   s.crew.shrink[area] = (s.crew.shrink[area] ?? 0) + amount;
+}
+
+/** A thief is fired and someone new is hired in their place (same job, room and bar), so nothing sits unstaffed. */
+function replace(g: Game, a: Agent) {
+  removeStaff(g, a);
+  const b = hireStaff(g, a.role);
+  if (!b) return;
+  if (b.st && a.st) b.st.zone = a.st.zone;
+  if (a.bar !== undefined) b.bar = a.bar;
 }
 
 /** Take a worker off the payroll at once. */

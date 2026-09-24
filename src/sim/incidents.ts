@@ -59,7 +59,7 @@ const FINE_STAGE = 500, FINE_CALL = 400, FINE_SEEN = 100, FINE_RAID = 1500, MEDI
 const CLOSE_DAYS = 3, REVOKE_DAYS = 30, RAID_EVERY_DAYS = 30, INSPECT_EVERY_DAYS = 4;
 const OFFICER_SECS = 90;
 
-export const DEFAULT_RULES: HouseRules = { intox: 2, disorder: 2, misconduct: 2 };
+export const DEFAULT_RULES: HouseRules = { intox: 2, disorder: 2, misconduct: 2, vice: 2, drugs: 2 };
 export const newAuthorities = (): GameState["auth"] => ({
   police: { standing: 75, stage: 0, calls: 0, raidAt: -1e9, inspectAt: -1 },
   regulator: { standing: 100, stage: 0 },
@@ -69,9 +69,9 @@ export const newAuthorities = (): GameState["auth"] => ({
 // ---------------------------------------------------------------------------------------------------------
 // Runtime: who stands where, rebuilt each beat (never saved).
 
-interface Grid { head: Int32Array; next: Int32Array; list: Agent[]; byId: Map<number, Agent> }
+export interface Grid { head: Int32Array; next: Int32Array; list: Agent[]; byId: Map<number, Agent> }
 
-function buildGrid(g: Game): Grid {
+export function buildGrid(g: Game): Grid {
   const { w, h } = g.state.map, list = g.state.agents;
   const head = new Int32Array(w * h).fill(-1), next = new Int32Array(list.length), byId = new Map<number, Agent>();
   for (let k = 0; k < list.length; k++) {
@@ -114,19 +114,20 @@ const count = (s: GameState, key: string) => { const d = s.incidentDays[0]; d[ke
 // ---------------------------------------------------------------------------------------------------------
 // Starting an incident: the scene, the mess, and everyone who sees or hears it.
 
-function begin(g: Game, grid: Grid, kind: string, a: Agent, other: Agent | null): Incident {
+export function begin(g: Game, grid: Grid, kind: string, a: Agent, other: Agent | null): Incident {
   const s = g.state, def = INCIDENTS[kind], w = s.map.w, r = rng(s, "incidents");
   const inc: Incident = {
     id: s.nextId++, kind, tile: a.y * w + a.x, actor: a.id, other: other?.id ?? -1, start: s.tick,
     end: def.secs ? s.tick + def.secs * SEC : -1, guard: -1, handled: 0, reporters: [], medic: 0, seen: 0,
   };
   s.incidents.push(inc);
-  a.g!.incAt = s.tick + COOLDOWN * SEC;
+  // An escort (M9.6) can start one too: they aren't guests.
+  if (a.g) a.g.incAt = s.tick + COOLDOWN * SEC;
   if (other?.g) other.g.incAt = s.tick + COOLDOWN * SEC;
   if (def.hidden) return inc;
   count(s, kind);
   if (def.mess) s.dirt[inc.tile] = Math.max(s.dirt[inc.tile], def.mess);
-  if (def.thought && r.chance(0.6)) think(g, a, def.thought);
+  if (def.thought && a.g && r.chance(0.6)) think(g, a, def.thought);
   if (kind === "fight") adjustPolice(g, -COST_FIGHT);
   if (kind === "spill") a.g!.drink = 0;
   if (kind === "passout" || kind === "fight") {
@@ -141,7 +142,7 @@ function begin(g: Game, grid: Grid, kind: string, a: Agent, other: Agent | null)
   if (kind === "fight" || kind === "passout" || kind === "vomit" || kind === "urinate")
     news(g, "info", def.text.replace("{name}", "A guest") + roomLabel(g, inc.tile), true);
   witnesses(g, grid, inc, def, r);
-  g.bus.emit({ type: "incident", kind, x: a.x, y: a.y, guestType: a.g!.type });
+  g.bus.emit({ type: "incident", kind, x: a.x, y: a.y, guestType: a.g?.type ?? a.role });
   return inc;
 }
 
@@ -237,6 +238,24 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
   }
   if (gd.chase >= 0.3 && gd.mem.won - gd.mem.wagered <= -0.7 * Math.max(1, gd.bankroll + gd.withdrawn) && roll(0.002, "disorder"))
     return void begin(g, grid, "breakdown", a, null);
+  // Vice and drugs (M9.6): only somewhere quiet.
+  if ((gd.drugs && gd.drugs < 3 && !gd.high) || (x >= 0.35 && gd.mood > 60)) {
+    const here = a.y * s.map.w + a.x;
+    if (quiet(g, here)) {
+      if (gd.drugs && gd.drugs < 3 && !gd.high && roll(0.004, "drugs")) {
+        gd.drugs++;
+        // An overdose now and then: down they go, as with drink.
+        if (r.chance(0.02)) return void begin(g, grid, "passout", a, null);
+        gd.high = 1;
+        gd.mood = Math.min(100, gd.mood + 10);
+        return void begin(g, grid, "drugs", a, null);
+      }
+      if (x >= 0.35 && gd.mood > 60) {
+        const other = partner(g, grid, a, 2, (b) => b.g!.intox >= 0.3 && !b.g!.minor);
+        if (other && roll(0.01, "vice")) return void begin(g, grid, "hookup", a, other);
+      }
+    }
+  }
   // Social.
   if (x >= 0.25 && gd.mood > 60) {
     const other = partner(g, grid, a, 2);
@@ -251,6 +270,12 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
     }
   }
 }
+
+/** Somewhere quiet (M9.6): little foot traffic and no crowd. */
+export function quiet(g: Game, i: number): boolean {
+  return g.fields.get("TRF", i) < QUIET_TRF && g.fields.get("CRW", i) < QUIET_CRW;
+}
+const QUIET_TRF = 2, QUIET_CRW = 2;
 
 /** A slot machine or video poker within a tile (a child standing by a parent's machine). */
 function machineNear(g: Game, a: Agent): boolean {
@@ -344,6 +369,8 @@ function resolve(g: Game, grid: Grid, inc: Incident) {
     const q = grid.byId.get(id);
     if (q?.g) { q.g.buzz = Math.min(20, q.g.buzz + 3); if (r.chance(0.5)) think(g, q, "handled"); }
   }
+  // An escort (M9.6) is shown out.
+  if (a?.role === "escort") { count(s, "_ejected"); return leaveFloor(g, a); }
   if (!a?.g) return;
   const rule = INCIDENT_CATS[def.cat].policed ? s.rules[def.cat as keyof HouseRules] : 0;
   switch (inc.kind) {
@@ -371,8 +398,9 @@ function needsGuard(s: GameState, inc: Incident): boolean {
 // ---------------------------------------------------------------------------------------------------------
 // Guards, officers and paramedics.
 
-export function spawnVisitor(g: Game, role: "officer" | "medic" | "inspector"): Agent | null {
-  const s = g.state, ents = s.map.entrances.filter((e) => g.walkable(e));
+export function spawnVisitor(g: Game, role: "officer" | "medic" | "inspector" | "escort"): Agent | null {
+  // Street doors only: the hotel elevator (M9.6) is for hotel guests and escorts.
+  const s = g.state, ents = s.map.entrances.filter((e) => g.walkable(e) && e !== s.map.lift);
   if (!ents.length) return null;
   const r = rng(s, "police"), at = r.pick(ents), w = s.map.w, x = at % w, y = (at - x) / w;
   const a: Agent = {
@@ -579,7 +607,7 @@ export function close(g: Game, days: number) {
 
 // ---------------------------------------------------------------------------------------------------------
 
-const RULE_CATS = ["intox", "disorder", "misconduct"] as const;
+const RULE_CATS = ["intox", "disorder", "misconduct", "vice", "drugs"] as const;
 
 const commands: CommandTable<"setRule"> = {
   setRule: {

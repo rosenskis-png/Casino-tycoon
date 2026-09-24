@@ -198,6 +198,16 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const t of ["family", "conventioneer"]) if (SCENARIOS[s.scenario]?.population[t] && s.rep[t] === undefined) s.rep[t] = 50;
     return s;
   },
+  // 12 → 13 (M9.6): vice and drugs rules (Moderate), no drug users or highs on the floor yet, no room comp. The
+  // hotel elevator is part of the building: saves from before it have none.
+  12: (s) => {
+    s.map.lift = -1;
+    s.rules.vice = 2;
+    s.rules.drugs = 2;
+    s.bank.comps.room = 0;
+    for (const a of s.agents) if (a.role === "guest" && a.g) Object.assign(a.g, { drugs: 0, high: 0 });
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

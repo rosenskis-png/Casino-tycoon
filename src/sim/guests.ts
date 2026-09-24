@@ -352,7 +352,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
-    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0, minor: 0,
+    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0, minor: 0, drugs: 0, high: 0,
   };
   const a: Agent = {
     id: s.nextId++, role: "guest", x, y, nx: x, ny: y, t: 0, steps: r.int(10, 14), dest: at,
@@ -367,6 +367,8 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   gd.counter = (person ? hash01(person.id, 6) : rng(s, "tables").next()) < type.counters ? 1 : 0;
   if (gd.counter) gd.skill = 2;
   gd.browse = Math.round(type.browse * range(r, [0.5, 1.5]) * (1 - gd.know) * (gd.memDate >= 0 ? 0.3 : 1));
+  // Drug users (M9.6): a pool person's for life (from their id); a one-off's on its own stream.
+  if ((person ? hash01(person.id, 8) : rng(s, "vice").next()) < type.drugs) gd.drugs = 1;
   // Smokers (M6), drawn on their own stream so adding them left every other draw where it was.
   const rs = rng(s, "smokers");
   if (rs.chance(type.smokers)) { gd.smoker = 1; gd.urge = rs.int(0, 60); }
@@ -405,7 +407,7 @@ export function spawnGroup(g: Game, typeId: string, at: number, person: Person |
 /** A child: no money, no drinking, no gambling, no hidden tags. */
 function makeMinor(gd: GuestData) {
   Object.assign(gd, {
-    minor: 1, bankroll: 0, wallet: 0, withdrawCap: 0, atm: 0, stake: 0, intend: 0, drift: 0, smoker: 0, urge: 0,
+    minor: 1, drugs: 0, bankroll: 0, wallet: 0, withdrawCap: 0, atm: 0, stake: 0, intend: 0, drift: 0, smoker: 0, urge: 0,
     cheat: 0, luck: 0, take: 0, counter: 0, skill: 0, compSeek: 0, browse: 0, intent: "gamble",
   });
   gd.mem.startIntend = 0;
@@ -473,7 +475,7 @@ function departedFields(g: Game, a: Agent, score: number) {
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
     fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker, skill: gd.skill, counter: gd.counter, marked: gd.mark & 1,
-    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid,
+    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid, hotel: gd.door === s.map.lift ? 1 : 0,
   };
 }
 
@@ -559,8 +561,10 @@ function startLeaving(g: Game, a: Agent, why: string) {
   }
   gd.trapped = 0;
   gd.trapAt = -1;
-  // An exit in view, or one a regular knows the way to: walk straight there.
+  // An exit in view, or one a regular knows the way to: walk straight there. Hotel guests go back up the elevator.
   let best = -1, bd = Infinity;
+  const lift = g.state.map.lift;
+  if (lift >= 0 && gd.door === lift && open.includes(lift)) return go(a, lift, "leave");
   ents.forEach((e, k) => {
     if (!open.includes(e)) return;
     const d = Math.abs((e % w) - a.x) + Math.abs(Math.floor(e / w) - a.y);
@@ -1423,7 +1427,9 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   // Dancing is thirsty, tiring work; sitting through a show or a meal rests the feet.
   const dancing = a.act === "dance" && a.timer > 0, resting = a.act === "show" || a.act === "dine" || a.act === "rest";
   if (dancing) n.thirst = Math.min(100, n.thirst + rate.thirst);
-  n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : dancing ? 2 : resting ? 0.3 : 0.8));
+  // High (M9.6): no tiredness, fading over about 90 s.
+  if (gd.high > 0) gd.high = Math.max(0, gd.high - 1 / 90);
+  else n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : dancing ? 2 : resting ? 0.3 : 0.8));
   // Smokers: the urge builds; inside a smoking room they light up where they are.
   if (gd.smoker) {
     if (purposeAt(g, a.y * g.state.map.w + a.x) === "smoking") gd.urge = 0;

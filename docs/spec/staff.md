@@ -22,7 +22,7 @@
   - **Dealer:** half of all rounds, palms 2% of the round's bets, at least $1 (tables). A crooked dealer never catches a cheat at their table.
   - **Bartender:** 30% of paid drinks at the bar (bar). **Teller:** 30% of withdrawals and cash-outs, shorts $5–25 (cage).
   - **Guards, pit bosses and operators who are crooks look away:** they catch neither cheats nor staff.
-- **Catching staff:** each theft has a chance to be seen: 2% (the count flags it) + 12% × skill per honest guard within 8 tiles in view + 15% × skill per honest pit boss in view (dealers) + 10% × the watched camera field there. A caught worker is fired on the spot, the money is recovered, and the ticker says who caught whom. A caught bartender or teller is replaced.
+- **Catching staff:** each theft has a chance to be seen: 2% (the count flags it) + 12% × skill per honest guard within 8 tiles in view + 15% × skill per honest pit boss in view (dealers) + 10% × the watched camera field there. A caught worker is fired on the spot and a replacement is hired automatically (same job, room and bar; M9.6, owner's call), the money is recovered, and the ticker says who caught whom. A caught bartender or teller is replaced.
 - **The monthly count** posts what went missing as shrinkage lines in the books (bar, cage, tables, machines) and a log line. That is the symptom: the player learns where money leaks, not who takes it.
 
 ## Patrol zones

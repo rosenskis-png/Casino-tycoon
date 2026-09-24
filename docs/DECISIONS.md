@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M9.6 built: vice, drugs, the hotel elevator (Claude's calls; see docs/spec/vice.md)
+- Owner asked for the cut M9.5 items as their own pass, and for **staff caught stealing to be replaced automatically** (same job, room and bar; the ticker says so). Quits are still not replaced.
+- **The elevator is a scenario feature**, a fixed floor tile (Free Play and the Test Floor; not the tutorial): hotel guests come and go by it by type (Conventioneers 80% … Locals never). Old saves have none.
+- **Escorts are visitors, not a guest type** (FOUNDATIONS §6). The vice rule sets how many come and whether guards show them out. **The house's profit from vice is the room** ($50 when a guest goes up with one) plus the crowds who enjoy it; the costs are players leaving the floor, reports and police.
+- **Drugs:** 0–15% of a type use, only in quiet spots with no guard in view; high = +40% bets and no tiredness for ~90 s; 2% overdose into passing out.
+- New house rules default to Moderate. A hotel-room comp (a longer stay, $40) where there's an elevator.
+- Test Floor, 300 days (rules on Moderate): 342 guests came by the elevator, 65 escort pitches (19 left with one, $1,000 in rooms), 7 hookups, 37 drug uses, no sanity flags. With both rules on Ignore (150 days): 195 pitches, 44 left with an escort, $2,200 in rooms; police standing didn't move, because vice costs police standing only through reports that go unanswered and officers who see it.
+
+## 2026-09-24 · M9.6 requested: vice, drugs, hotel elevator; thieves auto-replaced
+- Owner: "do a m9.6 pass to be its own vice and drug and hotel elevator pass", and auto-hire a replacement for a caught dealer.
+
 ## 2026-09-24 · M9.5 built (green light; Claude's calls; see docs/spec/calendar.md, docs/spec/research.md)
 - Owner said "green light for m9.5" with no readiness questions, so every design call below is Claude's and starting values only.
 - **Vice, the hotel elevator and a drug policy are cut** (the roadmap named them first to cut). They're unscheduled; say if they should come back as their own milestone.

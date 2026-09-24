@@ -53,9 +53,12 @@ export const WHALE_REQUESTS: Record<WhaleRequest, string> = {
 
 /** Comps: theoretical-loss thresholds a policy can pick (0 = off), and what a come-back offer costs and does. */
 export const COMP_AT = [0, 5, 20, 100];
-export const COMP_KINDS = ["meal", "show", "back"] as const;
+export const COMP_KINDS = ["meal", "show", "back", "room"] as const;
 export type CompKind = (typeof COMP_KINDS)[number];
-export const COMP_NAMES: Record<CompKind, string> = { meal: "Free meal", show: "Free show", back: "Come-back offer" };
+export const COMP_NAMES: Record<CompKind, string> = { meal: "Free meal", show: "Free show", back: "Come-back offer", room: "Hotel room" };
+/** (M9.6) A comped room: the stay runs this much longer; what the room costs the house. */
+export const ROOM_STAY = 1.5;
+export const ROOM_COST = 40;
 export const COMEBACK_COST = 10;
 export const COMEBACK_SOONER = 0.6;
 export const COMEBACK_SCORE = 2;

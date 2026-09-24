@@ -4,6 +4,12 @@
 export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<string, string[]>; bad?: boolean }
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
+  // Vice and drugs (M9.6).
+  escortSeen: { text: "Is she working the room?", alt: ["That guy is definitely working.", "Escorts, in here?"], voice: { party: ["Now this place has everything."] } },
+  getARoom: { text: "Get a room, you two.", alt: ["Right here? Really?"], voice: { retiree: ["Well, I never."] }, bad: true },
+  drugsSeen: { text: "Did that guy just do a line?", alt: ["Someone's on something."], bad: true },
+  leftWithEscort: { text: "I'm calling it a night. With company.", alt: ["Going upstairs. Don't wait up."] },
+  high: { text: "I feel amazing.", alt: ["I could play all night."] },
   // Families (M9.5).
   underageSeen: { text: "Is that kid playing a slot?", alt: ["Where are that child's parents?"], bad: true },
   // Money (M9, docs/spec/money.md).

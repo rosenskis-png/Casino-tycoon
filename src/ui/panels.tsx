@@ -13,12 +13,12 @@ import { EVENTS, CAMPAIGNS, CAMPAIGN_MONTHS } from "../data/events";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
-import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
+import { WAGERS_PER_ROUND } from "../data/games";
 import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
-  formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
+  formatDate, describeGoals, goalStatus, monthlyCosts, worth, covers, compiledOf, designIdOf, designById, perfIndex, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
@@ -316,7 +316,7 @@ export function GuestsPanel({ host }: { host: Host }) {
       <p className="muted" style={{ margin: "10px 0 6px" }}>What guests are saying (a day, over the last two)</p>
       {list.length === 0 && <p className="muted">Nothing yet.</p>}
       {list.map(([k, n]) => (
-        <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text}</span></div>
+        <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text.replace("{game}", "a slot")}</span></div>
       ))}
     </>
   );
@@ -665,7 +665,7 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       {gd.unpaid > 0 && <p className="lv-bad">Owed {money(gd.unpaid)} in winnings the casino couldn't pay.</p>}
       {gd.comp > 0 && <p className="muted">Comped: {COMP_KINDS.filter((k) => gd.comp & COMP_BIT[k]).map((k) => COMP_NAMES[k].toLowerCase()).join(", ")}.</p>}
       {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && (
-        <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{wording(t, gd.type, gd.name)}”</p>
+        <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{wording(t, gd.type, gd.name).replace(/\{game\}/g, designById(g.state, gd.game ?? "")?.name ?? "that machine")}”</p>
       ))}
       <SuspicionTools g={g} a={a} />
       <MarkAndAct g={g} a={a} />
@@ -835,16 +835,21 @@ function TableCard({ g, id }: { g: Game; id: number }) {
 function ObjectStats({ host, id }: { host: Host; id: number }) {
   const o = host.game.objById.get(id)!;
   if (OBJECTS[o.kind].game) return null;
-  const m = modelOf(o.kind);
-  if (!m) return o.st.uses ? <div className="kv"><b>Visits</b><span className="num">{o.st.uses}</span></div> : null;
+  const c = OBJECTS[o.kind].slot ? compiledOf(host.game.state, o) : undefined;
+  if (!c) return o.st.uses ? <div className="kv"><b>Visits</b><span className="num">{o.st.uses}</span></div> : null;
+  const m = c.model, s = host.game.state, id2 = designIdOf(o), st = s.dstats[id2], idx = perfIndex(s, id2);
   const hold = o.st.coinIn ? (o.st.coinIn - o.st.paidOut) / o.st.coinIn : 0;
   const avg = o.st.sessions ? o.st.playTicks / o.st.sessions / TICKS_PER_SECOND : 0;
-  const bets = `${money(m.denom)}–${money(m.denom * m.maxCredits)}`;
+  const bets = `${money(m.denom * (m.minCredits ?? 1))}–${money(m.denom * m.maxCredits)}`;
+  const said = Object.entries(st?.said ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
   return (
     <div className="kv">
-      <b>Status</b><span>{o.broken ? "Broken down" : "Working"}</span>
+      <b>Game</b><span>{c.d.name} · {c.lay.name}</span>
+      <b>Status</b><span>{o.broken ? "Broken down" : "Working"}{s.designs[id2]?.rigged ? " · uncertified" : ""}</span>
       <b>Bets</b><span className="num">{bets} a spin</span>
-      <b>Payback</b><span className="num">{(expectedReturn(SLOT_MODELS[m.id]) * 100).toFixed(0)}% by design</span>
+      <b>Payback</b><span className="num">{(m.rtp * 100).toFixed(1)}% by design</span>
+      {idx !== null && <><b>Performance</b><span className="num">{idx.toFixed(2)}× the floor's average</span></>}
+      {said.length > 0 && <><b>Guests say</b><span>{said.map(([t, n]) => `“${(THOUGHTS[t]?.text ?? t).replace("{game}", c.d.name)}” ×${n}`).join(" ")}</span></>}
       <b>Played</b><span className="num">{o.st.sessions} sessions · avg {avg.toFixed(0)} s</span>
       <b>Coin in</b><span className="num">{money(o.st.coinIn)} ({(o.st.rounds * WAGERS_PER_ROUND).toLocaleString()} spins)</span>
       <b>House won</b><span className={`num ${hold < 0 ? "neg" : ""}`}>{money(o.st.coinIn - o.st.paidOut)} ({(hold * 100).toFixed(1)}%)</span>

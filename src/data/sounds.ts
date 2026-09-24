@@ -67,6 +67,35 @@ export const SOUNDS: Record<string, SoundRecipe> = {
     { wave: "square", f0: 1047, at: 0.24, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 784, at: 0.32, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 1047, at: 0.4, dur: 0.5, gain: 0.08 },
     { wave: "triangle", f0: 262, at: 0.4, dur: 0.5, gain: 0.1 }, { wave: "noise", f0: 7000, at: 0.4, dur: 0.6, gain: 0.05 },
   ],
+  // Slot designs (M8, docs/spec/designer.md §9): reel landings, anticipation, features, win tiers, hand pays.
+  scatter: [{ wave: "sine", f0: 1760, dur: 0.12, gain: 0.07 }, { wave: "sine", f0: 2637, at: 0.05, dur: 0.18, gain: 0.05 }],
+  antic: Array.from({ length: 10 }, (_, k) => ({ wave: "triangle" as const, f0: 440 * Math.pow(1.06, k), at: 0.09 * k, dur: 0.08, gain: 0.05 })),
+  expand: [{ wave: "noise", f0: 3000, dur: 0.35, gain: 0.08, a: 0.2 }, { wave: "sine", f0: 300, f1: 1200, dur: 0.35, gain: 0.06 }],
+  fsStart: [
+    ...[523, 659, 784, 1047, 1319].map((f, k) => ({ wave: "square" as const, f0: f, at: 0.09 * k, dur: 0.09, gain: 0.06 })),
+    { wave: "triangle", f0: 1568, at: 0.45, dur: 0.6, gain: 0.09 }, { wave: "noise", f0: 6000, at: 0.45, dur: 0.7, gain: 0.05 },
+  ],
+  fsSpin: [{ wave: "triangle", f0: 1320, f1: 1760, dur: 0.06, gain: 0.05 }],
+  tierMega: [
+    ...[392, 523, 659, 784, 1047, 1319, 1568].map((f, k) => ({ wave: "square" as const, f0: f, at: 0.07 * k, dur: 0.08, gain: 0.06 })),
+    { wave: "triangle", f0: 262, at: 0.5, dur: 0.9, gain: 0.1 }, { wave: "noise", f0: 7000, at: 0.5, dur: 1, gain: 0.06 },
+  ],
+  handpay: Array.from({ length: 12 }, (_, k) => ({ wave: "square" as const, f0: k % 2 ? 1175 : 1568, at: 0.12 * k, dur: 0.1, gain: 0.05 })),
+  // Signature calls (data/designer.ts CALLS): played on a free spins trigger, on the floor too.
+  call_classic: [{ wave: "sine", f0: 1568, dur: 0.4, gain: 0.07 }, { wave: "sine", f0: 1568, at: 0.25, dur: 0.4, gain: 0.07 }, { wave: "sine", f0: 2093, at: 0.5, dur: 0.6, gain: 0.06 }],
+  call_dragon: [{ wave: "sine", f0: 110, f1: 104, dur: 1.6, gain: 0.25 }, { wave: "sine", f0: 233, f1: 220, dur: 1.4, gain: 0.08 }, { wave: "noise", f0: 1200, dur: 0.4, gain: 0.08 }],
+  call_goldrush: [{ wave: "noise", f0: 500, dur: 1.1, gain: 0.2, a: 0.2 }, { wave: "sawtooth", f0: 90, f1: 70, dur: 1, gain: 0.08, a: 0.1 }, { wave: "sawtooth", f0: 180, f1: 120, at: 0.1, dur: 0.8, gain: 0.05 }],
+  call_egypt: [{ wave: "noise", f0: 2500, dur: 1.2, gain: 0.08, a: 0.5 }, ...[294, 311, 370, 392].map((f, k) => ({ wave: "triangle" as const, f0: f, at: 0.2 + 0.18 * k, dur: 0.2, gain: 0.08 }))],
+  call_tiki: [0, 0.15, 0.3, 0.38, 0.46, 0.7].map((t, k) => ({ wave: "sine" as const, f0: k % 2 ? 180 : 120, f1: 60, at: t, dur: 0.14, gain: 0.3 })),
+  call_pirate: [{ wave: "noise", f0: 700, dur: 0.3, gain: 0.3 }, { wave: "sine", f0: 80, f1: 35, dur: 0.5, gain: 0.35 }, { wave: "square", f0: 392, at: 0.5, dur: 0.15, gain: 0.05 }, { wave: "square", f0: 523, at: 0.65, dur: 0.3, gain: 0.05 }],
+  call_rome: [392, 523, 659, 784].map((f, k) => ({ wave: "sawtooth" as const, f0: f, at: k * 0.14, dur: k === 3 ? 0.6 : 0.12, gain: 0.06, a: 0.02 })),
+  call_medieval: [{ wave: "sawtooth", f0: 262, at: 0, dur: 0.3, gain: 0.07, a: 0.05 }, { wave: "sawtooth", f0: 392, at: 0.3, dur: 0.7, gain: 0.07, a: 0.05 }],
+  call_rock: [{ wave: "sawtooth", f0: 165, dur: 0.7, gain: 0.1 }, { wave: "sawtooth", f0: 247, dur: 0.7, gain: 0.08 }, { wave: "sawtooth", f0: 330, dur: 0.7, gain: 0.06 }, { wave: "noise", f0: 3000, at: 0.02, dur: 0.1, gain: 0.08 }],
+  call_deco: [523, 659, 784, 932].map((f) => ({ wave: "square" as const, f0: f, dur: 0.35, gain: 0.04, a: 0.02 })),
+  call_luxe: [2093, 2637, 3136, 4186].map((f, k) => ({ wave: "sine" as const, f0: f, at: k * 0.08, dur: 0.6, gain: 0.04 })),
+  call_riviera: Array.from({ length: 10 }, (_, k) => ({ wave: "triangle" as const, f0: [659, 784, 659, 784, 880, 784, 659, 587, 659, 523][k], at: k * 0.07, dur: 0.06, gain: 0.07 })),
+  call_ratpack: [{ wave: "sawtooth", f0: 233, dur: 0.12, gain: 0.08 }, { wave: "sawtooth", f0: 294, dur: 0.12, gain: 0.07 }, { wave: "sawtooth", f0: 349, at: 0.2, dur: 0.5, gain: 0.08, a: 0.02 }, { wave: "sawtooth", f0: 466, at: 0.2, dur: 0.5, gain: 0.06, a: 0.02 }],
+  call_atomic: [{ wave: "sine", f0: 600, f1: 1200, dur: 0.5, gain: 0.08, a: 0.1 }, { wave: "sine", f0: 1200, f1: 700, at: 0.5, dur: 0.6, gain: 0.08 }],
 };
 
 /** Mixer category per sound (docs/spec/audio.md); anything unlisted is "games". */

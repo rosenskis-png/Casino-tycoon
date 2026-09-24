@@ -2,10 +2,10 @@
 // The casino keeps running; every move is a `yours` command, and the screen animates the result it brings back.
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { OBJECTS } from "../data/objects";
-import { SLOT_MODELS } from "../data/games";
+import { Machine } from "./slot/Machine";
 import { KENO_PAYS, KENO_SPOTS, RED, TABLE_GAMES, oddsAllowed, pockets, ruleOf } from "../data/tables";
 import { play } from "../platform/audio";
-import { VP_HANDS, vpHand, bacTotal, betOf, bjTotal, limitsNow, limitsOf, rankOf, stakeMult, vpX, yourMoves, type Game, type PlacedObject, type YourPlay } from "../sim";
+import { VP_HANDS, vpHand, bacTotal, betOf, bjTotal, compiledOf, limitsNow, limitsOf, rankOf, stakeMult, vpX, yourMoves, type Game, type PlacedObject, type YourPlay } from "../sim";
 import { stake as money } from "./format";
 import type { Host } from "./host";
 
@@ -14,11 +14,6 @@ interface GameProps { g: Game; y: YourPlay; o: PlacedObject; send: Send; busy: b
 
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const SUITS = ["♠", "♥", "♦", "♣"];
-const SYMBOLS: Record<string, string[]> = {
-  cherry: ["·", "🍒", "🍋", "🍊", "🔔", "⭐", "7", "💎"],
-  bell: ["·", "🔔", "🍀", "⭐", "BAR", "7", "💎", "👑"],
-  bolt: ["·", "⚡", "🌩️", "💰", "7", "💎", "👑", "🔥"],
-};
 /** Real wheel orders, from 0 clockwise (pocket 37 is 00). */
 const WHEEL: Record<number, number[]> = {
   37: [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26],
@@ -35,6 +30,14 @@ function resultText(y: YourPlay): string {
   if (!y.last.seq) return "";
   const net = y.last.won - y.last.wagered;
   return y.last.big ? `${y.last.big[0].toUpperCase()}${y.last.big.slice(1)}! You win ${money(y.last.won)}` : net > 0 ? `You win ${money(net)}` : net < 0 ? `You lose ${money(-net)}` : "Push";
+}
+
+/** A slot's line under its name: its layout, denomination and bets. */
+function slotLine(g: Game, o: PlacedObject): string {
+  const c = compiledOf(g.state, o);
+  if (!c) return "";
+  const m = c.model, mult = stakeMult(g, o);
+  return `${c.lay.name} · ${money(m.denom * (m.minCredits ?? 1) * mult)}–${money(m.denom * m.maxCredits * mult)} a spin`;
 }
 
 export function PlayScreen({ host }: { host: Host }) {
@@ -60,20 +63,20 @@ export function PlayScreen({ host }: { host: Host }) {
   const props: GameProps = { g, y, o, send, busy };
   const net = y.total.won - y.total.wagered;
   // A settled win lights the room up; a big one rains coins.
-  const won = !busy && y.last.seq > 0 && y.last.won > y.last.wagered;
+  const won = y.fam !== "slot" && !busy && y.last.seq > 0 && y.last.won > y.last.wagered;
   const big = won && (!!y.last.big || y.last.won >= y.last.wagered * 10);
   return (
     <div className={`play ${won ? "won" : ""}`}>
       {big && <Shower seq={y.last.seq} />}
       <div className="play-head">
         <div>
-          <b>{def.name}</b>
-          <small>{tdef ? tdef.rules.map((r, k) => `${r.name} ${r.opts[ruleOf(o.rules, k)]}`).concat(`${money(limitsNow(g, o)[0])}–${money(limitsNow(g, o)[1])}`).join(" · ") : `${money(SLOT_MODELS[def.slot!].denom * stakeMult(g, o))} a credit`}</small>
+          <b>{def.slot ? compiledOf(g.state, o)?.d.name ?? def.name : def.name}</b>
+          <small>{tdef ? tdef.rules.map((r, k) => `${r.name} ${r.opts[ruleOf(o.rules, k)]}`).concat(`${money(limitsNow(g, o)[0])}–${money(limitsNow(g, o)[1])}`).join(" · ") : slotLine(g, o)}</small>
         </div>
         <button className="btn" disabled={!!y.out || busy} onClick={() => { play("click"); g.dispatch({ type: "yours", act: "close" }); }}>Leave</button>
       </div>
       <div className="play-body">
-        {y.fam === "slot" && <Slots {...props} />}
+        {y.fam === "slot" && <Slots g={g} o={o} onBusy={setBusy} />}
         {y.fam === "vpoker" && <VideoPoker {...props} />}
         {y.fam === "blackjack" && <Blackjack {...props} />}
         {y.fam === "roulette" && <Roulette {...props} />}
@@ -209,61 +212,42 @@ function useFrames(on: boolean, ms = 80): number {
   return n;
 }
 
-// ---- Slots.
-function Slots({ g, y, o, send, busy }: GameProps) {
-  const m = SLOT_MODELS[OBJECTS[o.kind].slot!], mult = stakeMult(g, o);
-  const [credits, setCredits] = useState(m.maxCredits);
-  const [t0, setT0] = useState(0);
-  useRaf(busy);
-  const syms = SYMBOLS[m.look] ?? SYMBOLS.cherry, n = syms.length;
-  const arrived = useArrival(y, busy);
-  const elapsed = busy ? performance.now() - t0 : 1e9;
-  // A reel stops at its time once the result is in.
-  const stopped = SPIN_MS.reels.map((st) => !busy || (arrived > 0 && elapsed >= st));
-  const count = stopped.filter(Boolean).length, last = useRef(3);
-  useEffect(() => {
-    if (count > last.current) play("reelstop");
-    last.current = count;
-  });
-  const win = !busy && y.last.seq > 0 && y.last.won > y.last.wagered;
-  const bet = betOf(m, credits) * mult;
-  const pays = m.pays.map((q, k) => ({ ...q, k })).sort((a, b) => b.x - a.x);
-  const strip = [...syms, ...syms];
+// ---- Slots (M8): the design's own machine (ui/slot/Machine.tsx).
+/** Bet levels a design offers, in credits: its minimum, a few steps up, and its maximum. */
+export function betLevels(min: number, max: number): number[] {
+  const out = new Set<number>([min]);
+  for (const k of [2, 3, 5, 10, 15, 20, 25, 50, 100]) if (min * k < max) out.add(min * k);
+  out.add(max);
+  return [...out].sort((a, b) => a - b);
+}
+function Slots({ g, o, onBusy }: { g: Game; o: PlacedObject; onBusy: (b: boolean) => void }) {
+  const c = compiledOf(g.state, o)!, m = c.model, mult = stakeMult(g, o);
+  const levels = betLevels(m.minCredits ?? 1, m.maxCredits);
+  const [lv, setLv] = useState(Math.min(levels.length - 1, 1));
+  const [err, setErr] = useState("");
+  const credits = levels[Math.min(lv, levels.length - 1)];
   return (
     <>
-      <div className={`cabinet ${busy ? "spinning" : ""} ${win ? "win" : ""}`}>
-        <div className="marquee">{Array.from({ length: 14 }, (_, k) => <i key={k} style={{ animationDelay: `${k * 0.07}s` }} />)}</div>
-        <div className="reels">
-          {[0, 1, 2].map((i) => {
-            const k = y.reels?.[i] ?? 0;
-            return (
-              <div key={i} className="reel">
-                {stopped[i] ? (
-                  <div className={`strip stop ${busy ? "" : "rest"}`} key={`s${y.last.seq}`}>
-                    <div>{syms[(k + n - 1) % n]}</div><div className={win ? "hit" : ""}>{syms[k]}</div><div>{syms[(k + 1) % n]}</div>
-                  </div>
-                ) : (
-                  <div className="strip blur" style={{ animationDuration: `${0.22 + i * 0.03}s` }}>{strip.map((q, j) => <div key={j}>{q}</div>)}</div>
-                )}
-              </div>
-            );
-          })}
-          <div className="payline" />
-        </div>
-      </div>
-      <Result y={y} busy={busy} />
-      <div className="row center">
-        {Array.from({ length: m.maxCredits }, (_, k) => k + 1).map((c) => (
-          <button key={c} className={`pill ${credits === c ? "on" : ""}`} onClick={() => { play("click"); setCredits(c); }}>{c}</button>
-        ))}
-        <span className="muted">credits · {money(bet)} a spin</span>
-      </div>
-      <button className="btn big go" disabled={busy} onClick={() => { if (send({ act: "spin", bet: credits }, SPIN_MS.reels[2] + 150, "reels")) { last.current = 0; setT0(performance.now()); } }}>Spin</button>
-      <div className="paytable">
-        {pays.map((q) => (
-          <div key={q.k} className={win && y.reels?.[1] === q.k + 1 ? "on" : ""}><span>{q.x < 1 ? `${syms[q.k + 1]} ${syms[q.k + 1]}` : `${syms[q.k + 1]} ${syms[q.k + 1]} ${syms[q.k + 1]}`}</span><span className="num">{money(q.x * bet)}</span></div>
-        ))}
-      </div>
+      <Machine c={c} credit={g.state.cash} bet={betOf(m, credits) * mult} onBusy={onBusy}
+        onBet={(dir) => setLv((k) => (dir === "max" ? levels.length - 1 : Math.max(0, Math.min(levels.length - 1, k + dir))))}
+        spin={() => {
+          // The command applies on the sim's next tick: wait for the spin to come back.
+          const seq = g.state.yours?.last.seq ?? 0;
+          const e = g.dispatch({ type: "yours", act: "spin", bet: credits });
+          setErr(e ?? "");
+          if (e) return null;
+          return new Promise((done) => {
+            const t0 = performance.now();
+            const poll = () => {
+              const y = g.state.yours;
+              if (y && y.last.seq > seq) done(y.spin ?? null);
+              else if (!y || performance.now() - t0 > 5000) done(null);
+              else requestAnimationFrame(poll);
+            };
+            poll();
+          });
+        }} />
+      {err && <div className="result neg">{err}</div>}
     </>
   );
 }

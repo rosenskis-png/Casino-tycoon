@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M10 plan: owner's answers
+- Owner accepts that winnings at your own games come from nowhere.
+- **Same odds as guests:** you play the object's real rules and paytable with ordinary luck, never rigged either way. In blackjack and video poker your own decisions still count, as they do for a sharp guest.
+- **Only real simulated games:** no sportsbook. Poker and bingo stay out.
+- **No vibration.**
+- **Generated music** (owner): a main theme on a new title screen, and a pick of tracks for each dance floor that fades with distance. Claude adds show-lounge music and a music volume slider.
+- The other readiness defaults stand (blackjack depth, a separate "Owner's play" line in the books, no figure on the floor).
+
 ## 2026-09-24 · M10 planned: audio and playing the games yourself (readiness defaults for the owner)
 - Plan in ROADMAP. Starting point: 25 synth recipes and one master mute. There's no distance, ambient bed, category volumes or working iPhone haptics yet.
 - Defaults put to the owner:

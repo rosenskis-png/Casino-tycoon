@@ -104,13 +104,16 @@ Whale bankrolls are sized to game money (a variance crisis means several months 
 
 ## M10 · Audio, play-the-games-yourself ☐
 Planned 2026-09-24; defaults in DECISIONS wait for the green light. Will be specced in docs/spec/audio.md and docs/spec/play.md.
-- **Mixer:** master, interface, games, floor and crowd volumes, plus mute, kept on the device (not in saves).
+- **Mixer:** master, music, interface, games, floor and crowd volumes, plus mute, kept on the device (not in saves).
 - **Sound on the floor:** sounds get quieter with distance from the view and zoom, and pan left or right; a cap on voices and repeats so a busy floor doesn't clip.
 - **Ambient floor:** a continuous murmur, chimes and chip clatter built from the NRG and crowd in view. It thins out when zoomed out and goes quiet when paused.
 - **Game and place sounds:** reels and stops, dealt cards, chips, the roulette ball, keno and bingo calls, sportsbook roars, bar glassware, the club's bass, show applause, doors. A longer jackpot fanfare. Richer recipes (attack, filter, note sequences), still data.
-- **Haptics:** jackpots, placements and your own wins. iPhone Safari has no vibration API, so the fallback is iOS 18's switch tap (one light tick).
-- **Play it yourself:** a Play button on machine and table cards opens a full-screen game with that object's real model, paytable, rules and limits (×5 in high-limit rooms). Covers slots, video poker (hold and draw), blackjack (hit, stand, double, one split), roulette (full board), craps (pass, don't pass, odds, field), baccarat (real third-card rules), keno and the sportsbook. Poker and bingo are excluded because they're player versus player. You play with casino cash, while the casino keeps running and the ticker stays up. Speed and management controls are hidden, and playing isn't available while paused.
+- **Music, generated from data** (a small sequencer: chord progressions, bass, drums and lead patterns as recipes; no audio files):
+  - A title screen (continue, new game with scenario, sound settings) with a main theme. Today the game opens straight onto the floor.
+  - Each nightclub gets a pick of tracks on its card (4–5 styles), playing from the dance floor. It fades with distance and zoom, and plays only while the club is open.
+  - The show lounge plays music during shows.
+- **Play it yourself:** a Play button on machine and table cards opens a full-screen game with that object's real model, paytable, rules and limits (×5 in high-limit rooms). Covers slots, video poker (hold and draw), blackjack (hit, stand, double, one split), roulette (full board), craps (pass, don't pass, odds, field), baccarat (real third-card rules) and keno. Poker, bingo and the sportsbook are excluded. You get the same rules and odds as a guest, with ordinary luck and no rigging either way. You play with casino cash, while the casino keeps running and the ticker stays up. Speed and management controls are hidden, and playing isn't available while paused.
 - All draws go through commands on a new `yours` RNG stream. A hand in progress is saved. Save schema 14 (migration from 13).
-- Cut order if it runs long: craps, then baccarat, then the ambient floor's detail layer.
+- Cut order if it runs long: craps, then baccarat, then the show lounge's music, then the ambient floor's detail layer.
 ## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)
 ## M11 · Scenarios, tutorial, balance ☐

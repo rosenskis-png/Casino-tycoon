@@ -10,6 +10,7 @@ import type { System } from "./registry";
 import type { Agent, GameState, GuestData, PlacedObject } from "./state";
 import { slotInfo, statsOf } from "./design";
 import { lastSpin } from "./design/compile";
+import { afterSpin, hasMeters, prepSpin, type MeterHost } from "./design/meters";
 import { judged } from "./design/appeal";
 import { rng, type Rng } from "./rng";
 import { post } from "./finance";
@@ -171,16 +172,30 @@ function resolve(g: Game, a: Agent) {
   const bet = betOf(m, Math.min(creditsFor(g, gd, m, mult), Math.floor(gd.wallet / (m.denom * mult * WAGERS_PER_ROUND) + 1e-9))) * mult;
   if (bet * WAGERS_PER_ROUND > gd.wallet + 1e-9) return;
   // Luck and cheating bend what each wager pays (docs/spec/cheats.md); the suspicion tools compare against the math.
+  // (M8.5) A designed slot's progressive meters and collector are live: each wager feeds them and can win them.
+  const inf = slot ? slotInfo(g.state, o) : undefined;
+  const host: MeterHost | null = inf && (hasMeters(inf.c) || inf.c.col) ? { meters: g.state.meters, own: o, id: inf.id } : null;
   const ws: Wager[] = [];
-  let near = 0, feats = 0, fsSpins = 0, jps = 0;
+  let near = 0, feats = 0, extra = 0, jps = 0, voided = 0, big = false, seen = "";
   for (let k = 0; k < WAGERS_PER_ROUND; k++) {
-    lastSpin.kind = 0;
-    const x = wagerPay(g, gd, m, drawPay, r);
+    if (host) prepSpin(host, inf!.c, bet, r);
+    lastSpin.kind = 0; lastSpin.level = -1; lastSpin.voided = -1; lastSpin.secs = 0; lastSpin.spins = 0; lastSpin.feat = "";
+    let x = wagerPay(g, gd, m, drawPay, r);
+    const kind = lastSpin.kind as number, feat = lastSpin.feat as string;
+    if (host) {
+      const a = afterSpin(host, inf!.c, bet, x !== 0 ? lastSpin.level : -1, r);
+      if (a.x) { x = x < 0 ? x - a.x : x + a.x; jps++; }
+    }
     ws.push({ m, bet, x });
-    // A design's free spins (and named jackpots) that actually paid this guest.
-    const kind = lastSpin.kind as number;
-    if (x > 0 && kind === 1) { feats++; fsSpins += lastSpin.spins; }
-    if (x > 0 && kind === 2) jps++;
+    // A design's features (and named jackpots) that actually paid this guest, and the time they take to play out.
+    if (x > 0 && kind === 1) {
+      feats++;
+      seen = feat;
+      extra += feat === "fs" ? lastSpin.spins * FS_SPIN * m.spin * TICKS_PER_SECOND : lastSpin.secs * 0.5 * TICKS_PER_SECOND;
+      if ((feat !== "fs" && feat !== "collect") || x >= 50) big = true;
+    } else if (lastSpin.secs > 0) extra += lastSpin.secs * 0.5 * TICKS_PER_SECOND;
+    if (x > 0 && (kind === 2 || lastSpin.level >= 0)) jps++;
+    if (lastSpin.voided >= 0) voided++;
     // Near misses: some losing spins are shown as just missing (docs/spec/designer.md §2).
     if (x === 0 && m.nearMiss && r.chance(m.nearMiss)) near++;
   }
@@ -188,12 +203,20 @@ function resolve(g: Game, a: Agent) {
   // How the round felt: a feature, a real win, a win smaller than the stake, a near miss.
   gd.mem.feel += feats ? 1.5 : won >= wagered ? 1 : won > 0 ? (m.ldwFeel ?? 0.3) * (won / wagered) : Math.min(1, near * 0.1);
   o.last = { tick: g.state.tick, win: jackpot ? 2 : feats ? 3 : won > 0 ? 1 : 0 };
-  const inf = slot ? slotInfo(g.state, o) : undefined;
   if (inf) {
     const st = statsOf(g.state, inf.id);
     st.coinIn += wagered; st.paidOut += won; st.rounds++; st.feats += feats; st.jps += jps; st.rWin += wagered - won;
+    st.theo = (st.theo ?? 0) + wagered * (1 - inf.c.d.rtp);
     gd.game = inf.id;
-    if (feats) { gd.sf = (gd.sf ?? 0) + feats; gd.extra = (gd.extra ?? 0) + Math.round(fsSpins * FS_SPIN * m.spin * TICKS_PER_SECOND); g.bus.emit({ type: "sound", id: inf.d.show.call, x: o.x, y: o.y }); }
+    if (feats) {
+      gd.sf = (gd.sf ?? 0) + feats;
+      gd.sfk = seen;
+      g.bus.emit({ type: "sound", id: inf.d.show.call, x: o.x, y: o.y });
+      // A big bonus draws a crowd (onlookers, like a hot craps table).
+      if (big) g.bonusNow.set(o.id, g.state.tick + Math.max(extra, 8 * TICKS_PER_SECOND));
+    }
+    gd.extra = (gd.extra ?? 0) + Math.round(extra);
+    if (voided) gd.voided = (gd.voided ?? 0) + voided;
     // Excitement buys hold: time on a thrilling machine counts for more in the visit's value (docs/spec/designer.md §5).
     let ex = inf.ex.get(gd.type);
     if (ex === undefined) inf.ex.set(gd.type, (ex = judged(inf.c, gd.type).excitement));

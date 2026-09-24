@@ -8,6 +8,7 @@ import { SCHEMA_VERSION, type GameState } from "./state";
 import { T } from "../data/terrain";
 import { seedPool } from "./pool";
 import { lineTiles } from "./map";
+import { STOCK_DESIGNS } from "../data/designs";
 
 /** M2.5 per-type familiarity defaults, frozen here so the 2 → 3 migration never changes. */
 const FAMILIAR_START: Record<string, number> = { local: 0.5, retiree: 0.4, tourist: 0.05 };
@@ -220,6 +221,17 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.nextDesign = 1;
     s.dstats = {};
     if (s.yours?.fam === "slot") delete s.yours.reels;
+    return s;
+  },
+  // 15 → 16 (M8.5): no progressive meters yet (fixed jackpots only before); no opinion history; each design's lifetime
+  // theoretical win from its coin-in and payback (the performance index becomes a lifetime figure).
+  15: (s) => {
+    s.meters = {};
+    s.ohist = {};
+    for (const [id, st] of Object.entries<any>(s.dstats ?? {})) {
+      const d = s.designs?.[id]?.d ?? STOCK_DESIGNS[id];
+      st.theo = st.coinIn * (1 - (d?.rtp ?? 0.9));
+    }
     return s;
   },
 };

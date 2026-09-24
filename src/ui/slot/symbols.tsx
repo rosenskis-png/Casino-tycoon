@@ -1,6 +1,9 @@
 // Slot symbols on the play screen (docs/spec/designer.md §9): emoji on styled tiles, plus the tokens a real slot
 // draws itself (card ranks, sevens, bars, WILD). UI only: the floor stays pixel art.
-import { C_BAR1, C_BAR2, C_BAR3, C_BLANK, C_CHERRY, C_TOP, C_WILD, JACKPOT, SCATTER, SLOT_THEMES, WILD, type SlotDesign } from "../../data/designer";
+import {
+  BONUS_OFFER, BONUS_PICK, BONUS_WHEEL, C_BAR1, C_BAR2, C_BAR3, C_BLANK, C_CHERRY, C_TOP, C_WILD, JACKPOT, ORB, PIECE, SCATTER, SLOT_THEMES, WILD,
+  type SlotDesign,
+} from "../../data/designer";
 
 /** Symbol codes beyond data/designer.ts (sim/design/grid.ts): wilds with multipliers; the classic jackpot symbol. */
 const WILD2 = 12, WILD3 = 13, C_JP = 7;
@@ -28,15 +31,25 @@ export function symbolOf(d: SlotDesign, code: number): string {
   if (code === WILD || code === WILD2 || code === WILD3) return "#wild";
   if (code === SCATTER) return set.scatter;
   if (code === JACKPOT) return set.jackpot;
+  // (M8.5) Feature symbols.
+  if (code === ORB) return "#orb";
+  if (code === BONUS_PICK) return "#pick";
+  if (code === BONUS_WHEEL) return "🎡";
+  if (code === BONUS_OFFER) return "💼";
+  if (code === PIECE) return "🪙";
   return "";
 }
 
-/** One symbol, drawn. `kind` styles the tile (high, low, wild, scatter, jackpot). */
-export function Sym({ d, code, size }: { d: SlotDesign; code: number; size?: number }) {
+/** One symbol, drawn. `kind` styles the tile (high, low, wild, scatter, jackpot); `label`: an orb's value. */
+export function Sym({ d, code, size, label }: { d: SlotDesign; code: number; size?: number; label?: string }) {
   const s = symbolOf(d, code);
   const th = SLOT_THEMES[d.theme];
   const style = size ? { fontSize: size } : undefined;
   if (!s || (d.layout === "c3" && code === C_BLANK)) return <span className="sy blank" />;
+  if (s === "#orb") return <span className="sy orb" style={{ ...style, background: `radial-gradient(circle at 35% 30%, #fff, ${th.accent} 35%, ${th.logo[1]})` }}><b>{label ?? ""}</b></span>;
+  if (s === "#pick") return <span className="sy bonus" style={style}><b>BONUS</b></span>;
+  if (d.layout !== "c3" && (code === BONUS_WHEEL || code === BONUS_OFFER)) return <span className="sy emo scat bonusx" style={style}>{s}</span>;
+  if (d.layout !== "c3" && code === PIECE) return <span className="sy emo piece" style={style}>{s}</span>;
   if (s === "#wild") {
     const m = code === WILD2 ? "×2" : code === WILD3 ? "×3" : d.layout === "c3" && (d.wild === "x2" || d.wild === "x3") ? (d.wild === "x2" ? "×2" : "×3") : "";
     return <span className="sy wild" style={{ ...style, background: `linear-gradient(160deg, ${th.logo[0]}, ${th.accent} 45%, ${th.logo[1]})` }}><b>WILD</b>{m && <i>{m}</i>}</span>;

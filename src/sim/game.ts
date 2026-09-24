@@ -79,6 +79,10 @@ export class Game {
   minRound = Infinity;
   /** (M8) The id the last `designSave` stored the design under (the designer reads it back). */
   lastDesign = "";
+  /** (M8.5) Slots in a big bonus now, and the tick it ends (onlookers gather). Runtime only. */
+  bonusNow = new Map<number, number>();
+  /** (M8.5) Bank signs on the floor. */
+  bankSigns: PlacedObject[] = [];
   readonly rooms = new RoomIndex();
   /**
    * Door rules (M6): restricted doors (tiles), and one path cache per set of them a person can pass. With no
@@ -115,7 +119,7 @@ export class Game {
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
-      cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {},
+      cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {}, meters: {}, ohist: {},
     };
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);
@@ -185,6 +189,7 @@ export class Game {
     const { w, h } = this.state.map;
     const occ = new Int32Array(w * h), objAt = new Int32Array(w * h), seatAt = new Int32Array(w * h), opaque = new Uint8Array(w * h);
     this.signs = [];
+    this.bankSigns = [];
     this.objById.clear();
     this.slotSectors.clear();
     this.seatTiles.clear();
@@ -198,6 +203,7 @@ export class Game {
       if (def.serves) this.amenities[def.serves].push(o);
       if (def.serves === "cage") this.amenities.atm.push(o);
       if (def.guide) this.signs.push(o);
+      if (o.kind === "bank_sign") this.bankSigns.push(o);
       if (def.slot || def.game) {
         const key = (o.y >> 4) * 4096 + (o.x >> 4);
         let list = this.slotSectors.get(key);

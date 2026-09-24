@@ -32,8 +32,10 @@ import { THEFT } from "../data/staff";
 import { greed, steal } from "./crew";
 import { comeBack, useComp } from "./bank";
 import { whaleLeft } from "./whales";
-import { compiledOf, slotInfo, statsOf } from "./design";
+import { compiledOf, huntEdge, signDesign, slotInfo, statsOf, topMeter } from "./design";
 import { judged } from "./design/appeal";
+import { SLOT_TASTES } from "../data/slotTastes";
+import { gameKey, noteSessionEnd, noteThought } from "./opinions";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -265,6 +267,8 @@ export function think(g: Game, a: Agent, id: string) {
   if (gd.recent.length > 5) gd.recent.shift();
   const t = g.state.thoughts[0];
   t[id] = (t[id] ?? 0) + 1;
+  // (M8.5) A thought had at a game counts toward what guests think of that game.
+  if (a.act === "play" && a.target >= 0) noteThought(g.state, gameKey(g.objById.get(a.target)), id);
 }
 
 const net = (gd: GuestData) => gd.mem.won - gd.mem.wagered;
@@ -345,7 +349,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     mem: {
       arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, cashed: 0,
       feel: 0, rounds: 0, served: 0, comped: 0, early: 0, startIntend: intend, peak: 0, atmYes: 0, exitHops: 0, barAt: 0,
-      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0, fun: 0, spent: 0, eatAt: 0,
+      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0, fun: 0, spent: 0, eatAt: 0, thrill: 0,
     },
     // First-timers sightsee before settling; regulars less, the better they know the place.
     browse: 0, frus: 0, liked: [], favAt: 0,
@@ -355,7 +359,11 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
     door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0, minor: 0, drugs: 0, high: 0,
+    // Set later in a visit; made here so every guest has the same shape (hot loops stay fast).
+    extra: 0, game: "", sf: 0, voided: 0, hunter: 0, sfk: "", look: 0,
   };
+  // (M8.5) A share of Locals are advantage players: always the same people (from their seed), never an extra draw.
+  if (typeId === "local" && gd.kseed % 10 === 3) gd.hunter = 1;
   const a: Agent = {
     id: s.nextId++, role: "guest", x, y, nx: x, ny: y, t: 0, steps: r.int(10, 14), dest: at,
     look: person?.look ?? r.int(0, 1 << 20),
@@ -719,7 +727,21 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   const mult = stakeMult(g, o);
   if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * (m.minCredits ?? 1) * mult)) return 0;
   if (def.game) return (type.games[def.game] ?? 0) + type.rules * rulesScore(def.game, o.rules) * 0.5;
-  return slotAppeal(g, gd.type, o, inf);
+  return slotAppeal(g, gd.type, o, inf) + (inf?.prog ? meterPull(g, gd.type, gd.stake, o, inf) : 0);
+}
+
+/**
+ * (M8.5) A big progressive meter pulls guests in (owner): each doubling of the biggest meter they could win, against
+ * their own bet, adds the same, so every dollar counts for less; a bank sign showing it nearby carries it further.
+ */
+export function meterPull(g: Game, type: string, stake: number, o: import("./state").PlacedObject, info = slotInfo(g.state, o)): number {
+  const top = topMeter(g.state, o, stake, info);
+  if (top <= 0) return 0;
+  const dbl = Math.min(6, Math.log2(top / (Math.max(0.01, stake) * 200)));
+  if (dbl <= 0) return 0;
+  const id = info?.id;
+  const signed = g.bankSigns.some((b) => Math.max(Math.abs(b.x - o.x), Math.abs(b.y - o.y)) <= 10 && signDesign(g, b) === id);
+  return 0.025 * Math.min(1.5, SLOT_TASTES[type]?.dream ?? 0.5) * dbl * (signed ? 1.6 : 1);
 }
 
 /**
@@ -822,6 +844,8 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
     }
     // Comp-seekers nurse the cheapest machine while drinks are free.
     if (cheap) score += cheapGame(g, o) ? 1.5 : -0.5;
+    // (M8.5) Hunters look for a meter about to pop or a collector someone left nearly full.
+    if (gd.hunter && OBJECTS[o.kind].slot) score += huntEdge(g.state, o) > 0 ? 4 : -1.2;
     // Rules-aware guests (M7) remark on a table's rules when they see bad ones.
     if (c.seen && type.rules && OBJECTS[o.kind].game && rulesScore(OBJECTS[o.kind].game!, o.rules) <= -0.5) badRules = true;
     if (score > bestScore) { bestScore = score; best = c.o; far = c.seen && d > 6; hot = isHot; }
@@ -829,7 +853,12 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
   if (badRules && r.chance(0.15)) think(g, a, "badRules");
   if (best < 0) return false;
   const bo = g.objById.get(best)!, bg = OBJECTS[bo.kind].game;
-  if (hot && r.chance(0.5)) think(g, a, "hot");
+  const pull = OBJECTS[bo.kind].slot ? meterPull(g, gd.type, gd.stake, bo) : 0;
+  if (gd.hunter && OBJECTS[bo.kind].slot && huntEdge(g.state, bo) > 0) {
+    gd.game = slotInfo(g.state, bo)?.id;
+    if (r.chance(0.5)) { think(g, a, "slotHunt"); noteThought(g.state, gameKey(bo), "slotHunt"); }
+  } else if (pull > 0.12 && r.chance(0.3)) { gd.game = slotInfo(g.state, bo)?.id; think(g, a, "slotMeter"); noteThought(g.state, gameKey(bo), "slotMeter"); }
+  else if (hot && r.chance(0.5)) think(g, a, "hot");
   else if (bg && type.rules && rulesScore(bg, bo.rules) >= 0.5 && r.chance(0.2)) think(g, a, "goodRules");
   else if (bg && isTable(bo.kind) && !TABLE_GAMES[bg].pool && tableWant(gd) > limitsNow(g, bo)[1] * 1.5 && r.chance(0.3)) think(g, a, "lowLimits");
   else if (far && r.chance(0.15)) think(g, a, "ooh");
@@ -1082,21 +1111,33 @@ function watchTable(g: Game, a: Agent, r: Rng): boolean {
   const gd = a.g!;
   if (gd.mem.fun > 0 && r.chance(0.5)) return false;
   const w = g.state.map.w, here = a.y * w + a.x;
+  // (M8.5) A slot in a big bonus draws a crowd too.
+  for (const [id, until] of g.bonusNow) {
+    if (until <= g.state.tick) { g.bonusNow.delete(id); continue; }
+    const o = g.objById.get(id);
+    if (!o || Math.abs(o.x - a.x) + Math.abs(o.y - a.y) > SIGHT || !canSee(g, here, o.y * w + o.x) || !r.chance(LOOK_CHANCE)) continue;
+    if (lookSpot(g, a, o, r, here)) { gd.look = 1; return true; }
+  }
   for (const o of g.tables) {
     const fam = OBJECTS[o.kind].game!;
     if (!TABLE_GAMES[fam].onlookers || Math.abs(o.x - a.x) + Math.abs(o.y - a.y) > SIGHT) continue;
     const n = (seatHolders(g, o.id) ?? []).filter((id) => id > 0).length;
     if (n < LOOK_PLAYERS || !canSee(g, here, o.y * w + o.x) || !r.chance(LOOK_CHANCE)) continue;
     // A spot at the rail: a free tile just beyond the players.
-    const { w: ow, h: oh } = objSize(o);
-    for (let k = 0; k < 8; k++) {
-      const x = o.x - 2 + r.int(0, ow + 3), y = o.y - 2 + r.int(0, oh + 3), t = y * w + x;
-      if (x < 0 || y < 0 || x >= w || y >= g.state.map.h) continue;
-      if (covers(o, x, y) || !g.walkable(t) || g.seatAt[t] || !g.pathsFor(a).reachable(here, t)) continue;
-      go(a, t, "look");
-      a.target = o.id;
-      return true;
-    }
+    if (lookSpot(g, a, o, r, here)) { gd.look = 0; return true; }
+  }
+  return false;
+}
+/** Walks to a free tile just beyond a game's players to watch it. */
+function lookSpot(g: Game, a: Agent, o: import("./state").PlacedObject, r: Rng, here: number): boolean {
+  const w = g.state.map.w, { w: ow, h: oh } = objSize(o);
+  for (let k = 0; k < 8; k++) {
+    const x = o.x - 2 + r.int(0, ow + 3), y = o.y - 2 + r.int(0, oh + 3), t = y * w + x;
+    if (x < 0 || y < 0 || x >= w || y >= g.state.map.h) continue;
+    if (covers(o, x, y) || !g.walkable(t) || g.seatAt[t] || !g.pathsFor(a).reachable(here, t)) continue;
+    go(a, t, "look");
+    a.target = o.id;
+    return true;
   }
   return false;
 }
@@ -1122,6 +1163,7 @@ function noteSession(g: Game, a: Agent) {
   if (secs >= 30 && gd.mood >= 55 && score > gd.mem.favScore) { gd.mem.favScore = score; gd.mem.favSeat = a.y * g.state.map.w + a.x; }
   const o = g.objById.get(a.target);
   if (o && OBJECTS[o.kind].slot) slotRemark(g, a, o, secs);
+  noteSessionEnd(g.state, gameKey(o), gd.mood);
 }
 
 /** Reasons a guest gives for a design (appeal.ts) → what they say, naming it (docs/spec/designer.md §5). */
@@ -1131,22 +1173,30 @@ const REMARKS: Record<string, string> = {
   "Too loud and flashy": "slotLoud", "A bit dull to look at": "slotDull", "Too complicated": "slotComplex", "Stop celebrating when I lose": "slotLdw",
   "No bonus to play for": "slotNoBonusAt",
 };
+/** (M8.5) What a guest says about the feature they just saw, by its kind. */
+const FEATURE_REMARKS: Record<string, string> = { fs: "slotFree", hns: "slotOrbs", wheel: "slotWheel", pick: "slotPick", offer: "slotOffer", collect: "slotCollect" };
 /** After a slot session, sometimes a remark about the design: counted per design for its card. */
 function slotRemark(g: Game, a: Agent, o: import("./state").PlacedObject, secs: number) {
   const gd = a.g!, c = compiledOf(g.state, o);
-  const saw = gd.sf ?? 0;
+  const saw = gd.sf ?? 0, kind = gd.sfk ?? "", voided = gd.voided ?? 0;
   gd.sf = 0;
+  gd.sfk = "";
+  gd.voided = 0;
   if (!c || secs < 30) return;
   const r = rng(g.state, "guests");
+  const st = statsOf(g.state, gd.game ?? "");
+  const say = (id: string) => { think(g, a, id); st.said[id] = (st.said[id] ?? 0) + 1; };
+  // A jackpot hit on too small a bet is never forgotten.
+  if (voided && r.chance(0.8)) { say("slotMaxBet"); st.sessions++; return; }
   if (!r.chance(0.35)) return;
   // What this session showed them, then their type's standing reasons.
   const reasons = judged(c, gd.type).reasons.filter((q) => (q === "Loved the bonus" ? saw > 0 : q === "Never saw the bonus" ? saw === 0 : true));
   if (saw > 0 && !reasons.includes("Loved the bonus") && !reasons.includes("The bonus pays nothing")) reasons.unshift("Loved the bonus");
-  const id = REMARKS[reasons.length ? reasons[r.int(0, reasons.length - 1)] : ""];
+  let id = REMARKS[reasons.length ? reasons[r.int(0, reasons.length - 1)] : ""];
+  if (id === "slotBonus" && FEATURE_REMARKS[kind] && r.chance(0.7)) id = FEATURE_REMARKS[kind];
+  if (!id && c.cas && r.chance(0.3)) id = "slotTumble";
   if (!id) return;
-  think(g, a, id);
-  const st = statsOf(g.state, gd.game ?? "");
-  st.said[id] = (st.said[id] ?? 0) + 1;
+  say(id);
   st.sessions++;
 }
 
@@ -1179,6 +1229,8 @@ function quitReason(g: Game, a: Agent): string | null {
   if (minRoundOf(g.state, o) * stakeMult(g, o) > gd.wallet + 1e-9) return "money";
   const def = OBJECTS[o.kind].game && TABLE_GAMES[OBJECTS[o.kind].game!];
   if (def && def.minPlayers > 1 && (seatHolders(g, o.id) ?? []).filter((id) => id > 0).length < def.minPlayers && rng(g.state, "guests").chance(0.25)) return "empty";
+  // (M8.5) A hunter stops the moment the edge is gone (the meter hit, the collector paid).
+  if (gd.hunter && OBJECTS[o.kind].slot && huntEdge(g.state, o) <= 0 && gd.mem.rounds > 0) { think(g, a, "slotHunted"); return "hunted"; }
   const nt = net(gd);
   // A cheat still after their take ignores the usual quit rules.
   const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
@@ -1444,7 +1496,7 @@ function guestTick(g: Game, a: Agent) {
       const o = g.objById.get(a.target);
       if (!o || gd.why) { a.target = -1; a.act = "idle"; return; }
       const r = rng(g.state, "guests");
-      if (a.timer === 0) { a.timer = r.int(LOOK_SECS[0], LOOK_SECS[1]) * TICKS_PER_SECOND; if (r.chance(0.3)) think(g, a, "watching"); return; }
+      if (a.timer === 0) { a.timer = r.int(LOOK_SECS[0], LOOK_SECS[1]) * TICKS_PER_SECOND; if (r.chance(0.3)) think(g, a, gd.look ? "slotWatch" : "watching"); return; }
       gd.mem.fun++;
       if (--a.timer > 0) return;
       a.act = "idle";

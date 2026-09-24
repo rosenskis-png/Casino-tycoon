@@ -11,26 +11,37 @@ export interface ParRow { k: string; v: string }
 const pct = (v: number, d = 1) => `${(v * 100).toFixed(d)}%`;
 const oneIn = (p: number) => (p > 0 ? `1 in ${p >= 0.01 ? Math.round(1 / p).toLocaleString("en-US") : Math.round(1 / p).toLocaleString("en-US")}` : "never");
 
+const FEAT_LABEL: Record<string, string> = { fs: "Free spins", hns: "Hold & spin", pick: "Pick", wheel: "Wheel", offer: "Offer", collect: "Collector" };
+
 /** The exact numbers. */
 export function parSheet(c: Compiled): ParRow[] {
   const f = feelOf(c), b = c.budget, T = c.d.rtp, rows: ParRow[] = [];
-  const PJ = c.pJ.reduce((a, q) => a + q, 0);
+  const PJ = c.PJ, na = 1 - PJ;
   rows.push({ k: "Payback", v: pct(T) });
   rows.push({ k: "Hit rate (any win)", v: pct(c.h) });
   rows.push({ k: "Wins at least the bet", v: pct(f.win) });
-  if (f.ldw > 0) rows.push({ k: "Wins smaller than the bet", v: pct(c.base.e.reduce((a, q) => a + (q.x < 1 ? q.p : 0), 0) * (1 - PJ) * (1 - c.q)) });
+  if (f.ldw > 0) rows.push({ k: "Wins smaller than the bet", v: pct(c.base.e.reduce((a, q) => a + (q.x < 1 ? q.p : 0), 0) * na * (1 - c.Q)) });
   rows.push({ k: "Volatility index (SD per spin)", v: `${Math.sqrt(Math.max(0, c.v)).toFixed(1)}× bet` });
-  if (c.q > 0) {
-    rows.push({ k: "Free spins", v: oneIn((1 - PJ) * c.q) });
-    rows.push({ k: "Free spins pay on average", v: `${c.fsAvg.toFixed(1)}× bet over ${c.fsSpins.toFixed(1)} spins` });
-    rows.push({ k: "Seeing free spins in 100 spins", v: pct(1 - Math.pow(1 - (1 - PJ) * c.q, 100), 0) });
+  for (const fi of c.feats) {
+    if (fi.q <= 0) continue;
+    const name = FEAT_LABEL[fi.id] ?? fi.id, jv = fi.lv.reduce((a, i, k) => a + fi.lc[k] * c.levels[i].xbar, 0);
+    rows.push({ k: name, v: fi.id === "collect" ? `fills about ${oneIn(na * fi.q)}` : oneIn(na * fi.q) });
+    rows.push({ k: `${name} pays on average`, v: fi.id === "fs" ? `${c.fsAvg.toFixed(1)}× bet over ${c.fsSpins.toFixed(1)} spins` : `${(fi.v + jv).toFixed(1)}× bet${jv > 0 ? ` (jackpots ${jv.toFixed(1)}×)` : ""}` });
+    rows.push({ k: `Seeing it in 100 spins`, v: pct(1 - Math.pow(1 - na * fi.q, 100), 0) });
   }
-  const n = c.pJ.length;
-  c.pJ.forEach((p, i) => rows.push({ k: `${levelName(n, i, c.lay.win === "classic")[0]}${levelName(n, i, c.lay.win === "classic").slice(1).toLowerCase()} (${c.jx[i]}× bet)`, v: oneIn(p) }));
+  if (c.cas) rows.push({ k: "Cascades", v: `a win drops again ${pct(c.cas.p, 0)} of the time; base game ×${c.cas.K.toFixed(2)}` });
+  if (c.mys) rows.push({ k: c.mys.kind === "mult" ? "Mystery multiplier" : "Wild storm", v: c.mys.kind === "mult" ? `${oneIn(c.mys.p)} wins, ×2 to ×5` : `${oneIn(c.mys.p)} spins` });
+  const n = c.levels.length, top = c.d.maxBet * c.d.denom;
+  c.levels.forEach((l, i) => {
+    const nm = levelName(n, i, c.lay.win === "classic"), name = nm[0] + nm.slice(1).toLowerCase();
+    const kind = l.kind === "fixed" ? `${l.x}× bet` : l.kind === "mhb" ? `must hit by $${(l.cap * top).toFixed(0)}, avg $${(l.xbar * top).toFixed(0)}` : `${l.kind === "linked" ? "linked" : "progressive"}, seed $${(l.x * top).toFixed(0)}, avg $${(l.xbar * top).toFixed(0)}`;
+    rows.push({ k: `${name} (${kind})`, v: `${oneIn(l.p)}${l.max ? " · largest bet only" : ""}` });
+  });
   rows.push({ k: "Top base award", v: `${Math.round(c.base.e.reduce((a, q) => Math.max(a, q.x), 0)).toLocaleString("en-US")}× bet` });
   rows.push({ k: "Spins a minute (1×)", v: f.perMin.toFixed(0) });
   rows.push({ k: "Drain at min / max bet", v: `$${((1 - T) * f.perMin * f.minBet).toFixed(2)} / $${((1 - T) * f.perMin * f.maxBet).toFixed(2)} a minute` });
-  rows.push({ k: "Payback split", v: [`small ${pct(b.small / T, 0)}`, `big ${pct(b.big / T, 0)}`, b.scatter + b.fs > 0 ? `free spins ${pct((b.scatter + b.fs) / T, 0)}` : "", b.jackpots > 0 ? `jackpots ${pct(b.jackpots / T, 0)}` : ""].filter(Boolean).join(" · ") });
+  const parts = [["small", b.small], ["big", b.big], ["cascades", b.cascade], ["mystery", b.mystery], ["free spins", b.scatter + b.fs], ["hold & spin", b.hns], ["pick", b.pick], ["wheel", b.wheel], ["offer", b.offer], ["collector", b.collect], ["jackpots", b.jackpots]] as [string, number][];
+  rows.push({ k: "Payback split", v: parts.filter(([, v]) => v > 1e-6).map(([k, v]) => `${k} ${pct(v / T, 0)}`).join(" · ") });
   return rows;
 }
 
@@ -98,7 +109,11 @@ export function panel(c: Compiled, mix: Record<string, number>): Panel {
     const j = judge(c, type);
     return { type, w: w / total, excitement: j.excitement, appeal: j.appeal, reasons: j.reasons };
   });
-  const excitement = byType.reduce((a, t) => a + t.w * t.excitement, 0);
+  // The panel's Excitement leans toward the guests who'd actually sit down at it (M8.5): a game made for one crowd
+  // rates by how that crowd felt, not by the average of people who'd walk past it.
+  const pw = byType.map((t) => t.w * (0.4 + Math.max(0, t.appeal)));
+  const pt = pw.reduce((a, b) => a + b, 0) || 1;
+  const excitement = byType.reduce((a, t, i) => a + (pw[i] / pt) * t.excitement, 0);
   const tally = new Map<string, number>();
   for (const t of byType) for (const r of t.reasons) tally.set(r, (tally.get(r) ?? 0) + t.w);
   const verdict = [...tally].filter(([, w]) => w >= 0.15).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([r]) => r);

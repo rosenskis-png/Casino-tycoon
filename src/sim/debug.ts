@@ -17,6 +17,9 @@ import { TICKS_PER_DAY } from "./clock";
 import { Game } from "./game";
 import { yoursMathChecks, yoursPlayChecks } from "./yourschecks";
 import { designChecks } from "./design/checks";
+import { compiledById } from "./design";
+import { designIdOf } from "./design/lookup";
+import type { Meter } from "./state";
 import { rng } from "./rng";
 import { loadState, serialize } from "./save";
 import { objCells, objSeats, seatCount, sizeOk, dims } from "./geometry";
@@ -48,6 +51,24 @@ export function checkInvariants(g: Game): string[] {
   const booked = Object.values(s.finance.total).reduce((a, b) => a + b, 0);
   if (Math.abs(booked - s.cash) > 1e-6 * Math.max(1, Math.abs(s.cash))) p.push(`books ${booked} ≠ cash ${s.cash}`);
   for (const [t, r] of Object.entries(s.rep)) if (r < 0 || r > 100) p.push(`reputation ${t} out of range: ${r}`);
+  // (M8.5) Progressive meters: never below their seeds; must-hit-by points between seed and cap; collectors short of full.
+  const meterOk = (m: Meter, where: string) => {
+    if (m.v.length !== m.seed.length || m.v.length !== m.hit.length) p.push(`${where}: meter arrays differ`);
+    m.v.forEach((v, i) => { if (v < m.seed[i] - 1e-9) p.push(`${where}: meter ${i} below its seed`); });
+  };
+  for (const [id, m] of Object.entries(s.meters ?? {})) {
+    meterOk(m, `meter ${id}`);
+    const c = compiledById(s, id);
+    if (c) c.levels.forEach((l, i) => {
+      if (l.kind !== "mhb") return;
+      const top = c.d.maxBet * c.d.denom;
+      if (m.hit[i] < l.x * top - 1e-9 || m.hit[i] > l.cap * top + 1e-9) p.push(`meter ${id}: must-hit-by point outside seed..cap`);
+    });
+  }
+  for (const o of s.objects) {
+    if (o.meter) meterOk(o.meter, `object ${o.id}`);
+    if (o.col !== undefined) { const c = compiledById(s, designIdOf(o)); if (!c?.col || o.col < 0 || o.col >= c.col.N || o.col % 1) p.push(`object ${o.id}: collector ${o.col} out of range`); }
+  }
   const seen = new Int32Array(n);
   const seatTile = new Int32Array(n);
   const objIds = new Set<number>();

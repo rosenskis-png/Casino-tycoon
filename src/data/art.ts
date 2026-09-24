@@ -307,12 +307,15 @@ const TOPPER_FRONT: Record<string, string[]> = {
   sign: ["....JJJJ", "...JIoIo", "...JIIFF"],
   dome: ["......oI", ".....oII", ".....JJJ"],
   figure: [".......J", "......JI", "....JJIF", ".....JIJ", "....J..J"],
+  // (M8.5) A wheel on top: lamps round the rim, colored segments, a stand.
+  wheel: ["......JJ", "....JJIo", "...JoFIF", "...JIFFF", "...JoFIF", "....JJIo", "......JJ", ".......J"],
 };
 const TOPPER_SIDE: Record<string, string[]> = {
   none: [],
   sign: [".....JJJJJ......", ".....IoIoJ......", ".....JJJJJ......"],
   dome: [".......oI.......", "......oIIo......", "......JJJJ......"],
   figure: ["........J.......", ".......JIJ......", "......JIFIJ.....", ".......JIJ......", "......J...J....."],
+  wheel: [".......JJ.......", "......JIoJ......", "......JFFJ......", "......JIoJ......", ".......JJ.......", "........J.......", "........J.......", "........J......."],
 };
 /** Doubles a sprite's pixels (the giant's topper). */
 const dbl = (rows: string[]) => rows.flatMap((r) => { const w = [...r].map((c) => c + c).join(""); return [w, w]; });
@@ -461,6 +464,29 @@ const SIGN = [
   "......9876......", "....99888777....",
 ];
 const SIGN_PAL = { L: "#2f7a52", G: "#1e5a3c", g: "#123a26" };
+
+// (M8.5) Bank sign (32×24): a gold marquee on two posts with a dark board; the renderer writes the game's name and
+// its live meters on it.
+const BANK_SIGN = [
+  ".999999999999999999999999999999.",
+  "98888888888888888888888888888889",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yYYYYYYYYYYYYYYYYYYYYYYYYYYy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98888888888888888888888888888889",
+  ".777777777777777777777777777777.",
+  "......87................87......", "......87................87......", "......87................87......",
+  "......87................87......", "......87................87......", "......87................87......",
+  "......87................87......", "......87................87......", "......87................87......",
+  "......87................87......",
+  ".....9876..............9876.....",
+  "...99888777..........99888777...",
+];
 
 // Fountain (32×36): octagonal marble basin, centre tier with a jet; three spray/ripple frames.
 const FOUNTAIN = mir([
@@ -1041,6 +1067,7 @@ export const OBJECT_SPRITES: Record<string, SpriteDef> = {
   plant: S(PALM), "plant~1": S(shift(PALM, 1, 0, 6)),
   neon: S(NEON, NEON_PAL), "neon~1": S(recolor(NEON, { x: "H" }, 0, 10), NEON_PAL),
   sign: S(SIGN, SIGN_PAL),
+  bank_sign: S(BANK_SIGN),
   fountain: S(FOUNTAIN, FOUNTAIN_PAL), "fountain~1": S(FOUNTAIN_1, FOUNTAIN_PAL), "fountain~2": S(FOUNTAIN_2, FOUNTAIN_PAL),
   "atm:front": S(ATM_FRONT, ATM_PAL), "atm:back": S(ATM_BACK, ATM_PAL), "atm:side": S(ATM_SIDE, ATM_PAL),
   "restroom:front": S(RR_FRONT, RR_PAL), "restroom:back": S(RR_WALL(false), RR_PAL), "restroom:side": S(RR_WALL(true), RR_PAL),

@@ -1,7 +1,7 @@
 // Reels a player sees (docs/spec/designer.md §3, §9): the evaluator (what a screen of symbols pays, by the
 // design's real paytable) and the builder that lays out a screen showing exactly a drawn result. Every screen
 // is checked with the evaluator before it's shown, so the display never pays anything other than what was drawn.
-import { C_BLANK, C_WILD, JACKPOT, PAYING, SCATTER, WILD, type LayoutDef } from "../../data/designer";
+import { C_BLANK, C_WILD, JACKPOT, ORB, PAYING, PIECE, SCATTER, WILD, type LayoutDef } from "../../data/designer";
 import type { Rng } from "../rng";
 import { classicPay, wildReel, type Compiled, type Entry } from "./compile";
 import { linePatterns } from "./lines";
@@ -87,13 +87,30 @@ export interface Show {
   near: boolean;
   /** Free spins: more wilds on the reels ("extra"), wilds with multipliers ("wildx"). */
   fs?: "extra" | "wildx" | "plain";
+  /** (M8.5) Three bonus symbols of this code (a pick, a wheel, an offer); two on a near miss. */
+  bonus?: number;
+  bonusN?: number;
+  /** Hold & spin orbs at these spots (reel × rows + row). */
+  orbs?: number[];
+  /** A wild storm: extra wilds standing in. */
+  storm?: boolean;
 }
 
 /** Builds a screen that pays exactly `sh.e` (or nothing), with the scatters and jackpot symbols asked for. */
 export function build(c: Compiled, sh: Show, r: Rng): { grid: Grid; pre?: Grid } {
   if (c.lay.win === "classic") return { grid: classicGrid(c, sh, r) };
-  // A near miss shows two scatters (or, without free spins, two jackpot symbols).
-  if (sh.near && !sh.scat && !sh.jp) sh = c.q > 0 ? { ...sh, scat: 2 } : c.pJ.length ? { ...sh, jp: 2 } : sh;
+  // A near miss shows a trigger one short: two scatters, two bonus symbols, one orb too few, or two jackpot symbols.
+  if (sh.near && !sh.scat && !sh.jp && !sh.bonus && !sh.orbs) {
+    const opts: Show[] = [];
+    if (c.q > 0) opts.push({ ...sh, scat: 2 });
+    for (const f of c.feats) {
+      if (f.q <= 0) continue;
+      if (f.id === "pick" || f.id === "wheel" || f.id === "offer") opts.push({ ...sh, bonus: f.id === "pick" ? 15 : f.id === "wheel" ? 16 : 17, bonusN: 2 });
+      if (f.id === "hns" && c.hns) opts.push({ ...sh, orbs: pickCells(c.lay, c.hns.start - 1, r) });
+    }
+    if (!opts.length && c.levels.some((l) => l.how === "sym")) opts.push({ ...sh, jp: 2 });
+    if (opts.length) sh = opts[r.int(0, opts.length - 1)];
+  }
   for (let t = 0; t < 80; t++) {
     const out = attempt(c, sh, r, t);
     if (out && ok(c, sh, out.grid)) return out;
@@ -108,7 +125,30 @@ function ok(c: Compiled, sh: Show, g: Grid): boolean {
   const { total, wins } = evaluate(c, g);
   if (Math.abs(total - (sh.e?.x ?? 0)) > 1e-9) return false;
   if (sh.e && wins.some((w) => w.s !== sh.e!.s)) return false;
+  if (sh.bonus !== undefined && countOf(g, sh.bonus) !== (sh.bonusN ?? 3)) return false;
+  if (countOf(g, ORB) !== (sh.orbs?.length ?? 0)) return false;
   return countOf(g, SCATTER) === sh.scat && countOf(g, JACKPOT) === sh.jp;
+}
+
+/** n distinct spots (reel × rows + row) on a layout. */
+function pickCells(lay: LayoutDef, n: number, r: Rng): number[] {
+  const all = shuffle([...Array(lay.reels * lay.rows).keys()], r);
+  return all.slice(0, Math.max(0, n));
+}
+
+/**
+ * A collector piece on a cell outside every win (never on a scatter, orb or bonus symbol): it's not a paying
+ * symbol, so it can't make a win, and outside the wins it can't break one. Checked with the evaluator.
+ */
+export function addPiece(c: Compiled, g: Grid, r: Rng): Grid {
+  if (c.lay.win === "classic" || !g.length) return g;
+  const ev = evaluate(c, g), used = new Set(ev.wins.flatMap((w) => w.cells));
+  const free: number[] = [];
+  g.forEach((reel, ri) => reel.forEach((v, row) => { if (v >= 0 && v < PAYING && !used.has(cell(ri, row))) free.push(cell(ri, row)); }));
+  if (!free.length) return g;
+  const out = g.map((reel) => reel.slice()), at = r.pick(free);
+  out[Math.floor(at / 8)][at % 8] = PIECE;
+  return Math.abs(evaluate(c, out).total - ev.total) < 1e-9 ? out : g;
 }
 
 const emptyGrid = (lay: LayoutDef): Grid => Array.from({ length: lay.reels }, () => new Array(lay.rows).fill(-1));
@@ -122,7 +162,7 @@ function attempt(c: Compiled, sh: Show, r: Rng, t: number): { grid: Grid; pre?: 
   const lay = c.lay, g = emptyGrid(lay), e = sh.e;
   let pre: Grid | undefined;
   // Plain wilds shown standing in for the symbol: often in "extra wilds" free spins, sometimes otherwise.
-  const pw = !c.d.wild || c.d.wild === "none" ? (sh.fs === "extra" ? 0.35 : 0) : sh.fs === "extra" ? 0.4 : 0.12;
+  const pw = sh.storm ? 0.7 : !c.d.wild || c.d.wild === "none" ? (sh.fs === "extra" ? 0.35 : 0) : sh.fs === "extra" ? 0.4 : 0.12;
   if (e) {
     if (e.full) {
       for (let k = 0; k < e.k; k++) g[k].fill(e.s);
@@ -144,6 +184,24 @@ function attempt(c: Compiled, sh: Show, r: Rng, t: number): { grid: Grid; pre?: 
     placed++;
   }
   if (placed < sh.scat) return null;
+  // Bonus symbols, one per reel, like scatters (a near miss's on the early reels).
+  if (sh.bonus !== undefined) {
+    let nb = 0;
+    for (const reel of reels) {
+      if (nb >= (sh.bonusN ?? 3)) break;
+      const free = g[reel].map((v, row) => (v === -1 ? row : -1)).filter((q) => q >= 0);
+      if (!free.length) continue;
+      g[reel][r.pick(free)] = sh.bonus;
+      nb++;
+    }
+    if (nb < (sh.bonusN ?? 3)) return null;
+  }
+  // Hold & spin orbs at their spots.
+  for (const at of sh.orbs ?? []) {
+    const ri = Math.floor(at / lay.rows), row = at % lay.rows;
+    if (g[ri][row] !== -1) return null;
+    g[ri][row] = ORB;
+  }
   for (let n = 0; n < sh.jp; n++) {
     const free: number[] = [];
     g.forEach((reel, ri) => reel.forEach((v, row) => { if (v === -1 && !(sh.near && ri === lay.reels - 1)) free.push(cell(ri, row)); }));

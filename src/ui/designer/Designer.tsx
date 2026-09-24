@@ -3,9 +3,11 @@
 // sections and the lab (par sheet, panel, ratings, forced outcomes). Saving, certifying and placing are commands.
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  BODY_COLORS, CABINETS, CAB_IDS, CALLS, CELEBRATE, DENOMS, FS_COUNTS, FS_ENH, FS_ENH_IDS, JACKPOT_DEFAULTS, LAYOUTS, LAYOUT_IDS,
-  LIGHT_COLORS, MAX_FEATURES, RTP_RANGE, RTP_RIGGED, ROLLUPS, SLOT_THEMES, SLOT_THEME_IDS, SPEEDS, TOPPERS, TOPPER_IDS, levelName,
-  newDesign, type SlotDesign,
+  BODY_COLORS, CABINETS, CAB_IDS, CALLS, CAP_RANGE, CASCADE_CHAIN, CELEBRATE, COLLECT_EVERY, COLLECT_SIZES, COLLECT_X, DENOMS, FEAT_EVERY,
+  FEATURE_NAMES, FEATURE_RESEARCH, FONTS, FS_COUNTS, FS_ENH, FS_ENH_IDS, HNS_LAND, INC_RANGE, JACKPOT_DEFAULTS, JACKPOT_HOWS, JACKPOT_KINDS,
+  LAYOUTS, LAYOUT_IDS, LIGHT_COLORS, LOGO_FX, LOOK_DECK, LOOK_METERS, LOOK_REELS, LOOK_TOP, MAX_FEATURES, MYSTERY_EVERY, OFFER_SIZES,
+  ORB_SPREAD, PICK_PRIZES, RTP_RANGE, RTP_RIGGED, ROLLUPS, SLOT_THEMES, SLOT_THEME_IDS, SPEEDS, TOPPERS, TOPPER_IDS, WHEEL_SEGS,
+  defaultLook, featuresOf, howOf, kindOf, levelName, newDesign, type FeatureId, type JackpotHow, type JackpotKind, type Look, type SlotDesign,
 } from "../../data/designer";
 import { RESEARCH } from "../../data/research";
 import { GUEST_TYPES } from "../../data/guests";
@@ -13,8 +15,10 @@ import { play } from "../../platform/audio";
 import { designCode, parseCode, saveToLibrary } from "../../platform/library";
 import {
   CERT, certFee, certPending, certified, compile, designLocks, forces, illegal, machinesOf, minRtpOf, panel, panelMix, parSheet,
-  researched, sanitize, seeded, sessions, spinFull, ratingWord, INTENSITY_WORDS, designPrice, TICKS_PER_DAY, type Compiled, type Force, type Game,
+  researched, sanitize, seeded, sessions, spinFull, ratingWord, INTENSITY_WORDS, designPrice, TICKS_PER_DAY, hasMeters, prepSpin, afterSpin,
+  meterValue, type Compiled, type Force, type Game, type MeterHost,
 } from "../../sim";
+import type { Meter } from "../../sim/state";
 import { Machine } from "../slot/Machine";
 import { betLevels } from "../play";
 import { money } from "../format";
@@ -46,10 +50,20 @@ export function Designer({ g, start, onClose, onPlace, toast }: { g: Game; start
   const rngRef = useRef(seeded(Math.floor(Math.random() * 1e9)));
   const force = useRef<Force | null>(null);
   const [kick, setKick] = useState(0);
+  // M8.5: the lab machine's own meters and collector, fresh whenever the math changes.
+  const lab = useRef<{ key: string; meters: Record<string, Meter>; own: { meter?: Meter; col?: number } }>({ key: "", meters: {}, own: {} });
+  if (lab.current.key !== c.model.id + JSON.stringify(d.jackpots) + JSON.stringify(d.collect ?? null)) lab.current = { key: c.model.id + JSON.stringify(d.jackpots) + JSON.stringify(d.collect ?? null), meters: {}, own: {} };
+  const labHost: MeterHost = { meters: lab.current.meters, own: lab.current.own, id: "lab" };
   const spin = () => {
     const f = force.current;
     force.current = null;
-    const out = spinFull(c, rngRef.current, f ?? undefined);
+    const live = hasMeters(c) || !!c.col, r = rngRef.current;
+    if (live) prepSpin(labHost, c, bet, r);
+    const out = spinFull(c, r, f ?? undefined);
+    if (live) {
+      const a = afterSpin(labHost, c, bet, out.x > 0 ? out.level : -1, r);
+      if (a.x) { out.mhb = { level: a.level, x: a.x }; out.x += a.x; }
+    }
     setLabCredit((cr) => (cr - bet < 0 ? 1000 : cr) - bet + out.x * bet);
     return out;
   };
@@ -94,7 +108,8 @@ export function Designer({ g, start, onClose, onPlace, toast }: { g: Game; start
       </div>
       <div className={`dz-preview ${big ? "big" : ""}`} ref={box}>
         <div className="dz-scale" ref={inner} style={{ transform: `scale(${k})` } as CSSProperties}>
-          <Machine c={c} credit={labCredit} bet={bet} compact={!big} kick={kick}
+          <Machine c={c} credit={labCredit} bet={bet} compact={!big} kick={kick} meters={c.levels.map((_, i) => meterValue(labHost, c, i))} col={lab.current.own.col ?? 0}
+            onOffer={(_, pay) => { if (pay !== null) setLabCredit((cr) => cr + pay * bet); }}
             onBet={(dir) => setLv((q) => (dir === "max" ? levels.length - 1 : Math.max(0, Math.min(levels.length - 1, q + dir))))}
             spin={spin} />
         </div>
@@ -110,7 +125,7 @@ export function Designer({ g, start, onClose, onPlace, toast }: { g: Game; start
         {sec === "money" && <MoneySec d={d} set={set} />}
         {sec === "math" && <MathSec d={d} c={c} set={set} g={g} />}
         {sec === "features" && <Features d={d} c={c} set={set} g={g} />}
-        {sec === "jackpots" && <Jackpots d={d} c={c} set={set} bet={bet} />}
+        {sec === "jackpots" && <Jackpots d={d} c={c} set={set} bet={bet} g={g} />}
         {sec === "show" && <Show d={d} set={set} />}
         {sec === "cabinet" && <Cabinet d={d} set={set} g={g} />}
         {sec === "lab" && <Lab c={c} g={g} onForce={(f) => { force.current = f; setKick((q) => q + 1); }} onRefill={() => setLabCredit(1000)} />}
@@ -151,7 +166,7 @@ function More({ d, rec, rigged, g, toast, setD, c, act }: { d: SlotDesign; rec: 
             }}>Copy share code</button>
             <div className="dz-code">
               <input value={code} placeholder="Paste a share code" onChange={(e) => setCode(e.target.value)} />
-              <button className="btn" onClick={() => { const nd = parseCode(code); if (!nd) { toast("That isn't a design code"); return; } setD(sanitize({ ...nd, id: "" })); setOpen(false); toast(`Loaded ${nd.name}`); }}>Load</button>
+              <button className="btn" onClick={() => { const nd = parseCode(code); if (!nd) { toast("That isn't a design code"); return; } setD(sanitize({ ...nd, id: "", origin: "imported" })); setOpen(false); toast(`Loaded ${nd.name}`); }}>Load</button>
             </div>
             <button className={`btn ${rigged ? "on" : "danger"}`} disabled={!rec} onClick={() => { if (act({ type: "designRun", id: d.id, on: !rigged })) toast(rigged ? "Stopped running uncertified" : "Running uncertified: place it any time. The inspector tests machines."); setOpen(false); }}>
               {rigged ? "Stop running uncertified" : "Run uncertified"}<small>skip the lab (illegal: the regulator's inspector tests machines)</small>
@@ -206,11 +221,16 @@ const needs = (g: Game, id: string | undefined) => (id && !researched(g.state, i
 // Sections.
 
 function Concept({ d, set }: { d: SlotDesign; set: Set }) {
-  const th = SLOT_THEMES[d.theme];
+  const th = SLOT_THEMES[d.theme], look = d.look ?? defaultLook();
+  const setLook = (f: (l: Look) => void) => set((n) => { n.look = { ...(n.look ?? defaultLook()) }; f(n.look); });
   return (
     <>
       <Row label="Name">
         <input className="dz-input" value={d.name} maxLength={24} onChange={(e) => { const v = e.target.value; set((n) => { n.name = v; }); }} />
+      </Row>
+      <Row label="Logo" hint="The name's lettering on the top box. Looks only: free, no certification.">
+        <div className="dz-chips fonts">{FONTS.map((f, i) => <button key={f.name} className={i === look.font ? "on" : ""} style={{ fontFamily: f.css }} onClick={() => { play("click"); setLook((l) => { l.font = i; }); }}>{f.name}</button>)}</div>
+        <Chips opts={LOGO_FX.map((name, i) => ({ v: i, label: name }))} value={look.fx} set={(v) => setLook((l) => { l.fx = v; })} />
       </Row>
       <Row label="Theme" value={th.name} hint="The theme sets the symbols, colors and call, and counts toward the room's theming.">
         <div className="dz-themes">
@@ -269,8 +289,10 @@ function MoneySec({ d, set }: { d: SlotDesign; set: Set }) {
 function Budget({ c }: { c: Compiled }) {
   const b = c.budget, T = c.d.rtp;
   const parts = [
-    { k: "Small wins", v: b.small, col: "#5ab0ff" }, { k: "Big wins", v: b.big, col: "#a07aff" },
-    { k: "Free spins", v: b.fs + b.scatter, col: "#ffb03a" }, { k: "Jackpots", v: b.jackpots, col: "#ff4a5a" },
+    { k: "Small wins", v: b.small, col: "#5ab0ff" }, { k: "Big wins", v: b.big, col: "#a07aff" }, { k: "Cascades", v: b.cascade, col: "#3ad0c0" },
+    { k: "Mystery", v: b.mystery, col: "#c0e03a" }, { k: "Free spins", v: b.fs + b.scatter, col: "#ffb03a" }, { k: "Hold & spin", v: b.hns, col: "#ff7a3a" },
+    { k: "Pick", v: b.pick, col: "#ff5ab0" }, { k: "Wheel", v: b.wheel, col: "#ffd23f" }, { k: "Offer", v: b.offer, col: "#7aff8a" },
+    { k: "Collector", v: b.collect, col: "#e8a33a" }, { k: "Jackpots", v: b.jackpots, col: "#ff4a5a" },
   ].filter((q) => q.v > 1e-6);
   return (
     <div className="dz-budget">
@@ -301,59 +323,171 @@ function MathSec({ d, c, set, g }: { d: SlotDesign; c: Compiled; set: Set; g: Ga
   );
 }
 
+/** A log slider for "1 in N spins". */
+function Every({ v, lo, hi, set }: { v: number; lo: number; hi: number; set: (v: number) => void }) {
+  return <Slider min={Math.log(lo)} max={Math.log(hi)} step={0.01} value={Math.log(v)} set={(q) => set(Math.round(Math.exp(q)))} />;
+}
+const FEATURE_DESC: Record<FeatureId, string> = {
+  fs: "Scatters anywhere trigger free games; 4 or 5 scatters give more.",
+  hns: "Six orbs (four on 3×3) lock in place and the rest respin; every new orb resets the respins to three. Orbs carry credits or jackpots; filling the screen can win the top jackpot.",
+  pick: "Pick tiles until one says collect, or pick to match three jackpots. The prize is set when the feature starts, as in real games.",
+  wheel: "A wheel of credit prizes and jackpots. Put it on top of the cabinet (Cabinet → Topper wheel): it's seen and heard across the floor.",
+  cascade: "Winning symbols vanish and new ones drop in; a drop can win again. A climbing multiplier (×1, ×2, ×3, ×5) makes long chains thrilling.",
+  collect: "Pieces land on some spins and fill a meter kept on the machine; a full meter pays its prize. Hunters look for machines left nearly full.",
+  offer: "Up to four offers: take it or leave it for the next. Every offer is worth what refusing it is, so choices change the ride, not the payback.",
+  mystery: "Base-game spice: a random multiplier on some wins, or a wild storm on some spins.",
+};
+const featDefault = (id: FeatureId, n: SlotDesign): Partial<SlotDesign> => {
+  switch (id) {
+    case "fs": return { fs: { every: 150, count: 1, retrigger: true, enh: "x2" } };
+    case "hns": return { hns: { every: 120, land: 1, values: 1 } };
+    case "pick": return { pick: { every: 180, mode: n.jackpots.some((j) => j.how === "pick") ? "match" : "collect", size: 1 } };
+    case "wheel": return { wheel: { every: 220, spread: 1 } };
+    case "cascade": return { cascade: { chain: 1, climb: true } };
+    case "collect": return { collect: { size: 1, every: 300, prize: n.fs ? "super" : "credits", x: 50 } };
+    case "offer": return { offer: { every: 200, size: 1 } };
+    case "mystery": return { mystery: { kind: "mult", every: 20 } };
+  }
+};
+
 function Features({ d, c, set, g }: { d: SlotDesign; c: Compiled; set: Set; g: Game }) {
-  const classic = c.lay.win === "classic", fs = d.fs;
-  const lockFs = needs(g, "freespins");
-  const every = fs?.every ?? 150;
-  const logv = Math.log(every);
+  const classic = c.lay.win === "classic", on = featuresOf(d), full = on.length >= MAX_FEATURES;
+  const info = (id: string) => c.feats.find((f) => f.id === id);
+  const stat = (id: string, share: number) => {
+    const f = info(id);
+    if (!f || f.q <= 0) return "Never triggers as set";
+    const avg = f.v + f.lv.reduce((a, i, k) => a + f.lc[k] * c.levels[i].xbar, 0);
+    return `1 in ${Math.round(1 / ((1 - c.PJ) * f.q)).toLocaleString("en-US")} spins · pays ${avg.toFixed(1)}× the bet on average · ${pct(share / d.rtp)} of the payback`;
+  };
+  if (classic) return <p className="dz-hint">Classic 3-reel games have no bonus features. Pick a 3×3 or video layout for features.</p>;
+  const card = (id: FeatureId, body: ReactNode, share?: number) => {
+    const has = on.includes(id), lock = needs(g, FEATURE_RESEARCH[id]);
+    return (
+      <div key={id} className={`dz-feat ${has ? "on" : ""}`}>
+        <div className="head">
+          <b>{FEATURE_NAMES[id]}</b>
+          <Toggle on={has} set={(v) => { if (v && full) { play("deny"); return; } set((n) => { if (v) Object.assign(n, featDefault(id, n)); else (n as unknown as Record<string, unknown>)[id] = null; if (!v && id === "wheel" && n.cab.topper === "wheel") n.cab.topper = "sign"; }); }} label={has ? "On" : full ? "Max 3" : lock ?? "Off"} />
+        </div>
+        <p className="dz-hint">{FEATURE_DESC[id]}</p>
+        {has && share !== undefined && <p className="dz-stat">{stat(id, share)}</p>}
+        {has && body}
+      </div>
+    );
+  };
+  const fs = d.fs, b = c.budget;
   return (
     <>
-      {classic ? <p className="dz-hint">Classic 3-reel games have no bonus features. Pick a 3×3 or video layout for free spins.</p> : (
-        <Row label="Free spins" hint={lockFs ?? "Scatters anywhere trigger free games; 4 or 5 scatters give more."}>
-          <Toggle on={!!fs} set={(v) => set((n) => { n.fs = v ? { every: 150, count: 1, retrigger: true, enh: "x2" } : null; })} label={fs ? "On" : "Off"} />
-        </Row>
-      )}
-      {!classic && fs && (
+      <p className="dz-hint">Up to {MAX_FEATURES} features per game ({on.length} on). Each one's payback comes out of the base game: watch the budget bar in Math.</p>
+      {card("fs", fs && (
         <>
-          <Row label="How often" value={`1 in ${Math.round(1 / Math.max(1e-9, c.q))} spins`} hint={`Pays ${c.fsAvg.toFixed(1)}× the bet on average over ${c.fsSpins.toFixed(1)} spins: ${pct((c.budget.fs + c.budget.scatter) / d.rtp)} of the payback.`}>
-            <Slider min={Math.log(60)} max={Math.log(2000)} step={0.01} value={logv} set={(v) => set((n) => { n.fs!.every = Math.round(Math.exp(v)); })} />
-          </Row>
-          <Row label="Free games">
-            <Chips opts={FS_COUNTS.map((q, i) => ({ v: i, label: q.name }))} value={fs.count} set={(v) => set((n) => { n.fs!.count = v; })} />
-          </Row>
+          <Row label="How often"><Every v={fs.every} lo={60} hi={2000} set={(v) => set((n) => { n.fs!.every = v; })} /></Row>
+          <Row label="Free games"><Chips opts={FS_COUNTS.map((q, i) => ({ v: i, label: q.name }))} value={fs.count} set={(v) => set((n) => { n.fs!.count = v; })} /></Row>
           <Row label="Retriggers"><Toggle on={fs.retrigger} set={(v) => set((n) => { n.fs!.retrigger = v; })} label={fs.retrigger ? "Can be won again" : "No"} /></Row>
-          <Row label="During free spins" hint={FS_ENH[fs.enh].desc}>
-            <Chips opts={FS_ENH_IDS.map((id) => ({ v: id, label: FS_ENH[id].name }))} value={fs.enh} set={(v) => set((n) => { n.fs!.enh = v; })} />
-          </Row>
+          <Row label="During free spins" hint={FS_ENH[fs.enh].desc}><Chips opts={FS_ENH_IDS.map((id) => ({ v: id, label: FS_ENH[id].name }))} value={fs.enh} set={(v) => set((n) => { n.fs!.enh = v; })} /></Row>
         </>
-      )}
-      <Row label={`More features (${MAX_FEATURES} per game)`} hint="Coming in M8.5: hold & spin, pick bonuses, wheels (and topper wheels), cascades, collectors, take-it-or-leave-it offers, mystery features.">
-        <div className="dz-chips">{["Hold & spin", "Pick", "Wheel", "Cascades", "Collector", "Offer", "Mystery"].map((q) => <button key={q} disabled>{q}<small>M8.5</small></button>)}</div>
-      </Row>
+      ), b.fs + b.scatter)}
+      {card("hns", d.hns && (
+        <>
+          <Row label="How often"><Every v={d.hns.every} lo={FEAT_EVERY[0]} hi={FEAT_EVERY[1]} set={(v) => set((n) => { n.hns!.every = v; })} /></Row>
+          <Row label="Orbs land" hint="How readily a respin lands an orb: generous means longer features and fuller screens."><Chips opts={HNS_LAND.map((q, i) => ({ v: i, label: q.name }))} value={d.hns.land} set={(v) => set((n) => { n.hns!.land = v; })} /></Row>
+          <Row label="Orb values" hint="Steady orbs are mostly small; wild ones now and then carry 10× or 25×."><Chips opts={ORB_SPREAD.map((q, i) => ({ v: i, label: q.name }))} value={d.hns.values} set={(v) => set((n) => { n.hns!.values = v; })} /></Row>
+        </>
+      ), b.hns)}
+      {card("pick", d.pick && (
+        <>
+          <Row label="Kind"><Chips opts={[{ v: "collect" as const, label: "Pick until collect" }, { v: "match" as const, label: "Pick to match (jackpots)" }]} value={d.pick.mode} set={(v) => set((n) => { n.pick!.mode = v; })} /></Row>
+          {d.pick.mode === "collect" ? <>
+            <Row label="How often"><Every v={d.pick.every} lo={FEAT_EVERY[0]} hi={FEAT_EVERY[1]} set={(v) => set((n) => { n.pick!.every = v; })} /></Row>
+            <Row label="Prizes"><Chips opts={PICK_PRIZES.map((q, i) => ({ v: i, label: q.name }))} value={d.pick.size} set={(v) => set((n) => { n.pick!.size = v; })} /></Row>
+          </> : <p className="dz-hint">It comes exactly as often as the jackpots won by picking (Jackpots tab: set a level to "Pick to match").</p>}
+        </>
+      ), b.pick)}
+      {card("wheel", d.wheel && (
+        <>
+          <Row label="How often"><Every v={d.wheel.every} lo={FEAT_EVERY[0]} hi={FEAT_EVERY[1]} set={(v) => set((n) => { n.wheel!.every = v; })} /></Row>
+          <Row label="Segments" hint="Jackpots won on the wheel get segments of their own (Jackpots tab)."><Chips opts={WHEEL_SEGS.map((q, i) => ({ v: i, label: q.name }))} value={d.wheel.spread} set={(v) => set((n) => { n.wheel!.spread = v; })} /></Row>
+        </>
+      ), b.wheel)}
+      {card("cascade", d.cascade && (
+        <>
+          <Row label="Chains"><Chips opts={CASCADE_CHAIN.map((q, i) => ({ v: i, label: q.name }))} value={d.cascade.chain} set={(v) => set((n) => { n.cascade!.chain = v; })} /></Row>
+          <Row label="Climbing multiplier"><Toggle on={d.cascade.climb} set={(v) => set((n) => { n.cascade!.climb = v; })} label={d.cascade.climb ? "×1, ×2, ×3, ×5" : "Off"} /></Row>
+        </>
+      ), b.cascade)}
+      {card("collect", d.collect && (
+        <>
+          <Row label="Meter"><Chips opts={COLLECT_SIZES.map((q, i) => ({ v: i, label: `${q} pieces` }))} value={d.collect.size} set={(v) => set((n) => { n.collect!.size = v; })} /></Row>
+          <Row label="Fills about every" value={`${d.collect.every} spins`}><Every v={d.collect.every} lo={COLLECT_EVERY[0]} hi={COLLECT_EVERY[1]} set={(v) => set((n) => { n.collect!.every = v; })} /></Row>
+          <Row label="Prize"><Chips opts={[...COLLECT_X.map((x) => ({ v: `c${x}`, label: `${x}× bet` })), ...(d.fs ? [{ v: "super", label: "Super free games (×3)" }] : [])]} value={d.collect.prize === "super" ? "super" : `c${d.collect.x}`}
+            set={(v) => set((n) => { if (v === "super") n.collect!.prize = "super"; else { n.collect!.prize = "credits"; n.collect!.x = Number(v.slice(1)); } })} /></Row>
+        </>
+      ), b.collect)}
+      {card("offer", d.offer && (
+        <>
+          <Row label="How often"><Every v={d.offer.every} lo={FEAT_EVERY[0]} hi={FEAT_EVERY[1]} set={(v) => set((n) => { n.offer!.every = v; })} /></Row>
+          <Row label="Offers"><Chips opts={OFFER_SIZES.map((q, i) => ({ v: i, label: `${q.name} (${q.v}×)` }))} value={d.offer.size} set={(v) => set((n) => { n.offer!.size = v; })} /></Row>
+        </>
+      ), b.offer)}
+      {card("mystery", d.mystery && (
+        <>
+          <Row label="Kind"><Chips opts={[{ v: "mult" as const, label: "Mystery multiplier" }, { v: "wilds" as const, label: "Wild storm" }]} value={d.mystery.kind} set={(v) => set((n) => { n.mystery!.kind = v; })} /></Row>
+          <Row label="How often" value={d.mystery.kind === "mult" ? `1 in ${d.mystery.every} wins` : `1 in ${d.mystery.every} spins`}><Every v={d.mystery.every} lo={MYSTERY_EVERY[0]} hi={MYSTERY_EVERY[1]} set={(v) => set((n) => { n.mystery!.every = v; })} /></Row>
+        </>
+      ), b.mystery)}
     </>
   );
 }
 
-function Jackpots({ d, c, set, bet }: { d: SlotDesign; c: Compiled; set: Set; bet: number }) {
+function Jackpots({ d, c, set, bet, g }: { d: SlotDesign; c: Compiled; set: Set; bet: number; g: Game }) {
   const classic = c.lay.win === "classic", max = classic ? 1 : 4, n = d.jackpots.length;
   const X = [2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 25000, 50000, 100000];
+  const top = d.maxBet * d.denom;
+  const hows: JackpotHow[] = ["sym", ...(d.hns ? ["hns" as const] : []), ...(d.wheel ? ["wheel" as const] : []), ...(d.pick?.mode === "match" ? ["pick" as const] : []), "mystery"];
+  const $ = (v: number) => `$${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
   return (
     <>
-      <Row label="Jackpot levels" hint={classic ? "Three jackpot symbols on the line." : "Won by 3, 4, 5 or 6 jackpot symbols anywhere. Amounts are multiples of the bet, so every bet has the same payback. Progressive meters come in M8.5."}>
+      <Row label="Jackpot levels" hint={classic ? "Three jackpot symbols on the line." : "Fixed amounts are multiples of the bet. Progressives grow with every bet; their seed is a multiple of the largest bet, and a smaller bet wins them less often (same payback at every bet)."}>
         <Chips opts={Array.from({ length: max + 1 }, (_, i) => ({ v: i, label: i ? `${i}` : "None" }))} value={n}
           set={(v) => set((q) => { q.jackpots = Array.from({ length: v }, (_, i) => q.jackpots[i] ?? JACKPOT_DEFAULTS[4 - v + i]); })} />
       </Row>
       {d.jackpots.map((j, i) => {
-        const xi = Math.max(0, X.findIndex((v) => v >= j.x));
+        const xi = Math.max(0, X.findIndex((v) => v >= j.x)), kind = kindOf(j), how = howOf(j), l = c.levels[i];
+        const prog = kind !== "fixed";
         return (
           <div key={i} className="dz-level">
             <b>{levelName(n, i, classic)}</b>
-            <Row label="Pays" value={`${j.x}× bet · $${(j.x * bet).toLocaleString("en-US", { maximumFractionDigits: 2 })} now`}>
+            <Row label="Kind" hint={JACKPOT_KINDS[kind].desc}>
+              <Chips opts={(Object.keys(JACKPOT_KINDS) as JackpotKind[]).map((k) => ({ v: k, label: JACKPOT_KINDS[k].name }))} value={kind} lock={(k) => needs(g, JACKPOT_KINDS[k].research)}
+                set={(k) => set((q) => { const lv = q.jackpots[i]; if (k === "fixed") { delete lv.kind; delete lv.inc; delete lv.cap; } else { lv.kind = k; lv.inc = lv.inc ?? 0.005; if (k === "mhb") { lv.cap = lv.cap ?? 2; delete lv.how; delete lv.max; } } })} />
+            </Row>
+            <Row label={prog ? "Seed" : "Pays"} value={prog ? `${j.x}× the largest bet · ${$(j.x * top)}` : `${j.x}× bet · ${$(j.x * bet)} now`}>
               <Slider min={0} max={X.length - 1} step={1} value={xi} set={(v) => set((q) => { q.jackpots[i].x = X[v]; })} />
             </Row>
-            <Row label="How often" value={`1 in ${Math.round(1 / (c.pJ[i] ?? 1 / j.every)).toLocaleString("en-US")} spins`}>
-              <Slider min={Math.log(50)} max={Math.log(1e8)} step={0.01} value={Math.log(j.every)} set={(v) => set((q) => { q.jackpots[i].every = Math.round(Math.exp(v)); })} />
-            </Row>
+            {kind !== "mhb" && (
+              <Row label="How often" value={`1 in ${Math.round(1 / (l?.p ?? 1 / j.every)).toLocaleString("en-US")} spins${prog ? " at the largest bet" : ""}`}>
+                <Slider min={Math.log(50)} max={Math.log(1e8)} step={0.01} value={Math.log(j.every)} set={(v) => set((q) => { q.jackpots[i].every = Math.round(Math.exp(v)); })} />
+              </Row>
+            )}
+            {prog && (
+              <Row label="Increment" value={`${((j.inc ?? 0.005) * 100).toFixed(2)}% of every bet`} hint={l ? `Pays ${$(l.xbar * top)} on average (seed plus what the meter gathers)${kind === "mhb" ? `, about once every ${Math.round(1 / l.p).toLocaleString("en-US")} largest bets` : ""}.` : undefined}>
+                <Slider min={INC_RANGE[0]} max={INC_RANGE[1]} step={0.0005} value={j.inc ?? 0.005} set={(v) => set((q) => { q.jackpots[i].inc = v; })} />
+              </Row>
+            )}
+            {kind === "mhb" && (
+              <Row label="Must hit by" value={`${(j.cap ?? 2).toFixed(2)}× the seed · ${$((j.cap ?? 2) * j.x * top)}`} hint="It always hits somewhere between the seed and this cap. Hunters camp on it as it nears the cap: a higher cap keeps them guessing.">
+                <Slider min={CAP_RANGE[0]} max={CAP_RANGE[1]} step={0.05} value={j.cap ?? 2} set={(v) => set((q) => { q.jackpots[i].cap = Math.round(v * 100) / 100; })} />
+              </Row>
+            )}
+            {!classic && kind !== "mhb" && (
+              <Row label="Won by" hint={how === "hns" && i === n - 1 ? "The top level in a hold & spin is won by filling the screen." : undefined}>
+                <Chips opts={hows.map((h) => ({ v: h, label: JACKPOT_HOWS[h] }))} value={hows.includes(how) ? how : "sym"} set={(v) => set((q) => { if (v === "sym") delete q.jackpots[i].how; else q.jackpots[i].how = v; })} />
+              </Row>
+            )}
+            {kind !== "mhb" && (
+              <Row label="Bets" hint={j.max ? "A hit on a smaller bet pays nothing (real, profitable, and guests remember it)." : undefined}>
+                <Toggle on={!!j.max} set={(v) => set((q) => { if (v) q.jackpots[i].max = true; else delete q.jackpots[i].max; })} label={j.max ? "Largest bet only" : "Any bet"} />
+              </Row>
+            )}
           </div>
         );
       })}
@@ -387,7 +521,8 @@ function Show({ d, set }: { d: SlotDesign; set: Set }) {
 }
 
 function Cabinet({ d, set, g }: { d: SlotDesign; set: Set; g: Game }) {
-  const pr = designPrice(d);
+  const pr = designPrice(d), look = d.look ?? defaultLook();
+  const setLook = (f: (l: Look) => void) => set((n) => { n.look = { ...(n.look ?? defaultLook()) }; f(n.look); });
   return (
     <>
       <Row label="Cabinet" value={`${money(pr.cost)} · ${money(pr.upkeep)}/mo`} hint={CABINETS[d.cab.type].desc}>
@@ -396,7 +531,14 @@ function Cabinet({ d, set, g }: { d: SlotDesign; set: Set; g: Game }) {
       <Row label="Body color">
         <div className="dz-swatches">{BODY_COLORS.map((b, i) => <button key={b.name} className={i === d.cab.body ? "on" : ""} style={{ background: `linear-gradient(${b.ramp[1]}, ${b.ramp[3]})` }} onClick={() => set((n) => { n.cab.body = i; })} aria-label={b.name} />)}</div>
       </Row>
-      <Row label="Topper"><Chips opts={TOPPER_IDS.map((id) => ({ v: id, label: TOPPERS[id].name, sub: TOPPERS[id].cost ? money(TOPPERS[id].cost) : undefined }))} value={d.cab.topper} set={(v) => set((n) => { n.cab.topper = v; })} /></Row>
+      <Row label="Topper" hint={d.cab.topper === "wheel" ? "The wheel feature spins on top of the cabinet: seen and heard across the floor." : "A topper wheel needs the wheel feature."}>
+        <Chips opts={TOPPER_IDS.map((id) => ({ v: id, label: TOPPERS[id].name, sub: TOPPERS[id].cost ? money(TOPPERS[id].cost) : undefined }))} value={d.cab.topper}
+          lock={(v) => (v === "wheel" && !d.wheel ? "Needs a wheel" : null)} set={(v) => set((n) => { n.cab.topper = v; })} />
+      </Row>
+      <Row label="Top box" hint="The machine's face: looks only, free, no certification."><Chips opts={LOOK_TOP.map((q, i) => ({ v: i, label: q }))} value={look.top} set={(v) => setLook((l) => { l.top = v; })} /></Row>
+      <Row label="Jackpot meters"><Chips opts={LOOK_METERS.map((q, i) => ({ v: i, label: q }))} value={look.meters} set={(v) => setLook((l) => { l.meters = v; })} /></Row>
+      <Row label="Reel window"><Chips opts={LOOK_REELS.map((q, i) => ({ v: i, label: q }))} value={look.reels} set={(v) => setLook((l) => { l.reels = v; })} /></Row>
+      <Row label="Buttons"><Chips opts={LOOK_DECK.map((q, i) => ({ v: i, label: q }))} value={look.deck} set={(v) => setLook((l) => { l.deck = v; })} /></Row>
     </>
   );
 }

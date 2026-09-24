@@ -311,6 +311,11 @@ export const OBJECTS: Record<string, ObjectDef> = {
     emits: [], sprite: "sign", art: "whole", seats: [],
     desc: "Points guests toward whatever they're looking for, roughly. Guests have to see it.",
   },
+  bank_sign: {
+    id: "bank_sign", name: "Bank sign", cat: "decor", w: 2, h: 1, cost: 1000, upkeep: 6, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "bank_sign", art: "whole", seats: [],
+    desc: "Shows a linked game's live jackpot meters. A big meter on a sign pulls players from across the room.",
+  },
   fountain: {
     id: "fountain", name: "Fountain", cat: "decor", w: 2, h: 2, cost: 1500, upkeep: 5, blocks: true, place: "any",
     emits: [{ channel: "PRS", strength: 5, radius: 6 }, { channel: "NRG", strength: 2, radius: 4 }], sprite: "fountain", art: "whole", seats: [],

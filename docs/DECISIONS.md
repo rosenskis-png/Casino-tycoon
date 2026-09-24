@@ -2,6 +2,23 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8.5 built: bonuses and progressives (Claude's calls; see docs/spec/designer.md "As built in M8.5")
+- Everything in the M8.5 plan and the owner's notes: hold & spin, pick, wheel (and the topper wheel), cascades, collector, offer and mystery, each exact and with its own screen; standalone, linked and must-hit-by progressives; bank signs; hunters; onlookers; the pull of big meters; opinions by game kind for six months; a lifetime performance index explained in game; logo fonts and the machine's face; interface size; spaces in names; the slam-stop and no-spoiler fixes.
+- **Found causes of the owner's bugs:** names lost their spaces because every keystroke trimmed the name; a tap during free spins jumped to the end of the whole feature (showing its total), and the "up/down" line and the top bar showed a result as soon as the sim settled it.
+- **Ratings (owner):** volatility now spans Intensity ~1 to 10 (big wins' share 0-90%, higher top awards, flatter at the top); Excitement is steeper and the panel leans toward the guests who'd sit down, so a game made for its crowd rates high and a clumsy one low (2.5-8.4 on a mixed panel; 0-10 per type). The stock designs keep their M8 math (volatility values re-expressed); slot appeal was refitted and the original three stay within ±0.15.
+- **Must-hit-by meters are per design (linked)**, like real mystery banks; collectors always keep progress on the machine (a per-player reset would make payback inexact); opinions are not yet split by guest type. Flagged for the owner in the hand-off.
+- **Progressive chance scales with the bet** (payback the same at every bet within 0.01%); in the lab a progressive pays its average.
+- Five stock bonus games (Ember Link, Grand Wheel, Neon Tumble, Prospector's Haul, Treasure Cove) replace eight old machines on the Test Floor; numbers stay close to M8 (docs/spec/guests.md), no sanity flags. Tutorial year-end cash moves with seed luck (one seed hit an early big jackpot). Big Floor steady state within ~5% of m8.
+- Save schema 16 (migration from 15).
+
+## 2026-09-24 · Green light for M8.5 (owner's answers)
+- Owner said "green light for m8.5" and agreed to the plan, with changes:
+  - **Big meters draw guests even without a bank sign**, just less; a sign strengthens the pull.
+  - **More ability to move the ratings:** today most designs land at Excitement 3–6 and Intensity 2–5 (Drain already spans 0–10). Designs should be able to reach the whole 0–10 scale on both.
+  - **Performance index** gets a short in-game explanation next to it, and it should be a lifetime figure over every machine of that design in the casino (theoretical win), not one that swings with each jackpot.
+  - **Design sales (M8.6):** total units sold is a hidden number fixed at the sale, reached along an S-curve of random length, so royalties climb while the player wonders how big it gets. Most sell 10–30, some 100+, very rarely thousands (the scenario winner). Each sold design is its own budget line.
+  - Word of mouth and sales stay in M8.6; the maker's cut on theoretical edge is agreed; offer thresholds agreed.
+
 ## 2026-09-24 · M8.5 planned with the owner's notes (see docs/spec/designer.md, last two sections)
 - Owner's notes after playing M8 folded into the plan: spaces in names, logo fonts, face layout, slam-stop keeps the win, no early reveal (slots and tables), word of mouth, linked progressives shared by every machine of a design with a pull that grows per doubling of meter ÷ bet, thought history per game kind for 6 months, and slot makers buying the player's own designs (one-time cash 10–100× cabinet price, 25–75% of the edge kept, 1–3% royalties on outside wins, wide-area progressives after a sale, a decent chance of a new offer after a decline).
 - **Claude's calls (owner can overrule):** word of mouth and sale offers go in M8.6 (they need fans and novelty); M8.5 records design origin so they work later. After a sale the maker's cut is on theoretical edge, not actual win. "Layout and size of screen elements" read as the machine face (designer) plus a game-wide interface size. Linked banks no longer need to stand together; the bank sign becomes a placeable display.
@@ -362,4 +379,4 @@ Replaces the same-day "time and population" decision, which kept time of day.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- Green light for M8.5 (plan in docs/spec/designer.md, last two sections).
+- Nothing pending.

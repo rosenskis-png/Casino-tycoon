@@ -151,3 +151,82 @@
 .sm-help .linesmap small{position:absolute;left:3px;top:1px;font-size:9px;color:#aaa}
 .sm-help .linesmap svg{width:100%;display:block}
 .sm-help .linesmap polyline{fill:none;stroke:#ffd23f;stroke-width:1.5}
+
+/* (M8.5) The face: reel size, top box, deck; logo effects. */
+.sm{--cell:min(calc(66px * var(--k,1)),calc((min(100vw,440px) - 92px) / var(--cols) * var(--k,1)))}
+.sm.compact{--cell:min(calc(52px * var(--k,1)),calc((min(100vw,440px) - 110px) / var(--cols) * .86 * var(--k,1)))}
+.sm.classic{--cell:min(calc(92px * var(--k,1)),calc((min(100vw,440px) - 80px) / 3 * var(--k,1)))}
+.sm.classic.compact{--cell:min(calc(70px * var(--k,1)),calc((min(100vw,440px) - 110px) / 3 * var(--k,1)))}
+.sm.top1 .sm-top{padding:4px 8px 6px}.sm.top1 .sm-logo{min-height:36px}.sm.top1 .sm-logo b{font-size:22px}.sm.top1 .sm-logo .hero{font-size:34px}
+.sm.top1 .sm-bigmeter span{font-size:20px}.sm.top1 .sm-glass>div{height:16px}
+.sm.top2 .sm-top{padding:3px 8px}.sm.top2 .sm-logo{min-height:26px}.sm.top2 .sm-logo b{font-size:18px;max-width:100%}
+.sm.deck1 .sm-btn{height:28px;font-size:9px}.sm.deck1 .sm-spin{flex-basis:48px;height:48px;font-size:12px}.sm.deck1 .sm-deck{margin-top:5px;padding:5px 8px}
+.sm-logo.fx1 b{background:linear-gradient(180deg,#fff8d0 5%,#ffd23f 40%,#b07a10 70%,#ffe89a);-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:1.5px #5a3a00;filter:drop-shadow(0 3px 0 #5a3a00) drop-shadow(0 0 6px #ffb000)}
+.sm-logo.fx2 b{background:linear-gradient(180deg,#fff 5%,#c8d0dc 35%,#5a6270 55%,#e8eef6 80%);-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:1.5px #1a1e26;filter:drop-shadow(0 3px 0 #1a1e26) drop-shadow(0 0 5px #9ab8ff)}
+.sm-logo.fx3 b{background:none;color:transparent;-webkit-text-stroke:2px var(--lg0);filter:drop-shadow(0 0 4px var(--lg0))}
+.sm-logo.fx4 b{background:none;color:#fff;-webkit-text-stroke:0;text-shadow:0 0 4px var(--l0),0 0 10px var(--l0),0 0 20px var(--l0);filter:none}
+.sm-meters .meter.prog{animation:sm-prog 2.4s ease-in-out infinite}
+@keyframes sm-prog{50%{box-shadow:inset 0 0 0 2px var(--mc),0 0 14px var(--mc)}}
+.sm-top .sm-meters{margin:6px 0 0}
+
+/* Collector meter. */
+.sm-col{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:3px 8px;border-radius:8px;background:linear-gradient(#000,#1a1a1a);box-shadow:inset 0 0 0 2px #e8a33a}
+.sm-col small{font:900 9px/1 Impact,"Arial Black",sans-serif;letter-spacing:1px;color:#fff;white-space:nowrap}
+.sm-col div{flex:1;height:8px;border-radius:4px;background:#302010;overflow:hidden}
+.sm-col i{display:block;height:100%;background:linear-gradient(90deg,#ffd23f,#ff8a00);box-shadow:0 0 6px #ffb000;transition:width .4s}
+.sm-col b{font:900 12px/1 Impact,sans-serif;color:#ffd23f;font-variant-numeric:tabular-nums}
+
+/* Feature symbols. */
+.sy.orb{width:82%;height:82%;border-radius:50%;box-shadow:0 0 10px var(--acc),inset 0 -4px 8px rgba(0,0,0,.4);animation:sm-glint 1.4s ease-in-out infinite}
+.sy.orb b{font:900 calc(var(--cell) * .2)/1 Impact,sans-serif;color:#fff;-webkit-text-stroke:1px rgba(0,0,0,.7);letter-spacing:0}
+.sy.bonus{width:86%;height:62%;border-radius:8px;background:linear-gradient(#ff5ab0,#8a0a4a);box-shadow:inset 0 0 0 2px #ffd0ea,0 0 10px #ff4fa0}
+.sy.bonus b{font:900 calc(var(--cell) * .2)/1 Impact,sans-serif;color:#fff;letter-spacing:1px}
+.sy.piece{animation:sm-glint 1s ease-in-out infinite}
+
+/* Cascades and wild storms. */
+.sm-reels.drop .sm-cell.hit{animation:sm-vanish .35s ease-in forwards}
+@keyframes sm-vanish{to{transform:scale(.2);opacity:0}}
+.sm.storm .sm-screen{box-shadow:inset 0 0 0 2px #7af8ff,0 0 18px #3af0ff}
+
+/* Hold & spin board. */
+.sm-hns{flex:1;display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:3px;padding:3px;border-radius:6px;background:radial-gradient(ellipse,color-mix(in srgb,var(--acc) 30%,#000),#000)}
+.sm-hns .col{display:flex;flex-direction:column;gap:3px}
+.sm-hns .spot{height:calc(var(--cell) - 3px);border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.sm-hns .spot.spin{animation:sm-shimmer .25s linear infinite}
+@keyframes sm-shimmer{50%{background:rgba(255,255,255,.08)}}
+.sm-hns .spot.orb{background:radial-gradient(circle at 35% 30%,#fff 0,var(--acc) 30%,color-mix(in srgb,var(--acc) 40%,#300));box-shadow:0 0 10px var(--acc),inset 0 0 0 2px rgba(255,255,255,.5)}
+.sm-hns .spot.orb b{font:900 calc(var(--cell) * .22)/1 Impact,sans-serif;color:#fff;-webkit-text-stroke:1px rgba(0,0,0,.7)}
+.sm-hns .spot.jp{background:radial-gradient(circle,#ff6a6a,#8a0010);box-shadow:0 0 14px #ff2a2a,inset 0 0 0 2px #fff}
+.sm-hns .spot.fresh{animation:sm-pop .45s cubic-bezier(.3,1.7,.5,1) both}
+
+/* Pick board. */
+.sm-pick{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border-radius:6px;background:radial-gradient(ellipse,#3a0a3a,#000)}
+.sm-pick .tile{height:calc(var(--cell) * .95);border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--acc),color-mix(in srgb,var(--acc) 40%,#000));box-shadow:inset 0 0 0 2px rgba(255,255,255,.4),0 2px 4px #000;font:900 22px/1 Impact,sans-serif;color:#fff}
+.sm-pick .tile.open{background:#111;box-shadow:inset 0 0 0 2px #ffd23f;animation:sm-pop .4s cubic-bezier(.3,1.7,.5,1) both}
+.sm-pick .tile b{font:900 12px/1.1 Impact,sans-serif;color:#7aff8a;text-align:center}
+.sm-pick .tile.jp b{font-size:11px}
+.sm-pick .tile.match{box-shadow:inset 0 0 0 3px #fff,0 0 12px #ffd23f}
+
+/* Wheel. */
+.sm-wheelbox{flex:1;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:6px;background:radial-gradient(circle,#2a1a00,#000)}
+.sm-wheel{position:relative;width:min(100%,calc(var(--cell) * var(--rows) * 1.05));aspect-ratio:1}
+.sm-wheel svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 8px #ffb000)}
+.sm-wheel .pointer{position:absolute;left:50%;top:-4px;width:0;height:0;margin-left:-9px;border:9px solid transparent;border-top:16px solid #fff;filter:drop-shadow(0 0 4px #ff2a2a)}
+.sm-topwheel{display:flex;justify-content:center;margin:-2px auto 6px}
+.sm-wheel.small{width:120px}
+.sm.compact .sm-wheel.small{width:96px}
+
+/* Offer. */
+.sm-offer{flex:1;min-height:calc(var(--cell) * var(--rows));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:6px;background:radial-gradient(ellipse,#1a3a1a,#000)}
+.sm-offer small{font:900 12px/1 Impact,sans-serif;letter-spacing:2px;color:#ffd23f}
+.sm-offer b{font:900 34px/1 Impact,sans-serif;color:#7aff8a;text-shadow:0 0 12px #2aff5a}
+.sm-offer em{font:700 11px/1.3 system-ui,sans-serif;color:#ccc}
+.sm-offer .btns{display:flex;gap:8px}
+.sm-offer button{border:0;border-radius:10px;padding:12px 16px;min-width:112px;font:900 13px/1 Impact,sans-serif;letter-spacing:1px;color:#fff}
+.sm-offer .take{background:linear-gradient(#2ad05a,#0a6a28);box-shadow:0 0 10px #2aff5a}
+.sm-offer .leave{background:linear-gradient(#ff5a5a,#a8101a);box-shadow:0 0 10px #ff4a4a}
+.sm .sm-btn.skip{background:linear-gradient(#ffb03a,#a85a00);box-shadow:inset 0 0 0 1px #ffe0a0,0 2px 0 #502000}
+.sm-banner.k-hns,.sm-banner.k-pick{background:radial-gradient(ellipse,rgba(60,0,60,.9),rgba(0,0,0,.7))}
+.sm-banner.k-small b{font-size:18px}
+.sm-hns .spot.orb b,.sy.orb b{color:#fff;-webkit-text-stroke:0;text-shadow:0 1px 0 #000,0 0 3px #000,0 0 6px #000;font-size:calc(var(--cell) * .24)}
+.sm-meters .meter em{font:900 7px/1.1 Impact,sans-serif;font-style:normal;letter-spacing:.5px;color:#fff;opacity:.85;white-space:nowrap}

@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export interface MapState {
   w: number;
@@ -58,8 +58,11 @@ export interface PlacedObject {
   crook?: number;
   /** (M10) Nightclubs: the track playing (data/music.ts CLUB_TRACKS; missing = the first). */
   track?: number;
-  /** (M8) Slots: the design it plays (a stock design id or one of `GameState.designs`); missing = its kind's own. */
+  /** (M8) Slots: the design it plays (a stock design id or one of `GameState.designs`); missing = its kind's own. (M8.5) Bank signs: the design they show. */
   design?: string;
+  /** (M8.5) Slots: standalone progressive meters, and the collector's progress. */
+  meter?: Meter;
+  col?: number;
 }
 
 /**
@@ -185,6 +188,12 @@ export interface GuestData {
   extra?: number;
   game?: string;
   sf?: number;
+  /** (M8.5) Jackpots hit on too small a bet this session; a must-hit-by hunter (a share of Locals). */
+  voided?: number;
+  hunter?: number;
+  /** (M8.5) The kind of the last feature they saw this session (free spins, hold & spin, …); watching a slot's bonus (1) or a table (0). */
+  sfk?: string;
+  look?: number;
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
   thoughtTick: number;
@@ -510,14 +519,25 @@ export interface GameState {
   nextDesign: number;
   /** (M8) Numbers per slot design on this floor, stock designs included. */
   dstats: Record<string, DesignStats>;
+  /** (M8.5) Linked and must-hit-by progressive meters, one per design (standalone meters live on each machine). */
+  meters: Record<string, Meter>;
+  /** (M8.5) What guests thought at each game kind (a slot design, a table game), by month, for the last 6 months. */
+  ohist: Record<string, OpinionMonth[]>;
 }
+
+/** (M8.5) Progressive meters in dollars per jackpot level (0 where a level has none), must-hit-by hit points, and seeds. */
+export interface Meter { v: number[]; hit: number[]; seed: number[] }
+/** (M8.5) One month of opinions at a game kind: the month (months since the start), thought counts, sessions, visit score sum. */
+export interface OpinionMonth { mo: number; t: Record<string, number>; n: number; s: number }
 
 /** Numbers of one slot design on this floor (docs/spec/designer.md §11). */
 export interface DesignStats {
   /** Lifetime: wagered, paid, rounds, sessions, play ticks, machine-days (one machine for a day = 1), features, jackpots. */
   coinIn: number; paidOut: number; rounds: number; sessions: number; playTicks: number; machDays: number; feats: number; jps: number;
-  /** Recent win and machine-days (both fade 3% a day), for the performance index. */
+  /** Recent win and machine-days (both fade 3% a day). */
   rWin: number; rDays: number;
+  /** (M8.5) Lifetime theoretical win (coin-in × the house edge), for the performance index. */
+  theo: number;
   /** Day first placed (-1 never), and guests' remarks by thought id. */
   born: number;
   said: Record<string, number>;
@@ -544,6 +564,8 @@ export interface YourPlay {
   total: { wagered: number; won: number };
   /** Slots: the last spin with everything it showed (M8). Video poker: the hand, held positions, cards out. Blackjack: hands, dealer, hand in play. */
   spin?: Outcome; cards?: number[]; held?: number[]; used?: number[];
+  /** (M8.5) Slots: the offer on the table (index into the spin's offers) and whether it was taken. */
+  offerAt?: number; offerTook?: number;
   hands?: { cards: number[]; bet: number; done: number }[]; dealer?: number[]; cur?: number;
   /** Roulette: the pocket (37 = 00) and bets. Craps: point, line bets [pass, don't pass], odds, dice. */
   pocket?: number; bets?: Record<string, number>;

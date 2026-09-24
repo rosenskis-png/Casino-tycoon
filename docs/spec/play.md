@@ -27,6 +27,8 @@ You play the object's real model, paytable, rules and limits (×5 in a high-limi
 ## Slots since M8
 Slots play on the design's own machine (docs/spec/designer.md §9): top box, meters, reels in its layout, anticipation, win tiers, free spins, jackpots with hand pays, help screens. A slot seat no longer keeps `reels`; it keeps the last `spin` (schema 15).
 
+(M8.5) Your spins feed the machine's real progressive meters and collector and can win them (a must-hit-by meter that crosses its point on your spin is yours). An offer waits for you: the seat stays in its hand (`phase` "act", moves `take` and `leave`) until you take one or play for the prize; the spin is paid then. While a spin plays out, the top bar's cash and the "up/down" line hold what they showed before it (owner: no spoilers); a tap stops only the step on screen, Skip ends a feature.
+
 ## Look and feel (hotfix, 2026-09-24)
 Animation is UI only: the sim result is the same, and it shows when the animation ends.
 - **Slots:** a cabinet with marquee lamps that chase while spinning and flash on a win; three reel windows with blurred strips that stop left to right with a bounce, showing the symbols above and below; a payline; winning symbols and the paytable row pulse.

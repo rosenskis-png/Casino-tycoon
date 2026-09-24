@@ -9,7 +9,7 @@ import { LIGHT_COLORS } from "../data/designer";
 import { CRAPS_OUTCOMES, TABLE_GAMES } from "../data/tables";
 import { ENF } from "../data/cheats";
 import { SCENARIOS } from "../data/scenarios";
-import { designById, dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
+import { compiledById, designById, meterValue, signDesign, dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
@@ -342,6 +342,36 @@ export class Renderer {
   }
 
   /** Every sprite an object shows (stools included), in world art pixels. */
+  /** (M8.5) The live meters on a bank sign: its game's name and its top two shared meters, in lit digits. */
+  private signText(ctx: CanvasRenderingContext2D, g: Game, o: PlacedObject, px: number, py: number, scale: number) {
+    const id = signDesign(g, o);
+    const c = id ? compiledById(g.state, id) : undefined;
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const cx = px + 16 * scale;
+    ctx.font = `bold ${Math.round(2.6 * scale)}px ui-monospace, Menlo, monospace`;
+    if (!c || !id) {
+      ctx.fillStyle = "#ffd23f";
+      ctx.fillText("LINKED", cx, py + 3.5 * scale);
+      ctx.restore();
+      return;
+    }
+    ctx.fillStyle = "#ffd23f";
+    ctx.fillText(c.d.name.toUpperCase().slice(0, 14), cx, py + 3.6 * scale);
+    const host = { meters: g.state.meters, own: {}, id };
+    const shared = c.levels.map((l, i) => ({ l, i })).filter((q) => q.l.kind === "linked" || q.l.kind === "mhb").slice(-2).reverse();
+    const cols = ["#ff5a5a", "#5aff8a"];
+    shared.forEach(({ i }, k) => {
+      const v = meterValue(host, c, i);
+      ctx.fillStyle = cols[k];
+      ctx.shadowColor = cols[k];
+      ctx.shadowBlur = 3 * scale;
+      ctx.fillText(`$${v >= 1e5 ? Math.round(v).toLocaleString("en-US") : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, cx, py + (6 + k * 2.6) * scale);
+    });
+    ctx.restore();
+  }
+
   private objectSprites(o: PlacedObject): Spr[] {
     const def = OBJECTS[o.kind], A = this.atlas.frames;
     const { w: ow, h: oh } = objSize(o), facing = FACING[o.rot & 3];
@@ -568,6 +598,11 @@ export class Renderer {
           // The wheel spins while a round is on; it stops for a while after each spin.
           const k2 = sp.key === "obj:wheel" ? (o.tbl && tick - o.tbl.at > 60 ? key : "obj:wheel") : key;
           items.push({ y: sp.sort, draw: () => blit(k2, px, py) });
+          continue;
+        }
+        // (M8.5) A bank sign shows its game's live meters.
+        if (o.kind === "bank_sign") {
+          items.push({ y: sp.sort, draw: () => { blit(key, px, py); if (scale >= 2) this.signText(ctx, g, o, px, py, scale); } });
           continue;
         }
         const cabK = this.cabinet(o);

@@ -5,7 +5,11 @@ import { OBJECTS } from "../data/objects";
 import { Machine } from "./slot/Machine";
 import { KENO_PAYS, KENO_SPOTS, RED, TABLE_GAMES, oddsAllowed, pockets, ruleOf } from "../data/tables";
 import { play } from "../platform/audio";
-import { VP_HANDS, vpHand, bacTotal, betOf, bjTotal, compiledOf, limitsNow, limitsOf, rankOf, stakeMult, vpX, yourMoves, type Game, type PlacedObject, type YourPlay } from "../sim";
+import {
+  VP_HANDS, vpHand, bacTotal, betOf, bjTotal, compiledOf, designIdOf, limitsNow, limitsOf, meterValue, rankOf, stakeMult, vpX, yourMoves,
+  type Game, type PlacedObject, type YourPlay,
+} from "../sim";
+import { reveal } from "./reveal";
 import { stake as money } from "./format";
 import type { Host } from "./host";
 
@@ -42,9 +46,17 @@ function slotLine(g: Game, o: PlacedObject): string {
 
 export function PlayScreen({ host }: { host: Host }) {
   const g = host.game, y = g.state.yours!, o = g.objById.get(y.obj);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusyState] = useState(false);
   const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  // M8.5: while a result is on its way, the cash and the session line hold what they showed before it (no spoilers).
+  const hold = useRef<{ cash: number; total: YourPlay["total"]; seq: number } | null>(null);
+  const setBusy = (b: boolean, bet = 0) => {
+    if (b && !hold.current) hold.current = { cash: g.state.cash - bet, total: { ...y.total }, seq: y.last.seq };
+    if (!b) hold.current = null;
+    reveal.cash = hold.current?.cash ?? null;
+    setBusyState(b);
+  };
+  useEffect(() => () => { clearTimeout(timer.current); reveal.cash = null; }, []);
   if (!o) return null;
   const def = OBJECTS[o.kind], tdef = def.game ? TABLE_GAMES[def.game] : null;
   const send: Send = (c, ms, sound) => {
@@ -61,7 +73,8 @@ export function PlayScreen({ host }: { host: Host }) {
     return true;
   };
   const props: GameProps = { g, y, o, send, busy };
-  const net = y.total.won - y.total.wagered;
+  const tot = hold.current?.total ?? y.total;
+  const net = tot.won - tot.wagered;
   // A settled win lights the room up; a big one rains coins.
   const won = y.fam !== "slot" && !busy && y.last.seq > 0 && y.last.won > y.last.wagered;
   const big = won && (!!y.last.big || y.last.won >= y.last.wagered * 10);
@@ -85,7 +98,7 @@ export function PlayScreen({ host }: { host: Host }) {
         {y.fam === "keno" && <Keno {...props} />}
       </div>
       <div className="play-foot muted num">
-        {y.last.seq ? `${y.last.seq} played · ${money(y.total.wagered)} bet · ` : ""}{net >= 0 ? "up" : "down"} {money(Math.abs(net))} · the house's money
+        {(hold.current?.seq ?? y.last.seq) ? `${hold.current?.seq ?? y.last.seq} played · ${money(tot.wagered)} bet · ` : ""}{net >= 0 ? "up" : "down"} {money(Math.abs(net))} · the house's money
       </div>
     </div>
   );
@@ -220,19 +233,25 @@ export function betLevels(min: number, max: number): number[] {
   out.add(max);
   return [...out].sort((a, b) => a - b);
 }
-function Slots({ g, o, onBusy }: { g: Game; o: PlacedObject; onBusy: (b: boolean) => void }) {
+function Slots({ g, o, onBusy }: { g: Game; o: PlacedObject; onBusy: (b: boolean, bet?: number) => void }) {
   const c = compiledOf(g.state, o)!, m = c.model, mult = stakeMult(g, o);
   const levels = betLevels(m.minCredits ?? 1, m.maxCredits);
   const [lv, setLv] = useState(Math.min(levels.length - 1, 1));
   const [err, setErr] = useState("");
   const credits = levels[Math.min(lv, levels.length - 1)];
+  const bet = betOf(m, credits) * mult;
+  // M8.5: the machine's own live meters and collector.
+  const host = { meters: g.state.meters, own: o, id: designIdOf(o) };
+  const meters = c.levels.map((_, i) => meterValue(host, c, i));
   return (
     <>
-      <Machine c={c} credit={g.state.cash} bet={betOf(m, credits) * mult} onBusy={onBusy}
+      <Machine c={c} credit={g.state.cash} bet={bet} onBusy={(b) => onBusy(b, bet)} meters={meters} col={o.col ?? 0}
+        resume={g.state.yours?.phase === "act" && g.state.yours.spin?.offer ? { vals: g.state.yours.spin.offer, k: g.state.yours.offerAt ?? 0, bet: g.state.yours.out } : null}
         onBet={(dir) => setLv((k) => (dir === "max" ? levels.length - 1 : Math.max(0, Math.min(levels.length - 1, k + dir))))}
+        onOffer={(act) => { const e = g.dispatch({ type: "yours", act }); if (e) setErr(e); }}
         spin={() => {
           // The command applies on the sim's next tick: wait for the spin to come back.
-          const seq = g.state.yours?.last.seq ?? 0;
+          const before = g.state.yours?.spin;
           const e = g.dispatch({ type: "yours", act: "spin", bet: credits });
           setErr(e ?? "");
           if (e) return null;
@@ -240,7 +259,7 @@ function Slots({ g, o, onBusy }: { g: Game; o: PlacedObject; onBusy: (b: boolean
             const t0 = performance.now();
             const poll = () => {
               const y = g.state.yours;
-              if (y && y.last.seq > seq) done(y.spin ?? null);
+              if (y && y.spin && y.spin !== before) done(y.spin);
               else if (!y || performance.now() - t0 > 5000) done(null);
               else requestAnimationFrame(poll);
             };

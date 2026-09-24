@@ -115,10 +115,11 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 - The lab: par sheet, session simulator, **Excitement / Intensity / Drain** ratings from a test panel of the scenario's own guests, panel verdict, a test run with free credits.
 - Guests judge designs by what they can feel, never payback directly; excitement buys hold; thoughts name designs. Stock models become designs (calibrated), plus Buffalo-, Cleopatra- and Double Diamond-style stock games.
 - Compiled cabinet sprites; a new realistic play-it-yourself slot screen; certification, legal limits, uncertified machines and the inspector; stats and performance index; a design library across saves with share codes; Lucky Dragon and Classic Vegas themes. Save schema 15.
-## M8.5 · Slot designer: bonuses and progressives ☐
+## M8.5 · Slot designer: bonuses and progressives ☑  (see docs/spec/designer.md "As built in M8.5")
 - Hold & spin, pick, wheel (and the topper wheel), cascades, collectors, offers, mystery features, each with its own play screen.
 - Standalone, linked (banks with a sign of live meters) and must-hit-by progressives; bet eligibility; meters as liabilities; hunters. Onlookers at big bonuses; hidden pairings. Lightning Link- and wheel-style stock games.
 - Owner's notes (designer.md, "M8.5 plan with the owner's notes"): linked meters shared by every machine of a design, with a doubling-based pull; what guests think of each game over 6 months; logo fonts and face layout; spaces in names; slam-stop keeps the win; no early reveal of results. Save schema 16.
+- Built: every feature with exact math and its own play screen; standalone, linked and must-hit-by progressives (bank signs, hunters, meters in the books); onlookers; wider ratings; a lifetime performance index; five stock bonus games; interface size.
 ## M8.6 · Slot designer: the market ☐
 - Novelty and ageing, boredom and favorites, floor variety, fans who come for a design; a yearly Slot Expo of trends; rival makers' releases to buy, study and copy; guests' wishes; records and Evergreens; research projects; Test Floor and sanity flags per design.
 - Owner's notes (designer.md, "M8.6 additions"): word of mouth (awareness curve, novelty bump, fans, steady state); slot makers' offers to buy your own designs (cash, a share of the edge, royalties with a long tail, wide-area progressives).

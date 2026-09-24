@@ -76,6 +76,16 @@ export const SOUNDS: Record<string, SoundRecipe> = {
     { wave: "triangle", f0: 1568, at: 0.45, dur: 0.6, gain: 0.09 }, { wave: "noise", f0: 6000, at: 0.45, dur: 0.7, gain: 0.05 },
   ],
   fsSpin: [{ wave: "triangle", f0: 1320, f1: 1760, dur: 0.06, gain: 0.05 }],
+  // (M8.5) Bonus features.
+  orb: [{ wave: "sine", f0: 660, f1: 990, dur: 0.12, gain: 0.09 }, { wave: "triangle", f0: 1320, at: 0.06, dur: 0.14, gain: 0.06 }, { wave: "noise", f0: 5000, dur: 0.08, gain: 0.04 }],
+  respin: [{ wave: "triangle", f0: 880, dur: 0.05, gain: 0.05 }, { wave: "triangle", f0: 1175, at: 0.06, dur: 0.05, gain: 0.05 }],
+  wheelTick: [{ wave: "square", f0: 2200, dur: 0.012, gain: 0.04 }],
+  wheelStop: [{ wave: "triangle", f0: 523, dur: 0.12, gain: 0.1 }, { wave: "triangle", f0: 784, at: 0.1, dur: 0.12, gain: 0.1 }, { wave: "triangle", f0: 1047, at: 0.2, dur: 0.3, gain: 0.1 }],
+  pick: [{ wave: "sine", f0: 1200, f1: 1800, dur: 0.08, gain: 0.07 }, { wave: "noise", f0: 4000, dur: 0.05, gain: 0.03 }],
+  offer: [{ wave: "sawtooth", f0: 220, dur: 0.12, gain: 0.05 }, { wave: "sawtooth", f0: 330, at: 0.14, dur: 0.18, gain: 0.05 }],
+  collect: [{ wave: "triangle", f0: 1568, f1: 2093, dur: 0.07, gain: 0.06 }, { wave: "sine", f0: 3136, at: 0.05, dur: 0.08, gain: 0.03 }],
+  cascade: [{ wave: "noise", f0: 1600, dur: 0.18, gain: 0.08, a: 0.05 }, { wave: "triangle", f0: 700, f1: 350, dur: 0.18, gain: 0.06 }],
+  mystery: [...[659, 831, 988, 1319].map((f, k) => ({ wave: "sine" as const, f0: f, at: 0.07 * k, dur: 0.2, gain: 0.06 })), { wave: "noise", f0: 8000, at: 0.28, dur: 0.3, gain: 0.04 }],
   tierMega: [
     ...[392, 523, 659, 784, 1047, 1319, 1568].map((f, k) => ({ wave: "square" as const, f0: f, at: 0.07 * k, dur: 0.08, gain: 0.06 })),
     { wave: "triangle", f0: 262, at: 0.5, dur: 0.9, gain: 0.1 }, { wave: "noise", f0: 7000, at: 0.5, dur: 1, gain: 0.06 },

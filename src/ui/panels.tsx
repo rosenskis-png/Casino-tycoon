@@ -19,7 +19,7 @@ import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayba
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
-  formatDate, describeGoals, goalStatus, monthlyCosts, worth, covers, compiledOf, designIdOf, designById, perfIndex, cantUse, designLocks, cabKind, LEDGER_LABELS, MONTH_NAMES,
+  formatDate, describeGoals, goalStatus, monthlyCosts, worth, meterDebt, covers, compiledOf, designIdOf, designById, cantUse, designLocks, cabKind, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
@@ -36,6 +36,7 @@ import type { Tool } from "./input";
 import { money } from "./format";
 import { AUTO_KEY, MANUAL_KEY, exportSave, hasSave, importSave, load, newGame, save } from "./saves";
 import { perfTest, type PerfResult } from "./perf";
+import { BankSignCard, Opinions, SlotLive } from "./designer/Opinions";
 
 export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: number } | null;
 
@@ -461,6 +462,7 @@ export function FinancePanel({ host }: { host: Host }) {
       <div className="kv">
         <b>Cash</b><span className={`num ${g.state.cash < 0 ? "neg" : ""}`}>{money(g.state.cash)}</span>
         <b>Casino worth</b><span className="num">{money(worth(g))}</span>
+        {meterDebt(g) > 0.005 && <><b>Jackpot meters</b><span className="num">{money(meterDebt(g))} owed to players (counted against worth)</span></>}
         <b>Monthly bills</b><span className="num">{money(c.wages)} wages · {money(c.upkeep)} upkeep</span>
       </div>
       <Credit g={g} />
@@ -871,7 +873,7 @@ function ObjectStats({ host, id }: { host: Host; id: number }) {
   if (OBJECTS[o.kind].game) return null;
   const c = OBJECTS[o.kind].slot ? compiledOf(host.game.state, o) : undefined;
   if (!c) return o.st.uses ? <div className="kv"><b>Visits</b><span className="num">{o.st.uses}</span></div> : null;
-  const m = c.model, s = host.game.state, id2 = designIdOf(o), st = s.dstats[id2], idx = perfIndex(s, id2);
+  const m = c.model, s = host.game.state, id2 = designIdOf(o), st = s.dstats[id2];
   const hold = o.st.coinIn ? (o.st.coinIn - o.st.paidOut) / o.st.coinIn : 0;
   const avg = o.st.sessions ? o.st.playTicks / o.st.sessions / TICKS_PER_SECOND : 0;
   const bets = `${money(m.denom * (m.minCredits ?? 1))}–${money(m.denom * m.maxCredits)}`;
@@ -882,7 +884,6 @@ function ObjectStats({ host, id }: { host: Host; id: number }) {
       <b>Status</b><span>{o.broken ? "Broken down" : "Working"}{s.designs[id2]?.rigged ? " · uncertified" : ""}</span>
       <b>Bets</b><span className="num">{bets} a spin</span>
       <b>Payback</b><span className="num">{(m.rtp * 100).toFixed(1)}% by design</span>
-      {idx !== null && <><b>Performance</b><span className="num">{idx.toFixed(2)}× the floor's average</span></>}
       {said.length > 0 && <><b>Guests say</b><span>{said.map(([t, n]) => `“${(THOUGHTS[t]?.text ?? t).replace("{game}", c.d.name)}” ×${n}`).join(" ")}</span></>}
       <b>Played</b><span className="num">{o.st.sessions} sessions · avg {avg.toFixed(0)} s</span>
       <b>Coin in</b><span className="num">{money(o.st.coinIn)} ({(o.st.rounds * WAGERS_PER_ROUND).toLocaleString()} spins)</span>
@@ -931,6 +932,9 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
           <ClubTrack g={g} id={obj.id} />
           <TableCard g={g} id={obj.id} />
           <ObjectStats host={host} id={obj.id} />
+          {OBJECTS[obj.kind].slot && <SlotLive g={g} o={obj} />}
+          <BankSignCard g={g} o={obj} />
+          <Opinions g={g} o={obj} />
           <TypeBreakdown g={g} id={obj.id} />
           <BarPolicyEditor g={g} id={obj.id} />
           <div className="row">

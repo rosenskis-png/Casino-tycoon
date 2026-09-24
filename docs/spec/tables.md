@@ -12,10 +12,12 @@ FOUNDATIONS §7 and §7.2 are the frame; this is what M7 builds. Owner's calls a
 | Craps | 5×2 table | 9 standing | 2 dealers | 8 s | 1.41% pass (less with odds) | loud, the whole table wins together; onlookers |
 | Baccarat | 4×2 table | 6 chairs | 1 dealer | 8 s | 1.06% banker, 1.24% player, 14.4% tie | low edge, big bets, wants privacy |
 | Poker | 4×2 table | 6 chairs | 1 dealer | 12 s | none: a rake of each pot | player against player; needs 2 |
-| Keno lounge | 4×1 board | 8 chairs | 1 dealer (writer) | 20 s | ~27–33% | slow, cheap, retirees |
+| Keno lounge | 4×1 board | 8 chairs | 1 dealer (writer) | 20 s | 27.7% / 28.6% / 28.7% (4 / 6 / 8 spots) | slow, cheap, retirees |
 | Bingo hall | 6×1 board | 18 chairs | 1 dealer (caller) | 25 s | the hold (30%) | a crowd game; the prize grows with the room |
 
-Build menu: machines under **Games**, tables and lounges under **Tables**. Sportsbook waits for the M9 event calendar.
+Build menu: machines under **Games**, tables and lounges under **Tables**. Tapping one opens its card: open or waiting on dealers, the house edge its rules give, the limits and rules (dropdowns), and what it has taken. Sportsbook waits for the M9 event calendar.
+
+Code: `src/data/tables.ts` (rules, limits, the math), `src/sim/tables.ts` (dealing, dealers, pit bosses, `setTable`), `src/sim/gaming.ts` (machines, and `settle`, which books every round), objects in `src/data/objects.ts`.
 
 ## The math (exact, like slots)
 
@@ -52,7 +54,7 @@ Drawn per person from a stable hash: how adventurous they are follows their type
 ## Limits
 
 - Each table has a minimum and a maximum bet per hand (player-set from a list; defaults: blackjack, roulette and craps $5–$250, baccarat $25–$1,000, poker a $5 stake, keno $1–$20 tickets, bingo $2 cards). A high-limit room multiplies both by 5, as it does for machines.
-- Guests bet more per hand at tables than per wager at slots: their stake × the type's `tableStake`. They sit only if that reaches at least half the minimum and their wallet covers a few rounds at it. The minimum decides who sits.
+- Guests bet more per hand at tables than per wager at slots: their stake × the type's `tableStake` (Locals 6, Retirees 4, Tourists 5, Party 6, High rollers 1.5), rounded to $1 chips ($5 from a $25 minimum). They sit only if that reaches at least half the minimum and their wallet covers a few rounds at it. The minimum decides who sits.
 - The maximum caps the house's exposure (a straight-up hit pays 35× the bet). A guest who'd like to bet much more than the maximum (high rollers) likes the table less and may say "The limits here are too low."
 
 ## Staff
@@ -65,7 +67,7 @@ Drawn per person from a stable hash: how adventurous they are follows their type
 - **Skill** (hidden, per person, drawn per type): poor, typical or sharp. It costs blackjack players 2.5 / 1.2 / 0.3 points of edge and video poker players 3 / 1.5 / 0.4 points, and weights who wins at poker (0.7 / 1 / 1.35). The other games have no skill.
 - **Card counters** (hidden, for life: Locals 1%, High rollers 2%, Tourists 0.3%): sharp players who gain 1.5 / 1.0 / 0.8 / 0.6 points at 1 / 2 / 6 / 8 decks and spread their bets (1–8×). At 6:5 they lose anyway and stop sitting down. They are not cheats: they win honestly, show up on the suspicion tools like lucky guests or cheats, and backing them off (a warning or a ban) is the player's call.
 - **Luck** works at every game, exactly: per-player games redraw a losing hand or void a win as for slots; shared-outcome games turn a losing hand into their bet's win, or a win into a loss, at chances that shift payback by exactly ±20 points. Pool games have no luck.
-- **Cheats** cheat at tables too (rigged wins at the table's maximum), but not at pool games (poker, bingo), where the money would be other guests'.
+- **Cheats** cheat at tables too (rigged wins, as at a machine), but not at pool games (poker, bingo), where the money would be other guests'. Mid-spell a table cheat bets up to a fortieth of their take per hand (within the limits), so a table pays out a take about as fast as a machine does.
 - **Tastes** (Claude's call): Locals like blackjack, video poker and craps; Retirees keno, bingo and video poker; Tourists roulette and craps; Party groups craps; High rollers baccarat and blackjack, and anything in a high-limit room.
 - **Onlookers:** a guest walking past a craps table with 3+ players in view may stop to watch for 20–40 s (fun time, like a show). When the shooter makes a point, players and onlookers cheer (a lift in mood). Some onlookers then want to play.
 
@@ -75,6 +77,13 @@ A recurring type with a pool of its own: few, rich (visit budget median $2,000),
 ## Books
 
 New ledger lines: **Tables** (blackjack, roulette, craps, baccarat), **Poker rake**, **Keno & bingo**. Video poker books under Slots.
+
+## Measured (Test Floor, `npm run targets`, 300 days, seed 1)
+- Share of seats by type: Locals 83% slots, blackjack 5%, video poker 4%; Retirees 63% slots, bingo 19%, keno 14%; Tourists 74% slots, roulette 8%, craps 8%; Party 70% slots, craps 25%; High rollers 31% slots, baccarat 21%, blackjack 18%.
+- Hold: blackjack 0.3%, roulette 6.0%, craps 4.6%, baccarat 1.8%, video poker −5.1% (four machines: noise), keno 26.7%, poker 10.0% and bingo 30.0% (exact, as the rake and hold are). Books over the run: tables $29K, poker rake $2.1K, keno and bingo $5.6K, slots $59K.
+- High rollers: visits 10.2 min, $2,090 budgets, $340 lost per visit, visit score 0.61, reputation 61; 21 of 25 now regulars.
+- Card counters: 17 visits, 1 tagged by the pit boss, return 0.98 (6 decks: they only just break even). Skill: 36% poor, 51% typical, 14% sharp.
+- Tutorial books are identical to M6.5 (it has no tables). Big Floor steady state unchanged (~3.0 ms/tick on this container, both builds).
 
 ## Save schema 10
 Tables keep their rules, limits and last round on the object; guests carry `skill` and `counter`. Migration from 9 gives current guests typical skill and no counting.

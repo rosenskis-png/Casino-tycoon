@@ -76,7 +76,12 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - 12 themes with 4 pieces each, hidden pairings, general items and places that suit or clash; theme fields, a curated bonus, muddle, and per-room coherence; guests feel it by type and say so generically.
 - Outdoors (always pool weather): pool, garden, patio bar, patio restaurant, sized like indoor amenities; people come for the pool.
 - Land parcels bought per scenario (Free Play Lot has two). Save schema 9 (migration from 8).
-## M7 · Games catalog and table rules ☐
+## M7 · Games catalog and table rules ☑  (see docs/spec/tables.md)
+- Video poker, blackjack, roulette, craps, baccarat, poker (rake), keno and bingo, each with exact math checked headless; shared outcomes per table, pool games paying one winner less the house's cut.
+- Rules per table (blackjack payout, decks and soft 17; single or double zero; craps odds; baccarat commission; video poker paytables; rake; bingo hold) and limit presets; a high-limit room ×5.
+- Dealers (a table opens only with its dealers) and pit bosses (table catches, tagging card counters). Onlookers at craps; the whole table cheers.
+- Hidden skill and card counters; rules-aware Locals and a new High rollers type who come for tables. Luck and cheating at every house game.
+- Table art generated per rotation, live cards, chips, dice and lit boards; a table card with rules and limits. Save schema 10 (migration from 9).
 ## M8 · Slot designer ☐
 ## M9 · Staff depth, policies, marketing, comps, whales, events, research tree ☐
 Whale bankrolls are sized to game money (a variance crisis means several months of the casino's profit), not real-world millions.

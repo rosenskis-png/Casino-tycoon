@@ -1,6 +1,6 @@
 # Slots (M2)
 
-`src/data/games.ts` (models), `src/sim/gaming.ts` (rounds). Table games arrive in M7, the slot designer in M8.
+`src/data/games.ts` (models), `src/sim/gaming.ts` (rounds). Video poker, table games and draw games (M7) are in docs/spec/tables.md; the slot designer arrives in M8.
 
 - A visible round resolves `WAGERS_PER_ROUND` (4 since M3; 10 in M2) real wagers. Each wager draws a payout multiple from the model's paytable (inverse CDF on the `gaming` stream). The cabinet lights show that round's real result: a glow on a win, a flashing cabinet on a jackpot.
 - Bet per wager = denomination × credits: the guest's stake fitted to the machine (docs/spec/guests.md §Betting), fewer if that's all the wallet covers.

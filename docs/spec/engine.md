@@ -15,7 +15,7 @@ What the engine provides (M1, with the M2 fixes) and the rules for extending it.
 
 ## Commands and events
 - Each system brings its own commands (M2 fix). It declares their shapes by augmenting `CommandTypes` (`declare module "./commands" { interface CommandTypes { hire: { role: string } } }`) and lists handlers in its `commands` table (`CommandTable<"hire" | "fire">`). `Game` collects every system's table at construction; a type claimed twice throws.
-- Current owners: `build` (build, place, remove, setRoom, setPrice), `doors` (setDoor; docs/spec/construction.md), `guests` (spawnGuests, clearGuests: debug/perf), `staff` (hire, fire), `incidents` (setRule), `cheats` (mark, enforce, setTreatment; docs/spec/cheats.md).
+- Current owners: `build` (build, place, remove, setRoom, setPrice), `doors` (setDoor; docs/spec/construction.md), `guests` (spawnGuests, clearGuests: debug/perf), `staff` (hire, fire), `incidents` (setRule), `cheats` (mark, enforce, setTreatment; docs/spec/cheats.md), `tables` (setTable: rules and limits; docs/spec/tables.md).
 - Each handler has `validate` (returns a player-readable reason) and `apply`. `dispatch` validates immediately and queues; the queue applies at the next tick after re-validating. The last 200 results are kept in `game.commandLog` (runtime). `game.check(cmd)` validates without queuing (build ghosts).
 - Events (`src/sim/events.ts`) are emitted during steps and delivered on `bus.flush()` (once per frame): tile changes, news, sounds, jackpots, breakdowns, day/month, command rejections. Never saved.
 
@@ -23,7 +23,7 @@ What the engine provides (M1, with the M2 fixes) and the rules for extending it.
 - Commands that change terrain or objects call `game.tilesChanged(tiles)`. It refreshes the engine caches (rooms, path fields, quality fields), then calls every system's `layout(g, tiles)` hook (M2 fix), then emits `tilesChanged`. Systems repair their own state there: movement moves agents off newly blocked tiles, guests drop seats on objects that vanished, staff drop targets.
 
 ## RNG
-- `rng(state, "name")` returns a stream whose position is saved in `state.rng[name]`, seeded from the scenario seed and the name. Streams so far: `walkers` (wander points), `guests`, `arrivals`, `gaming`, `staff`, `smoke` (the smoke test's player), `smokers` (M6), plus `pool`, `street`, `incidents`, `police`, and `cheats` (luck, cheating spells, catches, enforcement; M5).
+- `rng(state, "name")` returns a stream whose position is saved in `state.rng[name]`, seeded from the scenario seed and the name. Streams so far: `walkers` (wander points), `guests`, `arrivals`, `gaming`, `staff`, `smoke` (the smoke test's player), `smokers` (M6), plus `pool`, `street`, `incidents`, `police`, and `cheats` (luck, cheating spells, catches, enforcement; M5), `tables` (one-off guests' skill and counting; M7). Table rounds draw on `gaming`.
 - `npm run boundaries` fails if `sim/` uses `Math.random`, `Date.now`, `new Date(`, or browser globals.
 
 ## Grid and rooms

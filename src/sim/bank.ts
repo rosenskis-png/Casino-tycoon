@@ -70,11 +70,12 @@ export function stiff(g: Game, a: Agent, amount: number) {
   const s = g.state, gd = a.g!;
   gd.unpaid += amount;
   s.bank.unpaid++;
-  adjustRegulator(g, -(amount >= REG.unpaidBigAt ? REG.unpaidBig : REG.unpaid));
+  adjustRegulator(g, -(amount >= REG.unpaidBigAt ? REG.unpaidBig : amount >= REG.unpaidSmallAt ? REG.unpaid : REG.unpaidSmall));
   const p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
   if (p) p.score = Math.max(0, p.score - 10);
   think(g, a, "unpaid");
-  news(g, "urgent", `The casino couldn't pay ${fmtMoney(amount)} in winnings. The regulator has been told.`);
+  // Small sums go to the log only; the regulator hears of them all.
+  news(g, amount >= REG.unpaidSmallAt ? "urgent" : "bad", `The casino couldn't pay ${fmtMoney(amount)} in winnings. The regulator has been told.`, amount < REG.unpaidSmallAt);
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -178,7 +179,7 @@ export const bankSystem: System = {
   beat(g) {
     // Wages and upkeep may have pushed cash below zero: the bank steps in while it can.
     const s = g.state;
-    if (s.cash >= 0) { s.bank.low = 0; return; }
+    if (s.cash >= 0) return;
     ensureCash(g, 0);
     if (s.cash < 0 && !s.bank.low) { s.bank.low = 1; news(g, "urgent", "Cash is below zero and the bank won't lend more. Nothing can be built until it recovers."); }
   },
@@ -197,12 +198,13 @@ export const bankSystem: System = {
     if (b.insExp > 0) post(g, "premium", -INSURE_LOAD * b.insExp);
     b.insExp = 0;
     b.emergencies = 0;
+    b.low = 0;
     b.given = 0;
     ensureCash(g, 0);
     // Insolvency: months in a row closing below zero, with no credit left.
     if (s.cash < 0) {
       b.broke++;
-      news(g, "urgent", `The casino closed the month unable to pay its debts (${b.broke} of ${INSOLVENT_MONTHS}).`);
+      news(g, "urgent", `The casino closed the month unable to pay its debts${b.broke <= INSOLVENT_MONTHS ? ` (${b.broke} of ${INSOLVENT_MONTHS})` : ""}.`);
       if (b.broke >= INSOLVENT_MONTHS && !s.outcome) {
         s.outcome = "lost";
         news(g, "urgent", "The casino is insolvent. The scenario is lost; keep playing if you like.");

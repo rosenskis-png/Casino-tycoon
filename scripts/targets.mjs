@@ -10,6 +10,15 @@ const sim = await loadSim();
 const g = sim.Game.create("testfloor", seed);
 
 const dep = {}, arr = {}, inc = {}, incAll = {};
+// M9: staff, whales and the regulator, from the ticker.
+const m9 = { caught: 0, quit: 0, whales: [], inspections: 0, audits: 0, found: 0 };
+g.bus.on((e) => {
+  if (e.type !== "news") return;
+  if (/ caught .* \(\$/.test(e.text)) m9.caught++;
+  if (/ quit: /.test(e.text)) m9.quit++;
+  if (/^An inspector/.test(e.text)) m9.inspections++;
+  if (/^The gaming inspector found/.test(e.text)) { m9.audits++; if (!/nothing wrong/.test(e.text)) m9.found++; }
+});
 let policeLow = 100, policeHigh = 0;
 g.bus.on((e) => {
   if (e.type === "incident") { ((inc[e.guestType] ??= {})[e.kind] = (inc[e.guestType][e.kind] ?? 0) + 1); incAll[e.kind] = (incAll[e.kind] ?? 0) + 1; }
@@ -147,6 +156,18 @@ else {
 }
 // Tables (M7): every game gets played; the pool games' cut is exact.
 for (const [k, h] of Object.entries(hold)) if (!h.sessions) flags.push(`nobody ever played ${k}`);
+// M9: staff depth, whales, the regulator.
+const staff = s.agents.filter((a) => a.st), avg = (f) => (staff.length ? staff.reduce((a, b) => a + f(b), 0) / staff.length : NaN);
+const whales = Object.values(dep).flat().filter((e) => e.vip);
+const tot = s.finance.total, shrink = ["bar", "cage", "tables", "machines"].reduce((a, k) => a + (tot[`shrink_${k}`] ?? 0), 0);
+console.log(`staff: ${staff.length}, morale ${f1(avg((a) => a.st.morale))}, skill ${f2(avg((a) => sim.skillOf(g, a)))}, crooks ${staff.filter((a) => a.st.crook).length}; caught stealing ${m9.caught}, quit ${m9.quit}; shrinkage ${usd(-shrink)}`);
+console.log(`whales: ${whales.length}, house result ${whales.map((e) => usd(e.wagered - e.won)).join(", ") || "–"}; tax ${usd(-(tot.tax ?? 0))}; inspector visits ${m9.inspections} (${m9.found} with findings); regulator ${Math.round(s.auth.regulator.standing)}`);
+if (!staff.length || avg((a) => a.st.morale) < 20) flags.push("staff morale is miserable on the Test Floor");
+if (m9.quit > staff.length / 2) flags.push("half the staff quit");
+if (days >= 120 && !whales.length) flags.push("no whale ever came");
+if (whales.some((e) => !e.wagered)) flags.push("a whale never played");
+if (days >= 120 && !m9.audits) flags.push("the regulator never audited");
+if (s.auth.regulator.standing < 60) flags.push("regulator standing fell on an honest floor");
 for (const [k, want] of [["bingo", 0.3]]) { const h = hold[k]; if (h?.in && Math.abs((h.in - h.out) / h.in - want) > 1e-6) flags.push(`${k} hold isn't exactly ${want * 100}%`); }
 if (hold.poker?.in && (hold.poker.in - hold.poker.out) / hold.poker.in > 0.1 + 1e-9) flags.push("poker took more than its rake");
 if (!Object.values(at).some((m) => Object.keys(m).some((k) => k !== "slots" && k !== "vpoker"))) flags.push("nobody plays tables");

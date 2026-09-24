@@ -17,7 +17,7 @@ export type StaffRoleId = keyof typeof STAFF_ROLES;
 export const PAY_MIN = 0.6, PAY_MAX = 1.6, PAY_STEP = 0.1;
 export const STAFF = {
   knack: [0.8, 1.2] as [number, number], payPow: 0.6, skill: [0.4, 1.8] as [number, number],
-  morale: { base: 50, perPay: 50, drift: 0.25, overworkAt: 0.7, overworkMax: 30, fight: 2, fightMax: 15, firedHonest: 8, quitBelow: 20, quitChance: 0.05 },
+  morale: { base: 50, perPay: 50, drift: 0.25, overworkAt: 0.85, overworkMax: 20, fight: 2, fightMax: 15, firedHonest: 8, quitBelow: 20, quitChance: 0.05 },
   crook: 0.05, crookPow: 1.5, amenityCrook: 0.05,
   catchBase: 0.02, catchGuard: 0.12, catchPit: 0.15, catchCamera: 0.1, sight: 8,
 };
@@ -25,7 +25,7 @@ export const STAFF = {
 export const THEFT = {
   tech: { p: 0.4, amount: [20, 60] as [number, number] },
   server: { p: 0.3 },
-  dealer: { p: 0.25, share: 0.02 },
+  dealer: { p: 0.5, share: 0.02 },
   bartender: { p: 0.3 },
   teller: { p: 0.3, amount: [5, 25] as [number, number] },
 };

@@ -9,7 +9,7 @@
 
 ## Morale (0–100, shown on the card and as a role average)
 - Each day it moves a quarter of the way toward its target: **50 + 50 × (pay − 1)**, less overwork and trouble. A new hire starts at the target.
-- **Overwork:** the share of the day spent working (not idle or patrolling) above 70% costs up to 30 points: −(share − 0.7) × 100.
+- **Overwork:** the share of the day spent working (not idle, waiting or patrolling) above 85% costs up to 20 points: −(share − 0.85) × 100. Dealing is a dealer's whole job, so dealers aren't worn down by a busy table.
 - **Trouble:** guards lose 2 points per fight on the floor that day, divided among the guards (at most 15).
 - **Firing someone honest** frightens everyone: −8 morale to all staff at once. Firing a crook costs nothing.
 - Below 20, a worker quits with a 5% chance each day (on the ticker).
@@ -19,7 +19,7 @@
 - Crooks steal when they get the chance, more when unhappy (× 1.5 − morale / 100):
   - **Slot tech:** 40% of repairs, pockets $20–60 from the machine (machines).
   - **Drink server:** 30% of paid drinks, pockets the price (bar).
-  - **Dealer:** 25% of rounds, palms 2% of the round's bets, at least $1 (tables). A crooked dealer never catches a cheat at their table.
+  - **Dealer:** half of all rounds, palms 2% of the round's bets, at least $1 (tables). A crooked dealer never catches a cheat at their table.
   - **Bartender:** 30% of paid drinks at the bar (bar). **Teller:** 30% of withdrawals and cash-outs, shorts $5–25 (cage).
   - **Guards, pit bosses and operators who are crooks look away:** they catch neither cheats nor staff.
 - **Catching staff:** each theft has a chance to be seen: 2% (the count flags it) + 12% × skill per honest guard within 8 tiles in view + 15% × skill per honest pit boss in view (dealers) + 10% × the watched camera field there. A caught worker is fired on the spot, the money is recovered, and the ticker says who caught whom. A caught bartender or teller is replaced.

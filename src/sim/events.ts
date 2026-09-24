@@ -21,6 +21,8 @@ export type SimEvent =
       fun: number; spent: number; smoker: number;
       /** M7: skill (0-2), a card counter, marked by the player or a pit boss. */
       skill: number; counter: number; marked: number;
+      /** M9: a whale; comps earned (bits); winnings the house couldn't pay. */
+      vip: number; comp: number; unpaid: number;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

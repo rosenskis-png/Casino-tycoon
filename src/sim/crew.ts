@@ -13,7 +13,6 @@ import { canSee } from "./wayfinding";
 import { post } from "./finance";
 import { fmtMoney, news } from "./news";
 import { coverage } from "./cheats";
-import { TICKS_PER_SECOND } from "./clock";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -130,7 +129,7 @@ export function removeStaff(g: Game, a: Agent) {
 // Workload and morale.
 
 /** Whether a worker is doing their job this beat (not idle, waiting or patrolling). */
-function working(g: Game, a: Agent, camShare: number): boolean {
+function working(a: Agent, camShare: number): boolean {
   switch (a.role) {
     case "janitor": return a.act === "clean" || a.target >= 0;
     case "tech": return a.act === "repair" || a.target >= 0;
@@ -138,10 +137,7 @@ function working(g: Game, a: Agent, camShare: number): boolean {
     case "guard": return a.act === "respond" || a.act === "enforce" || a.target >= 0;
     case "enforcer": return a.act === "enforce" || a.act === "carry";
     case "operator": return a.act === "watch" && camShare < 1;
-    case "dealer": {
-      const o = a.act === "deal" ? g.objById.get(a.target) : undefined;
-      return !!o?.tbl && g.state.tick - o.tbl.at < 15 * TICKS_PER_SECOND;
-    }
+    // Dealing is the whole job: a busy table doesn't wear a dealer down.
     default: return false;
   }
 }
@@ -228,7 +224,7 @@ export const crewSystem: System = {
       if (!st) continue;
       if (a.role === "operator" && share < 0) share = coverage(g).share;
       st.beats++;
-      if (working(g, a, share)) st.busy++;
+      if (working(a, share)) st.busy++;
     }
   },
   day(g) { moraleDay(g); },

@@ -41,6 +41,18 @@ if (sim.SCHEMA_VERSION >= 10) {
   const bj = g.state.objects.find((o) => o.kind === "blackjack");
   if (bj) g.dispatch({ type: "setTable", id: bj.id, rules: [1, 0, 1], lim: 3 });
 }
+if (sim.SCHEMA_VERSION >= 11) {
+  // M9: pay, a zoned janitor, a loan, insurance, a skim and comps.
+  g.dispatch({ type: "setPay", role: "dealer", pay: 1.3 });
+  g.dispatch({ type: "setPay", role: "janitor", pay: 0.8 });
+  const jan = g.state.agents.find((a) => a.role === "janitor");
+  if (jan) g.dispatch({ type: "setZone", id: jan.id, tile: 10 * w + 20 });
+  g.dispatch({ type: "borrow", amount: 2000 });
+  g.dispatch({ type: "setInsurance", over: 1000 });
+  g.dispatch({ type: "setSkim", share: 0.1 });
+  g.dispatch({ type: "setComp", kind: "meal", at: 20 });
+  g.dispatch({ type: "setComp", kind: "back", at: 5 });
+}
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
 writeFileSync(file, sim.serialize(g));
 console.log(`wrote ${file} (${g.state.agents.length} agents, ${g.state.objects.length} objects)`);

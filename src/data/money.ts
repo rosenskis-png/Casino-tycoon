@@ -27,7 +27,7 @@ export const INSURE_LOAD = 1.3;
 /** The gaming regulator (docs/spec/money.md): costs to standing, the ladder's money, and the inspector's schedule. */
 export const REG = {
   recover: 0.2,
-  unpaid: 8, unpaidBig: 15, unpaidBigAt: 1000,
+  unpaid: 8, unpaidBig: 15, unpaidBigAt: 1000, unpaidSmall: 2, unpaidSmallAt: 100,
   auditUnpaid: 5, weakControls: 5, weakShare: 0.03, clean: 3,
   skimFound: 20, skimFoundPerShare: 40, skimBase: 0.25,
   fine: 1000, suspendFine: 3000, suspendDays: 3, suspendEvery: 30, revokeDays: 30,
@@ -40,7 +40,7 @@ export const WHALE = {
   noticeDays: 2, everyDays: [30, 60] as [number, number],
   bankrollX: [2, 4] as [number, number], bankrollMin: 10_000,
   /** They bet this share of the bankroll per hand; stay this long (minutes); quit after losing / winning these shares. */
-  betShare: 1 / 25, minutes: [60, 90] as [number, number], lossQuit: 0.8, winQuit: 0.5,
+  betShare: 1 / 25, minutes: [20, 30] as [number, number], lossQuit: 0.8, winQuit: 0.5,
   /** Each unmet request cuts the visit to this share. */
   unmetCut: 0.6,
   games: { baccarat: 0.5, blackjack: 0.25, craps: 0.15, roulette: 0.1 } as Record<string, number>,

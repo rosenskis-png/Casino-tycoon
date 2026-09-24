@@ -333,7 +333,7 @@ export function FinancePanel({ host }: { host: Host }) {
         <b>Casino worth</b><span className="num">{money(worth(g))}</span>
         <b>Monthly bills</b><span className="num">{money(c.wages)} wages · {money(c.upkeep)} upkeep</span>
       </div>
-      <MoneyPolicies g={g} />
+      <Credit g={g} />
       <p className="muted" style={{ margin: "10px 0 6px" }}>This month ({date[0].split(" ")[1]}, {date[1]})</p>
       <LedgerRows l={f.month} />
       {[...f.history].reverse().slice(0, 3).map((h) => (
@@ -346,9 +346,9 @@ export function FinancePanel({ host }: { host: Host }) {
   );
 }
 
-/** Loans, insurance, tax and skimming, comps (docs/spec/money.md). */
-function MoneyPolicies({ g }: { g: Game }) {
-  const s = g.state, b = s.bank, sc = SCENARIOS[s.scenario];
+/** Loans and emergency credit (docs/spec/money.md). */
+function Credit({ g }: { g: Game }) {
+  const s = g.state, b = s.bank;
   const room = loanRoom(g), debt = debtOf(g);
   return (
     <>
@@ -357,14 +357,22 @@ function MoneyPolicies({ g }: { g: Game }) {
         <b>Loans</b><span className="num">{money(b.loan)} at {Math.round(LOAN_RATE * 100)}%/mo{b.emergency ? ` · emergency ${money(b.emergency)} at ${Math.round(EMERGENCY_RATE * 100)}%/mo` : ""}</span>
         <b>Can borrow</b><span className="num">{money(room)} · emergency credit left {money(emergencyRoom(g))}</span>
       </div>
-      <div className="row">
+      <div className="grid">
         <button className="btn" disabled={room < 1000} onClick={() => g.dispatch({ type: "borrow", amount: 1000 })}>Borrow $1K</button>
         <button className="btn" disabled={room < 5000} onClick={() => g.dispatch({ type: "borrow", amount: 5000 })}>Borrow $5K</button>
         <button className="btn" disabled={!debt || s.cash < 1000} onClick={() => g.dispatch({ type: "repay", amount: 1000 })}>Repay $1K</button>
         <button className="btn" disabled={!debt || s.cash < debt} onClick={() => g.dispatch({ type: "repay", amount: debt })}>Repay all</button>
       </div>
       <p className="muted" style={{ margin: "4px 0" }}>If cash can't cover a payout or the bills, the bank lends at a steep rate, and it makes the papers. With no credit left, winnings go unpaid. Three months in a row below zero lose the scenario.</p>
-      <p className="muted" style={{ margin: "10px 0 6px" }}>Policies</p>
+    </>
+  );
+}
+
+/** Policies (FOUNDATIONS §16): insurance, the tax and a skim, comps; pointers to the per-bar, per-table and house-rule settings. */
+export function PoliciesPanel({ host }: { host: Host }) {
+  const g = host.game, s = g.state, b = s.bank, sc = SCENARIOS[s.scenario];
+  return (
+    <>
       <div className="kv">
         <b>Jackpot insurance</b>
         <span>
@@ -391,6 +399,7 @@ function MoneyPolicies({ g }: { g: Game }) {
         ))}
       </div>
       <p className="muted" style={{ margin: "4px 0" }}>Insurance pays the part of any single payout above the line; the premium is charged monthly on what was played. Skimmed money dodges the tax until an inspector finds it. Comps go to guests once their play is expected to have cost them that much this visit (the come-back offer, $10 of free play, brings regulars back sooner). {b.given ? `${b.given} comps given this month.` : ""}</p>
+      <p className="muted" style={{ margin: "4px 0" }}>Elsewhere: drink prices, comps and strength per bar (tap a bar); rules and limits per table (tap a table); staff pay (Staff); house rules and what happens to cheats (Authorities).</p>
     </>
   );
 }

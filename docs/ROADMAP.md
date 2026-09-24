@@ -82,12 +82,13 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Dealers (a table opens only with its dealers) and pit bosses (table catches, tagging card counters). Onlookers at craps; the whole table cheers.
 - Hidden skill and card counters; rules-aware Locals and a new High rollers type who come for tables. Luck and cheating at every house game.
 - Table art generated per rotation, live cards, chips, dice and lit boards; a table card with rules and limits. Save schema 10 (migration from 9).
-## M9 · Inside the house: staff, money and risk, whales ☐  (skills 3 and 4: leaks and variance)
-- Staff depth: skill, morale (wage vs market, workload, incidents), hidden honesty, patrol zones; hiring from candidates.
-- Staff theft as leakage (bartender, teller, dealer collusion with a cheat, tech rigging for a friend), found by audits, cameras, pit bosses or chance; shrinkage shows in the books.
-- Gaming regulator ladder with a visible inspector: skimming, unpaid winnings, failed audits.
-- Credit: ordinary loans, emergency jackpot loans (a scandal), unpaid winnings, insolvency as a way to lose; worth net of debt. Jackpot insurance.
-- Whales as announced arrivals with an entourage and requests; comps by how much a guest plays.
+## M9 · Inside the house: staff, money and risk, whales ☑  (see docs/spec/staff.md, docs/spec/money.md)
+- Pay per role (60–160%) sets skill, morale and honesty; no hiring screen. Skill speeds work, walking, dealing and catching; morale follows pay, overwork and fights; miserable staff quit. Patrol zones for janitors, techs, guards and pit bosses.
+- Hidden crooks (~5%) skim: techs from hoppers, servers and bartenders drink money, dealers chips, tellers the drawer. Honest guards, pit bosses and watched cameras catch them (fired); crooked watchers look away. The monthly count shows shrinkage per area.
+- Gaming tax per scenario and skimming as a dark lever; the regulator's ladder and a visible inspector who audits (skimming, unpaid winnings, weak controls).
+- Loans, emergency credit (fee, steep rate, a scandal), unpaid winnings, insolvency; worth net of debt. Jackpot insurance priced at 1.3× the exact expected excess.
+- Whales announced 2 days ahead with requests and companions (several months of profit on the line); comps (meal, show, come-back offer) by theoretical loss.
+- Finance and Staff tab controls, inspector and whale looks. Save schema 11 (migration from 10).
 Whale bankrolls are sized to game money (a variance crisis means several months of the casino's profit), not real-world millions.
 ## M9.5 · Outside the house: calendar, marketing, research, new crowds ☐  (skills 1 and 5: the market and the calendar)
 - Seasons and scheduled events (conventions, fight nights, tournaments, holidays, sports) announced ahead; a sportsbook.

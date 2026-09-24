@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M9 built (Claude's calls; see docs/spec/staff.md, docs/spec/money.md)
+- All numbers are starting values checked only against sanity flags: pay range 60–160%, skill = knack × pay^0.6 × morale, crook share 5% ÷ pay^1.5, theft chances and amounts, catch chances, overwork above 85% busy, quitting below morale 20, tax rates, loan and emergency rates, insurance loading, whale sizes and timing, comp thresholds.
+- **Dealers aren't worn down by a busy table** (dealing is the whole job); the first build counted it as overwork and every dealer on the Test Floor went miserable.
+- **Crooked guards, pit bosses and operators look away** from cheats and from staff theft; a crooked dealer never catches a cheat at their table (this is dealer collusion, per the M7 decision).
+- **Shrinkage is posted at the monthly count**, not as it happens: the books show where money went missing, a month late, never who.
+- **Policies tab** now holds insurance, the tax and skim, and comps; loans stay in Finance. Research stays a placeholder until M9.5.
+- **Whales** stay 20–30 real minutes (2–3× a high roller; weeks on the calendar) and a host shows them the floor, so they find their game.
+- Unpaid winnings under $100 cost 2 regulator points and go to the log only; bigger ones are urgent.
+- Test Floor, 300 days: staff morale averages ~44 at market pay, one crooked dealer caught, three whales (the house won $10K, lost $30K, won $500), five inspections, regulator 100, no sanity flags. Tutorial books unchanged apart from the 5% tax. Big Floor timing unchanged against m7 on this machine.
+- **Flagged for the owner:** a whale can cost the house several months of profit in one visit (by design: FOUNDATIONS §17); insurance doesn't cover it, table limits do.
+
 ## 2026-09-24 · Green light for M9: staff, money and risk, whales (see docs/spec/staff.md, docs/spec/money.md)
 - Owner said "green light" and accepted the readiness defaults, with two changes:
   - **No hiring screen.** Staff quality scales with a pay slider per role (Claude: skill = a hidden personal knack × pay^0.6 × morale; better pay also means fewer crooks).

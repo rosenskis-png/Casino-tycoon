@@ -73,7 +73,9 @@ function arrive(g: Game) {
   const met = due.reqs.filter((q) => requestMet(g, q as WhaleRequest, due.game, bet)).length;
   Object.assign(gd, {
     vip: 1, name: due.name, bankroll: due.bankroll, wallet: due.bankroll, withdrawCap: 0, atm: 0, compSeek: 0, chase: 0,
-    cheat: 0, luck: 0, take: 0, counter: 0, quit: r.chance(0.5) ? "winGoal" : "lossLimit",
+    cheat: 0, luck: 0, take: 0, counter: 0,
+    // A host shows them around: they know the floor as it is today.
+    know: 1, memDate: s.tick, quit: r.chance(0.5) ? "winGoal" : "lossLimit",
     stake: bet / GUEST_TYPES.highroller.tableStake, winGoal: Math.round(due.bankroll * WHALE.winQuit), lossLimit: Math.round(due.bankroll * WHALE.lossQuit), browse: 0,
     floorTime: Math.round(range(r, WHALE.minutes) * 60 * TICKS_PER_SECOND * Math.pow(WHALE.unmetCut, due.reqs.length - met)),
   });

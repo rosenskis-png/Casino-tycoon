@@ -15,4 +15,4 @@
 | Liberty Bell | $1 × 1–2 | 92% | 21% | quiet, steady |
 | Thunder Jackpot | $1 × 1–3 | 89% | 8% | loud, rare 2,500× top prize |
 
-Jackpots are red (bad news for the house). Only $1,000+ or 500×-the-bet jackpots reach the ticker; the rest go to the log. A jackpot can push cash below zero; loans and insurance arrive in M9.
+Jackpots are red (bad news for the house). Only $1,000+ or 500×-the-bet jackpots reach the ticker; the rest go to the log. Since M9 a payout the casino can't cover draws on emergency credit, or goes unpaid; jackpot insurance covers payouts above a line (docs/spec/money.md).

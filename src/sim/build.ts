@@ -12,6 +12,8 @@ import { clearDoor } from "./doors";
 import { idx, inBounds } from "./map";
 import { post } from "./finance";
 import { crewAmenity } from "./crew";
+import { locked, projectFor } from "./research";
+import { RESEARCH } from "../data/research";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -127,6 +129,8 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
   },
   place: {
     validate(g, c) {
+      // M9.5: some things need research first.
+      if (locked(g.state, c.kind)) return `Needs research: ${RESEARCH[projectFor(c.kind)].name}`;
       const p = placed(c.kind, c.x, c.y, c.rot, c.w, c.h);
       const f = placement(g, p);
       if (typeof f === "string") return f;

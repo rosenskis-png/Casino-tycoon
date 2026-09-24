@@ -8,18 +8,21 @@ import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
 import { STAFF_ROLES, PAY_MIN, PAY_MAX, PAY_STEP, ZONED_ROLES } from "../data/staff";
 import { COMP_AT, COMP_KINDS, COMP_NAMES, INSURE_OVER, LOAN_RATE, EMERGENCY_RATE, SKIM_LEVELS, REG_LADDER_NAMES } from "../data/money";
 import { TABLE_GAMES } from "../data/tables";
+import { RESEARCH, RESEARCH_CATS, FUNDING, type ResearchCat } from "../data/research";
+import { EVENTS, CAMPAIGNS, CAMPAIGN_MONTHS } from "../data/events";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
 import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
-import { bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
+import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
-  payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME,
+  payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
+  locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
   priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules,
 } from "../sim";
@@ -62,7 +65,9 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb }: { host: 
               </select>
             )}
           </p>
-          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
+            ? <button key={o.id} className="btn" disabled>{o.name}<small>Research: {RESEARCH[projectFor(o.id)].name}</small></button>
+            : b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
         </Fragment>
       ))}
       {land.length > 0 && (
@@ -293,6 +298,8 @@ export function GuestsPanel({ host }: { host: Host }) {
         <b>Regulars</b><span className="num">{regulars || "none yet"}</span>
         {pool.chasers > 0 && <><b>Chasers</b><span className="num">{pool.chasers}</span></>}
       </div>
+      <Calendar g={g} />
+      {hasClub(g.state) && <ByType g={g} />}
       <p className="muted" style={{ margin: "10px 0 6px" }}>Reputation</p>
       {Object.entries(s.rep).map(([t, r]) => (
         <div className="bar" key={t}>
@@ -306,6 +313,90 @@ export function GuestsPanel({ host }: { host: Host }) {
       {list.map(([k, n]) => (
         <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text}</span></div>
       ))}
+    </>
+  );
+}
+
+/** Marketing campaigns (docs/spec/calendar.md). */
+function Marketing({ g }: { g: Game }) {
+  const s = g.state;
+  const types = (c: (typeof CAMPAIGNS)[string]) => Object.keys(c.crowd).map((t) => GUEST_TYPES[t]?.name ?? t).join(", ");
+  const until = (t: number) => { const d = formatDate(Math.floor(t / TICKS_PER_DAY)); return d.slice(0, d.indexOf(",")); };
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Marketing{adFees(s) ? ` (${money(adFees(s))} a month)` : ""}</p>
+      {Object.values(CAMPAIGNS).filter((c) => Object.keys(c.crowd).some((t) => t in s.rep)).map((c) => {
+        const on = s.ads.find((a) => a.id === c.id);
+        return (
+          <div className="row" key={c.id} style={{ alignItems: "center" }}>
+            <span style={{ flex: 1 }}>{c.name}<br /><small className="muted">{types(c)} · {money(c.fee)}/mo{on ? ` · until ${until(on.until)}` : ""}</small></span>
+            <select value={0} onChange={(e) => g.dispatch({ type: "advertise", id: c.id, months: Number(e.target.value) })}>
+              <option value={0} disabled>{on ? "Running" : "Run for…"}</option>
+              {CAMPAIGN_MONTHS.map((m) => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""}</option>)}
+              {on && <option value={-1}>Stop</option>}
+            </select>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** Running and coming events (docs/spec/calendar.md). */
+function Calendar({ g }: { g: Game }) {
+  const s = g.state, now = runningEvents(s), next = s.cal.events.filter((e) => e.start > s.tick).slice(0, 3);
+  const when = (t: number) => { const d = formatDate(Math.floor(t / TICKS_PER_DAY)); return d.slice(0, d.indexOf(",")); };
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Calendar</p>
+      <div className="kv">
+        <b>Now</b><span>{now.length ? now.map((e) => EVENTS[e.id].name).join(", ") : "nothing special"}</span>
+        <b>Coming up</b><span>{next.length ? next.map((e) => `${EVENTS[e.id].name} (${when(e.start)})`).join(", ") : "nothing this year"}</span>
+      </div>
+    </>
+  );
+}
+
+/** With the player's club: who's on the floor, by type. */
+function ByType({ g }: { g: Game }) {
+  const n: Record<string, number> = {};
+  for (const a of g.state.agents) if (a.g && !a.g.minor) n[a.g.type] = (n[a.g.type] ?? 0) + 1;
+  const rows = Object.entries(n).sort((a, b) => b[1] - a[1]);
+  return <p className="muted" style={{ margin: "6px 0" }}>On the floor (club): {rows.map(([t, k]) => `${k} ${GUEST_TYPES[t]?.name.toLowerCase() ?? t}`).join(" · ") || "nobody"}</p>;
+}
+
+/** The Research tab (docs/spec/research.md): funding, the project, and what's left. */
+export function ResearchPanel({ host }: { host: Host }) {
+  const g = host.game, r = g.state.research, cur = RESEARCH[r.project];
+  const cats = Object.keys(RESEARCH_CATS) as ResearchCat[];
+  return (
+    <>
+      <div className="kv">
+        <b>Funding</b>
+        <span>
+          <select value={r.funding} onChange={(e) => g.dispatch({ type: "setFunding", amount: Number(e.target.value) })}>
+            {FUNDING.map((v) => <option key={v} value={v}>{v ? `${money(v)} a month` : "None"}</option>)}
+          </select>
+        </span>
+        <b>Project</b><span>{cur ? `${cur.name}: ${Math.floor(((r.points[cur.id] ?? 0) / cur.cost) * 100)}% of ${money(cur.cost)}` : r.funding ? "None picked: the money is being wasted" : "None"}</span>
+      </div>
+      {cats.map((c) => {
+        const list = Object.values(RESEARCH).filter((d) => d.cat === c);
+        return (
+          <Fragment key={c}>
+            <p className="muted" style={{ margin: "10px 0 6px" }}>{RESEARCH_CATS[c]}</p>
+            {list.map((d) => {
+              const done = researched(g.state, d.id), can = projectAvailable(g.state, d.id);
+              return (
+                <div className="row" key={d.id} style={{ alignItems: "center" }}>
+                  <span style={{ flex: 1 }}>{d.name}{done ? " ✅" : ""}<br /><small className="muted">{d.desc}{!done && !can && d.needs ? ` Needs ${d.needs.map((n) => RESEARCH[n].name).join(", ")}.` : ""}</small></span>
+                  {!done && <button className={`btn ${r.project === d.id ? "on" : ""}`} disabled={!can} onClick={() => g.dispatch({ type: "setProject", id: r.project === d.id ? "" : d.id })}>{r.project === d.id ? "Researching" : money(d.cost)}</button>}
+                </div>
+              );
+            })}
+          </Fragment>
+        );
+      })}
     </>
   );
 }
@@ -399,6 +490,18 @@ export function PoliciesPanel({ host }: { host: Host }) {
         ))}
       </div>
       <p className="muted" style={{ margin: "4px 0" }}>Insurance pays the part of any single payout above the line; the premium is charged monthly on what was played. Skimmed money dodges the tax until an inspector finds it. Comps go to guests once their play is expected to have cost them that much this visit (the come-back offer, $10 of free play, brings regulars back sooner). {b.given ? `${b.given} comps given this month.` : ""}</p>
+      {hasClub(s) && (
+        <div className="kv">
+          <b>Comps for</b>
+          <span>
+            <select value={b.comps.only ?? ""} onChange={(e) => g.dispatch({ type: "targetComps", who: e.target.value })}>
+              <option value="">Everyone</option>
+              {Object.keys(s.rep).map((t) => <option key={t} value={t}>{GUEST_TYPES[t]?.name ?? t} only</option>)}
+            </select>
+          </span>
+        </div>
+      )}
+      <Marketing g={g} />
       <p className="muted" style={{ margin: "4px 0" }}>Elsewhere: drink prices, comps and strength per bar (tap a bar); rules and limits per table (tap a table); staff pay (Staff); house rules and what happens to cheats (Authorities).</p>
     </>
   );
@@ -551,6 +654,8 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       {incidentOf(g, a.id) && !INCIDENTS[incidentOf(g, a.id)!.kind].hidden && <p className="lv-warn">{INCIDENTS[incidentOf(g, a.id)!.kind].name}</p>}
       {(gd.warned > 0 || gd.unans > 0) && <p className="muted">{gd.warned > 0 ? `Warned by security${gd.warned > 1 ? ` ${gd.warned} times` : ""}. ` : ""}{gd.unans > 0 ? `${gd.unans} of their reports went unanswered${gd.called ? "; they called the police" : ""}.` : ""}</p>}
       {gd.caught > 0 && <p className="lv-bad">Caught cheating.</p>}
+      {hasClub(g.state) && !gd.minor && <p className="muted">Club: {GUEST_TYPES[gd.type]?.name ?? gd.type} · worth {money(theo(gd))} to the house so far this visit.</p>}
+      {gd.minor > 0 && <p className="muted">A child, here with family.</p>}
       {gd.vip > 0 && <p className="lv-warn">A whale: plays {TABLE_GAMES[g.state.whale.game as keyof typeof TABLE_GAMES]?.name.toLowerCase() ?? "tables"} at about {money(g.state.whale.bet)} a hand; came with {money(g.state.whale.bankroll)}.</p>}
       {gd.unpaid > 0 && <p className="lv-bad">Owed {money(gd.unpaid)} in winnings the casino couldn't pay.</p>}
       {gd.comp > 0 && <p className="muted">Comped: {COMP_KINDS.filter((k) => gd.comp & COMP_BIT[k]).map((k) => COMP_NAMES[k].toLowerCase()).join(", ")}.</p>}
@@ -568,7 +673,7 @@ const mins = (secs: number) => (secs < 60 ? `${Math.round(secs)} s` : `${(secs /
 
 /** The suspicion tools this scenario allows (docs/spec/cheats.md), tier by tier. */
 function SuspicionTools({ g, a }: { g: Game; a: Agent }) {
-  const tier = SCENARIOS[g.state.scenario].tools;
+  const tier = toolTier(g.state);
   if (!tier) return null;
   const q = suspicion(g, a);
   const sign = (n: number) => `${n >= 0 ? "+" : "−"}${money(Math.abs(n))}`;
@@ -675,6 +780,7 @@ function edgeText(fam: Family, rules: number[] | undefined): string {
     case "poker": return `a ${Math.round(pokerRake(rules) * 100)}% rake of each pot`;
     case "keno": return "about 28% (the paytable)";
     case "bingo": return `the hold: ${Math.round(bingoHold(rules) * 100)}% of cards sold`;
+    case "sports": return pc(1 - 0.5 * sportsX(rules));
   }
 }
 
@@ -741,6 +847,20 @@ function ObjectStats({ host, id }: { host: Host; id: number }) {
   );
 }
 
+/** Guest breakdowns (research, M9.5): what each guest type played here and what the house kept. */
+function TypeBreakdown({ g, id }: { g: Game; id: number }) {
+  const o = g.objById.get(id);
+  if (!o?.st.byType || !hasBreakdowns(g.state)) return null;
+  const rows = Object.entries(o.st.byType).filter(([, v]) => v[0] > 0).sort((a, b) => b[1][0] - a[1][0]);
+  if (!rows.length) return null;
+  return (
+    <>
+      <p className="muted" style={{ margin: "8px 0 4px" }}>By guest type</p>
+      <div className="kv">{rows.map(([t, [inn, out]]) => <Fragment key={t}><b>{GUEST_TYPES[t]?.name ?? t}</b><span className="num">{money(inn)} in · house {money(inn - out)}</span></Fragment>)}</div>
+    </>
+  );
+}
+
 export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable<Selection>; onClose: () => void }) {
   const g = host.game;
   const s = g.state;
@@ -765,6 +885,7 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
           <AmenityCard g={g} id={obj.id} />
           <TableCard g={g} id={obj.id} />
           <ObjectStats host={host} id={obj.id} />
+          <TypeBreakdown g={g} id={obj.id} />
           <BarPolicyEditor g={g} id={obj.id} />
           <div className="row">
             <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(priceOf(obj).cost / 2)} back</small></button>
@@ -856,7 +977,7 @@ function DoorCard({ g, tile }: { g: Game; tile: number }) {
         {def.fee && <><b>Fee</b><span className="num"><input type="range" min={0} max={MAX_DOOR_FEE} step={1} value={fee} onChange={(e) => set(rule, gate?.arg, Number(e.target.value))} /> {fee ? money(fee) : "free"}</span></>}
       </div>
       <p className="muted" style={{ marginTop: 6 }}>
-        {rule === DOOR_STATE.CARD ? "Card holders are guests who've been here before; their companions come in with them. " : ""}
+        {rule === DOOR_STATE.CARD ? `${hasClub(g.state) ? "Club members" : "Card holders"} are guests who've been here before; their companions come in with them. ` : ""}
         {rule !== DOOR_STATE.OPEN && rule !== DOOR_STATE.ROLE ? "Staff, police and paramedics always pass. " : ""}
         Guests who can't pass go around, or can't get there at all. Anyone trapped gets let out by staff, eventually, and the police hear about it.
       </p>
@@ -932,6 +1053,20 @@ export function GamePanel({ host }: { host: Host }) {
         <button className={`btn ${host.debug ? "on" : ""}`} onClick={() => { host.debug = !host.debug; if (!host.debug) host.drawOptions.overlay = null; refresh(); }}>Debug view</button>
         <button className="btn" disabled={!!perfMsg} onClick={runPerf}>{perfMsg ?? "Perf test"}</button>
       </div>
+      {!host.debug && (overlays(g.state).length > 0 || hasHeatmaps(g.state)) && (
+        <div className="row">
+          <select value={host.drawOptions.overlay ?? host.drawOptions.heat ?? ""} onChange={(e) => {
+            const v = e.target.value;
+            host.drawOptions.heat = v === "revenue" || v === "play" ? v : null;
+            host.drawOptions.overlay = v && !host.drawOptions.heat ? (v as Channel) : null;
+            refresh();
+          }}>
+            <option value="">No map</option>
+            {overlays(g.state).map((c) => <option key={c} value={c}>{CHANNEL_DEFS[c].name}</option>)}
+            {hasHeatmaps(g.state) && <><option value="revenue">Heatmap: house winnings</option><option value="play">Heatmap: play time</option></>}
+          </select>
+        </div>
+      )}
       {host.debug && (
         <div className="row">
           <select value={host.drawOptions.overlay ?? ""} onChange={(e) => { host.drawOptions.overlay = (e.target.value || null) as Channel | null; refresh(); }}>

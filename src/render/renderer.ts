@@ -30,6 +30,8 @@ const DOOR_MARK: Record<number, string> = { [DOOR_STATE.STAFF]: "door:staff", [D
 export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
 export interface DrawOptions {
   overlay?: Channel | null;
+  /** (M9.5) Heatmap over the games: what each has won for the house, or how long it's been played. */
+  heat?: "revenue" | "play" | null;
   ghost?: Ghost | null;
   selectedTile?: number;
   selectedAgent?: number;
@@ -448,6 +450,19 @@ export class Renderer {
       }
       ctx.globalAlpha = 1;
     }
+    if (opt.heat) {
+      const val = (o: (typeof s.objects)[number]) => (opt.heat === "revenue" ? o.st.coinIn - o.st.paidOut : o.st.playTicks);
+      let max = 0;
+      for (const o of s.objects) if (OBJECTS[o.kind].slot || OBJECTS[o.kind].game) max = Math.max(max, val(o));
+      if (max > 0) for (const o of s.objects) {
+        if (!OBJECTS[o.kind].slot && !OBJECTS[o.kind].game) continue;
+        const v = val(o) / max, { w: ow, h: oh } = objSize(o);
+        ctx.fillStyle = v < 0 ? "#3f8fff" : `hsl(${Math.round(60 - 60 * v)}, 100%, 50%)`;
+        ctx.globalAlpha = 0.25 + 0.5 * Math.min(1, Math.abs(v));
+        ctx.fillRect(ox + (o.x - 0.5) * tp, oy + (o.y - 0.5) * tp, (ow + 1) * tp, (oh + 1) * tp);
+      }
+      ctx.globalAlpha = 1;
+    }
 
     const atlas = this.atlas, F = atlas.frames;
     const scale = tp / ART;
@@ -543,8 +558,8 @@ export class Renderer {
         const cx = o.x + ow / 2, cy = o.y + oh / 2;
         const players = seatedAt.get(o.id) ?? [];
         // Boards: lit numbers on the face (front view only).
-        if (fam === "keno" || fam === "bingo") {
-          if ((o.rot & 3) !== 0) continue;
+        if (fam === "keno" || fam === "bingo" || fam === "sports") {
+          if ((o.rot & 3) !== 0 || fam === "sports") continue;
           const c = BOARD_CELLS[fam], f = F.get(`obj:${def.sprite}:front`);
           if (!f) continue;
           const bx = o.x * ART + Math.round((ow * ART - f.w) / 2), by = (o.y + oh) * ART - f.h;
@@ -697,6 +712,7 @@ export class Renderer {
             const over = (k: string, dx: number, dy: number) => blit(anim(k), px + dx * scale, py - dy * scale);
             if (inc === "loud") over("obj:inc:loud", 5, 6);
             else if (inc === "argument" || inc === "yell") over("obj:inc:angry", 2.5, 7 + (Math.floor(now / 300) & 1));
+            else if (inc === "underage") over("obj:inc:coin", 3, 5 + (Math.floor(now / 300) & 1));
             else if (inc === "breakdown" && face) blit("obj:inc:sob", px, py + (Math.floor(now / 400) & 1) * scale);
             else if (inc === "vomit") blit("obj:inc:sick", px, py);
             else if (inc === "cheer" || inc === "round") over("obj:inc:cheer", 1.5, 7);
@@ -761,7 +777,7 @@ export class Renderer {
         const sway = Math.min(0.35, (intox - 0.2) * 0.5) * Math.sin((tick + alpha) * 0.25 + a.id);
         if (a.nx !== a.x) fy += sway; else fx += sway;
       }
-      const set = a.role === "guest" ? (a.g!.vip ? "whale" : a.g!.type) : a.role;
+      const set = a.role === "guest" ? (a.g!.vip ? "whale" : a.g!.minor ? "kid" : a.g!.type) : a.role;
       const sex = a.g ? a.g.sex & 1 : (a.look >> 2) & 1;
       let dir: string, pose: string;
       const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest" || a.act === "deal");

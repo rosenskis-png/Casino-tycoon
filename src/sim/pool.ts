@@ -7,6 +7,7 @@ import { SCENARIOS, type ScenarioDef } from "../data/scenarios";
 import type { Game } from "./game";
 import type { System } from "./registry";
 import { isClosed, type Agent, type GameState, type Person } from "./state";
+import { demand } from "./calendar";
 import { rng, type Rng } from "./rng";
 import { logNormal, range } from "./dist";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
@@ -177,7 +178,7 @@ export function newcomerRates(g: Game): Record<string, number> {
     const type = GUEST_TYPES[t];
     if (!type || !total) continue;
     // What the casino has (a restaurant, shows, a club) draws extra people who come for it (M6).
-    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * rm * amenityPull(g, t);
+    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * rm * amenityPull(g, t) * demand(s, t);
   }
   return out;
 }

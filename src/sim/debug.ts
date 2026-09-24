@@ -9,7 +9,7 @@ import { STAFF_ROLES } from "../data/staff";
 import { ENF, ENF_ACTIONS, LUCK_SHIFT } from "../data/cheats";
 import { luckConvert, luckRedraw, luckVoid } from "./cheats";
 import {
-  BAC_P, CRAPS_OUTCOMES, KENO_SPOTS, TABLE_GAMES, VP_MISTAKES, bacModel, bjEdge, bjModel, commission, kenoCatch, kenoModel,
+  BAC_P, CRAPS_OUTCOMES, KENO_SPOTS, SPORTS_PRICE, TABLE_GAMES, sportsModel, VP_MISTAKES, bacModel, bjEdge, bjModel, commission, kenoCatch, kenoModel,
   lineModel, oddsModel, pockets, rouletteModel, ROULETTE_BETS, vpModel, vpPayback,
 } from "../data/tables";
 import type { SlotModel } from "../data/games";
@@ -262,6 +262,8 @@ function tableMathChecks(): string[] {
     eq(`keno ${n}-spot catches`, tot, 1);
     sane(kenoModel(n));
   }
+  // M9.5: the sportsbook returns exactly half of 1 + 100/N at each price.
+  for (let v = 0; v < SPORTS_PRICE.length; v++) { const m = sportsModel([v]); eq(m.id, m.rtp, 0.5 * (1 + 100 / SPORTS_PRICE[v])); sane(m); }
   for (const o of Object.values(OBJECTS)) if (o.game && !TABLE_GAMES[o.game]) p.push(`${o.id}: unknown game ${o.game}`);
   return p;
 }

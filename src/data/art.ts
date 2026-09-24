@@ -826,8 +826,8 @@ export const BOARD_CELLS: Record<string, { cols: number; rows: number; x0: numbe
   keno: { cols: 10, rows: 8, x0: 3, y0: 8, dx: 6, dy: 2 },
   bingo: { cols: 15, rows: 5, x0: 3, y0: 8, dx: 6, dy: 3 },
 };
-function boardRows(kind: "keno" | "bingo", face: "front" | "back" | "side"): string[] {
-  const n = kind === "keno" ? 4 : 6, c = BOARD_CELLS[kind], title = kind === "keno" ? "x" : "q";
+function boardRows(kind: "keno" | "bingo" | "sports", face: "front" | "back" | "side"): string[] {
+  const n = kind === "bingo" ? 6 : 4, c = BOARD_CELLS[kind === "sports" ? "keno" : kind], title = kind === "keno" ? "x" : kind === "sports" ? "z" : "q";
   if (face === "side") {
     const H = n * 16 + 14;
     return Array.from({ length: H }, (_, y) => (y < 2 ? "......8888......" : y >= H - 3 ? "......3..3......" : y < H - 5 ? "......YyyM......" : "......8888......"));
@@ -839,6 +839,14 @@ function boardRows(kind: "keno" | "bingo", face: "front" | "back" | "side"): str
     if (y < 2 || y >= H - 4 || edge) return y === 0 && !edge ? "9" : "8";
     if (face === "back") return (x + y) % 5 ? "3" : "2";
     if (y < 6) return (x + y) % 3 === 0 ? title : "y";
+    // M9.5 sportsbook: three game screens (green fields, white lines) under a lit strip.
+    if (kind === "sports") {
+      const sw = Math.floor((W - 2) / 3), sx = (x - 1) % sw;
+      if (sx === 0 || y === 6 || y === H - 5) return "8";
+      if (y === 7 || y === H - 6) return "y";
+      if (sx === Math.floor(sw / 2)) return "w";
+      return (sx >> 2) % 2 ? "F" : "f";
+    }
     const cx = x - c.x0, cy = y - c.y0;
     if (cx >= 0 && cy >= 0 && cx % c.dx < 3 && cy % c.dy === 0 && cx / c.dx < c.cols && cy / c.dy < c.rows) return "Y";
     return "y";
@@ -848,7 +856,7 @@ function boardRows(kind: "keno" | "bingo", face: "front" | "back" | "side"): str
 const TABLE_SPRITES: Record<string, SpriteDef> = {};
 for (const kind of Object.keys(TABLE_SIZE)) for (let rot = 0; rot < 4; rot++) TABLE_SPRITES[`tbl_${kind}_${rot}`] = S(tableRows(kind, rot), undefined, true);
 for (let k = 0; k < 3; k++) TABLE_SPRITES[k ? `wheel~${k}` : "wheel"] = S(wheelRows(k), undefined, false);
-for (const kind of ["keno", "bingo"] as const) {
+for (const kind of ["keno", "bingo", "sports"] as const) {
   TABLE_SPRITES[`${kind}:front`] = S(boardRows(kind, "front"));
   TABLE_SPRITES[`${kind}:back`] = S(boardRows(kind, "back"));
   TABLE_SPRITES[`${kind}:side`] = S(boardRows(kind, "side"));
@@ -941,6 +949,7 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
   "inc:sob": S(["........", "........", "........", "........", "........", ".V....V.", ".v....v."], { V: "#9ad8f2cc", v: "#3a8fc4aa" }, false),
   "inc:sick": S(["........", "........", "........", ".gggggg.", ".gggggg.", ".gggggg."], { g: "#58a85a66" }, false),
   "inc:heart": S(["x.x", "xxx", ".x."]),
+  "inc:coin": S([".qq.", "q99q", "q97q", ".qq."]),
   "inc:cheer": S(["x...q", "..z..", "q...x", ".x.z."], undefined, false),
   "inc:cheer~1": S(["..q..", "z...x", "..x..", "q...z"], undefined, false),
   "inc:zzz": S(["NNN", "..N", ".N.", "NNN"]),
@@ -1116,6 +1125,7 @@ export const ACCESSORIES: Record<string, Over> = {
   glasses: { down: { y: 4, rows: ["..oeeo.."] }, side: { y: 4, rows: ["...eeo.."] } },
   camera: { down: { y: 8, rows: ["..ee....", "..eo...."] }, up: { y: 7, rows: ["......e.", ".....e.."] }, side: { y: 8, rows: [".....ee.", ".....oe."] } },
   bowtie: { down: { y: 7, rows: ["...yy..."] } },
+  badge: { down: { y: 8, rows: ["......w.", "......y."] }, side: { y: 8, rows: [".....w..", ".....y.."] } },
   belt: { down: { y: 10, rows: [".yqqqqy."] }, up: { y: 10, rows: [".yqqqqy."] }, side: { y: 10, rows: ["..yqqy.."] } },
 };
 
@@ -1213,6 +1223,22 @@ export const PEOPLE: Record<string, LookSet> = {
   operator: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#7a808c"], bottom: ["#2a2e38"], accent: ["#1c2030"], hat: ["#1c2030"],
     styles: [[{ o: "polo", h: "short", x: ["glasses"] }], [{ o: "polo", h: "bob", x: ["glasses"] }]],
+  },
+  // M9.5: families (casual, bright), their children (a row shorter, loud colors, caps), conventioneers (suits and badges).
+  family: {
+    variants: 12, skin: SKINS, hair: HAIRS, shoes: ["#f0ece4", "#3a2a20", "#5a9ad0"],
+    top: ["#5a9ad0", "#e04a4a", "#48b8f0", "#8a9a5a", "#f0ece4", "#ff9f43"], bottom: ["#2a3050", "#5a9ad0", "#e0cfa0"], accent: ["#fff6e0", "#2a6a9a"], hat: ["#e8cf8a", "#2a3050"],
+    styles: [[{ o: "polo", h: "short" }, { o: "tee", h: "cap" }, { o: "polo", h: "crop", x: ["glasses"] }], [{ o: "blouseSkirt", h: "bob" }, { o: "tee", h: "long" }, { o: "polo", h: "bun" }]],
+  },
+  kid: {
+    variants: 12, short: true, skin: SKINS, hair: HAIRS, shoes: ["#f0ece4", "#e04a4a", "#48b8f0"],
+    top: ["#ffd23d", "#ff6ab4", "#2ec4b6", "#ff6b5b", "#48b8f0", "#8a3cf0"], bottom: ["#5a9ad0", "#2a3050", "#e0cfa0"], accent: ["#fff6e0"], hat: ["#e04a4a", "#48b8f0", "#ffd23d"],
+    styles: [[{ o: "tee", h: "cap" }, { o: "tee", h: "short" }], [{ o: "tee", h: "puff" }, { o: "tee", h: "long" }]],
+  },
+  conventioneer: {
+    variants: 12, skin: SKINS, hair: HAIRS, shoes: ["#101014", "#3a2418"],
+    top: ["#2a3050", "#3a3e48", "#1c2238", "#5a4a3a"], bottom: ["#26262e", "#2a3050"], accent: ["#e8e4dc", "#5a9ad0"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "short", x: ["badge"] }, { o: "blazer", h: "bald", x: ["badge", "glasses"] }], [{ o: "blazer", h: "bob", x: ["badge"] }, { o: "blazer", h: "bun", x: ["badge"] }]],
   },
   // M9: the gaming regulator's inspector (grey suit, glasses), and a whale (white and gold, unmistakable).
   inspector: {

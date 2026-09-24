@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export interface MapState {
   w: number;
@@ -25,7 +25,11 @@ export interface MapState {
 export interface Gate { i: number; arg: string; fee: number }
 
 /** Lifetime stats for a game object (the machine stats page, FOUNDATIONS §7.1). */
-export interface ObjectStats { rounds: number; coinIn: number; paidOut: number; sessions: number; playTicks: number; uses: number }
+export interface ObjectStats {
+  rounds: number; coinIn: number; paidOut: number; sessions: number; playTicks: number; uses: number;
+  /** (M9.5) Coin in and paid out by guest type, for the guest breakdowns research. */
+  byType?: Record<string, [number, number]>;
+}
 
 export interface PlacedObject {
   id: number; kind: string; x: number; y: number; rot: number;
@@ -223,6 +227,8 @@ export interface GuestData {
   comp: number;
   /** (M9) Winnings the house couldn't pay them this visit (dollars). */
   unpaid: number;
+  /** (M9.5) 1 for a child in a family: no money, never gambles or drinks, stays near the adults. */
+  minor: number;
 }
 
 /**
@@ -476,8 +482,17 @@ export interface GameState {
   crew: Crew;
   bank: Bank;
   reg: RegulatorState;
-  whale: WhaleState;
+  whale: WhaleState;  /** (M9.5) This year's events, marketing campaigns running, research. */
+  cal: { year: number; events: CalEvent[] };
+  ads: { id: string; until: number }[];
+  research: ResearchState;
 }
+
+/** A scheduled event: when it runs (ticks), its length in days, and 1 once announced, 2 once started. */
+export interface CalEvent { id: string; start: number; end: number; len: number; told: number }
+
+/** Research (docs/spec/research.md): monthly funding, the project, points put into each, and what's done. */
+export interface ResearchState { funding: number; project: string; points: Record<string, number>; done: string[] }
 
 /** Pay per role (multiple of the market wage) and what went missing this month, per area, found at the count. */
 export interface Crew { pay: Record<string, number>; shrink: Record<string, number>; hist: number[] }
@@ -499,7 +514,8 @@ export interface Bank {
   /** 1 while cash is below zero with no credit left (told once). */
   low: number;
   /** Comp thresholds on theoretical loss (0 = off), and comps given this month. */
-  comps: { meal: number; show: number; back: number };
+  /** `only`: with the player's club (M9.5), comps go to one guest type ("" = everyone). */
+  comps: { meal: number; show: number; back: number; only?: string };
   given: number;
 }
 

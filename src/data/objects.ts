@@ -189,6 +189,12 @@ const TABLES: Record<string, ObjectDef> = {
     seats: [...front(0, 3, 1, "chair"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "keno",
     desc: "A board of 80 numbers and eight chairs. A draw every so often; cheap tickets, a steep edge.",
   },
+  sportsbook: {
+    id: "sportsbook", name: "Sportsbook", cat: "table", w: 4, h: 1, cost: 2500, upkeep: 12, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "sports", art: "facing",
+    seats: [...front(0, 3, 1, "stool"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "sports",
+    desc: "A wall of screens and a writer taking bets on the games: a small, steady edge, and a crowd on big nights.",
+  },
   bingo: {
     id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 3500, upkeep: 15, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 2, radius: 4 }], sprite: "bingo", art: "facing",

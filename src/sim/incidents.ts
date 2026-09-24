@@ -6,6 +6,7 @@
 // Guards, officers and paramedics are run here, not by sim/staff.ts.
 import { GUEST_TYPES } from "../data/guests";
 import { INCIDENTS, INCIDENT_CATS, type IncidentDef } from "../data/incidents";
+import { OBJECTS } from "../data/objects";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
@@ -201,6 +202,11 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
     return r.chance(p * (rate[cat] ?? 1) * deter * (gd.warned ? 0.4 : 1));
   };
   const x = gd.intox;
+  // Children (M9.5): the one thing they get up to is feeding a machine next to them.
+  if (gd.minor) {
+    if (tick >= gd.incAt && !isWalking(a) && machineNear(g, a) && roll(0.004, "misconduct")) begin(g, grid, "underage", a, null);
+    return;
+  }
   // Celebration: a jackpot just paid.
   if (a.act === "play" && a.seat >= 0) {
     const o = g.objById.get(a.target);
@@ -244,6 +250,18 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
       return void begin(g, grid, "recruit", a, other);
     }
   }
+}
+
+/** A slot machine or video poker within a tile (a child standing by a parent's machine). */
+function machineNear(g: Game, a: Agent): boolean {
+  const { w, h } = g.state.map;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = a.x + dx, y = a.y + dy;
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const o = g.objById.get(g.objAt[y * w + x]);
+    if (o && (OBJECTS[o.kind].slot || OBJECTS[o.kind].game === "vpoker")) return true;
+  }
+  return false;
 }
 
 /** A winner buys a round: up to five drinkers nearby get one, on the winner. */
@@ -333,6 +351,8 @@ function resolve(g: Game, grid: Grid, inc: Incident) {
     case "breakdown": a.g.annoy = Math.max(0, a.g.annoy - 5); return sendHome(g, a, "ruined");
     case "escort": return eject(g, a, "cutoff");
     case "fight": for (const f of [a, b]) if (f?.g) eject(g, f); return;
+    // A child is walked back to the adults; nobody is warned or thrown out.
+    case "underage": return;
   }
   if (a.g.why) return;
   if (rule >= 3 || (rule === 2 && a.g.warned > 0)) eject(g, a);

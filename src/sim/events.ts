@@ -23,6 +23,8 @@ export type SimEvent =
       skill: number; counter: number; marked: number;
       /** M9: a whale; comps earned (bits); winnings the house couldn't pay. */
       vip: number; comp: number; unpaid: number;
+      /** M9.5: a child (their visit isn't scored). */
+      minor: number;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

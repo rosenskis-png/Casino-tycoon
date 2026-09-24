@@ -8,7 +8,7 @@ export interface IncidentCatDef { id: IncidentCat; name: string; desc: string; p
 export const INCIDENT_CATS: Record<IncidentCat, IncidentCatDef> = {
   intox: { id: "intox", name: "Drunkenness", desc: "Loud drunks, stumbling, spills, vomiting, passing out.", policed: true },
   disorder: { id: "disorder", name: "Disorder", desc: "Arguments, fights, yelling at staff, losers breaking down.", policed: true },
-  misconduct: { id: "misconduct", name: "Misconduct", desc: "Relieving themselves in the planters.", policed: true },
+  misconduct: { id: "misconduct", name: "Misconduct", desc: "Relieving themselves in the planters; children at the machines.", policed: true },
   celebration: { id: "celebration", name: "Celebration", desc: "Big winners cheering and buying rounds.", policed: false },
   social: { id: "social", name: "Social", desc: "Flirting, talking others into another drink.", policed: false },
 };
@@ -69,5 +69,7 @@ export const INCIDENTS: Record<string, IncidentDef> = {
   round: { id: "round", cat: "celebration", name: "Buying a round", mood: 8, secs: 6, reach: 5, reportable: false, respond: 0, police: 0, thought: "boughtRound", seen: "freeRound", text: "{name} bought a round for everyone nearby." },
   flirt: { id: "flirt", cat: "social", name: "Flirting", mood: 1, secs: 8, reach: 3, reportable: false, respond: 0, police: 0, thought: "flirting", text: "{name} is flirting." },
   recruit: { id: "recruit", cat: "social", name: "Another round?", mood: 2, secs: 6, reach: 3, reportable: false, respond: 0, police: 0, text: "{name} talked someone into another drink." },
+  // M9.5: a child playing a machine (docs/spec/incidents.md). Officers take it seriously.
+  underage: { id: "underage", cat: "misconduct", name: "Underage gambling", mood: -4, secs: 12, reach: 6, reportable: true, respond: 1, police: 2, seen: "underageSeen", text: "A child is playing a slot machine." },
   escort: { id: "escort", cat: "intox", name: "Shown out", mood: 0, secs: 30, reach: 0, reportable: false, respond: 3, police: 0, text: "{name} was shown out.", hidden: true },
 };

@@ -7,13 +7,14 @@ import { GUEST_TYPES } from "../data/guests";
 import { WAGERS_PER_ROUND, type SlotModel } from "../data/games";
 import {
   BAC_P, COUNT_SPREAD, CRAPS_OUTCOMES, KENO_PAYS, KENO_SPOTS, ODDS_X, POKER_WEIGHT, RAKE_CAP, ROULETTE_BETS, TABLE_GAMES,
-  bacModel, bacX, bingoHold, bjModel, kenoModel, lineModel, lineX, oddsAllowed, oddsModel, pockets, pokerRake, rouletteModel,
+  bacModel, bacX, bingoHold, sportsModel, bjModel, kenoModel, lineModel, lineX, oddsAllowed, oddsModel, pockets, pokerRake, rouletteModel,
   rouletteWins, rulesScore, type Family,
 } from "../data/tables";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
 import type { Agent, GuestData, PlacedObject, TableRound } from "./state";
+import { gameBoost } from "./calendar";
 import { rng, type Rng } from "./rng";
 import { TICKS_PER_SECOND } from "./clock";
 import { go, isWalking, nearbyTile } from "./agents";
@@ -189,7 +190,8 @@ function tableBet(g: Game, gd: GuestData, o: PlacedObject, r: Rng): number {
  */
 export function tableAppeal(g: Game, gd: GuestData, o: PlacedObject): number {
   const type = GUEST_TYPES[gd.type], fam = OBJECTS[o.kind].game!, def = TABLE_GAMES[fam];
-  let appeal = type.games[fam] ?? 0;
+  // M9.5: big nights lift the sportsbook and poker.
+  let appeal = (type.games[fam] ?? 0) * gameBoost(g.state, fam);
   if (fam === "blackjack" && gd.counter) {
     // Counters read the rules closely: 6:5 isn't worth it; fewer decks are gold.
     if ((o.rules?.[0] ?? 0) === 1) return 0;
@@ -325,6 +327,13 @@ function deal(g: Game, o: PlacedObject, byId: Map<number, Agent>) {
         const cut = Math.min(pot * pokerRake(rules), RAKE_CAP * stakeMult(g, o));
         const { winner } = poolHand("Poker", players, stakes, players.map((p) => POKER_WEIGHT[p.a.g!.skill]), cut, r);
         if (last) out.push(players[winner].k);
+        break;
+      }
+      case "sports": {
+        // One game settles the whole book: each bettor backed a side (a stable pick per visit).
+        const winner = r.int(0, 1), m = sportsModel(rules);
+        for (const p of players) p.ws.push({ m, bet: p.bet, x: sharedPay(g, p.a.g!, m, (pickOf(p.a, 7) < 0.5 ? 0 : 1) === winner ? m.win! : 0) });
+        if (last) out.push(winner, r.int(0, 40), r.int(0, 40));
         break;
       }
       case "bingo": {

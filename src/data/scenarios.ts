@@ -63,6 +63,9 @@ export interface ScenarioDef {
   /** (M9) Gaming tax on the month's gaming win, 0-1; whether whales come (docs/spec/money.md). */
   tax: number;
   whales?: boolean;
+  /** (M9.5) Scheduled events allowed (default: all that fit its population); research projects done at the start. */
+  events?: string[];
+  research?: string[] | "build";
   /** Named rooms with a purpose, by any tile inside them. */
   rooms?: { x: number; y: number; name: string; purpose: RoomPurpose }[];
   /** Not offered in the New game list (engine test maps). */
@@ -113,7 +116,7 @@ function bigFloor(): ScenarioDef {
     w, h, startCash: 1_000_000, grounds: [{ x: 1, y: 1, w: w - 2, h: h - 2 }], buildings: [{ x: bx, y: by, w: bw, h: bh }],
     walls: [], doors, water: [], entrances, sidewalks: [], objects, staff: { janitor: 20, tech: 20 },
     footfall: 0, street: {}, market: {},
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null, tools: 0, tax: 0,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null, tools: 0, tax: 0, research: "build",
   };
 }
 
@@ -151,6 +154,8 @@ function testFloor(): ScenarioDef {
     { kind: "blackjack", x: 9, y: 10, rot: 0 }, { kind: "blackjack", x: 14, y: 10, rot: 0 }, { kind: "roulette", x: 19, y: 10, rot: 0 },
     { kind: "craps", x: 25, y: 10, rot: 0 }, { kind: "poker", x: 29, y: 27, rot: 0 }, { kind: "keno", x: 20, y: 27, rot: 0 },
     ...row("vpoker", 9, 27, 4), { kind: "bingo", x: 38, y: 11, rot: 0 },
+    // M9.5: a sportsbook facing the slot banks, below the pit.
+    { kind: "sportsbook", x: 24, y: 14, rot: 0 },
   );
   // Themes (M6.5): a Deco high-limit room, a Rat Pack showroom, an Atomic club, a Riviera diner, a Deco and Rat
   // Pack members' bar, and Tiki and Pirate pieces by the fountain on the main floor.
@@ -187,7 +192,7 @@ function testFloor(): ScenarioDef {
   );
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1, dealer: 9, pitboss: 1 },
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1, dealer: 10, pitboss: 1 },
     // The tutorial lot, widened for the east wing.
     w: 80, grounds: [{ x: 2, y: 2, w: 76, h: 40 }], buildings: [...LOT.buildings, { x: 49, y: 4, w: 25, h: 28 }],
     sidewalks: [{ from: [0, 42], to: [79, 42] }],
@@ -203,9 +208,9 @@ function testFloor(): ScenarioDef {
       { x: 50, y: 24, name: "Club", purpose: "club" }, { x: 62, y: 12, name: "Diner", purpose: "restaurant" },
       { x: 62, y: 15, name: "Smoking lounge", purpose: "smoking" }, { x: 62, y: 23, name: "Members' bar", purpose: "bar" },
     ],
-    footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
+    footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3, family: 0.4, conventioneer: 0.2 },
     market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 }, highroller: { size: 25, regulars: 0.3 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4, tax: 0.08, whales: true,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1, family: 1, conventioneer: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4, tax: 0.08, whales: true, research: "build",
   };
 }
 
@@ -249,14 +254,14 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     objects: [],
     staff: {},
     footfall: 0.5,
-    street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
+    street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3, family: 0.4, conventioneer: 0.2 },
     market: { local: { size: 220, regulars: 0 }, retiree: { size: 140, regulars: 0 }, highroller: { size: 40, regulars: 0 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1 },
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1, family: 1, conventioneer: 1 },
     rep: {},
     arrivals: 0.45,
     maxGuests: 400,
     goals: null,
-    tools: 4, tax: 0.08, whales: true,
+    tools: 4, tax: 0.08, whales: true, research: "build",
   },
   bigfloor: bigFloor(),
   testfloor: testFloor(),

@@ -8,6 +8,8 @@ const file = `tests/saves/schema-${sim.SCHEMA_VERSION}.json`;
 if (existsSync(file)) { console.log(`${file} already exists`); process.exit(0); }
 const g = sim.Game.create("horseshoe", 12345);
 const w = g.state.map.w;
+// M9.5: the tutorial starts with no research; the fixture builds as if it had it all.
+if (sim.SCHEMA_VERSION >= 12) g.state.research.done.push("bigslots", "tables", "tables2", "restaurant", "outdoors", "th_vegas", "th_ancient", "th_luxury", "th_fun");
 g.dispatch({ type: "place", kind: "bar", x: 30, y: 20, rot: 0 });
 g.dispatch({ type: "place", kind: "slot_thunder", x: 14, y: 20, rot: 1 });
 g.dispatch({ type: "hire", role: "tech" });
@@ -52,6 +54,12 @@ if (sim.SCHEMA_VERSION >= 11) {
   g.dispatch({ type: "setSkim", share: 0.1 });
   g.dispatch({ type: "setComp", kind: "meal", at: 20 });
   g.dispatch({ type: "setComp", kind: "back", at: 5 });
+}
+if (sim.SCHEMA_VERSION >= 12) {
+  // M9.5: research under way, an ad campaign.
+  g.dispatch({ type: "setFunding", amount: 500 });
+  g.dispatch({ type: "setProject", id: "club" });
+  g.dispatch({ type: "advertise", id: "radio", months: 3 });
 }
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
 writeFileSync(file, sim.serialize(g));

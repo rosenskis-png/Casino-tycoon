@@ -133,6 +133,9 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
   o.st.rounds++;
   o.st.coinIn += wagered;
   o.st.paidOut += won;
+  const bt = ((o.st.byType ??= {})[gd.type] ??= [0, 0]);
+  bt[0] += wagered;
+  bt[1] += won;
   post(g, ledger, wagered - won);
   if (claim) post(g, "insurance", claim);
   earnComps(g, a);

@@ -59,7 +59,7 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Police standing and ladder: warning, fines, inspections, raid and closure, license revoked (scenario lost). Officers and paramedics walk the floor. Regulator standing shown (triggers in M5/M8).
 - Drinking fix: trays of 10, servers ask within 6 tiles, the next drink ordered at the last quarter, stronger drink unit; people now actually get drunk.
 - Authorities tab, incident art (marks, lying down, scuffles, vomit), guard/officer/paramedic figures, sounds. Save schema 6 (migration from 5).
-## M5 · Cheats, suspicion tools, enforcement, luck tags ☐
+## M5 · Cheats, suspicion tools, enforcement, luck tags (in progress; see docs/spec/cheats.md)
 ## M6 · Construction: walls, rooms with purposes, outdoors, parcels, theming ☐
 ## M7 · Games catalog and table rules ☐
 ## M8 · Slot designer ☐

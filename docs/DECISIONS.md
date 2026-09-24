@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M5: cheats, suspicion tools, enforcement, luck tags (see docs/spec/cheats.md)
+- Owner said "green light" for M5.
+- **Cheats are about 1% of guests** (owner): uncommon, not a constant stream.
+- **Dark enforcement** (owner): no censorship, but no blood, nudity or suffering: quick, clean animations that don't pull punches. Available from the start once an enforcer is hired (not research-gated).
+- **House treatment for caught cheats** (owner): the enforcement room holds a setting for a first offense and for repeat offenses, chosen from the same actions the player can order on any guest (warning, ban, beating, disappearance).
+- **Bans cover the whole group** (owner).
+- Readiness calls the owner accepted: suspicion tool tiers are set per scenario until the M9 research tree; cameras, a surveillance operator and an enforcer arrive now, pit bosses wait for tables (M7); cheating is slots-only (dealer collusion M7); staff skimming moves to M9 with hidden staff honesty; no regulator triggers in M5 (M8/M9).
+- Change from the readiness note (Claude): walled rooms with purposes already exist, so enforcement uses a real **Enforcement room** and cameras a real **Back office** instead of a stand-in object. Without an enforcement room, a beating or disappearance happens where the guest stands, in front of any witnesses.
+
 ## 2026-09-24 · M4 built (Claude's calls; see docs/spec/incidents.md)
 - Catalog rates, tolerances, `policed` and `drama` values, the police costs and ladder numbers, fines ($100–$1,500), paramedics ($200), closures (3 days; 30 on losing the license) are starting values, tuned only against sanity flags.
 - House rules cover the three policed categories (drunkenness, disorder, misconduct); celebration and social aren't policed. Default Moderate. The drunkenness rule also sets the bar/server cut-off (Moderate 0.8+, Strict 0.5+).

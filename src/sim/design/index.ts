@@ -3,8 +3,9 @@
 // sends. The math is in compile.ts; how guests judge a design in appeal.ts.
 import { STOCK_DESIGNS, STOCK_RESEARCH } from "../../data/designs";
 import {
-  CABINETS, DENOMS, FS_COUNTS, FS_ENH, FS_EVERY, LAYOUTS, NEAR_RANGE, RTP_RANGE, RTP_RIGGED, SLOT_THEMES, TOPPERS,
-  type CabType, type SlotDesign,
+  CABINETS, CAP_RANGE, COLLECT_EVERY, COLLECT_SIZES, COLLECT_X, DENOMS, FEAT_EVERY, FEATURE_RESEARCH, FONTS, FS_COUNTS, FS_ENH, FS_EVERY,
+  INC_RANGE, JACKPOT_KINDS, LAYOUTS, LOGO_FX, MAX_FEATURES, MYSTERY_EVERY, NEAR_RANGE, RTP_RANGE, RTP_RIGGED, SLOT_THEMES, TOPPERS,
+  defaultLook, featuresOf, type CabType, type JackpotHow, type JackpotKind, type SlotDesign,
 } from "../../data/designer";
 import { OBJECTS } from "../../data/objects";
 import { SCENARIOS } from "../../data/scenarios";
@@ -104,7 +105,8 @@ export function designLocks(s: GameState, d: SlotDesign, id?: string): string[] 
   const lr = LAYOUTS[d.layout].research;
   if (lr) need.add(lr);
   if (d.layout.startsWith("w")) need.add("video");
-  if (d.fs) need.add("freespins");
+  for (const f of featuresOf(d)) need.add(FEATURE_RESEARCH[f]);
+  for (const j of d.jackpots) { const r = JACKPOT_KINDS[j.kind ?? "fixed"].research; if (r) need.add(r); }
   const cr = CABINETS[d.cab.type].research;
   if (cr) need.add(cr);
   return [...need].filter((p) => !researched(s, p));
@@ -147,14 +149,15 @@ export function panelMix(s: GameState): Record<string, number> {
   return out;
 }
 
-/** A design made safe to compile: known ids, numbers in range (payback down to the rigging floor). */
+/** A design made safe to compile: known ids, numbers in range (payback down to the rigging floor). The name is kept as typed (trimmed on save). */
 export function sanitize(d: SlotDesign): SlotDesign {
   const c = structuredClone(d);
   const num = (v: unknown, lo: number, hi: number, def: number) => (typeof v === "number" && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def);
+  const int = (v: unknown, lo: number, hi: number, def: number) => Math.round(num(v, lo, hi, def));
   if (!LAYOUTS[c.layout]) c.layout = "l20";
   if (!SLOT_THEMES[c.theme]) c.theme = "classic";
   c.set = c.set === 1 ? 1 : 0;
-  c.name = String(c.name ?? "Untitled").slice(0, 24).trim() || "Untitled";
+  c.name = String(c.name ?? "Untitled").slice(0, 24);
   if (!DENOMS.includes(c.denom)) c.denom = 0.01;
   c.minBet = Math.round(num(c.minBet, 1, 5000, 1));
   c.maxBet = Math.round(num(c.maxBet, c.minBet, 10000, c.minBet));
@@ -163,12 +166,33 @@ export function sanitize(d: SlotDesign): SlotDesign {
   c.vol = num(c.vol, 0, 1, 0.5);
   if (!["none", "plain", "x2", "x3"].includes(c.wild)) c.wild = "plain";
   c.stacks = !!c.stacks;
-  if (c.fs) {
-    c.fs = { every: Math.round(num(c.fs.every, FS_EVERY[0], FS_EVERY[1], 150)), count: Math.round(num(c.fs.count, 0, FS_COUNTS.length - 1, 1)), retrigger: !!c.fs.retrigger, enh: FS_ENH[c.fs.enh] ? c.fs.enh : "none" };
-  }
-  if (LAYOUTS[c.layout].win === "classic") c.fs = null;
-  c.jackpots = (Array.isArray(c.jackpots) ? c.jackpots : []).slice(0, LAYOUTS[c.layout].win === "classic" ? 1 : 4)
-    .map((j) => ({ x: Math.round(num(j.x, 2, 100000, 50)), every: Math.round(num(j.every, 50, 1e8, 1000)) }));
+  const classic = LAYOUTS[c.layout].win === "classic";
+  const obj = (v: unknown) => !classic && !!v && typeof v === "object";
+  c.fs = obj(c.fs) ? { every: int(c.fs!.every, FS_EVERY[0], FS_EVERY[1], 150), count: int(c.fs!.count, 0, FS_COUNTS.length - 1, 1), retrigger: !!c.fs!.retrigger, enh: FS_ENH[c.fs!.enh] ? c.fs!.enh : "none" } : null;
+  c.hns = obj(c.hns) ? { every: int(c.hns!.every, FEAT_EVERY[0], FEAT_EVERY[1], 120), land: int(c.hns!.land, 0, 2, 1), values: int(c.hns!.values, 0, 2, 1) } : null;
+  c.pick = obj(c.pick) ? { every: int(c.pick!.every, FEAT_EVERY[0], FEAT_EVERY[1], 150), mode: c.pick!.mode === "match" ? "match" : "collect", size: int(c.pick!.size, 0, 2, 1) } : null;
+  c.wheel = obj(c.wheel) ? { every: int(c.wheel!.every, FEAT_EVERY[0], FEAT_EVERY[1], 200), spread: int(c.wheel!.spread, 0, 2, 1) } : null;
+  c.cascade = obj(c.cascade) ? { chain: int(c.cascade!.chain, 0, 2, 1), climb: !!c.cascade!.climb } : null;
+  c.collect = obj(c.collect) ? {
+    size: int(c.collect!.size, 0, COLLECT_SIZES.length - 1, 1), every: int(c.collect!.every, COLLECT_EVERY[0], COLLECT_EVERY[1], 300),
+    prize: c.collect!.prize === "super" ? "super" : "credits", x: COLLECT_X.includes(c.collect!.x) ? c.collect!.x : 50,
+  } : null;
+  c.offer = obj(c.offer) ? { every: int(c.offer!.every, FEAT_EVERY[0], FEAT_EVERY[1], 200), size: int(c.offer!.size, 0, 2, 1) } : null;
+  c.mystery = obj(c.mystery) ? { kind: c.mystery!.kind === "wilds" ? "wilds" : "mult", every: int(c.mystery!.every, MYSTERY_EVERY[0], MYSTERY_EVERY[1], 20) } : null;
+  if (c.collect?.prize === "super" && !c.fs) c.collect.prize = "credits";
+  // At most MAX_FEATURES: the last ones switched on go first.
+  for (const f of featuresOf(c).slice(MAX_FEATURES).reverse()) (c as unknown as Record<string, unknown>)[f] = null;
+  const kinds = Object.keys(JACKPOT_KINDS) as JackpotKind[], hows: JackpotHow[] = ["sym", "hns", "wheel", "pick", "mystery"];
+  c.jackpots = (Array.isArray(c.jackpots) ? c.jackpots : []).slice(0, classic ? 1 : 4).map((j) => {
+    const kind = kinds.includes(j.kind as JackpotKind) ? j.kind! : "fixed";
+    const out: SlotDesign["jackpots"][number] = { x: Math.round(num(j.x, 2, 100000, 50)), every: Math.round(num(j.every, 50, 1e8, 1000)) };
+    if (kind !== "fixed") { out.kind = kind; out.inc = Math.round(num(j.inc, INC_RANGE[0], INC_RANGE[1], 0.005) * 10000) / 10000; }
+    if (kind === "mhb") out.cap = Math.round(num(j.cap, CAP_RANGE[0], CAP_RANGE[1], 2) * 100) / 100;
+    const how = hows.includes(j.how as JackpotHow) ? j.how! : "sym";
+    if (kind !== "mhb" && how !== "sym" && !classic) out.how = how;
+    if (j.max && kind !== "mhb") out.max = true;
+    return out;
+  });
   const sh = c.show ?? ({} as SlotDesign["show"]);
   c.show = {
     lights: Math.round(num(sh.lights, 0, 3, 2)), light: Math.round(num(sh.light, 0, 7, 0)), sound: Math.round(num(sh.sound, 0, 3, 2)),
@@ -178,6 +202,11 @@ export function sanitize(d: SlotDesign): SlotDesign {
   };
   const cab = c.cab ?? ({} as SlotDesign["cab"]);
   c.cab = { type: CABINETS[cab.type] ? cab.type : "upright", body: Math.round(num(cab.body, 0, 11, 2)), topper: TOPPERS[cab.topper] ? cab.topper : "none" };
+  // The topper wheel is the wheel feature, on the cabinet.
+  if (c.cab.topper === "wheel" && !c.wheel) c.cab.topper = "none";
+  const lk = c.look ?? defaultLook();
+  c.look = { font: int(lk.font, 0, FONTS.length - 1, 0), fx: int(lk.fx, 0, LOGO_FX.length - 1, 0), top: int(lk.top, 0, 2, 0), meters: int(lk.meters, 0, 2, 1), reels: int(lk.reels, 0, 2, 1), deck: int(lk.deck, 0, 1, 0) };
+  c.origin = c.origin === "stock" || c.origin === "rival" || c.origin === "imported" ? c.origin : "own";
   return c;
 }
 
@@ -189,6 +218,7 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
     validate: (_g, c) => (c.d && typeof c.d === "object" ? null : "No design"),
     apply(g, c) {
       const s = g.state, d = sanitize(c.d);
+      d.name = d.name.trim() || "Untitled";
       const rec = s.designs[d.id];
       if (rec && sameMath(rec.d, d)) { rec.d = d; g.lastDesign = d.id; return; }
       const placed = rec && machinesOf(s, d.id).length > 0;

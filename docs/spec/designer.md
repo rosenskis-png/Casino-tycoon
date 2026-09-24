@@ -1,6 +1,6 @@
 # Slot designer (M8 plan)
 
-**Status: M8 (part 1) built 2026-09-24; M8.5 and M8.6 to come.** Owner's answers and additions in DECISIONS. Code: `src/data/designer.ts` (vocabulary), `src/data/designs.ts` (stock), `src/data/slotTastes.ts` (hidden tastes, pairings), `src/sim/design/` (compile, grid, spin, appeal, lab, checks, index), `src/ui/slot/` (the machine), `src/ui/designer/` (designer, Slots tab), `src/platform/library.ts`. FOUNDATIONS §7.1; NORTH_STAR "The creative core". All numbers are starting values.
+**Status: M8 (part 1) built 2026-09-24; M8.5 and M8.6 to come (owner's notes for both at the end: "M8.5 plan with the owner's notes", "M8.6 additions").** Owner's answers and additions in DECISIONS. Code: `src/data/designer.ts` (vocabulary), `src/data/designs.ts` (stock), `src/data/slotTastes.ts` (hidden tastes, pairings), `src/sim/design/` (compile, grid, spin, appeal, lab, checks, index), `src/ui/slot/` (the machine), `src/ui/designer/` (designer, Slots tab), `src/platform/library.ts`. FOUNDATIONS §7.1; NORTH_STAR "The creative core". All numbers are starting values.
 
 ## The idea
 RollerCoaster Tycoon's coaster builder works because it has **physics** (a coaster can't climb a hill it lacks the speed for), **pieces** (drops, loops, helixes, each with a feel), a **test run** you watch, **three ratings** that are measurements rather than verdicts (Excitement, Intensity, Nausea), and a **park full of guests** who ride it or don't. The slot designer copies that shape:
@@ -237,3 +237,58 @@ Three chats and three releases (each playable; the docs carry context).
 - **Floor:** designs place as `slot_slant`, `slot_upright`, `slot_stepper`, `slot_tall`, `slot_giant` (2×2, one seat) with `o.design`; the original three kinds keep their sprites and prices. A designed slot themes its tile weakly (0.8) and its energy comes from lights, sound and cabinet.
 - **Research:** Video reels, Ways to win, Free spins, Showpiece cabinets (tall, giant), Fast-track certification; information: Slot lab panels. Lucky Dragon joined the Luxury themes project (its decor pieces wait for M8.6).
 - **Not yet:** bank signs, hunters, onlookers at bonuses (M8.5); novelty, trends, rivals, fans, records and Evergreens (M8.6).
+
+## M8.5 plan with the owner's notes (2026-09-24)
+The M8.5 part of §13 stands. Added from the owner's notes after playing M8 (numbers are starting values):
+
+### A. Fixes and polish from playing M8
+- **Spaces in names.** Cause: `sanitize` trims the name on every keystroke, so a typed space vanishes at once. Trim only when the design is saved. Applies to every typed name.
+- **Logo font** (Concept section): about ten styles as data, each an iOS system font stack with a fallback (no font files, so the single-file build stays small): e.g. Impact, Futura condensed, Didot, Copperplate, Rockwell, American Typewriter, Marker Felt, Chalkduster, Snell Roundhand, Papyrus. Plus a logo effect: glow, gold, chrome, outline.
+- **Machine face layout** (Cabinet section; Claude's reading of "change layout and size of screen elements"): top box large / small / none, the meter row in the top box or above the reels or hidden, the reel window's size, and the button deck's size. Cosmetic: free and instant, no certification. Also a game-wide **interface size** setting (small, normal, large) kept on the device.
+- **Slam-stop keeps the win.** A tap while reels spin stops them and goes straight to the win: lines drawn, a quick roll-up, the tier banner and coins. A second tap finishes the roll-up. In a feature, a tap stops the current spin only; a Skip button jumps to the feature's end, which still shows FEATURE WIN.
+- **No spoilers.** The sim still settles each spin at once (honest), but nothing on screen reveals the result early: the credit meter, the casino cash in the top bar and the "up/down … the house's money" line under the game hold their old values until the reveal. Found cause: that line reads the settled totals immediately, for slots and every table game. Feature intros never show a total; FEATURE WIN rolls up from the last shown total instead of appearing as a finished number.
+
+### B. Progressives (revised)
+- **Linked means every machine of the design on the floor** (owner: "shared over all of a similar type of machine"), not just a bank standing side by side. One set of meters per design, fed by all its machines. A **bank sign** becomes an optional decor object that shows a chosen design's live meters wherever it's placed (above a row of them, at a room entrance).
+- **Standalone** (a meter per machine) and **must-hit-by** stay as planned; the kind is per jackpot level.
+- **Pull of a big meter:** a guest's appeal for a machine rises with its biggest meter they can win, measured against their own bet: `+w × clamp(log2(meter ÷ (bet × 200)), 0, 6)`. Every doubling adds the same amount, so each extra dollar counts for less (owner's diminishing returns). `w` follows the type's taste for a big top prize (Retirees and Tourists high, High rollers moderate, Locals low). The sign carries the pull across the room.
+- Eligibility, meters as liabilities, seeds posted on reset, hunters: as planned (§2, §5, §10).
+
+### C. What guests think of each game (owner)
+- Every game kind on the floor (each slot design; each table game, e.g. all blackjack tables) keeps a **thought history**: counts of every thought its players had, per month, for the last **6 months**, plus plays and average visit score.
+- Its card and the Games list show "What guests say (last 6 months)": the top likes and complaints with their share, and a trend arrow against the month before. By guest type only with the Guest breakdowns research (types stay earned).
+- Saved as plain counts, capped at 6 months (small: a few dozen thought ids per game kind).
+
+### D. Provenance (groundwork for M8.6's sale offers)
+- Every design records its **origin**: `own` (designed in this save, including edits of your own), `stock`, `rival` (M8.6), or `imported` (share code or library from another save). Copies inherit the source's origin. Designs already in saves migrate as `own`.
+
+### E. Saves
+- Schema 16 (migration from 15): meters per design (linked) or per machine (standalone), bank signs, thought history per game kind, design `origin`, logo font and face layout. Hunters and onlookers are runtime.
+
+## M8.6 additions (owner, 2026-09-24)
+Kept in M8.6 because both need fans and novelty, which are that part's core. The owner can pull either forward.
+
+### Word of mouth: a design's life curve
+- A new design isn't known on day one. Players come from **awareness × appeal**, per guest type:
+  - **Awareness** grows like real product adoption (a Bass curve): a small start from being new on the floor, then word of mouth from its fans. An S-curve over roughly 2–6 months, faster for a type the design suits.
+  - **Novelty bump:** appeal starts higher than the design's plateau and settles over 6–12 months (as planned in §6; bigger the more different it is from the floor).
+  - **Fans:** good sessions turn regulars into fans (as planned); fans come back for it and tell others, which feeds awareness.
+- Result: plays climb, peak a little above steady state while it's new, then settle where its quality puts it. The design card draws the curve (plays per day by month).
+
+### Selling a design to a slot maker
+The rare jackpot of design: a game good enough that a maker buys it.
+- **Who can get an offer:** a design of origin `own` (not stock, rival, imported or a copy of one), on the floor at least 6 months, with Excitement ≥ 6, a performance index ≥ 1.2 over the last 3 months, at least 50 fans, and payback ≤ 97% (it has to make money, not just be loved at 99%).
+- **Chance:** each month a qualifying design scores s from 0 to 1 (Excitement, performance index, fans, hold); an offer comes with chance 0.5% + 3% × s a month. Even the best design waits a year or so on average.
+- **The offer** (from one of M8.6's fictional makers, a letter with Accept / Decline, open 30 days), each term jittered around s:
+  - **One-time cash:** 10–100× the design's cabinet price.
+  - **Your share of the house edge** on your own machines of it: 25–75%.
+  - **Royalty:** 1–3% of what its machines win in other casinos, paid monthly.
+- **Declining:** there's a 60% chance of another, different offer 3–12 months later if it still qualifies; each further decline cuts that chance by 40%.
+- **After a sale:**
+  - **Your own machines:** each spin sends bet × (1 − payback) × (1 − your share) to the maker, booked as "Game fees". Theoretical, not actual, so a jackpot month never makes the fee negative. Guests see no change.
+  - **Outside casinos:** the maker installs it elsewhere. Its **reach** (machines outside) is drawn once at the sale, skewed low with a long tail (lognormal: median ~20 machines × (0.5 + s), σ ≈ 1.6), then follows the same life curve: climbs over months, holds, fades with age (half-life ~3 years; Evergreens barely fade). Monthly jitter.
+  - **Royalty each month** = reach × its average win per machine on your own floor × 30 days × royalty rate. The median sale pays a trickle; one sale in a thousand or so pays enough a month to win most scenarios (owner's intent).
+  - **Progressives become wide-area** and the maker's liability: you no longer pay its jackpots (not from cash, not through insurance), and the increment from your machines goes to the maker as a fee. The meters also grow from outside play (in proportion to reach) and can be hit outside (chance in proportion to outside coin-in), reset to seed, with a news line ("The Grand on Stampede Gold hit in Laughlin"). A huge meter pulls guests (§B above).
+  - The design's math and features are locked (the maker owns them); cosmetics stay free. You can still place more of it; all fall under the deal.
+- The monthly statement lists installs and royalties; the library records "Sold to …" and peak installs.
+- Scenario goals (M11) may exclude royalties where a scenario wants the casino itself to earn the win.

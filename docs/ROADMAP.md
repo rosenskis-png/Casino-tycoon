@@ -118,6 +118,8 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 ## M8.5 · Slot designer: bonuses and progressives ☐
 - Hold & spin, pick, wheel (and the topper wheel), cascades, collectors, offers, mystery features, each with its own play screen.
 - Standalone, linked (banks with a sign of live meters) and must-hit-by progressives; bet eligibility; meters as liabilities; hunters. Onlookers at big bonuses; hidden pairings. Lightning Link- and wheel-style stock games.
+- Owner's notes (designer.md, "M8.5 plan with the owner's notes"): linked meters shared by every machine of a design, with a doubling-based pull; what guests think of each game over 6 months; logo fonts and face layout; spaces in names; slam-stop keeps the win; no early reveal of results. Save schema 16.
 ## M8.6 · Slot designer: the market ☐
 - Novelty and ageing, boredom and favorites, floor variety, fans who come for a design; a yearly Slot Expo of trends; rival makers' releases to buy, study and copy; guests' wishes; records and Evergreens; research projects; Test Floor and sanity flags per design.
+- Owner's notes (designer.md, "M8.6 additions"): word of mouth (awareness curve, novelty bump, fans, steady state); slot makers' offers to buy your own designs (cash, a share of the edge, royalties with a long tail, wide-area progressives).
 ## M11 · Scenarios, tutorial, balance ☐

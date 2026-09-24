@@ -2,6 +2,11 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8.5 planned with the owner's notes (see docs/spec/designer.md, last two sections)
+- Owner's notes after playing M8 folded into the plan: spaces in names, logo fonts, face layout, slam-stop keeps the win, no early reveal (slots and tables), word of mouth, linked progressives shared by every machine of a design with a pull that grows per doubling of meter ÷ bet, thought history per game kind for 6 months, and slot makers buying the player's own designs (one-time cash 10–100× cabinet price, 25–75% of the edge kept, 1–3% royalties on outside wins, wide-area progressives after a sale, a decent chance of a new offer after a decline).
+- **Claude's calls (owner can overrule):** word of mouth and sale offers go in M8.6 (they need fans and novelty); M8.5 records design origin so they work later. After a sale the maker's cut is on theoretical edge, not actual win. "Layout and size of screen elements" read as the machine face (designer) plus a game-wide interface size. Linked banks no longer need to stand together; the bank sign becomes a placeable display.
+- Waiting on the owner's green light for M8.5.
+
 ## 2026-09-24 · M8 built: the designer and the base game (Claude's calls; see docs/spec/designer.md "As built")
 - Everything in the M8 part of the plan, plus the owner's additions: forced outcomes in the lab (any win tier, free spins, every jackpot, the top award, near misses, dressed-up losses), a live machine preview while designing, and a play screen modeled on the reference screenshots (top box, meters, side badges, credit/bet/win bar, button deck, hand pays).
 - **The original three machines keep their old top prize as a jackpot** (same payback share), so they swing as before; guests' appeal for them is calibrated within ±0.15 of the old per-type values (the plan said ±0.1: two type/machine pairs land at 0.12–0.13 with starting tastes).
@@ -357,4 +362,4 @@ Replaces the same-day "time and population" decision, which kept time of day.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- Nothing pending.
+- Green light for M8.5 (plan in docs/spec/designer.md, last two sections).

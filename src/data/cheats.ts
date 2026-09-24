@@ -20,6 +20,14 @@ export const CATCH_GUARD = 0.006;
 export const CATCH_CAMERA = 0.004;
 /** Tiles within which a guard in view can catch a cheat. */
 export const GUARD_SIGHT = 8;
+/**
+ * (M7) At tables: per second of cheating, per pit boss in view (within PIT_SIGHT) and for a dealer at the table
+ * itself; per second of a card counter at blackjack in a pit boss's view, the chance they get noticed.
+ */
+export const CATCH_PIT = 0.012;
+export const CATCH_DEALER = 0.002;
+export const PIT_SIGHT = 8;
+export const COUNT_SPOT = 0.004;
 /** Marked guests are this much likelier to be caught. */
 export const MARKED = 2.5;
 /** Cameras one surveillance operator at a desk can watch. */

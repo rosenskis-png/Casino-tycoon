@@ -73,10 +73,22 @@ function pulls(g: Game, type: GuestTypeDef): number[] {
   });
 }
 
-/** Extra arrivals a type makes because of what the casino has (a multiplier: 1 + pull). */
+/** Extra arrivals a type makes because of what the casino has (a multiplier: 1 + pull), and its tables (M7). */
 export function amenityPull(g: Game, typeId: string): number {
   const type = GUEST_TYPES[typeId];
-  return type ? 1 + pulls(g, type).reduce((a, b) => a + b, 0) : 1;
+  return type ? (1 + pulls(g, type).reduce((a, b) => a + b, 0)) * tablePull(g, type) : 1;
+}
+
+/**
+ * Types that come for the tables (High rollers, docs/spec/tables.md) come far less to a casino without any, and
+ * more to one with tables in a high-limit room.
+ */
+function tablePull(g: Game, type: GuestTypeDef): number {
+  const d = type.tableDraw;
+  if (!d) return 1;
+  if (!g.tables.length) return 1 - d + d * 0.2;
+  const hl = g.tables.some((o) => stakeMult(g, o) > 1);
+  return 1 - d + d * (hl ? 1.5 : 1);
 }
 
 /** Why an arriving group came: a meal, a show, the club (at the share of arrivals those pulls account for), or undefined. */
@@ -102,7 +114,7 @@ export function stakeMult(g: Game, o: PlacedObject): number {
   if (!c || c.rooms !== g.rooms.rooms) {
     const ids = new Set<number>();
     if (g.state.roomMeta.some((m) => m.purpose === "highlimit"))
-      for (const q of g.state.objects) if (OBJECTS[q.kind].slot && purposeOf(g, q) === "highlimit") ids.add(q.id);
+      for (const q of g.state.objects) if ((OBJECTS[q.kind].slot || OBJECTS[q.kind].game) && purposeOf(g, q) === "highlimit") ids.add(q.id);
     highLimit.set(g, (c = { rooms: g.rooms.rooms, ids }));
   }
   return c.ids.has(o.id) ? 5 : 1;

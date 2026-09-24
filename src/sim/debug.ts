@@ -7,7 +7,12 @@ import { CHANNELS } from "../data/fields";
 import { SLOT_MODELS, expectedReturn } from "../data/games";
 import { STAFF_ROLES } from "../data/staff";
 import { ENF, ENF_ACTIONS, LUCK_SHIFT } from "../data/cheats";
-import { luckRedraw, luckVoid } from "./cheats";
+import { luckConvert, luckRedraw, luckVoid } from "./cheats";
+import {
+  BAC_P, CRAPS_OUTCOMES, KENO_SPOTS, TABLE_GAMES, VP_MISTAKES, bacModel, bjEdge, bjModel, commission, kenoCatch, kenoModel,
+  lineModel, oddsModel, pockets, rouletteModel, ROULETTE_BETS, vpModel, vpPayback,
+} from "../data/tables";
+import type { SlotModel } from "../data/games";
 import { GUEST_TYPES } from "../data/guests";
 import { TICKS_PER_DAY } from "./clock";
 import { Game } from "./game";
@@ -89,6 +94,13 @@ export function checkInvariants(g: Game): string[] {
     if (a.t < 0 || a.t >= a.steps) p.push(`agent ${a.id} bad progress`);
     if (a.role !== "guest" && a.role !== "officer" && a.role !== "medic" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
     if (a.role === "server" && (a.tray?.length ?? 0) > TRAY) p.push(`server ${a.id} carrying ${a.tray!.length} drinks`);
+    if (a.role === "dealer" && a.act === "deal") {
+      const o = s.objects.find((o) => o.id === a.target), st = o && objSeats(o)[a.seat];
+      if (!st || st.kind !== "dealer" || st.x !== a.x || st.y !== a.y) p.push(`dealer ${a.id} dealing away from a dealer's spot`);
+      const key = `d${a.target}:${a.seat}`;
+      if (held.has(key)) p.push(`two dealers at ${key}`);
+      held.set(key, a.id);
+    }
     if (a.role === "guest") {
       const gd = a.g;
       if (!gd || !GUEST_TYPES[gd.type]) { p.push(`guest ${a.id} missing data`); continue; }
@@ -102,6 +114,7 @@ export function checkInvariants(g: Game): string[] {
         const o = s.objects.find((o) => o.id === a.target);
         if (!o) p.push(`guest ${a.id} holds a seat on missing object ${a.target}`);
         else if (a.seat >= seatCount(o)) p.push(`guest ${a.id} holds a seat that doesn't exist`);
+        else if (objSeats(o)[a.seat].kind === "dealer") p.push(`guest ${a.id} holds a dealer's spot`);
       }
       if (a.hidden && a.act !== "restroom") p.push(`guest ${a.id} hidden while ${a.act}`);
       if (!(gd.drink >= 0 && gd.drink <= 1)) p.push(`guest ${a.id} drink out of range`);
@@ -197,6 +210,59 @@ export function mathChecks(): string[] {
     if (Math.abs(m.rtp + (1 - h) * up * m.rtp - (m.rtp + LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: lucky payback off`);
     if (Math.abs(m.rtp * (1 - down) - (m.rtp - LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: unlucky payback off`);
   }
+  p.push(...tableMathChecks());
+  return p;
+}
+
+/** Table games (docs/spec/tables.md): every model returns its analytic value, and luck stays exact on each. */
+function tableMathChecks(): string[] {
+  const p: string[] = [];
+  const eq = (what: string, got: number, want: number) => { if (Math.abs(got - want) > 1e-12) p.push(`${what}: returns ${got}, should be ${want}`); };
+  const sane = (m: SlotModel) => {
+    const h = m.pays.reduce((a, q) => a + q.p, 0);
+    if (!(h > 0 && h < 1) || m.pays.some((q) => q.p <= 0 || q.x <= 0)) p.push(`${m.id}: bad probabilities`);
+    const down = luckVoid(m), up = m.shared ? luckConvert(m) : luckRedraw(m);
+    if (!(up > 0 && up <= 1 && down > 0 && down <= 1)) p.push(`${m.id}: luck chances out of range`);
+    // Lucky: a converted loss pays the bet's win; a redrawn one pays the average.
+    const lucky = m.shared ? m.rtp + (1 - h) * up * m.win! : m.rtp + (1 - h) * up * m.rtp;
+    if (Math.abs(lucky - (m.rtp + LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: lucky payback off`);
+    if (Math.abs(m.rtp * (1 - down) - (m.rtp - LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: unlucky payback off`);
+  };
+  for (let pay = 0; pay < 4; pay++) for (let sk = 0; sk < 3; sk++) {
+    const m = vpModel(pay, sk);
+    eq(m.id, m.rtp, vpPayback(pay) - VP_MISTAKES[sk]);
+    sane(m);
+  }
+  if (Math.abs(vpPayback(0) - 0.99544) > 1e-5) p.push(`vp 9/6: returns ${vpPayback(0)}, should be about 0.99544`);
+  const bjRules: number[][] = [];
+  for (let a = 0; a < 2; a++) for (let b = 0; b < 4; b++) for (let c = 0; c < 2; c++) bjRules.push([a, b, c]);
+  for (const rl of bjRules) for (let sk = 0; sk < 3; sk++) for (let ct = 0; ct < 2; ct++) {
+    const m = bjModel(rl, sk, ct);
+    eq(m.id, m.rtp, 1 - bjEdge(rl, sk, ct));
+    sane(m);
+  }
+  for (const zero of [0, 1]) for (let b = 0; b < ROULETTE_BETS.length; b++) {
+    const m = rouletteModel([zero], b);
+    eq(m.id, m.rtp, 36 / pockets([zero]));
+    sane(m);
+  }
+  eq("craps outcomes", CRAPS_OUTCOMES.reduce((a, o) => a + o.p, 0), 1);
+  eq("pass line", lineModel(0).rtp, 488 / 495);
+  eq("don't pass", lineModel(1).rtp, 1 - 3 / 220);
+  sane(lineModel(0)); sane(lineModel(1));
+  for (const n of [4, 5, 6, 8, 9, 10]) { eq(`odds ${n}`, oddsModel(n).rtp, 1); sane(oddsModel(n)); }
+  for (const c of [0, 1]) for (let b = 0; b < 3; b++) {
+    const m = bacModel([c], b), k = commission([c]);
+    eq(m.id, m.rtp, b === 0 ? BAC_P.banker * (2 - k) + BAC_P.tie : b === 1 ? 2 * BAC_P.player + BAC_P.tie : 9 * BAC_P.tie);
+    sane(m);
+  }
+  for (const n of KENO_SPOTS) {
+    let tot = 0;
+    for (let k = 0; k <= n; k++) tot += kenoCatch(n, k);
+    eq(`keno ${n}-spot catches`, tot, 1);
+    sane(kenoModel(n));
+  }
+  for (const o of Object.values(OBJECTS)) if (o.game && !TABLE_GAMES[o.game]) p.push(`${o.id}: unknown game ${o.game}`);
   return p;
 }
 
@@ -262,6 +328,14 @@ function fiddle(g: Game) {
       else g.dispatch({ type: "enforce", id: a.id, action: r.pick(ENF_ACTIONS) });
     }
     if (r.chance(0.2)) g.dispatch({ type: "setTreatment", first: r.pick(ENF_ACTIONS), repeat: r.pick(ENF_ACTIONS) });
+  }
+  else if (roll < 0.94) {
+    // M7: table rules and limits.
+    const tables = g.state.objects.filter((o) => OBJECTS[o.kind].game);
+    if (tables.length) {
+      const o = r.pick(tables), def = TABLE_GAMES[OBJECTS[o.kind].game!];
+      g.dispatch({ type: "setTable", id: o.id, rules: def.rules.map((q) => r.int(0, q.opts.length - 1)), lim: r.int(0, def.limits.length - 1) });
+    }
   }
   else if (roll < 0.945) g.dispatch({ type: "setRule", cat: r.pick(["intox", "disorder", "misconduct"] as const), level: r.int(0, 3) });
   else if (roll < 0.95) {

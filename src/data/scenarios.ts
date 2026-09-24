@@ -116,7 +116,7 @@ function bigFloor(): ScenarioDef {
 
 /**
  * Test Floor: a realistic, fully equipped casino on the tutorial lot for headless reports (`npm run targets`):
- * slot banks with seats on the aisles in view of the door, a quiet back room, bars, restrooms, a cage and an ATM
+ * slot banks with seats on the aisles in view of the door, a table pit (M7), a quiet back room, bars, restrooms, a cage and an ATM
  * near the door, decor (planters included), scattered signs, a strong-drinks bar, and staff including drink servers
  * and security guards. Measure guest behavior here, never
  * on a bare or deliberately flawed floor (docs/spec/guests.md §Targets).
@@ -133,7 +133,7 @@ function testFloor(): ScenarioDef {
   // The east wing (M6): a high-limit room (next to the quiet back room), a show lounge and a club off the floor;
   // a restaurant, a smoking room and a card holders' lounge bar beyond them, with restrooms.
   objects.push(
-    ...row("slot_liberty", 51, 7, 8, 0), ...row("slot_thunder", 51, 10, 8, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
+    ...row("slot_liberty", 51, 7, 8, 0), { kind: "baccarat", x: 52, y: 10, rot: 0 }, ...row("slot_thunder", 57, 10, 4, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
     { kind: "showlounge", x: 51, y: 14, rot: 0, w: 9, h: 7 },
     { kind: "club", x: 51, y: 23, rot: 0, w: 9, h: 5 }, { kind: "restroom", x: 51, y: 28, rot: 0, w: 3, h: 2 },
     { kind: "restroom", x: 69, y: 10, rot: 0, w: 3, h: 2 }, { kind: "restroom", x: 69, y: 28, rot: 0, w: 3, h: 2 },
@@ -141,6 +141,13 @@ function testFloor(): ScenarioDef {
     ...row("slot_cherry", 63, 16, 8, 0), ...row("slot_liberty", 63, 19, 8, 2),
     { kind: "bar", x: 64, y: 24, rot: 0, w: 5, h: 3 }, { kind: "plant", x: 72, y: 24, rot: 0 },
     { kind: "sign", x: 60, y: 20, rot: 0 }, { kind: "sign", x: 47, y: 19, rot: 0 }, { kind: "sign", x: 47, y: 7, rot: 0 },
+  );
+  // Tables (M7): a pit across the top of the main floor (two blackjack tables, roulette, craps), poker, a keno
+  // lounge and video poker near the door, and a bingo hall in the quiet back room. Baccarat is in the high-limit room.
+  objects.push(
+    { kind: "blackjack", x: 9, y: 10, rot: 0 }, { kind: "blackjack", x: 14, y: 10, rot: 0 }, { kind: "roulette", x: 19, y: 10, rot: 0 },
+    { kind: "craps", x: 25, y: 10, rot: 0 }, { kind: "poker", x: 29, y: 27, rot: 0 }, { kind: "keno", x: 20, y: 27, rot: 0 },
+    ...row("vpoker", 9, 27, 4), { kind: "bingo", x: 38, y: 11, rot: 0 },
   );
   // Themes (M6.5): a Deco high-limit room, a Rat Pack showroom, an Atomic club, a Riviera diner, a Deco and Rat
   // Pack members' bar, and Tiki and Pirate pieces by the fountain on the main floor.
@@ -169,7 +176,7 @@ function testFloor(): ScenarioDef {
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
     { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 41, y: 30, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
     { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 43, y: 23, rot: 0 },
-    { kind: "sign", x: 7, y: 17, rot: 0 }, { kind: "sign", x: 23, y: 11, rot: 0 }, { kind: "sign", x: 38, y: 12, rot: 0 },
+    { kind: "sign", x: 7, y: 17, rot: 0 }, { kind: "sign", x: 23, y: 11, rot: 0 }, { kind: "sign", x: 46, y: 11, rot: 0 },
     // Cameras over the slot banks and the back room, watched from the office; a dumpster out back.
     { kind: "camera", x: 8, y: 20, rot: 0 }, { kind: "camera", x: 18, y: 21, rot: 0 }, { kind: "camera", x: 28, y: 21, rot: 0 },
     { kind: "camera", x: 38, y: 21, rot: 0 }, { kind: "camera", x: 28, y: 17, rot: 0 }, { kind: "camera", x: 42, y: 10, rot: 0 },
@@ -177,7 +184,7 @@ function testFloor(): ScenarioDef {
   );
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1 },
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1, dealer: 9, pitboss: 1 },
     // The tutorial lot, widened for the east wing.
     w: 80, grounds: [{ x: 2, y: 2, w: 76, h: 40 }], buildings: [...LOT.buildings, { x: 49, y: 4, w: 25, h: 28 }],
     sidewalks: [{ from: [0, 42], to: [79, 42] }],
@@ -194,8 +201,8 @@ function testFloor(): ScenarioDef {
       { x: 62, y: 15, name: "Smoking lounge", purpose: "smoking" }, { x: 62, y: 23, name: "Members' bar", purpose: "bar" },
     ],
     footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
-    market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4,
+    market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 }, highroller: { size: 25, regulars: 0.3 } },
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4,
   };
 }
 
@@ -240,8 +247,8 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     staff: {},
     footfall: 0.5,
     street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
-    market: { local: { size: 220, regulars: 0 }, retiree: { size: 140, regulars: 0 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 },
+    market: { local: { size: 220, regulars: 0 }, retiree: { size: 140, regulars: 0 }, highroller: { size: 40, regulars: 0 } },
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1 },
     rep: {},
     arrivals: 0.45,
     maxGuests: 400,

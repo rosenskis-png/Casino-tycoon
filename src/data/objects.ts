@@ -3,13 +3,14 @@
 import type { Emission } from "./fields";
 import type { RoomPurpose } from "./rooms";
 import type { ThemeId, ThemeTags } from "./themes";
+import type { Family } from "./tables";
 
 /**
  * stool/stand: a guest sits or stands there, visible; hidden: inside (restroom stalls); chair: a table or show
  * seat (drawn as a chair facing `f`); dance: a spot on a dance floor. `f` is a facing in the rotation-0 frame
- * (0 down, 1 left, 2 up, 3 right).
+ * (0 down, 1 left, 2 up, 3 right). dealer (M7): where a dealer stands to run a table; guests never take it.
  */
-export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hidden" | "chair" | "dance" | "lounger" | "swim" | "bench"; f?: number }
+export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hidden" | "chair" | "dance" | "lounger" | "swim" | "bench" | "dealer"; f?: number }
 
 /**
  * Amenities as places (FOUNDATIONS §8, docs/spec/construction.md): dragged to a size, with the layout, seats,
@@ -36,7 +37,7 @@ export interface SizedDef {
 export interface ObjectDef {
   id: string;
   name: string;
-  cat: "game" | "amenity" | "outdoor" | "decor" | "security";
+  cat: "game" | "table" | "amenity" | "outdoor" | "decor" | "security";
   w: number;
   h: number;
   cost: number;
@@ -57,6 +58,8 @@ export interface ObjectDef {
   seats: SeatDef[];
   /** Slot model id (data/games.ts). */
   slot?: string;
+  /** (M7) Video poker, table games and the draw games (data/tables.ts; docs/spec/tables.md). */
+  game?: Family;
   /** Sized amenities (M6): w and h above are the default size. */
   sized?: SizedDef;
   /** What using it does for a guest. */
@@ -137,6 +140,63 @@ const THEMED_DECOR: Record<string, ObjectDef> = Object.fromEntries(DECOR_ROWS.ma
 
 const FRONT: SeatDef[] = [{ dx: 0, dy: 1, kind: "stool" }];
 
+
+/** Seats in a row along the front (dy), facing up at the table, from dx a to b. */
+const front = (a: number, b: number, dy: number, kind: SeatDef["kind"]): SeatDef[] => Array.from({ length: b - a + 1 }, (_, k) => ({ dx: a + k, dy, kind, f: 2 }));
+const dealer = (dx: number, dy = -1): SeatDef => ({ dx, dy, kind: "dealer", f: 0 });
+const sides = (w: number, dy: number, kind: SeatDef["kind"]): SeatDef[] => [{ dx: -1, dy, kind, f: 3 }, { dx: w, dy, kind, f: 1 }];
+
+/** Table games and draw games (M7, docs/spec/tables.md). Tables are low: people see over them. */
+const TABLES: Record<string, ObjectDef> = {
+  vpoker: {
+    id: "vpoker", name: "Video Poker", cat: "game", w: 1, h: 1, cost: 500, upkeep: 2, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 0.8, radius: 2 }], sprite: "vpoker", art: "facing", seats: FRONT, game: "vpoker",
+    desc: "Jacks or Better. The best payback in the house for a player who knows the game; mistakes cost them.",
+  },
+  blackjack: {
+    id: "blackjack", name: "Blackjack", cat: "table", w: 3, h: 1, cost: 1500, upkeep: 10, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1, radius: 2 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "felt", art: "whole",
+    seats: [...front(0, 2, 1, "stool"), ...sides(3, 0, "stool"), dealer(1)], game: "blackjack",
+    desc: "Five stools and a dealer. A low edge, if the players know what they're doing.",
+  },
+  roulette: {
+    id: "roulette", name: "Roulette", cat: "table", w: 4, h: 1, cost: 2500, upkeep: 12, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1.5, radius: 3 }, { channel: "PRS", strength: 1.5, radius: 3 }], sprite: "felt", art: "whole",
+    seats: [...front(0, 3, 1, "stool"), { dx: 4, dy: 0, kind: "stool", f: 1 }, dealer(1)], game: "roulette",
+    desc: "A wheel and five stools. Slow, social, and every bet carries the same edge.",
+  },
+  craps: {
+    id: "craps", name: "Craps", cat: "table", w: 5, h: 2, cost: 3500, upkeep: 15, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 4, radius: 5 }], sprite: "felt", art: "whole",
+    seats: [...front(0, 4, 2, "stand"), ...sides(5, 0, "stand"), ...sides(5, 1, "stand"), dealer(1), dealer(3)], game: "craps",
+    desc: "Nine players standing and two dealers. Loud: the whole table wins together, and a crowd gathers.",
+  },
+  baccarat: {
+    id: "baccarat", name: "Baccarat", cat: "table", w: 4, h: 2, cost: 3000, upkeep: 12, blocks: true, place: "indoor",
+    emits: [{ channel: "PRS", strength: 2.5, radius: 3 }], sprite: "felt", art: "whole",
+    seats: [...front(0, 3, 2, "chair"), ...sides(4, 1, "chair"), dealer(1)], game: "baccarat",
+    desc: "Six chairs and big bets. A low edge and large swings; its players like privacy.",
+  },
+  poker: {
+    id: "poker", name: "Poker Table", cat: "table", w: 4, h: 2, cost: 1800, upkeep: 8, blocks: true, place: "indoor",
+    emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "felt", art: "whole",
+    seats: [...front(0, 3, 2, "chair"), ...sides(4, 1, "chair"), dealer(1)], game: "poker",
+    desc: "Players against each other; the house takes a rake from every pot. Needs two players.",
+  },
+  keno: {
+    id: "keno", name: "Keno Lounge", cat: "table", w: 4, h: 1, cost: 2000, upkeep: 10, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 0.5, radius: 3 }], sprite: "board", art: "whole",
+    seats: [...front(0, 3, 1, "chair"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "keno",
+    desc: "A board of 80 numbers and eight chairs. A draw every so often; cheap tickets, a steep edge.",
+  },
+  bingo: {
+    id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 3500, upkeep: 15, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 2, radius: 4 }], sprite: "board", art: "whole",
+    seats: [...front(0, 5, 1, "chair"), ...front(0, 5, 2, "chair"), ...front(0, 5, 3, "chair"), dealer(-1, 0)], game: "bingo",
+    desc: "A caller and eighteen chairs. The prize is the cards sold less the house's hold: the fuller the room, the bigger it gets.",
+  },
+};
+
 export const OBJECTS: Record<string, ObjectDef> = {
   slot_cherry: {
     id: "slot_cherry", name: "Cherry Parade", cat: "game", w: 1, h: 1, cost: 300, upkeep: 2, blocks: true, opaque: true, place: "indoor",
@@ -195,6 +255,7 @@ export const OBJECTS: Record<string, ObjectDef> = {
     sized: { layout: "club", min: [4, 4], max: [14, 12], cost: [2500, 150], upkeep: [40, 2, 0], tiers: ["Dance hall", "Club", "Superclub"], tierAt: [16, 40], staffEvery: 0, purpose: "club" },
     desc: "A DJ and a dance floor. Loud through the walls. Party crowds come for it; dancing is thirsty work.",
   },
+  ...TABLES,
   atm: {
     id: "atm", name: "ATM", cat: "amenity", w: 1, h: 1, cost: 600, upkeep: 6, blocks: true, opaque: true, place: "indoor",
     emits: [], sprite: "atm", art: "whole", seats: FRONT.map((s) => ({ ...s, kind: "stand" as const })),
@@ -271,7 +332,8 @@ export const OBJECTS: Record<string, ObjectDef> = {
 };
 
 export const OBJECT_CATS: { id: ObjectDef["cat"]; label: string }[] = [
-  { id: "game", label: "Slots" },
+  { id: "game", label: "Games" },
+  { id: "table", label: "Tables" },
   { id: "amenity", label: "Amenities" },
   { id: "outdoor", label: "Outdoors" },
   { id: "decor", label: "Decoration" },

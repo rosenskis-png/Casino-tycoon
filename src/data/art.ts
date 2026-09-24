@@ -1025,6 +1025,23 @@ export const PEOPLE: Record<string, LookSet> = {
       [{ o: "dress", h: "long" }, { o: "dress", h: "bun" }, { o: "dress", h: "bob" }, { o: "dress", h: "long" }],
     ],
   },
+  highroller: {
+    variants: 12, skin: SKINS, hair: HAIRS, shoes: ["#101014", "#3a1a12", "#c8a040"],
+    top: ["#141418", "#1c2238", "#4a1422", "#2a2a30", "#e8e4dc"],
+    bottom: ["#141418", "#1c2238", "#26262e"], accent: ["#c99a3e", "#e8e4dc", "#6e1624"], hat: ["#141418"],
+    styles: [
+      [{ o: "blazer", h: "short" }, { o: "blazer", h: "crop", x: ["glasses"] }, { o: "blazer", h: "bald" }],
+      [{ o: "dress", h: "bun" }, { o: "dress", h: "long" }, { o: "blazer", h: "bob" }],
+    ],
+  },
+  dealer: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#7a1a2c"], bottom: ["#141418"], accent: ["#f6f1e6"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "crop", x: ["bowtie"] }], [{ o: "blazer", h: "bun", x: ["bowtie"] }]],
+  },
+  pitboss: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#1c1c22"], bottom: ["#1c1c22"], accent: ["#e8e4dc"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "short" }], [{ o: "blazer", h: "bob" }]],
+  },
   janitor: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#5f7a8c"], bottom: ["#5f7a8c"], accent: ["#e8e0cc"], hat: ["#34485a"],
     styles: [[{ o: "coverall", h: "cap" }], [{ o: "coverall", h: "cap" }]],

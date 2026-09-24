@@ -57,8 +57,18 @@ export interface GuestTypeDef {
   chase: number;
   /** (M9) Credit behavior. */
   credit: number;
-  /** Appeal of each slot model, 0..1. */
+  /** Appeal of each slot model, and (M7) of each table game family (data/tables.ts), 0..1. */
   games: Record<string, number>;
+  /**
+   * (M7, docs/spec/tables.md) Tables: stake per hand as a multiple of their usual stake per wager; how much a
+   * table's rules sway them (0 = never notice); skill weights (poor, typical, sharp); share who count cards; and
+   * how much their coming at all depends on the casino having tables (0 = not at all).
+   */
+  tableStake: number;
+  rules: number;
+  skill: [number, number, number];
+  counters: number;
+  tableDraw: number;
   prefs: Partial<Record<Taste, Pref>>;
   /** Walk-in appeal: how readily a passer-by of this type steps inside (times the entrance's curb appeal). */
   walkIn: number;
@@ -124,7 +134,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     browse: 40,
     chase: 0.01,
     credit: 0,
-    games: { cherry: 0.5, liberty: 1, thunder: 0.6 },
+    games: { cherry: 0.5, liberty: 1, thunder: 0.6, vpoker: 0.9, blackjack: 0.8, craps: 0.6, roulette: 0.4, baccarat: 0.2, poker: 0.5, keno: 0.3, bingo: 0.3 },
+    tableStake: 6, rules: 0.6, skill: [0.25, 0.55, 0.2], counters: 0.01, tableDraw: 0,
     prefs: { NRG: { ideal: 5, tol: 5, w: 0.6 }, CRW: { ideal: 2, tol: 3, w: 0.8 }, DIRT: { ideal: 0, tol: 2, w: 0.9 }, PRS: { ideal: 1, tol: 3, w: 0.3 } },
     walkIn: 0.25,
     incidents: { intox: 1, disorder: 1, misconduct: 0.8, celebration: 1, social: 0.6 },
@@ -149,7 +160,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     browse: 50,
     chase: 0.003,
     credit: 0,
-    games: { cherry: 1, liberty: 0.7, thunder: 0.2 },
+    games: { cherry: 1, liberty: 0.7, thunder: 0.2, vpoker: 0.7, blackjack: 0.3, roulette: 0.4, craps: 0.1, baccarat: 0.1, poker: 0.2, keno: 1, bingo: 1 },
+    tableStake: 4, rules: 0, skill: [0.3, 0.6, 0.1], counters: 0.002, tableDraw: 0,
     prefs: { NRG: { ideal: 2, tol: 4, w: 1 }, CRW: { ideal: 1, tol: 2, w: 1 }, DIRT: { ideal: 0, tol: 1, w: 1.2 }, PRS: { ideal: 3, tol: 3, w: 0.5 } },
     walkIn: 0.15,
     incidents: { intox: 0.5, disorder: 0.4, misconduct: 0.3, celebration: 0.8, social: 0.3 },
@@ -174,7 +186,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     browse: 60,
     chase: 0.003,
     credit: 0,
-    games: { cherry: 0.8, liberty: 0.4, thunder: 1 },
+    games: { cherry: 0.8, liberty: 0.4, thunder: 1, vpoker: 0.3, blackjack: 0.6, roulette: 1, craps: 0.8, baccarat: 0.3, poker: 0.3, keno: 0.4, bingo: 0.2 },
+    tableStake: 5, rules: 0, skill: [0.55, 0.4, 0.05], counters: 0.003, tableDraw: 0,
     prefs: { NRG: { ideal: 10, tol: 6, w: 1 }, CRW: { ideal: 4, tol: 3, w: 0.5 }, PRS: { ideal: 5, tol: 4, w: 0.8 }, DIRT: { ideal: 0, tol: 1.5, w: 1 }, TRF: { ideal: 3, tol: 3, w: 0.4 } },
     walkIn: 0.35,
     incidents: { intox: 1.1, disorder: 0.8, misconduct: 0.8, celebration: 1.3, social: 1 },
@@ -199,7 +212,8 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     browse: 25,
     chase: 0,
     credit: 0,
-    games: { cherry: 0.7, liberty: 0.3, thunder: 1 },
+    games: { cherry: 0.7, liberty: 0.3, thunder: 1, vpoker: 0.1, blackjack: 0.6, roulette: 0.7, craps: 1, baccarat: 0.2, poker: 0.3, keno: 0.1, bingo: 0.1 },
+    tableStake: 6, rules: 0, skill: [0.6, 0.35, 0.05], counters: 0, tableDraw: 0,
     prefs: { NRG: { ideal: 12, tol: 6, w: 1.2 }, CRW: { ideal: 6, tol: 4, w: 0.6 }, PRS: { ideal: 3, tol: 4, w: 0.3 }, DIRT: { ideal: 0, tol: 3, w: 0.5 } },
     walkIn: 0.3,
     incidents: { intox: 1.5, disorder: 1.3, misconduct: 1.4, celebration: 1.5, social: 1.6 },
@@ -209,6 +223,32 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.4, fatigue: 0.15 },
     secPerDollar: 3.3,
     comeFor: { dine: 0.05, show: 0.1, club: 0.45, pool: 0.2 }, smokers: 0.35, theming: 0.6,
+  },
+  highroller: {
+    id: "highroller", name: "High rollers",
+    arrival: { base: 0.05, season: flat() }, payday: 0,
+    returns: { share: 0.7, days: { median: 20, sigma: 0.5, min: 7, cap: 60 } },
+    group: [0.5, 0.4, 0.1],
+    budget: { median: 2000, sigma: 0.6, min: 500, cap: 20000 },
+    minutes: { mean: 10, sd: 3, min: 2 },
+    savings: { median: 100000, sigma: 1, min: 10000 }, income: { median: 5000, sigma: 0.6, min: 1000 },
+    tripCap: { median: 5000, sigma: 0.7, min: 1000, cap: 50000 },
+    atm: { never: 0.5, draw: { median: 500, sigma: 0.5, min: 100 }, again: 0.3 },
+    drinking: { sober: 0.3, mean: 0.3, sd: 0.1, cap: 1.2, overshoot: 0.05, first: 0.2, accept: 0.4, sip: 90 },
+    browse: 30,
+    chase: 0.004,
+    credit: 0,
+    games: { cherry: 0, liberty: 0.3, thunder: 0.4, vpoker: 0.3, blackjack: 0.9, roulette: 0.6, craps: 0.6, baccarat: 1, poker: 0.5, keno: 0, bingo: 0 },
+    tableStake: 1.5, rules: 1, skill: [0.15, 0.5, 0.35], counters: 0.02, tableDraw: 0.85,
+    prefs: { PRS: { ideal: 8, tol: 4, w: 1.2 }, CRW: { ideal: 1, tol: 2, w: 1 }, NRG: { ideal: 4, tol: 4, w: 0.6 }, DIRT: { ideal: 0, tol: 1, w: 1.2 }, TRF: { ideal: 1, tol: 3, w: 0.6 } },
+    walkIn: 0.1,
+    incidents: { intox: 0.6, disorder: 0.4, misconduct: 0.3, celebration: 0.8, social: 0.6 },
+    tolerance: { intox: 0.2, disorder: 0.1, misconduct: 0.1, celebration: 0.8, social: 0.6 }, policed: 0.8,
+    drama: 0.2, cheat: 0.01, repSensitivity: 1.3, comps: 1,
+    play: { stake: [0.01, 0.025], pace: [0.9, 1.1], quit: { winGoal: 2, lossLimit: 3, broke: 0.5, jackpot: 0.5 }, winGoal: [0.5, 1.5], lossLimit: [0.5, 0.9], compSeek: 0 },
+    needs: { bladder: 0.3, hunger: 0.12, thirst: 0.3, fatigue: 0.12 },
+    secPerDollar: 1.5,
+    comeFor: { dine: 0.3, show: 0.2, club: 0.02, pool: 0.1 }, smokers: 0.2, theming: 0.8,
   },
 };
 export type GuestTypeId = keyof typeof GUEST_TYPES;

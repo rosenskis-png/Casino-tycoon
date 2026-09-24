@@ -2,6 +2,9 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M8.6
+- Owner said "green light on m8.6". Plan: docs/spec/designer.md §6, §13 (M8.6) and "M8.6 additions" (word of mouth, sale offers with the owner's revisions in the M8.5 green-light entry). Built in its own chat (one chat per milestone).
+
 ## 2026-09-24 · M8.5 built: bonuses and progressives (Claude's calls; see docs/spec/designer.md "As built in M8.5")
 - Everything in the M8.5 plan and the owner's notes: hold & spin, pick, wheel (and the topper wheel), cascades, collector, offer and mystery, each exact and with its own screen; standalone, linked and must-hit-by progressives; bank signs; hunters; onlookers; the pull of big meters; opinions by game kind for six months; a lifetime performance index explained in game; logo fonts and the machine's face; interface size; spaces in names; the slam-stop and no-spoiler fixes.
 - **Found causes of the owner's bugs:** names lost their spaces because every keystroke trimmed the name; a tap during free spins jumped to the end of the whole feature (showing its total), and the "up/down" line and the top bar showed a result as soon as the sim settled it.

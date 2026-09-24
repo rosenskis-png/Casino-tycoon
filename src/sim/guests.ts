@@ -22,6 +22,10 @@ import { walkAway } from "./street";
 import { tagGuest, guestName } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
+import { seatCount } from "./geometry";
+import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult } from "./amenities";
+import { adjustPolice } from "./incidents";
+import { post } from "./finance";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -55,10 +59,25 @@ const WAIT_LONG = 120;
 const GROUP_PULL = 0.2;
 /** Intoxication worn off per real minute on the floor. */
 const SOBER_PER_MIN = 0.02;
-type Need = "thirst" | "bladder" | "cage" | "atm";
-const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8 };
-const WHERE: Record<Need, string> = { thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm" };
-const ACT_OF: Record<Need, Agent["act"]> = { thirst: "drink", bladder: "restroom", cage: "cage", atm: "cage" };
+type Need = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club";
+const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8, hunger: 16, show: 32, club: 64 };
+const WHERE: Record<Need, string> = { thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm", hunger: "whereFood", show: "whereShow", club: "whereClub" };
+const ACT_OF: Record<Need, Agent["act"]> = { thirst: "drink", bladder: "restroom", cage: "cage", atm: "cage", hunger: "dine", show: "show", club: "dance" };
+/** Why someone came → what serves it. */
+const INTENT_NEED: Record<string, Need> = { dine: "hunger", show: "show", club: "club" };
+/** Smoke: how smokers and everyone else take it (penalty only; clean air isn't remarked on). */
+const SMOKE_PREF = { smoker: { tol: 4, w: 0.1 }, other: { tol: 0.8, w: 0.8 } };
+/** Smokers' urge per second (100 = must smoke; every 3-6 minutes) and seconds a smoke takes. */
+const URGE_PER_SEC = 100 / 270;
+const SMOKE_SECS = 20;
+/** What a meal costs the house, and the ticket and cover guests find fair at a first-tier place (dollars). */
+const FOOD_COST = 6;
+const SHOW_FAIR = 15;
+const COVER_FAIR = 15;
+/** Seconds trapped before staff let a guest out (docs/spec/construction.md). */
+const LET_OUT = 90;
+/** gaveUp bit: a smoker who found nowhere to smoke this visit. */
+const SMOKE_BIT = 128;
 const DIRT_CAP = 9;
 const TICKS_PER_MIN = 60 * TICKS_PER_SECOND;
 
@@ -75,7 +94,7 @@ function book(g: Game): Map<number, number[]> {
 
 function rebuildBook(g: Game): Map<number, number[]> {
   const b = new Map<number, number[]>();
-  for (const o of g.state.objects) if (OBJECTS[o.kind].seats.length) b.set(o.id, new Array(OBJECTS[o.kind].seats.length).fill(0));
+  for (const o of g.state.objects) { const n = seatCount(o); if (n) b.set(o.id, new Array(n).fill(0)); }
   for (const a of g.state.agents) {
     if (a.role !== "guest" || a.seat < 0) continue;
     const s = b.get(a.target);
@@ -171,9 +190,19 @@ function prefScore(p: Pref, v: number): number {
   return d <= p.tol ? 0.3 * p.w : -p.w * Math.min(1.5, (d - p.tol) / p.tol);
 }
 
-export function fitAt(g: Game, type: GuestTypeDef, i: number): Fit {
+export function fitAt(g: Game, type: GuestTypeDef, i: number, gd?: GuestData): Fit {
   let score = 0;
   let worst: Fit["worst"] = null, best: Fit["best"] = null;
+  // Smoke (M6): a penalty past tolerance only, so smoke-free air changes nothing; smokers barely mind it.
+  const smk = g.fields.get("SMK", i);
+  if (smk > 0) {
+    const p = gd?.smoker ? SMOKE_PREF.smoker : SMOKE_PREF.other;
+    if (smk > p.tol) {
+      const s = -p.w * Math.min(1.5, (smk - p.tol) / p.tol);
+      score += s;
+      worst = { t: "SMK", hi: true, mag: -s };
+    }
+  }
   for (const [t, p] of Object.entries(type.prefs) as [Taste, Pref][]) {
     const v = tasteAt(g, t, i);
     const s = prefScore(p, v);
@@ -186,9 +215,9 @@ export function fitAt(g: Game, type: GuestTypeDef, i: number): Fit {
 }
 
 const BAD_THOUGHT: Record<Taste, [string | null, string | null]> = {
-  NRG: ["nrgLo", "nrgHi"], CRW: ["crwLo", "crwHi"], PRS: ["prsLo", null], TRF: [null, "trfHi"], DIRT: [null, "dirty"],
+  NRG: ["nrgLo", "nrgHi"], CRW: ["crwLo", "crwHi"], PRS: ["prsLo", null], TRF: [null, "trfHi"], DIRT: [null, "dirty"], SMK: [null, "smoky"],
 };
-const GOOD_THOUGHT: Record<Taste, string> = { NRG: "gNRG", CRW: "gCRW", PRS: "gPRS", TRF: "gTRF", DIRT: "gCLN" };
+const GOOD_THOUGHT: Record<Taste, string> = { NRG: "gNRG", CRW: "gCRW", PRS: "gPRS", TRF: "gTRF", DIRT: "gCLN", SMK: "gCLN" };
 
 // ---------------------------------------------------------------------------------------------------------
 // Thoughts. Counted by id per day (the Guests tab averages the last ~2 days); the wording is the card's business.
@@ -215,13 +244,14 @@ function periodicThought(g: Game, a: Agent, type: GuestTypeDef) {
   const here = a.y * g.state.map.w + a.x;
   let id: string | null = null, mag = 2;
   const consider = (tid: string | null, m: number) => { if (tid && m > mag) { id = tid; mag = m; } };
-  const fit = fitAt(g, type, here);
+  const fit = fitAt(g, type, here, gd);
   if (fit.worst) consider(BAD_THOUGHT[fit.worst.t][fit.worst.hi ? 1 : 0], fit.worst.mag * 8);
   // A good word only when the whole place suits them, credited to what they like most.
   if (fit.best && fit.score > 0) consider(GOOD_THOUGHT[fit.best.t], fit.score * 4);
   const n = gd.needs;
   if (n.fatigue > 80) consider("tired", (n.fatigue - 70) / 2);
   if (n.hunger > 80) consider("hungry", (n.hunger - 70) / 2);
+  if (gd.smoker && gd.urge >= 100) consider("needSmoke", 6);
   if (n.thirst > 80 && !g.has("thirst")) consider("noBar", (n.thirst - 70) / 2);
   if (n.bladder > 80 && !g.has("bladder")) consider("noRestroom", (n.bladder - 60) / 2);
   const rel = net(gd) / staked(gd);
@@ -256,6 +286,8 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   if (person) { bankroll = Math.max(0, Math.min(bankroll, Math.floor(person.cash / 5) * 5)); person.cash -= bankroll; }
   const lead = leader?.g;
   const came = intent ?? lead?.intent ?? (r.chance(type.drinking.first) ? "drink" : "gamble");
+  // A returning guest carries a card (until the M9 player's club); their companions come in on it.
+  const card = person ? (person.visits > 0 ? 1 : 0) : lead ? lead.card : 0;
   const dr = type.drinking;
   // Sober guests are exactly 0; drinkers draw a skewed bell, shifted by why they came.
   const intend = r.chance(dr.sober) ? 0 : Math.min(dr.cap, skewed(r, Math.max(0.05, dr.mean + (came === "drink" ? 0.1 : -0.03)), dr.sd, dr.cap));
@@ -263,7 +295,8 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   const x = at % w, y = (at - x) / w;
   const quit = pickKey(r, type.play.quit);
   const gd: GuestData = {
-    type: typeId, pid: person?.id ?? -1, group: 0, lead: leader ? 0 : 1, sex, intent: came,
+    type: typeId, pid: person?.id ?? -1, group: 0, lead: leader ? 0 : 1, sex, intent: came, card,
+    smoker: 0, urge: 0, trapAt: -1, esc: 0, paid: 0,
     name: person?.name ?? r.int(0, FIRST_NAMES.length * 26 - 1),
     bankroll, wallet: bankroll, withdrawn: 0,
     withdrawCap: Math.round(person ? person.savings : logNormal(r, type.tripCap)),
@@ -280,7 +313,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     mem: {
       arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, cashed: 0,
       feel: 0, rounds: 0, served: 0, comped: 0, early: 0, startIntend: intend, peak: 0, atmYes: 0, exitHops: 0, barAt: 0,
-      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0,
+      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0, fun: 0, spent: 0, eatAt: 0,
     },
     // First-timers sightsee before settling; regulars less, the better they know the place.
     browse: 0, frus: 0, liked: [], favAt: 0,
@@ -299,6 +332,11 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   gd.group = leader ? leader.id : a.id;
   tagGuest(g, gd, person, lead);
   gd.browse = Math.round(type.browse * range(r, [0.5, 1.5]) * (1 - gd.know) * (gd.memDate >= 0 ? 0.3 : 1));
+  // Smokers (M6), drawn on their own stream so adding them left every other draw where it was.
+  const rs = rng(s, "smoke");
+  if (rs.chance(type.smokers)) { gd.smoker = 1; gd.urge = rs.int(0, 60); }
+  // People who came for a meal, a show or the club don't sightsee first.
+  if (INTENT_NEED[came]) gd.browse = 0;
   s.agents.push(a);
   s.visits.today.arrived++;
   return a;
@@ -312,7 +350,7 @@ export function spawnGroup(g: Game, typeId: string, at: number, person: Person |
   const makeup = type?.sexes ? r.int(0, 2) : 2;
   const sexOf = () => (makeup < 2 ? makeup : r.int(0, 1));
   const out: Agent[] = [];
-  const leader = spawnGuest(g, typeId, at, person, null, sexOf(), intent);
+  const leader = spawnGuest(g, typeId, at, person, null, sexOf(), intent ?? pickIntent(g, typeId, rng(g.state, "arrivals")));
   if (!leader) return out;
   out.push(leader);
   for (let k = 1; k < n; k++) {
@@ -338,9 +376,10 @@ export interface VisitScore { score: number; value: number; feel: number; needs:
 /** How the visit went: how long the money lasted per dollar lost (capped for winners), how good it felt, needs met, mood. */
 export function visitScore(a: Agent): VisitScore {
   const gd = a.g!, type = GUEST_TYPES[gd.type];
-  const lost = gd.mem.wagered - gd.mem.won;
-  const playSec = gd.mem.playTicks / TICKS_PER_SECOND;
-  // A trip with (almost) no play was wasted, whatever the money did.
+  // Money gone on play, meals, shows, cover and doors, against time spent playing or having fun (M6).
+  const lost = gd.mem.wagered - gd.mem.won + gd.mem.spent;
+  const playSec = (gd.mem.playTicks + gd.mem.fun) / TICKS_PER_SECOND;
+  // A trip with (almost) nothing done was wasted, whatever the money did.
   const value = playSec < 30 ? 0 : lost <= 0 ? 1 : Math.min(1, playSec / lost / type.secPerDollar);
   const feel = gd.mem.rounds ? Math.min(1, 0.2 + (1.6 * gd.mem.feel) / gd.mem.rounds + 0.3 * Math.min(1, gd.mem.bigWin)) : 0.3;
   const mood = (gd.mem.moodN ? gd.mem.moodSum / gd.mem.moodN : gd.mood) / 100;
@@ -403,7 +442,7 @@ function standBy(g: Game, a: Agent) {
   const r = rng(g.state, "guests");
   release(g, a);
   const lead = groups(g).get(a.g!.group)?.leader;
-  const near = lead ? nearbyTile(g, "guests", lead.x, lead.y, 3) : -1;
+  const near = lead ? nearbyTile(g, "guests", lead.x, lead.y, 3, a) : -1;
   if (near >= 0 && near !== a.y * g.state.map.w + a.x) return go(a, near, "wait");
   a.act = "wait";
   a.timer = r.int(5, 10) * TICKS_PER_SECOND;
@@ -415,6 +454,15 @@ export function sendHome(g: Game, a: Agent, why: string) {
   a.act = "idle";
   a.timer = 0;
   startLeaving(g, a, why);
+}
+
+/** Could staff walk this guest out (past any door but a locked one, without a fee)? Walls are walls. */
+function escapable(g: Game, a: Agent): boolean {
+  const gd = a.g!, here = a.y * g.state.map.w + a.x;
+  gd.esc = 1;
+  const paths = g.pathsFor(a);
+  gd.esc = 0;
+  return g.state.map.entrances.some((e) => g.walkable(e) && paths.reachable(here, e));
 }
 
 function startLeaving(g: Game, a: Agent, why: string) {
@@ -433,14 +481,24 @@ function startLeaving(g: Game, a: Agent, why: string) {
   const here = a.y * w + a.x;
   const ents = g.state.map.entrances;
   const open: number[] = [];
-  for (const e of ents) if (g.walkable(e) && g.paths.reachable(here, e)) open.push(e);
-  // No walkable way out at all: truly trapped until the layout changes.
+  const paths = g.pathsFor(a);
+  for (const e of ents) if (g.walkable(e) && paths.reachable(here, e)) open.push(e);
+  // No way out they're allowed through: trapped, until the layout changes or staff come and let them out
+  // (docs/spec/construction.md), which the police hear about.
   if (!open.length) {
-    if (!gd.trapped) { gd.trapped = 1; think(g, a, "trapped"); }
+    if (!gd.trapped) { gd.trapped = 1; gd.trapAt = g.state.tick; think(g, a, "trapped"); }
     gd.annoy += 4;
+    if (!gd.esc && gd.trapAt >= 0 && g.state.tick - gd.trapAt >= LET_OUT * TICKS_PER_SECOND && escapable(g, a)) {
+      gd.esc = 1;
+      think(g, a, "letOut");
+      adjustPolice(g, -1);
+      news(g, "warn", "Staff let out a guest who was trapped behind your doors.", true);
+      return startLeaving(g, a, why);
+    }
     return wander(g, a, r);
   }
   gd.trapped = 0;
+  gd.trapAt = -1;
   // An exit in view, or one a regular knows the way to: walk straight there.
   let best = -1, bd = Infinity;
   ents.forEach((e, k) => {
@@ -473,7 +531,7 @@ function startLeaving(g: Game, a: Agent, why: string) {
 function lookAround(g: Game, a: Agent) {
   const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
   // Cages are on the ATM list too; look at each object once.
-  for (const what of ["thirst", "bladder", "cage", "atm"] as Need[])
+  for (const what of ["thirst", "bladder", "cage", "atm", "hunger", "show", "club"] as Need[])
     for (const o of g.amenities[what]) {
       if (what === "atm" && OBJECTS[o.kind].serves === "cage") continue;
       const t = faceTile(g, o);
@@ -490,12 +548,15 @@ function lookAround(g: Game, a: Agent) {
 function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
   const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
   let best = -1, bestSeat = -1, bd = Infinity, known = false;
+  const paths = g.pathsFor(a);
   for (const o of g.amenities[what]) {
     const t = faceTile(g, o);
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
     if (!knowsRoute(gd, o) && (d > SIGHT || !canSee(g, here, t))) continue;
-    if (!g.paths.reachable(here, t)) continue;
+    if (!paths.reachable(here, t)) continue;
     known = true;
+    // Priced places (a meal, a show, a club's cover): only if they can pay.
+    if ((what === "hunger" || what === "show" || (what === "club" && !(gd.paid & 1))) && priceFor(o) > gd.wallet + 1e-9) continue;
     const k = freeSeat(g, o.id);
     if (k < 0) continue;
     const st = seatTile(g, o.id, k);
@@ -517,7 +578,7 @@ function search(g: Game, a: Agent, r: Rng, goal: string, targets: number[], towa
   if (gd.lost >= 2) gd.annoy += 2;
   let dest = signLeg(g, a, r, targets);
   if (dest >= 0 && gd.lost >= 2 && r.chance(0.3)) think(g, a, "signHelped");
-  if (dest < 0) dest = explore(g, a, r, (i) => fitAt(g, type, i).score, toward, det);
+  if (dest < 0) dest = explore(g, a, r, (i) => fitAt(g, type, i, gd).score, toward, det);
   if (dest < 0) return false;
   go(a, dest, "idle");
   return true;
@@ -526,11 +587,16 @@ function search(g: Game, a: Agent, r: Rng, goal: string, targets: number[], towa
 /** Hops a guest searches before giving up: longer in a good mood, shorter in a bad one. */
 const giveUpAfter = (gd: GuestData) => (gd.mood > 65 ? GIVE_UP + 3 : gd.mood < 40 ? GIVE_UP - 2 : GIVE_UP);
 
-/** Search for an amenity the guest doesn't know the way to. False once they give up (and go without). */
+/**
+ * Search for an amenity the guest doesn't know the way to. False once they give up (and go without). Someone
+ * who came for it (a meal, a show, the club) knows roughly where it is and keeps at it longer, but a maze still
+ * defeats straight-line guessing.
+ */
 function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
   const gd = a.g!;
   if (gd.gaveUp & NEED_BIT[what]) return false;
-  if (gd.seek === what && gd.lost >= giveUpAfter(gd)) {
+  const cameFor = INTENT_NEED[gd.intent] === what;
+  if (gd.seek === what && gd.lost >= giveUpAfter(gd) + (cameFor ? 6 : 0)) {
     gd.gaveUp |= NEED_BIT[what];
     gd.seek = "";
     gd.lost = 0;
@@ -545,6 +611,14 @@ function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
     const o = g.objById.get(gd.seen[k]);
     const serves = o && OBJECTS[o.kind].serves;
     if (serves === what || (what === "atm" && serves === "cage")) toward = faceTile(g, o!);
+  }
+  if (toward < 0 && cameFor) {
+    const w = g.state.map.w;
+    let bd = Infinity;
+    for (const o of g.amenities[what]) {
+      const t = faceTile(g, o), d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+      if (d < bd) { bd = d; toward = t; }
+    }
   }
   const targets: number[] = [];
   for (const o of g.amenities[what]) targets.push(faceTile(g, o));
@@ -583,7 +657,10 @@ function candidates(g: Game, a: Agent, type: GuestTypeDef, maxLooks = MAX_LOOKS)
         if (o.broken) continue;
         const m = modelOf(o.kind)!;
         const appeal = type.games[m.id] ?? 0;
-        if (appeal <= 0.05 || betOf(m, 1) * WAGERS_PER_ROUND > gd.wallet || freeSeat(g, o.id) < 0) continue;
+        // High-limit machines (M6): only for guests whose usual stake covers the minimum.
+        if (appeal <= 0.05) continue;
+        const mult = stakeMult(g, o);
+        if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * mult) || freeSeat(g, o.id) < 0) continue;
         const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
         // Keep the nearest few, sorted by distance (ties by id, so the order is deterministic).
         if (out.length >= MAX_CANDIDATES && d >= out[out.length - 1].d) continue;
@@ -625,8 +702,9 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
     // What's in front of them pulls a little harder than what they remember.
     // The spot matters as much as the machine: guests settle where they like the surroundings.
-    let score = c.appeal * 2 + fitAt(g, type, t).score * 0.8 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
-    if (liked && (c.appeal < 0.9 || fitAt(g, type, t).score < 0)) continue;
+    const fit = fitAt(g, type, t, gd).score;
+    let score = c.appeal * 2 + fit * 0.8 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
+    if (liked && (c.appeal < 0.9 || fit < 0)) continue;
     // Hot machine belief: one they just saw pay out.
     const isHot = c.seen && o.last.win === 2 && tick - o.last.tick < HOT_SECONDS * TICKS_PER_SECOND;
     if (isHot) score += 1.2;
@@ -663,8 +741,8 @@ function canAffordAnything(g: Game, gd: GuestData): boolean {
  */
 function wander(g: Game, a: Agent, r: Rng) {
   const type = GUEST_TYPES[a.g!.type], out = g.state.map.outdoor, pull = a.g!.browse > 0 ? 2.5 : 1.5;
-  let dest = explore(g, a, r, (i) => (out[i] ? -2 : fitAt(g, type, i).score * pull));
-  if (dest < 0) dest = nearbyTile(g, "guests", a.x, a.y, 8);
+  let dest = explore(g, a, r, (i) => (out[i] ? -2 : fitAt(g, type, i, a.g).score * pull));
+  if (dest < 0) dest = nearbyTile(g, "guests", a.x, a.y, 8, a);
   if (dest < 0) dest = a.y * g.state.map.w + a.x;
   go(a, dest, "idle");
 }
@@ -716,6 +794,105 @@ function anotherRound(g: Game, a: Agent): boolean {
   return (gd.intend > 0 && gd.intox < gd.intend) || gd.needs.thirst >= 50;
 }
 
+/** Pay for a meal, a ticket, a cover charge. */
+function pay(g: Game, gd: GuestData, amount: number, cat: string) {
+  if (amount <= 0) return;
+  gd.wallet -= amount;
+  gd.mem.spent += amount;
+  post(g, cat, amount);
+}
+
+/** Try to use an amenity serving `what`: true when on the way, or searching for it. */
+function tryAmenity(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
+  const gd = a.g!;
+  if (!g.has(what) || gd.gaveUp & NEED_BIT[what] || g.state.tick < gd.mem.eatAt) return false;
+  const use = goUse(g, a, what);
+  if (use === "ok") return true;
+  if (use === "unknown") return seekNeed(g, a, r, what, det);
+  think(g, a, "line");
+  gd.annoy += 2;
+  gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND;
+  return false;
+}
+
+/**
+ * Tiles where a smoker can light up: smoking rooms, then the outdoor lot, by 16×16 sector. Runtime cache; rooms
+ * are re-detected on every layout or purpose change, so a new room list means a stale cache.
+ */
+const smokeSpots = new WeakMap<Game, { rooms: unknown; by: Map<number, number[]> }>();
+function spotsToSmoke(g: Game): Map<number, number[]> {
+  const c = smokeSpots.get(g);
+  if (c && c.rooms === g.rooms.rooms) return c.by;
+  const m = g.state.map, by = new Map<number, number[]>();
+  for (let i = 0; i < m.terrain.length; i++) {
+    if (!g.walkable(i) || g.seatAt[i] || m.terrain[i] !== T.FLOOR) continue;
+    if (purposeAt(g, i) !== "smoking" && !m.outdoor[i]) continue;
+    const x = i % m.w, key = (((i - x) / m.w) >> 4) * 4096 + (x >> 4);
+    let L = by.get(key);
+    if (!L) by.set(key, (L = []));
+    L.push(i);
+  }
+  smokeSpots.set(g, { rooms: g.rooms.rooms, by });
+  return by;
+}
+
+/** A smoker who needs one walks to the nearest spot they can reach (smoking room or outside), searching outward. */
+function goSmoke(g: Game, a: Agent): boolean {
+  const { w, h } = g.state.map, here = a.y * w + a.x, paths = g.pathsFor(a), by = spotsToSmoke(g);
+  if (!by.size) return false;
+  const sx = a.x >> 4, sy = a.y >> 4, maxR = Math.max(w, h) >> 4;
+  for (let r = 0; r <= maxR; r++) {
+    let best = -1, bd = Infinity, checks = 0;
+    for (let y = sy - r; y <= sy + r; y++) for (let x = sx - r; x <= sx + r; x++) {
+      if (Math.max(Math.abs(x - sx), Math.abs(y - sy)) !== r || x < 0 || y < 0) continue;
+      for (const t of by.get(y * 4096 + x) ?? []) {
+        const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+        // Reachability checks are the expensive part: only for closer candidates, a few per ring.
+        if (d >= bd || checks > 16) continue;
+        checks++;
+        if (paths.reachable(here, t)) { bd = d; best = t; }
+      }
+    }
+    if (best >= 0) { go(a, best, "smoke"); return true; }
+  }
+  return false;
+}
+
+/**
+ * Before the machines (M6): what they came for (a meal, a show, the club), then hunger with a restaurant to go
+ * to, sore feet with a show to sit through, and a smoker's urge. True when that's what they're doing now.
+ */
+function amenityFirst(g: Game, a: Agent, r: Rng): boolean {
+  const gd = a.g!, n = gd.needs;
+  const want = INTENT_NEED[gd.intent];
+  if (want) {
+    if (tryAmenity(g, a, r, want, 0.9)) return true;
+    // Couldn't (or it's gone): the trip turns into a casino visit.
+    gd.intent = "gamble";
+  }
+  if (n.hunger >= 70 && tryAmenity(g, a, r, "hunger", n.hunger / 50)) return true;
+  if (n.fatigue >= 80 && tryAmenity(g, a, r, "show", 0.6)) return true;
+  if (gd.smoker && gd.urge >= 100 && !(gd.gaveUp & SMOKE_BIT)) {
+    if (goSmoke(g, a)) return true;
+    // Nowhere to smoke: they cut the visit short.
+    gd.gaveUp |= SMOKE_BIT;
+    think(g, a, "needSmoke");
+    gd.annoy += 4;
+    gd.floorTime = Math.min(gd.floorTime, g.state.tick - gd.mem.arrived + 90 * TICKS_PER_SECOND);
+  }
+  return false;
+}
+
+/** Finished a meal, a show or dancing: whatever they came for is done; some go on to gamble. */
+function doneWith(g: Game, a: Agent, r: Rng) {
+  const gd = a.g!;
+  if (INTENT_NEED[gd.intent]) { gd.intent = "gamble"; if (r.chance(0.3)) think(g, a, "mightAsWell"); }
+  const o = g.objById.get(a.target);
+  if (o) o.st.uses++;
+  release(g, a);
+  a.act = "idle";
+}
+
 function decide(g: Game, a: Agent) {
   const gd = a.g!, type = GUEST_TYPES[gd.type], n = gd.needs;
   const r = rng(g.state, "guests");
@@ -738,6 +915,7 @@ function decide(g: Game, a: Agent) {
   // Waiting on the group: stay put (a restroom trip above is still allowed).
   if (gd.wait >= 0) return standBy(g, a);
   if (g.state.tick - gd.mem.arrived >= gd.floorTime) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
+  if (amenityFirst(g, a, r)) return;
   const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0 && gd.drink === 0 && gd.wallet >= DRINK_PRICE;
   // Came for a drink, but a machine they like catches their eye: "just one quick spin".
   if (firstDrink && r.chance(0.25) && chooseMachine(g, a, type, r, true)) { gd.intent = "gamble"; think(g, a, "quickSpin"); return; }
@@ -783,7 +961,7 @@ function goToFavorite(g: Game, a: Agent): boolean {
   const fav = gd.pid >= 0 ? personOf(g, gd.pid)?.fav ?? [] : [];
   while (gd.favAt < fav.length) {
     const t = fav[gd.favAt++];
-    if (t === here || !g.walkable(t) || !g.paths.reachable(here, t)) continue;
+    if (t === here || !g.walkable(t) || !g.pathsFor(a).reachable(here, t)) continue;
     go(a, t, "idle");
     return true;
   }
@@ -813,7 +991,7 @@ function quitReason(g: Game, a: Agent): string | null {
   // A cheat up by their take stops while they're ahead.
   if (gd.take && gd.mem.won - gd.mem.wagered >= gd.take) { gd.take = 0; gd.spell = 0; return "done"; }
   if (o.broken) { think(g, a, "broken"); gd.annoy += 10; return "broken"; }
-  if (betOf(m, 1) * WAGERS_PER_ROUND > gd.wallet) return "money";
+  if (betOf(m, 1) * stakeMult(g, o) * WAGERS_PER_ROUND > gd.wallet) return "money";
   const nt = net(gd);
   // A cheat still after their take ignores the usual quit rules.
   const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
@@ -826,6 +1004,9 @@ function quitReason(g: Game, a: Agent): string | null {
   if (g.state.tick - gd.mem.arrived >= gd.floorTime) { think(g, a, "timeToGo"); return "time"; }
   if (n.fatigue >= 100 || n.hunger >= 100 || gd.mood < 15) return "need";
   if (n.bladder >= (g.has("bladder") ? 75 : 90)) return "need";
+  // M6: hungry with a restaurant to go to; a smoker whose urge has come, outside a smoking area.
+  if (n.hunger >= 70 && g.has("hunger") && !(gd.gaveUp & NEED_BIT.hunger) && g.state.tick >= gd.mem.eatAt) return "need";
+  if (gd.smoker && gd.urge >= 100 && !(gd.gaveUp & SMOKE_BIT)) return "need";
   if (wantsDrink(g, gd) && g.has("thirst") && !(gd.gaveUp & NEED_BIT.thirst)) return "need";
   return null;
 }
@@ -877,7 +1058,7 @@ function headInside(g: Game, a: Agent): boolean {
   for (let y = Math.max(0, a.y - SIGHT); y <= Math.min(m.h - 1, a.y + SIGHT); y++)
     for (let x = Math.max(0, a.x - SIGHT); x <= Math.min(w - 1, a.x + SIGHT); x++) {
       const i = y * w + x, d = Math.abs(x - a.x) + Math.abs(y - a.y);
-      if (d >= bd || m.terrain[i] !== T.DOOR || !g.walkable(i) || !canSee(g, here, i) || !g.paths.reachable(here, i)) continue;
+      if (d >= bd || m.terrain[i] !== T.DOOR || !g.walkable(i) || !canSee(g, here, i) || !g.pathsFor(a).reachable(here, i)) continue;
       bd = d; best = i;
     }
   if (best < 0) return false;
@@ -958,6 +1139,89 @@ function guestTick(g: Game, a: Agent) {
       if (--a.timer === 0) finishUse(g, a, r);
       return;
     }
+    case "dine": {
+      // A meal (M6): paid on sitting down; hunger gone, a little rest, and they mean to stay a bit longer.
+      const o = g.objById.get(a.target);
+      if (a.seat < 0 || !o) { release(g, a); a.act = "idle"; return; }
+      const r = rng(g.state, "guests");
+      if (a.timer === 0) {
+        const price = priceFor(o);
+        if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
+        pay(g, gd, price, "food");
+        post(g, "foodCost", -FOOD_COST);
+        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+        a.timer = useTicks(g, a, r);
+        return;
+      }
+      gd.mem.fun++;
+      if (--a.timer > 0) return;
+      gd.needs.hunger = 0;
+      gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 20);
+      gd.floorTime += 2 * TICKS_PER_MIN;
+      if (r.chance(0.4)) think(g, a, "goodMeal");
+      if (r.chance(0.15)) litter(g, a.y * g.state.map.w + a.x);
+      return doneWith(g, a, r);
+    }
+    case "show": {
+      // A show (M6): seated early, the ticket paid as it starts, and everyone up at once when it ends.
+      const o = g.objById.get(a.target);
+      if (a.seat < 0 || !o) { release(g, a); a.act = "idle"; return; }
+      const ph = showPhase(o, g.state.tick);
+      if (a.timer === 0) { a.timer = 1; return; }
+      if (ph.phase === "on") {
+        if (a.timer === 1) {
+          const price = priceFor(o);
+          if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
+          pay(g, gd, price, "shows");
+          if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+          a.timer = 2;
+        }
+        gd.mem.fun++;
+        return;
+      }
+      if (a.timer >= 2) {
+        const r = rng(g.state, "guests");
+        gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 40);
+        gd.buzz = Math.min(20, gd.buzz + 6);
+        if (r.chance(0.4)) think(g, a, "goodShow");
+        return doneWith(g, a, r);
+      }
+      // Waiting for it to start: an urgent need or the group leaving gets them up.
+      if (gd.why || gd.needs.bladder >= 85) { release(g, a); a.act = "idle"; }
+      return;
+    }
+    case "dance": {
+      // The club (M6): the cover once a visit, then a stretch on the dance floor.
+      const o = g.objById.get(a.target);
+      if (a.seat < 0 || !o) { release(g, a); a.act = "idle"; return; }
+      const r = rng(g.state, "guests");
+      if (a.timer === 0) {
+        if (!(gd.paid & 1)) {
+          const price = priceFor(o);
+          if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.club; release(g, a); a.act = "idle"; return; }
+          pay(g, gd, price, "cover");
+          gd.paid |= 1;
+          if (price > COVER_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+        }
+        a.timer = useTicks(g, a, r);
+        return;
+      }
+      gd.mem.fun++;
+      if (--a.timer > 0) return;
+      gd.buzz = Math.min(20, gd.buzz + 5);
+      if (r.chance(0.4)) think(g, a, "danced");
+      return doneWith(g, a, r);
+    }
+    case "smoke": {
+      // A cigarette, where they stand (a smoking room, or out on the lot); butts end up on the floor outside.
+      if (a.timer === 0) { a.timer = SMOKE_SECS * TICKS_PER_SECOND; return; }
+      if (--a.timer > 0) return;
+      gd.urge = 0;
+      const here = a.y * g.state.map.w + a.x;
+      if (purposeAt(g, here) !== "smoking" && rng(g.state, "guests").chance(0.3)) litter(g, here);
+      a.act = "idle";
+      return;
+    }
     case "leave":
       depart(g, a);
       return;
@@ -972,7 +1236,16 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   n.bladder = Math.min(100, n.bladder + rate.bladder * (1 + 0.15 * gd.mem.drinks));
   n.thirst = Math.min(100, n.thirst + rate.thirst);
   n.hunger = Math.min(100, n.hunger + rate.hunger);
-  n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : 0.8));
+  // Dancing is thirsty, tiring work; sitting through a show or a meal rests the feet.
+  const dancing = a.act === "dance" && a.timer > 0, resting = a.act === "show" || a.act === "dine";
+  if (dancing) n.thirst = Math.min(100, n.thirst + rate.thirst);
+  n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : dancing ? 2 : resting ? 0.3 : 0.8));
+  // Smokers: the urge builds; inside a smoking room they light up where they are.
+  if (gd.smoker) {
+    if (purposeAt(g, a.y * g.state.map.w + a.x) === "smoking") gd.urge = 0;
+    else if (a.act !== "smoke") gd.urge = Math.min(100, gd.urge + URGE_PER_SEC);
+    if (gd.urge >= 100) gd.annoy = Math.min(30, gd.annoy + 0.3);
+  }
   gd.annoy = Math.max(0, Math.min(30, gd.annoy - 0.5 + (gd.wait >= 0 ? 0.3 : 0)));
   gd.buzz = Math.max(0, Math.min(20, gd.buzz - 0.5));
   gd.know += (1 - gd.know) * LEARN * (walking ? 3 : 1);
@@ -1002,7 +1275,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   const span = walking ? 1 : MOOD_EVERY;
   if (!walking && (a.id + beatNo) % MOOD_EVERY !== 0) return thinkIfDue(g, a, type, r);
   const here = a.y * g.state.map.w + a.x;
-  const env = Math.max(-30, Math.min(12, fitAt(g, type, here).score * 8));
+  const env = Math.max(-30, Math.min(12, fitAt(g, type, here, gd).score * 8));
   const luck = Math.max(-15, Math.min(15, (net(gd) / staked(gd)) * 25));
   let needs = 0;
   for (const v of [n.bladder, n.thirst, n.hunger, n.fatigue]) if (v > 60) needs += (v - 60) / 3;

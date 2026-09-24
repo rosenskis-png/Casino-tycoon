@@ -11,8 +11,10 @@ export { TICKS_PER_SECOND, TICKS_PER_DAY, SPEEDS, MONTH_NAMES, formatDate, dateO
 export { UNREACHED } from "./paths";
 export { MAX_RADIUS } from "./fields";
 export { idx } from "./map";
-export { objSeats, objSize, covers, footprint, seats } from "./geometry";
+export { objSeats, objSize, objCells, objStaff, objFootprint, covers, dims, priceOf, sizeTier, seatCount, type Placed } from "./geometry";
 export { placement } from "./build";
+export { showPhase, tierOf, tierName, priceFor, purposeAt } from "./amenities";
+export type { Gate } from "./state";
 export { LEDGER_LABELS, monthlyCosts, worth } from "./finance";
 export { goalStatus, describeGoals } from "./goals";
 export { thoughtRates, guestCount } from "./guests";

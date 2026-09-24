@@ -12,6 +12,7 @@ import { TICKS_PER_SECOND } from "./clock";
 import { fmtMoney, news } from "./news";
 import { compSeeking } from "./drinks";
 import { payStats, wagerPay } from "./cheats";
+import { stakeMult } from "./amenities";
 
 /** Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
 const TICKER_JACKPOT = 1000;
@@ -21,14 +22,14 @@ const TICKER_JACKPOT_X = 500;
  * Credits a guest bets per wager on this model: their usual stake, raised by drink, by winning (house money)
  * and by losing (chasing it back to even), then fitted to the machine. Comp-seekers bet the minimum.
  */
-export function creditsFor(g: Game, gd: GuestData, m: SlotModel): number {
+export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1): number {
   // A cheat mid-spell bets the most the machine takes.
   if (gd.spell > 0) return m.maxCredits;
   if (compSeeking(g, gd)) return 1;
   const rel = (gd.mem.won - gd.mem.wagered) / Math.max(1, gd.bankroll + gd.withdrawn);
   const swing = rel > 0 ? 1 + 0.8 * Math.min(1, rel) : 1 + 0.5 * Math.min(1, -rel) * (0.5 + gd.chase);
   const want = gd.stake * (1 + 0.6 * gd.intox) * swing;
-  return Math.max(1, Math.min(m.maxCredits, Math.round(want / m.denom)));
+  return Math.max(1, Math.min(m.maxCredits, Math.round(want / (m.denom * mult))));
 }
 
 /** Payout multiple for one wager: inverse-CDF lookup on the paytable. */
@@ -51,8 +52,9 @@ function resolve(g: Game, a: Agent) {
   const gd = a.g;
   if (!o || !m || !gd) return;
   const r = rng(g.state, "gaming");
-  // Bet what they'd like to, or less when that's all the wallet covers.
-  const bet = betOf(m, Math.min(creditsFor(g, gd, m), Math.floor(gd.wallet / (m.denom * WAGERS_PER_ROUND) + 1e-9)));
+  // Bet what they'd like to, or less when that's all the wallet covers. A high-limit room multiplies the stakes.
+  const mult = stakeMult(g, o);
+  const bet = betOf(m, Math.min(creditsFor(g, gd, m, mult), Math.floor(gd.wallet / (m.denom * mult * WAGERS_PER_ROUND) + 1e-9))) * mult;
   if (bet * WAGERS_PER_ROUND > gd.wallet + 1e-9) return;
   let won = 0, top = 0, near = 0;
   // Luck and cheating bend what each wager pays (docs/spec/cheats.md); the suspicion tools compare against the math.

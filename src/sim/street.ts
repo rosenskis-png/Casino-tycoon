@@ -12,6 +12,7 @@ import { rng } from "./rng";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
 import { SIGHT, canSee } from "./wayfinding";
 import { groupSize, repFactor, room, spawnGroup } from "./guests";
+import { amenityPull } from "./amenities";
 import { available, person } from "./pool";
 
 /** Most groups on the sidewalk at once (performance). */
@@ -144,7 +145,7 @@ export function walkAway(g: Game, a: Agent) {
 /** Chance a passer-by of this type steps in at entrance k. */
 function walkInChance(g: Game, type: string, k: number): number {
   const t = GUEST_TYPES[type];
-  return Math.min(0.9, t.walkIn * (0.2 + curbAppeal(g, k)) * repFactor(g.state.rep[type] ?? 50) * room(g));
+  return Math.min(0.9, t.walkIn * (0.2 + curbAppeal(g, k)) * repFactor(g.state.rep[type] ?? 50) * room(g) * amenityPull(g, type));
 }
 
 function spawnPasserBy(g: Game, type: string) {

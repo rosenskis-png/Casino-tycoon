@@ -11,6 +11,7 @@ import type { Agent, BarPolicy, GuestData, PlacedObject } from "./state";
 import { rng } from "./rng";
 import { post } from "./finance";
 import { think } from "./guests";
+import { priceTolerance } from "./amenities";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -95,7 +96,8 @@ export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: 
   if (comped && r.chance(0.3)) think(g, a, "freeDrink");
   else if (via === "server" && r.chance(0.25)) think(g, a, "served");
   else if (gd.intend > 0 && pol.strength < 1 && r.chance(0.3)) think(g, a, "weak");
-  else if (pol.price > 1.5 && r.chance(0.3)) think(g, a, "pricey");
+  // A finer bar (a lounge, a grand bar) can charge more before guests grumble.
+  else if (pol.price > 1.5 * (o ? priceTolerance(g, o) : 1) && r.chance(0.3)) think(g, a, "pricey");
   else if (r.chance(0.2)) think(g, a, "goodDrink");
   return true;
 }

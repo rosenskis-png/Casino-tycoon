@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export interface MapState {
   w: number;
@@ -17,13 +17,22 @@ export interface MapState {
   /** Door state per tile (data/terrain DOOR_STATE); ignored for non-doors. */
   door: number[];
   entrances: number[];
+  /** Door rule details (M6): the type or role a DRESS or ROLE door admits, and a fee for guests walking through. */
+  gates: Gate[];
 }
+
+/** One door's rule details (docs/spec/construction.md). Only doors with an arg or a fee have one. */
+export interface Gate { i: number; arg: string; fee: number }
 
 /** Lifetime stats for a game object (the machine stats page, FOUNDATIONS §7.1). */
 export interface ObjectStats { rounds: number; coinIn: number; paidOut: number; sessions: number; playTicks: number; uses: number }
 
 export interface PlacedObject {
   id: number; kind: string; x: number; y: number; rot: number;
+  /** Sized amenities (M6): front width × depth in their own frame. */
+  w?: number; h?: number;
+  /** Player-set price: a restaurant's multiplier, a show ticket or a club's cover (dollars). */
+  price?: number;
   /** 1 while broken down (slots), waiting for a tech. */
   broken: number;
   /** Last round shown on the cabinet: tick it resolved and result (0 loss, 1 win, 2 jackpot). */
@@ -59,7 +68,18 @@ export interface GuestData {
   lead: number;
   /** 0 or 1, drawn from the group's makeup (party groups are all men, all women, or mixed). */
   sex: number;
-  intent: "gamble" | "drink";
+  /** Why they came (M6 adds a meal, a show, the club): they head there first. */
+  intent: "gamble" | "drink" | "dine" | "show" | "club";
+  /** 1 for a returning guest (a "card holder" at card doors until the M9 player's club). */
+  card: number;
+  /** Smokers (M6): 1, with the urge building 0-100 (satisfied in a smoking room or outdoors). */
+  smoker: number;
+  urge: number;
+  /** Trapped behind doors they can't pass: the tick it started (-1 not), and 1 once staff let them out. */
+  trapAt: number;
+  esc: number;
+  /** 1 once they've paid a club's cover this visit. */
+  paid: number;
   name: number;
   /** Visit budget on arrival and money in hand now (dollars). */
   bankroll: number;
@@ -128,6 +148,11 @@ export interface GuestData {
     hvar: number;
     /** 1 once banned this visit (a one-off guest who later joins the pool stays banned). */
     banned: number;
+    /** Ticks spent at a meal, a show or dancing (time well spent, like play), and money spent on them and at doors. */
+    fun: number;
+    spent: number;
+    /** When they'll try for a meal or a show again after finding it full (or unaffordable). */
+    eatAt: number;
   };
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
@@ -247,7 +272,9 @@ export type Activity =
   | "respond" | "out" | "fight" | "treat"
   // M5: a guest held for (or walked to) enforcement; an enforcer (or guard) carrying it out; carrying a bag
   // away; a surveillance operator at a desk.
-  | "held" | "enforce" | "carry" | "watch";
+  | "held" | "enforce" | "carry" | "watch"
+  // M6: eating, at a show (seated, waiting or watching), dancing, having a smoke.
+  | "dine" | "show" | "dance" | "smoke";
 
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {

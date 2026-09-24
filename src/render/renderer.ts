@@ -1,12 +1,12 @@
 // Canvas 2D world renderer. Reads sim state, never writes it (docs/spec/art.md). Terrain, wall shading, contact
 // shadows and light pools are baked into cached chunks and redrawn only when tiles change; at Wide and
 // Overview the object sprites are baked too. Objects and people draw per frame, on-screen only.
-import { T } from "../data/terrain";
+import { DOOR_STATE, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
 import { ANIMS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS } from "../data/art";
 import { ENF } from "../data/cheats";
-import { objSeats, objSize, pedSpot, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
+import { dims, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
@@ -17,6 +17,11 @@ const FACING = ["front", "left", "back", "right"] as const;
 const FRONT_VEC = [[0, 1], [-1, 0], [0, -1], [1, 0]];
 /** Sprites whose contact shadow is a small ellipse at the base rather than the footprint. */
 const BASE_SHADOW = new Set(["plant", "neon", "sign"]);
+/** Chair sprite and a seated guest's facing, by seat facing (0 down, 1 left, 2 up, 3 right). */
+const CHAIR = ["front", "left", "back", "right"];
+const SEAT_DIR = ["down", "left", "up", "side"];
+/** Door rule markers (docs/spec/construction.md). */
+const DOOR_MARK: Record<number, string> = { [DOOR_STATE.STAFF]: "door:staff", [DOOR_STATE.LOCKED]: "door:locked", [DOOR_STATE.CARD]: "door:card", [DOOR_STATE.DRESS]: "door:dress", [DOOR_STATE.ROLE]: "door:role" };
 
 export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
 export interface DrawOptions {
@@ -153,6 +158,17 @@ export class Renderer {
         if (this.isWall(x - 1, y)) g.fillRect(px, py, 2, ART);
       }
     }
+    // Door rules: a marker on each restricted door (a fee shows as a coin).
+    const fees = new Map(m.gates.map((q) => [q.i, q.fee]));
+    for (let ty = 0; ty < CHUNK; ty++) for (let tx = 0; tx < CHUNK; tx++) {
+      const x = X0 + tx, y = Y0 + ty;
+      if (x >= w || y >= h || m.terrain[y * w + x] !== T.DOOR) continue;
+      const mark = DOOR_MARK[m.door[y * w + x]];
+      for (const k of [mark, (fees.get(y * w + x) ?? 0) > 0 ? "door:fee" : ""]) {
+        const f = k && A.frames.get(`obj:${k}`);
+        if (f) g.drawImage(A.canvas, f.x - PAD, f.y - PAD, f.w + 2 * PAD, f.h + 2 * PAD, tx * ART - PAD, ty * ART + (k === "door:dress" ? 0 : 1) - PAD, f.w + 2 * PAD, f.h + 2 * PAD);
+      }
+    }
     // Contact shadows under objects.
     const near = this.objectsIn(X0 - 2, Y0 - 2, X0 + CHUNK + 1, Y0 + CHUNK + 1);
     g.fillStyle = "rgba(12,4,8,0.34)";
@@ -161,7 +177,9 @@ export class Renderer {
       const px = (o.x - X0) * ART, py = (o.y - Y0) * ART;
       // Ceiling fixtures (cameras) cast no shadow on the floor.
       if (!def.blocks) continue;
-      if (BASE_SHADOW.has(def.sprite)) {
+      if (def.art === "zone") {
+        for (const c of objCells(o)) if (c.c.block && c.c.k !== "stage") g.fillRect((c.x - X0) * ART + 2, (c.y - Y0) * ART + 3, ART, ART);
+      } else if (BASE_SHADOW.has(def.sprite)) {
         const bx = px + ART / 2, by = py + oh * ART - 1;
         g.fillRect(bx - 3, by - 2, 7, 1); g.fillRect(bx - 5, by - 1, 11, 2); g.fillRect(bx - 3, by + 1, 7, 1);
       } else if (def.sprite === "fountain") {
@@ -242,8 +260,14 @@ export class Renderer {
     const def = OBJECTS[o.kind], A = this.atlas.frames;
     const { w: ow, h: oh } = objSize(o), facing = FACING[o.rot & 3];
     const out: Spr[] = [];
-    for (const st of objSeats(o)) if (st.kind === "stool") out.push({ key: "obj:stool", x: st.x * ART, y: st.y * ART, sort: st.y - 0.05 });
-    if (def.slot) {
+    for (const st of objSeats(o)) {
+      if (st.kind === "stool") out.push({ key: "obj:stool", x: st.x * ART, y: st.y * ART, sort: st.y - 0.05 });
+      // A chair seen from behind sits in front of whoever is on it.
+      else if (st.kind === "chair") out.push({ key: `obj:chair:${CHAIR[st.f]}`, x: st.x * ART, y: st.y * ART, sort: st.y + (st.f === 2 ? 0.05 : -0.05) });
+    }
+    if (def.art === "zone") {
+      out.push(...this.zoneSprites(o));
+    } else if (def.slot) {
       const key = `slot:${def.slot}:${facing}`, f = A.get(key)!;
       out.push({ key, x: o.x * ART, y: (o.y + 1) * ART - f.h, sort: o.y + 0.99, anim: "slot" });
     } else if (def.art === "tiled") {
@@ -263,12 +287,68 @@ export class Renderer {
     return out;
   }
 
+  /**
+   * A sized amenity (docs/spec/construction.md), piece by piece from its cells: counters and cage windows run
+   * a / middle / c along the screen (bartenders and tellers baked into their pieces), restrooms of any size are
+   * built from the 2×2 block's slices, and stages, booths and dance floors are per-tile pieces.
+   */
+  private zoneSprites(o: PlacedObject): Spr[] {
+    const def = OBJECTS[o.kind], A = this.atlas.frames, F = FACING[o.rot & 3];
+    const out: Spr[] = [];
+    const { w: ow, h: oh } = objSize(o);
+    const put = (keys: string[], tx: number, ty: number, sort: number, anim?: string) => {
+      const key = keys.find((k) => A.has(k));
+      if (!key) return;
+      const f = A.get(key)!;
+      out.push({ key, x: tx * ART, y: (ty + 1) * ART - f.h, sort, anim });
+    };
+    const cells = objCells(o);
+    if (def.sized!.layout === "restroom") {
+      const d = dims(o);
+      if (d.w === 2 && d.h === 2) {
+        const key = A.has(`obj:restroom:${F}`) ? `obj:restroom:${F}` : "obj:restroom:front", f = A.get(key)!;
+        out.push({ key, x: o.x * ART + Math.round((ow * ART - f.w) / 2), y: (o.y + oh) * ART - f.h, sort: o.y + oh - 0.01 });
+        return out;
+      }
+      const face = F === "front" ? "door" : "wall", sort = o.y + oh - 0.01;
+      const faceTop = (o.y + oh) * ART - 24, top = o.y * ART - 4;
+      for (let cx = 0; cx < ow; cx++) {
+        const part = cx === 0 ? "l" : cx === ow - 1 ? "r" : "m", x = (o.x + cx) * ART;
+        for (let y = faceTop - 2 - 16; y > top + 2 - 16; y -= 16) out.push({ key: `obj:rr:roof:${part}`, x, y: Math.max(top + 2, y), sort });
+        out.push({ key: `obj:rr:top:${part}`, x, y: top, sort }, { key: `obj:rr:eave:${part}`, x, y: faceTop - 2, sort }, { key: `obj:rr:${face}:${part}`, x, y: faceTop, sort });
+      }
+      return out;
+    }
+    // Counters (bar, kitchen, cage): pieces in screen order along the row.
+    const staff = new Set(objStaff(o).map((s) => s.y * 100000 + s.x));
+    const run = cells.filter((c) => c.c.k === "counter" || c.c.k === "kitchen" || c.c.k === "window").sort((a, b) => a.x - b.x || a.y - b.y);
+    run.forEach((c, i) => {
+      const end = i === 0 ? "a" : i === run.length - 1 ? "c" : "", manned = staff.has(c.y * 100000 + c.x);
+      const sp = c.c.k === "window" ? "cage" : c.c.k;
+      const part = end || (sp === "counter" ? (manned ? "b" : "m") : "b");
+      const keys = sp === "kitchen" && F !== "front" ? ["obj:kitchen:top"] : [`obj:${sp}:${F}:${part}`, `obj:${sp}:${F}:b`, `obj:${sp}:${F}:a`, `obj:${sp}:front:${part}`];
+      put(keys, c.x, c.y, c.y + 0.99, sp);
+    });
+    for (const c of cells) {
+      const k = c.c.k;
+      if (k === "table" || k === "dtable") put([`obj:${k}`], c.x, c.y, c.y + 0.5);
+      else if (k === "stage") {
+        put(["obj:stage"], c.x, c.y, c.y - 0.45);
+        if (c.dy === 0) put(["obj:stage:curtain"], c.x, c.y, c.y - 0.4);
+      } else if (k === "booth") put(["obj:djbooth"], c.x, c.y, c.y + 0.99, "djbooth");
+      else if (k === "speaker") put(["obj:speaker"], c.x, c.y, c.y + 0.99, "speaker");
+      else if (k === "backdrop") put(["obj:backdrop"], c.x, c.y, c.y + 0.99, "backdrop");
+      else if (k === "dance") put(["obj:dance"], c.x, c.y, c.y - 0.45, "dance");
+    }
+    return out;
+  }
+
   private thumbs = new Map<string, { url: string; w: number; h: number }>();
   /** A build-menu picture of an object (front view), as a data URL with its size in art pixels. */
   thumbnail(kind: string): { url: string; w: number; h: number } {
     let t = this.thumbs.get(kind);
     if (t) return t;
-    const sprites = this.objectSprites({ id: 0, kind, x: 0, y: 0, rot: 0 } as PlacedObject).filter((s) => s.key !== "obj:stool");
+    const sprites = this.objectSprites({ id: 0, kind, x: 0, y: 0, rot: 0 } as PlacedObject).filter((s) => s.key !== "obj:stool" && !s.key.startsWith("obj:chair") && s.key !== "obj:dance");
     const F = this.atlas.frames;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const s of sprites) {
@@ -521,6 +601,22 @@ export class Renderer {
       }
     };
     const FACE = ["up", "side", "down", "left"];
+    // People who come with an amenity: cooks behind the kitchen, performers on stage during a show, the DJ.
+    if (lod < 3) for (const o of s.objects) {
+      const L = OBJECTS[o.kind].sized?.layout;
+      if (L !== "restaurant" && L !== "show" && L !== "club") continue;
+      const { w: ow, h: oh } = objSize(o);
+      if (o.x + ow < x0 - 1 || o.x > x1 + 1 || o.y + oh < y0 - 1 || o.y > y1 + 2) continue;
+      const on = L !== "show" || showPhase(o, tick).phase === "on";
+      if (!on) continue;
+      const face = FACE[(o.rot + 2) & 3];
+      objStaff(o).forEach((st, k) => {
+        const look = o.id * 7 + k * 13;
+        const set = L === "restaurant" ? "server" : "party", beat = L === "restaurant" ? "0" : String(WALK[Math.floor(now / (L === "club" ? 200 : 320) + k) & 3]);
+        // Drawn just behind the counter or booth they work at, so it covers their lower half.
+        person(null, set, L === "club" ? 0 : (look >> 1) & 1, look, st.x, st.y - (L === "show" ? 0 : 0.3), face, beat);
+      });
+    }
     for (const a of s.agents) {
       if (a.hidden) continue;
       const moving = a.nx !== a.x || a.ny !== a.y;
@@ -535,11 +631,18 @@ export class Renderer {
       const set = a.role === "guest" ? a.g!.type : a.role;
       const sex = a.g ? a.g.sex & 1 : (a.look >> 2) & 1;
       let dir: string, pose: string;
-      const seated = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage");
-      if (seated) dir = FACE[(g.objById.get(a.target)?.rot ?? 0) & 3];
+      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance");
+      const so = atSeat ? g.objById.get(a.target) : undefined;
+      if (so && OBJECTS[so.kind].sized) dir = SEAT_DIR[objSeats(so)[a.seat]?.f ?? 0];
+      else if (atSeat) dir = FACE[(so?.rot ?? 0) & 3];
       else dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
-      if (seated && a.act !== "cage") pose = "s";
+      if (atSeat && a.act !== "cage" && a.act !== "dance") pose = "s";
       else pose = String(moving ? WALK[Math.min(1, Math.floor(2 * p)) + 2 * ((a.x + a.y) & 1)] : 0);
+      // Dancing: stepping in place, turning now and then.
+      if (a.act === "dance" && !moving) {
+        pose = String(WALK[Math.floor(now / 180 + a.id) & 3]);
+        dir = ["down", "side", "down", "left"][Math.floor(now / 1400 + a.id * 0.37) & 3];
+      }
       if (a.act === "out") pose = "lie";
       // Fighting: squared up and shoving back and forth.
       if (a.act === "fight") { fx += 0.12 * Math.sin(now / 70 + a.id); pose = String(1 + (Math.floor(now / 140 + a.id) & 1)); }

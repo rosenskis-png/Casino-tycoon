@@ -1,7 +1,7 @@
 // Touch input on the world canvas: one finger pans (or builds, with a build tool), two fingers pan and pinch
 // between the four zoom levels, a tap inspects or places. Also mouse wheel zoom for desktop testing.
 import { OBJECTS } from "../data/objects";
-import { covers, footprint, seats, type Command } from "../sim";
+import { covers, objFootprint, objSeats, type Command } from "../sim";
 import type { Host } from "./host";
 
 export type Tool = "inspect" | "wall" | "door" | "demolish" | "remove" | `place:${string}`;
@@ -64,16 +64,28 @@ export class WorldInput {
     const onMap = (p: { x: number; y: number }) => p.x >= 0 && p.y >= 0 && p.x < w && p.y < h;
     if (c.type === "build") tiles = c.tiles;
     else if (c.type === "place") {
-      const d = OBJECTS[c.kind];
-      tiles = footprint(d, c.x, c.y, c.rot).filter(onMap).map((p) => p.y * w + p.x);
-      seatTiles = seats(d, c.x, c.y, c.rot).filter(onMap).map((p) => p.y * w + p.x);
+      tiles = objFootprint(c).filter(onMap).map((p) => p.y * w + p.x);
+      seatTiles = objSeats(c).filter(onMap).map((p) => p.y * w + p.x);
     }
     this.host.drawOptions.ghost = { tiles, seats: seatTiles, ok: g.check(c) === null };
   }
 
   private ghostFor(tool: Tool, a: ReturnType<WorldInput["tileAt"]>, b: ReturnType<WorldInput["tileAt"]>): Command | null {
     const w = this.host.game.state.map.w;
-    if (tool.startsWith("place:")) return { type: "place", kind: tool.slice(6), x: b.x, y: b.y, rot: this.cb.rot() & 3 };
+    if (tool.startsWith("place:")) {
+      const kind = tool.slice(6), def = OBJECTS[kind], rot = this.cb.rot() & 3;
+      if (!def?.sized) return { type: "place", kind, x: b.x, y: b.y, rot };
+      // Sized amenities: drag out the area from the first tile (a tap gives the default size there). Width runs
+      // along the front, so a quarter turn swaps which screen axis is which.
+      const z = def.sized, same = a.x === b.x && a.y === b.y;
+      const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+      const odd = rot & 1;
+      const W = same ? (odd ? def.h : def.w) : Math.abs(b.x - a.x) + 1, H = same ? (odd ? def.w : def.h) : Math.abs(b.y - a.y) + 1;
+      const w = clamp(odd ? H : W, z.min[0], z.max[0]), h = clamp(odd ? W : H, z.min[1], z.max[1]);
+      const SW = odd ? h : w, SH = odd ? w : h;
+      const x = b.x < a.x ? a.x - SW + 1 : a.x, y = b.y < a.y ? a.y - SH + 1 : a.y;
+      return { type: "place", kind, x, y, rot, w, h };
+    }
     if (tool === "wall" || tool === "door" || tool === "demolish") {
       if (a.i < 0) return null;
       const tiles: number[] = [];

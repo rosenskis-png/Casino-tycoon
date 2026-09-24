@@ -324,7 +324,124 @@ const DUMPSTER = [
   ...Array.from({ length: 10 }, (_, y) => (y % 3 === 1 ? "..BmBBBBBCBBBBBBBBBBBBCBBBBBmBC.." : "..BBBBBBBCBBBBBBBBBBBBCBBBBBBBC..").slice(0, 32)),
   "..CCCCCCCCCCCCCCCCCCCCCCCCCCCCC.".slice(0, 32), "...nn....................nn.....",
 ];
+
+// ---------------------------------------------------------------------------------------------------------
+// Amenities as places (M6): pieces the renderer lays out cell by cell from an amenity's size (sim/layout.ts).
+
+/** Columns [a, b) of every row. */
+const cols = (rows: string[], a: number, b: number) => rows.map((r) => r.slice(a, b));
+// Restrooms of any size: the 2×2 block's pieces. A face column (with a stall door, or plain), and the roof in
+// three bands (top edge, a repeatable middle, the eave), each as left edge / middle / right edge columns.
+const RR_MID = (r: string) => r.slice(16, 30) + r.slice(14, 16);
+const rrPiece = (rows: string[]) => ({ l: cols(rows, 0, 16), m: rows.map(RR_MID), r: cols(rows, 16, 32) });
+const RR_FACE_DOOR = rrPiece(RR_FRONT.slice(RR_CAP.length)), RR_FACE_WALL = rrPiece(RR_WALL(false).slice(RR_CAP.length));
+const RR_TOP = rrPiece(RR_CAP.slice(0, 2)), RR_EAVE = rrPiece(RR_CAP.slice(10, 12));
+const RR_ROOF = rrPiece(Array.from({ length: 16 }, (_, i) => RR_CAP[2 + (i % 8)]));
+const rrSet = (name: string, P: { l: string[]; m: string[]; r: string[] }, outline: Record<string, string>) =>
+  Object.fromEntries((["l", "m", "r"] as const).map((k) => [`rr:${name}:${k}`, S(P[k], RR_PAL, outline[k])]));
+
+const KITCHEN = [
+  "..nnnnnnnnnnnn..", "..MMMMMMMMMMMM..", "...m..q..q...m..", "...m.........m..",
+  "NNNNNNNNNNNNNNNN", "nwwnnnPPnnnwwnnn", "nwwnnPFFPnnwwnnn", "nnnnnnPPnnnnnnnn", "MMMMMMMMMMMMMMMM",
+  "mMMMMmMMMMmMMMMm", "mMMMMmMMMMmMMMMm", "mMMMMmMMMMmMMMMm", "mMMMMmMMMMmMMMMm", "mMMMMmMMMMmMMMMm",
+  "mMMMMmMMMMmMMMMm", "mmmmmmmmmmmmmmmm",
+];
+const KITCHEN_TOP = [
+  "NNNNNNNNNNNNNNNN", "NnnnnnnnnnnnnnnM", "Nn.mm.nnnn.mm.nM", "Nnm..mnnnnm..mnM", "Nnm..mnnnnm..mnM",
+  "Nn.mm.nnnn.mm.nM", "NnnnnnnnnnnnnnnM", "NnnwwnnPPnnwwnnM", "NnnwwnPFFPnwwnnM", "NnnnnnnPPnnnnnnM",
+  "NnnnnnnnnnnnnnnM", "MMMMMMMMMMMMMMMM", "mMMMMmMMMMmMMMMm", "mMMMMmMMMMmMMMMm", "mMMMMmMMMMmMMMMm", "mmmmmmmmmmmmmmmm",
+];
+const STAGE = [
+  "5555555555555555", "4444444444444444", "4434443444434444", "3333333333333333", "5555555555555555",
+  "4444444444444444", "4444344444443444", "3333333333333333", "5555555555555555", "4444444444444444",
+  "4443444443444444", "3333333333333333", "9999999999999999", "7777777777777777", "2222222222222222", "1111111111111111",
+];
+const CURTAIN = [
+  "9999999999999999", "8787878787878787", "RRrOORRrOORRrOOR", "RRrORRRrORRRrORR", "RRrORRRrORRRrORR",
+  "RRrORRRrORRRrORR", "RrrORRrrORRrrORR", "RrrORRrrORRrrORR", "RrrORRrrORRrrORR", "RrrORRrrORRrrORR",
+  "RrrORRrrORRrrORR", "RrrORRrrORRrrORR", "rrrOrRrrOrRrrOrR", "rrrrrrrrrrrrrrrr", "8.8.8.8.8.8.8.8.", "................",
+];
+const DJ_PAL = { b: "#1a1622", B: "#2c2638" };
+const DJBOOTH = [
+  "................", "................", "..bbbbbbbbbbbb..", ".bmmmmbBBbmmmmb.", ".bmNNmbBBbmNNmb.",
+  ".bmNymbzzbmNymb.", ".bmmmmbBBbmmmmb.", "bbbbbbbbbbbbbbbb", "BBBBBBBBBBBBBBBB", "bzzzzzzzzzzzzzzb",
+  "bBBBBBBBBBBBBBBb", "bBBxBBBBBBBBxBBb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bbbbbbbbbbbbbbbb",
+];
+const SPEAKER = [
+  "..bbbbbbbbbbbb..", "..bBBBBBBBBBBb..", "..bB..mmmm..Bb..", "..bB.mMnnMm.Bb..", "..bB.mnyynm.Bb..",
+  "..bB.mMnnMm.Bb..", "..bB..mmmm..Bb..", "..bBBBBBBBBBBb..", "..bB.mmmmmm.Bb..", "..bBmMnnnnMmBb..",
+  "..bBmnyyyynmBb..", "..bBmnyyyynmBb..", "..bBmMnnnnMmBb..", "..bB.mmmmmm.Bb..", "..bBBBBBBBBBBb..",
+  "..bBBBBBBBBBBb..", "..bbbbbbbbbbbb..", "...m........m...",
+];
+const BACKDROP = [
+  "bbbbbbbbbbbbbbbb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bxxxxxxxxxxxxxxb", "bBBBBBBBBBBBBBBb",
+  "bBBzBBBBBBBBzBBb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bzzzzzzzzzzzzzzb", "bBBBBBBBBBBBBBBb",
+  "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bBBBBBBBBBBBBBBb", "bbbbbbbbbbbbbbbb",
+];
+/** Dance floor: lit squares, three frames of the pattern stepping on. Floor-level glow, no outline. */
+const DANCE_PAL = { a: "#ff4fa055", b: "#3ff2ff55", c: "#ffd23f55", d: "#1a162288" };
+const danceFrame = (k: number) => Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => {
+  if (x % 4 === 0 || y % 4 === 0) return "d";
+  return "abc"[((x >> 2) + (y >> 2) + k) % 3];
+}).join(""));
+
+export const ZONE_SPRITES: Record<string, SpriteDef> = {
+  // A bar counter piece without a bartender, and a cage window with a teller, for long counters.
+  "counter:front:m": S([...BAR_BOTTLES, ...BAR_TOP, ...BAR_FRONT], BAR_PAL, "tb"),
+  "cage:front:b": S([...CAGE_HEAD, "8KK7KhhhK7KK7KK7", "8KK7KsssK7KK7KK7", "8KK7KsesK7KK7KK7", "8KK7wFFFw7KK7KK7", "8KKwwFFFww7K7KK7", GRILLE, ...CAGE_LOW], { ...CAGE_PAL, e: "#1b0e14" }, "tb"),
+  // A cocktail table: walnut top on a brass pedestal.
+  table: S([
+    "................", "................", "................", "................", ".....555555.....",
+    "....54444445....", "...5444444443...", "...3444444443...", "....33333333....", "......3223......",
+    ".......76.......", ".......76.......", ".......76.......", "......7766......", ".....877766.....", "................",
+  ]),
+  // Velvet chairs: facing down (back at the top), up (seen from behind), and to the side.
+  "chair:front": S([
+    "................", "................", "................", "................", "......2222......",
+    ".....2RRRR2.....", ".....2ROOR2.....", ".....2RRRR2.....", ".....2rrrr2.....", "....2RRRRRR2....",
+    "....2RRRRRR2....", "....2rrrrrr2....", ".....3....3.....", ".....3....3.....", "................", "................",
+  ]),
+  "chair:back": S([
+    "................", "................", "................", "................", "................",
+    "....2RRRRRR2....", "....2RRRRRR2....", "....2rrrrrr2....", ".....2RRRR2.....", ".....2ROOR2.....",
+    ".....2RRRR2.....", ".....2rrrr2.....", ".....3....3.....", ".....3....3.....", "................", "................",
+  ]),
+  "chair:side": S([
+    "................", "................", "................", "................", "..........2.....",
+    ".........2R2....", ".........2R2....", ".........2O2....", ".........2R2....", ".....2RRRRR2....",
+    ".....2RRRRR2....", ".....2rrrrr2....", ".....3....3.....", ".....3....3.....", "................", "................",
+  ]),
+  // A dining table: white cloth, two places, a candle.
+  dtable: S([
+    "................", "................", "...pppppppppp...", "..pwwppqqppwwp..", "..pwwpp09ppwwp..",
+    "..pppppqqppppp..", "..pppppppppppp..", "..pwwppppppwwp..", "..pwwppppppwwp..", "..pppppppppppp..",
+    "..PPPPPPPPPPPP..", "..PpPpPpPpPpPP..", "..PPPPPPPPPPPP..", "...3........3...", "...3........3...", "................",
+  ]),
+  // The kitchen: a steel pass with heat lamps and plates (front pieces), or the steel top seen from above.
+  "kitchen:front:a": S(KITCHEN, { F: "#c86a2a" }, "tbl"), "kitchen:front:b": S(KITCHEN, { F: "#c86a2a" }, "tb"), "kitchen:front:c": S(KITCHEN, { F: "#c86a2a" }, "tbr"),
+  "kitchen:top": S(KITCHEN_TOP, { F: "#c86a2a" }),
+  stage: S(STAGE, undefined, false), "stage:curtain": S(CURTAIN, undefined, "lr"),
+  djbooth: S(DJBOOTH, DJ_PAL), "djbooth~1": S(recolor(DJBOOTH, { z: "x" }, 5, 9), DJ_PAL),
+  speaker: S(SPEAKER, DJ_PAL), "speaker~1": S(recolor(SPEAKER, { n: "N" }, 3, 12), DJ_PAL),
+  backdrop: S(BACKDROP, DJ_PAL), "backdrop~1": S(recolor(BACKDROP, { x: "z", z: "x" }), DJ_PAL),
+  dance: S(danceFrame(0), DANCE_PAL, false), "dance~1": S(danceFrame(1), DANCE_PAL, false), "dance~2": S(danceFrame(2), DANCE_PAL, false),
+  ...rrSet("door", RR_FACE_DOOR, { l: "bl", m: "b", r: "br" }), ...rrSet("wall", RR_FACE_WALL, { l: "bl", m: "b", r: "br" }),
+  ...rrSet("top", RR_TOP, { l: "tl", m: "t", r: "tr" }), ...rrSet("roof", RR_ROOF, { l: "l", m: "", r: "r" }), ...rrSet("eave", RR_EAVE, { l: "l", m: "", r: "r" }),
+  // Door rule markers, drawn over a door tile: staff plaque, padlock, card reader, velvet rope, role plaque, fee.
+  "door:staff": S(["................", "...RRRRRRRRRR...", "...RwRwwRwwRR...", "...RRRRRRRRRR..."]),
+  "door:locked": S(["......nnnn......", ".....n....n.....", ".....n....n.....", "....88888888....", "....87777778....", "....877kk778....", "....8777k778....", "....88888888...."]),
+  "door:card": S(["......mmmm......", "......myym......", "......mjjm......", "......mmmm......"], { j: "#58ff7a" }),
+  "door:dress": S([
+    "................", "................", "................", "................", "................",
+    "................", "................", "................", "..9..........9..", "..8..........8..",
+    "..8RR......RR8..", "..8..RRRRRR..8..", "..8..........8..", "..8..........8..", ".777........777.", "................",
+  ]),
+  "door:role": S(["................", "...qqqqqqqqqq...", "...qkqkkqkkqq...", "...qqqqqqqqqq..."]),
+  "door:fee": S(["..........999...", ".........97779..", ".........97979..", ".........97779..", "..........999..."]),
+};
+
 export const OBJECT_SPRITES: Record<string, SpriteDef> = {
+  ...ZONE_SPRITES,
   camera: S(CAMERA, { L: "#ff3040" }),
   dumpster: S(DUMPSTER, DUMPSTER_PAL),
   plant: S(PALM), "plant~1": S(shift(PALM, 1, 0, 6)),
@@ -419,6 +536,10 @@ export const ANIMS: Record<string, { ms: number; seq?: number[] }> = {
   neon: { ms: 70, seq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0] },
   fountain: { ms: 160 },
   counter: { ms: 700 },
+  djbooth: { ms: 350 },
+  speaker: { ms: 180 },
+  backdrop: { ms: 600 },
+  dance: { ms: 300 },
   slot: { ms: 450 },
   mop: { ms: 220 },
   "inc:loud": { ms: 250 },
@@ -436,6 +557,9 @@ export const LIGHTS: Record<string, LightDef> = {
   cage: { color: "#ffd070", r: 1.8, k: 0.3, front: 0.8 },
   atm: { color: "#5fc8ff", r: 1.4, k: 0.4, front: 0.8 },
   restroom: { color: "#fff0c0", r: 1.4, k: 0.15, front: 1 },
+  kitchen: { color: "#ffb050", r: 2.2, k: 0.3, front: 0.8 },
+  stage: { color: "#ffe0a0", r: 3.2, k: 0.45, front: 0.6 },
+  djbooth: { color: "#ff4fa0", r: 4, k: 0.55 },
   slot_cherry: { color: "#ff7ab4", r: 1.5, k: 0.35, front: 0.7 },
   slot_liberty: { color: "#ffc94a", r: 1.5, k: 0.3, front: 0.7 },
   slot_thunder: { color: "#4fe8ff", r: 1.6, k: 0.4, front: 0.7 },

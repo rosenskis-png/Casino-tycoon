@@ -136,6 +136,31 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // 7 → 8 (M6): door rules and sized amenities. Doors keep their state (no rule details yet). A bar was a 3×1
+  // counter with a stool row in front; it becomes a 3×2 bar area covering the same tiles, stools in the same
+  // order. Restrooms (2×2) and cages (2×1) keep their shape and gain a size. Guests gain the M6 fields;
+  // nobody on the floor is a smoker, and returning people carry a card.
+  7: (s) => {
+    s.map.gates = [];
+    for (let i = 0; i < s.map.door.length; i++) if (s.map.terrain[i] !== T.DOOR) s.map.door[i] = 0;
+    for (const o of s.objects) {
+      if (o.kind === "bar") {
+        if ((o.rot & 3) === 2) o.y -= 1;
+        if ((o.rot & 3) === 1) o.x -= 1;
+        Object.assign(o, { w: 3, h: 2 });
+      } else if (o.kind === "restroom") Object.assign(o, { w: 2, h: 2 });
+      else if (o.kind === "cage") Object.assign(o, { w: 2, h: 1 });
+    }
+    const pool = new Map(s.pool.map((p: any) => [p.id, p]));
+    for (const a of s.agents) {
+      const g = a.g;
+      if (a.role !== "guest" || !g) continue;
+      const p: any = g.pid >= 0 ? pool.get(g.pid) : null;
+      Object.assign(g, { card: p && p.visits > 0 ? 1 : 0, smoker: 0, urge: 0, trapAt: -1, esc: 0, paid: 0 });
+      Object.assign(g.mem, { fun: 0, spent: 0, eatAt: 0 });
+    }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

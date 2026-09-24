@@ -13,7 +13,9 @@ import { TICKS_PER_DAY } from "./clock";
 import { Game } from "./game";
 import { rng } from "./rng";
 import { loadState, serialize } from "./save";
-import { footprint, seats } from "./geometry";
+import { objCells, objSeats, seatCount, sizeOk, dims } from "./geometry";
+import { DOOR_RULES, DOOR_STATE } from "../data/terrain";
+import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { MAX_PEDS } from "./street";
 import { TRAY } from "./staff";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
@@ -48,22 +50,32 @@ export function checkInvariants(g: Game): string[] {
     if (def.serves === "thirst" && !o.bar) p.push(`bar ${o.id} has no drink policy`);
     if (objIds.has(o.id)) p.push(`duplicate object id ${o.id}`);
     objIds.add(o.id);
-    for (const q of footprint(def, o.x, o.y, o.rot)) {
+    if (def.sized && !sizeOk(def, dims(o).w, dims(o).h)) p.push(`object ${o.id} bad size ${o.w}×${o.h}`);
+    if (!def.sized && (o.w !== undefined || o.h !== undefined)) p.push(`object ${o.id} fixed-size with a size`);
+    for (const q of objCells(o)) {
       const i = q.y * w + q.x;
       if (q.x < 0 || q.y < 0 || q.x >= w || q.y >= h) { p.push(`object ${o.id} off map`); continue; }
       if (terrain[i] !== T.FLOOR) p.push(`object ${o.id} on non-floor tile`);
       if (seen[i]) p.push(`objects ${seen[i]} and ${o.id} overlap`);
       seen[i] = o.id;
-      if (def.blocks && g.occ[i] !== o.id) p.push(`occupancy cache stale at ${i}`);
+      if (q.c.block && g.occ[i] !== o.id) p.push(`occupancy cache stale at ${i}`);
+      if (!q.c.block && g.occ[i]) p.push(`open cell of ${o.id} blocked at ${i}`);
     }
-    for (const q of seats(def, o.x, o.y, o.rot)) {
+    for (const q of objSeats(o)) {
       const i = q.y * w + q.x;
       if (q.x < 0 || q.y < 0 || q.x >= w || q.y >= h || terrain[i] !== T.FLOOR || g.occ[i]) { p.push(`object ${o.id} seat blocked`); continue; }
-      if (seatTile[i]) p.push(`objects ${seatTile[i]} and ${o.id} share a seat tile`);
+      if (seatTile[i] && seatTile[i] !== o.id) p.push(`objects ${seatTile[i]} and ${o.id} share a seat tile`);
       seatTile[i] = o.id;
     }
   }
-  for (let i = 0; i < n; i++) if (seen[i] && seatTile[i]) { p.push(`seat of ${seatTile[i]} under object ${seen[i]}`); break; }
+  // A seat may lie on its own amenity's open floor, never under another object.
+  for (let i = 0; i < n; i++) if (seen[i] && seatTile[i] && seen[i] !== seatTile[i]) { p.push(`seat of ${seatTile[i]} under object ${seen[i]}`); break; }
+  // Door rules: gates only on doors, fees in range; the router's gate list matches the map.
+  for (const q of s.map.gates) {
+    if (terrain[q.i] !== T.DOOR) p.push(`door rule on a non-door tile ${q.i}`);
+    if (!(q.fee >= 0 && q.fee <= 20)) p.push(`door fee out of range at ${q.i}`);
+  }
+  for (let i = 0; i < n; i++) if (terrain[i] !== T.DOOR && s.map.door[i] !== DOOR_STATE.OPEN) { p.push(`door state left on a non-door tile ${i}`); break; }
   const ids = new Set<number>();
   const held = new Map<string, number>();
   const pids = new Set<number>();
@@ -88,7 +100,7 @@ export function checkInvariants(g: Game): string[] {
         held.set(key, a.id);
         const o = s.objects.find((o) => o.id === a.target);
         if (!o) p.push(`guest ${a.id} holds a seat on missing object ${a.target}`);
-        else if (a.seat >= OBJECTS[o.kind].seats.length) p.push(`guest ${a.id} holds a seat that doesn't exist`);
+        else if (a.seat >= seatCount(o)) p.push(`guest ${a.id} holds a seat that doesn't exist`);
       }
       if (a.hidden && a.act !== "restroom") p.push(`guest ${a.id} hidden while ${a.act}`);
       if (!(gd.drink >= 0 && gd.drink <= 1)) p.push(`guest ${a.id} drink out of range`);
@@ -106,11 +118,11 @@ export function checkInvariants(g: Game): string[] {
       grp.leads += gd.lead;
       if (grp.type !== gd.type) p.push(`group ${gd.group} mixes types`);
       groups.set(gd.group, grp);
-      if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
+      if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
       if (a.act === "play") {
         const o = s.objects.find((o) => o.id === a.target);
         if (o) {
-          const st = seats(OBJECTS[o.kind], o.x, o.y, o.rot)[a.seat];
+          const st = objSeats(o)[a.seat];
           if (st && (st.x !== a.x || st.y !== a.y)) p.push(`guest ${a.id} playing away from the machine`);
         }
       }
@@ -235,7 +247,10 @@ function fiddle(g: Game) {
     g.dispatch({ type: "build", what: "wall", tiles });
   } else if (roll < 0.35) g.dispatch({ type: "build", what: "door", tiles: [y * w + x] });
   else if (roll < 0.5) g.dispatch({ type: "build", what: "demolish", tiles: [y * w + x, y * w + x + 1] });
-  else if (roll < 0.75) g.dispatch({ type: "place", kind: r.pick(Object.keys(OBJECTS)), x, y, rot: r.int(0, 3) });
+  else if (roll < 0.75) {
+    const kind = r.pick(Object.keys(OBJECTS)), z = OBJECTS[kind].sized;
+    g.dispatch({ type: "place", kind, x, y, rot: r.int(0, 3), ...(z ? { w: r.int(z.min[0], Math.min(z.max[0], z.min[0] + 3)), h: r.int(z.min[1], Math.min(z.max[1], z.min[1] + 3)) } : {}) });
+  }
   else if (roll < 0.85) { if (g.state.objects.length) g.dispatch({ type: "remove", id: r.pick(g.state.objects).id }); }
   else if (roll < 0.93) g.dispatch({ type: "hire", role: r.pick(Object.keys(STAFF_ROLES)) });
   else if (roll < 0.935) {
@@ -248,6 +263,18 @@ function fiddle(g: Game) {
     if (r.chance(0.2)) g.dispatch({ type: "setTreatment", first: r.pick(ENF_ACTIONS), repeat: r.pick(ENF_ACTIONS) });
   }
   else if (roll < 0.945) g.dispatch({ type: "setRule", cat: r.pick(["intox", "disorder", "misconduct"] as const), level: r.int(0, 3) });
+  else if (roll < 0.95) {
+    // M6: door rules and fees, room purposes, amenity prices.
+    const doors: number[] = [];
+    for (let i = 0; i < w * h; i++) if (g.state.map.terrain[i] === T.DOOR && !g.state.map.fixed[i]) doors.push(i);
+    if (doors.length) {
+      const rule = r.pick(DOOR_RULES), fee = rule.fee && r.chance(0.5) ? r.int(1, 20) : 0;
+      g.dispatch({ type: "setDoor", tile: r.pick(doors), rule: rule.id, arg: rule.arg === "type" ? r.pick(Object.keys(GUEST_TYPES)) : rule.arg === "role" ? r.pick(Object.keys(STAFF_ROLES)) : undefined, fee });
+    }
+    g.dispatch({ type: "setRoom", tile: y * w + x, purpose: r.pick(Object.keys(ROOM_PURPOSES)) as RoomPurpose });
+    const priced = g.state.objects.filter((o) => OBJECTS[o.kind].priceRange);
+    if (priced.length) { const o = r.pick(priced), pr = OBJECTS[o.kind].priceRange!; g.dispatch({ type: "setPrice", id: o.id, price: pr[0] + (pr[1] - pr[0]) * r.next() }); }
+  }
   else if (roll < 0.96) {
     const bars = g.amenities.thirst, servers = g.state.agents.filter((a) => a.role === "server");
     if (bars.length) {
@@ -317,6 +344,8 @@ export function smoke(opts: { days: number; seeds: number[]; scenario?: string }
     for (let t = 0; t < TICKS_PER_DAY; t++) { g.step(); copy.step(); }
     if (serialize(copy) !== serialize(g)) problems.push(`seed ${seed}: reloaded save diverged from the original`);
   }
+  // The Test Floor has every kind of object, door rule and room purpose (M6): a day on it must stay clean too.
+  run("testfloor", 3, 1, (g, d) => { for (const q of checkInvariants(g)) problems.push(`test floor day ${d + 1}: ${q}`); });
   return { ok: problems.length === 0, problems: problems.slice(0, 30) };
 }
 

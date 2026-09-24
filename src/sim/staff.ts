@@ -8,7 +8,7 @@ import type { System } from "./registry";
 import type { Agent, PlacedObject } from "./state";
 import { rng } from "./rng";
 import { go, isWalking, nearbyTile } from "./agents";
-import { objSeats, objSize } from "./geometry";
+import { objSeats, objSize, objStaff } from "./geometry";
 import { TICKS_PER_SECOND } from "./clock";
 import { faceTile } from "./wayfinding";
 import { acceptChance, barPolicy, cutoff, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
@@ -64,7 +64,7 @@ function claimed(g: Game, role: string): Set<number> {
 function wanderStaff(g: Game, a: Agent) {
   const r = rng(g.state, "staff");
   const pts = g.state.wanderPoints;
-  const near = r.chance(0.7) ? nearbyTile(g, "staff", a.x, a.y, 12) : -1;
+  const near = r.chance(0.7) ? nearbyTile(g, "staff", a.x, a.y, 12, a) : -1;
   if (near >= 0) go(a, near, "idle");
   else if (pts.length) go(a, r.pick(pts), "idle");
   a.target = -1;
@@ -81,7 +81,7 @@ function janitorFindWork(g: Game, a: Agent) {
     const s = dirt[i] * 4 - (Math.abs((i % w) - a.x) + Math.abs(Math.floor(i / w) - a.y)) / 3;
     if (s > bs) { bs = s; best = i; }
   }
-  if (best >= 0 && g.paths.reachable(here, best)) { a.target = best; go(a, best, "clean"); return; }
+  if (best >= 0 && g.pathsFor(a).reachable(here, best)) { a.target = best; go(a, best, "clean"); return; }
   wanderStaff(g, a);
 }
 
@@ -109,7 +109,7 @@ function techFindWork(g: Game, a: Agent) {
     const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
     if (d >= bd) continue;
     const t = workSpot(g, o.id);
-    if (t < 0 || !g.paths.reachable(here, t)) continue;
+    if (t < 0 || !g.pathsFor(a).reachable(here, t)) continue;
     bd = d; best = o.id; spot = t;
   }
   if (best >= 0) { a.target = best; go(a, spot, "repair"); return; }
@@ -170,7 +170,7 @@ function takeOrders(g: Game, a: Agent) {
   a.tray = undefined;
   a.target = -1;
   const t = faceTile(g, bar), w = g.state.map.w;
-  const near = nearbyTile(g, "staff", t % w, Math.floor(t / w), 5);
+  const near = nearbyTile(g, "staff", t % w, Math.floor(t / w), 5, a);
   if (near >= 0) go(a, near, "idle");
 }
 
@@ -230,8 +230,12 @@ function serverTick(g: Game, a: Agent) {
     return takeOrders(g, a);
   }
   if (a.act === "fetch") {
-    // The bartender pours one a second.
-    if (a.timer === 0) { a.timer = TICKS_PER_SECOND * Math.max(1, a.tray?.length ?? 0); return; }
+    // Each bartender pours one a second: a bigger bar has more of them.
+    if (a.timer === 0) {
+      const bar = serverBar(g, a), n = bar ? Math.max(1, objStaff(bar).length) : 1;
+      a.timer = Math.max(1, Math.round((TICKS_PER_SECOND * Math.max(1, a.tray?.length ?? 0)) / n));
+      return;
+    }
     if (--a.timer > 0) return;
     return deliverNext(g, a);
   }

@@ -82,8 +82,18 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Dealers (a table opens only with its dealers) and pit bosses (table catches, tagging card counters). Onlookers at craps; the whole table cheers.
 - Hidden skill and card counters; rules-aware Locals and a new High rollers type who come for tables. Luck and cheating at every house game.
 - Table art generated per rotation, live cards, chips, dice and lit boards; a table card with rules and limits. Save schema 10 (migration from 9).
-## M9 · Staff depth, policies, marketing, comps, whales, events, research tree ☐
+## M9 · Inside the house: staff, money and risk, whales ☐  (skills 3 and 4: leaks and variance)
+- Staff depth: skill, morale (wage vs market, workload, incidents), hidden honesty, patrol zones; hiring from candidates.
+- Staff theft as leakage (bartender, teller, dealer collusion with a cheat, tech rigging for a friend), found by audits, cameras, pit bosses or chance; shrinkage shows in the books.
+- Gaming regulator ladder with a visible inspector: skimming, unpaid winnings, failed audits.
+- Credit: ordinary loans, emergency jackpot loans (a scandal), unpaid winnings, insolvency as a way to lose; worth net of debt. Jackpot insurance.
+- Whales as announced arrivals with an entourage and requests; comps by how much a guest plays.
 Whale bankrolls are sized to game money (a variance crisis means several months of the casino's profit), not real-world millions.
+## M9.5 · Outside the house: calendar, marketing, research, new crowds ☐  (skills 1 and 5: the market and the calendar)
+- Seasons and scheduled events (conventions, fight nights, tournaments, holidays, sports) announced ahead; a sportsbook.
+- Marketing campaigns per guest type; Conventioneers and Families (minors, underage incidents).
+- Research: monthly funding, a tree across games, amenities, themes, staff tools and information (overlays, suspicion tools, heatmaps, stat breakdowns); the player's club (reveals types, targeted comps, real card holders).
+- Hotel elevator with vice, and a drug policy (first to cut if the milestone runs long).
 ## M10 · Audio, play-the-games-yourself ☐
 ## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)
 ## M11 · Scenarios, tutorial, balance ☐

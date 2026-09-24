@@ -11,7 +11,7 @@ import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
 import { TICKS_PER_SECOND } from "./clock";
 import { faceTile } from "./wayfinding";
-import { acceptChance, barPolicy, leastServedBar, rollComp, serveDrink } from "./drinks";
+import { acceptChance, barPolicy, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
 import { OBJECTS } from "../data/objects";
 
 declare module "./commands" {
@@ -29,12 +29,12 @@ const SERVE_TICKS = TICKS_PER_SECOND / 2;
 /** How far from the bar (or their last stop) a server looks for guests (tiles, Manhattan, with a penalty for walkers). */
 const SERVER_REACH = 30;
 /** Drinks a server carries; seconds of order-taking after the first order before heading to the bar. */
-export const TRAY = 6;
-const COLLECT_TICKS = 20 * TICKS_PER_SECOND;
+export const TRAY = 10;
+const COLLECT_TICKS = 12 * TICKS_PER_SECOND;
 /** Guests this close to a server's stop get asked too (a row of players). */
-const OFFER_REACH = 2;
+const OFFER_REACH = 6;
 /** A guest isn't offered again for this long after saying yes or no. */
-const OFFER_AGAIN = 45 * TICKS_PER_SECOND;
+const OFFER_AGAIN = 30 * TICKS_PER_SECOND;
 
 export function hireStaff(g: Game, role: string): Agent | null {
   const s = g.state;
@@ -151,7 +151,7 @@ function nextCustomer(g: Game, a: Agent, bar: PlacedObject): Agent | null {
   let best: Agent | null = null, bs = SERVER_REACH;
   for (const b of g.state.agents) {
     const gd = b.g;
-    if (!gd || b.hidden || gd.drink > 0 || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
+    if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
     if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
     const s = Math.abs(b.x - fx) + Math.abs(b.y - fy) + (isWalking(b) ? 6 : 0);
     if (s < bs) { bs = s; best = b; }
@@ -187,7 +187,7 @@ function deliverNext(g: Game, a: Agent) {
     let k = -1, bd = Infinity, who: Agent | null = null;
     a.tray.forEach((e, i) => {
       const b = g.state.agents.find((x) => x.id === e >> 1);
-      if (!b?.g || b.g.drink > 0) return;
+      if (!b?.g || handsFull(b.g)) return;
       const d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
       if (d < bd) { bd = d; k = i; who = b; }
     });
@@ -215,7 +215,7 @@ function serverTick(g: Game, a: Agent) {
       for (const b of g.state.agents) {
         if (a.tray!.length >= TRAY) break;
         const gd = b.g;
-        if (!gd || b.hidden || gd.drink > 0 || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
+        if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
         if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > OFFER_REACH) continue;
         if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
         const comped = rollComp(g, gd, pol);

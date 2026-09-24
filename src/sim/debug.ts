@@ -6,6 +6,8 @@ import { T } from "../data/terrain";
 import { CHANNELS } from "../data/fields";
 import { SLOT_MODELS, expectedReturn } from "../data/games";
 import { STAFF_ROLES } from "../data/staff";
+import { ENF, ENF_ACTIONS, LUCK_SHIFT } from "../data/cheats";
+import { luckRedraw, luckVoid } from "./cheats";
 import { GUEST_TYPES } from "../data/guests";
 import { TICKS_PER_DAY } from "./clock";
 import { Game } from "./game";
@@ -128,6 +130,20 @@ export function checkInvariants(g: Game): string[] {
     if (a.act === "fight" && inIncident.get(a.id) !== "fight") p.push(`guest ${a.id} fighting with no incident`);
     if (a.g && (a.g.unans < 0 || a.g.warned < 0 || a.g.buzz < 0 || a.g.buzz > 20)) p.push(`guest ${a.id} incident fields out of range`);
   }
+  // Enforcement: every held guest has its job and every job its guest; jobs on known actions; heat finite.
+  const jobs = new Map(s.enf.jobs.map((j) => [j.id, j]));
+  for (const j of s.enf.jobs) {
+    if (!ENF[j.action]) p.push(`job ${j.id} unknown action ${j.action}`);
+    if (j.stage < 0 || j.stage > 3) p.push(`job ${j.id} bad stage`);
+  }
+  for (const a of s.agents) {
+    const gd = a.g;
+    if (!gd) continue;
+    if (gd.held && !jobs.has(gd.held)) p.push(`guest ${a.id} held for a missing job`);
+    if (a.act === "held" && !gd.held) p.push(`guest ${a.id} standing held with no job`);
+    if (gd.spell < 0 || gd.take < 0 || !(gd.mem.ev >= 0) || !(gd.mem.v >= 0) || ![0, 1].includes(gd.cheat)) p.push(`guest ${a.id} cheat fields out of range`);
+  }
+  if (!(s.enf.heat >= 0 && Number.isFinite(s.enf.heat))) p.push(`enforcement heat ${s.enf.heat}`);
   for (const [k, v] of Object.entries(s.rules)) if (!(Number.isInteger(v) && v >= 0 && v <= 3)) p.push(`house rule ${k} = ${v}`);
   for (const [k, v] of [["police", s.auth.police.standing], ["regulator", s.auth.regulator.standing]] as const) if (!(v >= 0 && v <= 100)) p.push(`${k} standing ${v}`);
   // The pool: money never negative; anyone marked here is on the floor or on the sidewalk.
@@ -161,6 +177,13 @@ export function mathChecks(): string[] {
     if (m.pays.some((q) => q.p <= 0 || q.x <= 0)) p.push(`${m.id}: non-positive entry`);
   }
   for (const o of Object.values(OBJECTS)) if (o.slot && !SLOT_MODELS[o.slot]) p.push(`${o.id}: unknown slot model ${o.slot}`);
+  // Luck (docs/spec/cheats.md): the redraw and void chances are real probabilities and shift payback by exactly ±LUCK_SHIFT.
+  for (const m of Object.values(SLOT_MODELS)) {
+    const h = m.pays.reduce((a, q) => a + q.p, 0), up = luckRedraw(m), down = luckVoid(m);
+    if (!(up > 0 && up <= 1 && down > 0 && down <= 1)) p.push(`${m.id}: luck chances out of range`);
+    if (Math.abs(m.rtp + (1 - h) * up * m.rtp - (m.rtp + LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: lucky payback off`);
+    if (Math.abs(m.rtp * (1 - down) - (m.rtp - LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: unlucky payback off`);
+  }
   return p;
 }
 
@@ -215,6 +238,15 @@ function fiddle(g: Game) {
   else if (roll < 0.75) g.dispatch({ type: "place", kind: r.pick(Object.keys(OBJECTS)), x, y, rot: r.int(0, 3) });
   else if (roll < 0.85) { if (g.state.objects.length) g.dispatch({ type: "remove", id: r.pick(g.state.objects).id }); }
   else if (roll < 0.93) g.dispatch({ type: "hire", role: r.pick(Object.keys(STAFF_ROLES)) });
+  else if (roll < 0.935) {
+    const guests = g.state.agents.filter((a) => a.role === "guest");
+    if (guests.length) {
+      const a = r.pick(guests);
+      if (r.chance(0.5)) g.dispatch({ type: "mark", id: a.id, flags: r.int(0, 7) });
+      else g.dispatch({ type: "enforce", id: a.id, action: r.pick(ENF_ACTIONS) });
+    }
+    if (r.chance(0.2)) g.dispatch({ type: "setTreatment", first: r.pick(ENF_ACTIONS), repeat: r.pick(ENF_ACTIONS) });
+  }
   else if (roll < 0.945) g.dispatch({ type: "setRule", cat: r.pick(["intox", "disorder", "misconduct"] as const), level: r.int(0, 3) });
   else if (roll < 0.96) {
     const bars = g.amenities.thirst, servers = g.state.agents.filter((a) => a.role === "server");

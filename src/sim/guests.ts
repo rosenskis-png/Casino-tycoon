@@ -19,6 +19,8 @@ import { betOf, modelOf, roundTicks } from "./gaming";
 import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRINK_UNIT, INTOX_CAP } from "./drinks";
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
+import { tagGuest, guestName } from "./cheats";
+import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 
 declare module "./commands" {
@@ -274,11 +276,11 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     drink: 0, dStr: 0,
     intend, drift: intend ? logNormal(r, { median: dr.overshoot, sigma: 1.2 }) : 0, intox: 0, chase,
     needs: { bladder: r.int(0, 30), hunger: r.int(0, 30), thirst: r.int(0, 30), fatigue: r.int(0, 10) },
-    mood: r.int(60, 75), luck: 0, cheat: 0,
+    mood: r.int(60, 75), luck: 0, cheat: 0, spell: 0, spellAt: 0, take: 0, caught: 0, mark: 0, held: 0, hurt: 0,
     mem: {
       arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, cashed: 0,
       feel: 0, rounds: 0, served: 0, comped: 0, early: 0, startIntend: intend, peak: 0, atmYes: 0, exitHops: 0, barAt: 0,
-      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0,
+      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0, ev: 0, v: 0, hits: 0, hexp: 0, hvar: 0, banned: 0,
     },
     // First-timers sightsee before settling; regulars less, the better they know the place.
     browse: 0, frus: 0, liked: [], favAt: 0,
@@ -295,6 +297,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     act: "arrive", next: "idle", target: -1, seat: -1, timer: 0, hidden: 0, g: gd,
   };
   gd.group = leader ? leader.id : a.id;
+  tagGuest(g, gd, person, lead);
   gd.browse = Math.round(type.browse * range(r, [0.5, 1.5]) * (1 - gd.know) * (gd.memDate >= 0 ? 0.3 : 1));
   s.agents.push(a);
   s.visits.today.arrived++;
@@ -317,6 +320,7 @@ export function spawnGroup(g: Game, typeId: string, at: number, person: Person |
     if (m) out.push(m);
   }
   g.bus.emit({ type: "arrived", guestType: typeId, n: out.length, regular: person ? 1 : 0 });
+  if (person && person.mark & 4) news(g, "warn", `Marked guest ${guestName(person.name)} is back.`);
   if (out.length > 1) groupMaps.delete(g);
   return out;
 }
@@ -342,12 +346,16 @@ export function visitScore(a: Agent): VisitScore {
   const mood = (gd.mem.moodN ? gd.mem.moodSum / gd.mem.moodN : gd.mood) / 100;
   const needs = Math.max(0, 1 - gd.mem.unmet / 3);
   // Thrown out by security: whatever else happened, the visit ended badly.
-  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.mem.ejected ? 0.4 : 1);
+  // Beaten up: nothing else about the visit counts.
+  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.hurt ? 0 : gd.mem.ejected ? 0.4 : 1);
   return { score, value, feel, needs, mood };
 }
 
-/** The guest walks out (or is carried out): their visit becomes the person's memory, or word of mouth. */
-export function depart(g: Game, a: Agent) {
+/**
+ * The guest walks out (or is carried out): their visit becomes the person's memory, or word of mouth.
+ * `vanished`: made to disappear (docs/spec/cheats.md): counted, but nobody takes anything home.
+ */
+export function depart(g: Game, a: Agent, vanished = false) {
   const gd = a.g!, s = g.state;
   release(g, a);
   const vs = visitScore(a);
@@ -358,14 +366,15 @@ export function depart(g: Game, a: Agent) {
   else if (vs.score < 0.45) think(g, a, "badTime");
   if (gd.why === "broke" && vs.value < 0.5) think(g, a, "badValue");
   else if (vs.value >= 1 && gd.why !== "broke" && gd.mem.wagered > gd.mem.won) think(g, a, "goodValue");
-  afterVisit(g, a, vs.score);
+  if (!vanished) afterVisit(g, a, vs.score);
+  if (gd.mark & 2 && !vanished) news(g, "warn", `Marked guest ${guestName(gd.name)} is leaving.`);
   g.bus.emit({
     type: "departed", guestType: gd.type, pid: gd.pid, lead: gd.lead, minutes: (s.tick - gd.mem.arrived) / TICKS_PER_MIN, play: gd.mem.playTicks / TICKS_PER_MIN,
     budget: gd.bankroll, lost: gd.mem.wagered - gd.mem.won, intend: gd.mem.startIntend, peak: gd.mem.peak,
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
-    warned: gd.warned, ejected: gd.mem.ejected,
+    warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
   });
-  walkAway(g, a);
+  if (!vanished) walkAway(g, a);
   gone(g).add(a.id);
 }
 
@@ -801,10 +810,13 @@ function quitReason(g: Game, a: Agent): string | null {
   const m = o && modelOf(o.kind);
   if (!o || !m) return "gone";
   if (gd.why) return "leaving";
+  // A cheat up by their take stops while they're ahead.
+  if (gd.take && gd.mem.won - gd.mem.wagered >= gd.take) { gd.take = 0; gd.spell = 0; return "done"; }
   if (o.broken) { think(g, a, "broken"); gd.annoy += 10; return "broken"; }
   if (betOf(m, 1) * WAGERS_PER_ROUND > gd.wallet) return "money";
   const nt = net(gd);
-  const rule = gd.quit as QuitRule;
+  // A cheat still after their take ignores the usual quit rules.
+  const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
   const lim = limits(gd);
   if (rule === "winGoal" && nt >= lim.win) { think(g, a, "quitAhead"); return "done"; }
   if (rule === "lossLimit" && -nt >= lim.loss) { think(g, a, "myLimit"); return "done"; }
@@ -875,10 +887,15 @@ function headInside(g: Game, a: Agent): boolean {
 
 function guestTick(g: Game, a: Agent) {
   const gd = a.g!;
+  // Held for security: they wait, whatever else they had in mind.
+  if (gd.held && !isWalking(a)) { a.act = "held"; return; }
   switch (a.act) {
     case "out":
     case "fight":
       // Passed out or in a fight: the incident system decides when it's over (sim/incidents.ts).
+      return;
+    case "held":
+      // Waiting on (or being walked by) security: the enforcement job decides (sim/cheats.ts).
       return;
     case "arrive":
       if (headInside(g, a)) return;

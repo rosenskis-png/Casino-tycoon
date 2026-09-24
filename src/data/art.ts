@@ -312,7 +312,21 @@ const FOUNTAIN_2 = patch(FOUNTAIN, {
   15: mir([".EmuUUUUUUUUUVVV"])[0], 21: mir([".EmuUUUUUvUUUUUU"])[0],
 });
 
+// Security (M5): a ceiling dome over the tile (drawn at its top edge) and a dumpster out back.
+const CAMERA = [
+  "................", "......mmmm......", ".....MnnnnM.....", "....nyyyyyyn....", "....nyYyyyLn....", ".....nyyyyn.....",
+  "......nnnn......", "................", "................", "................", "................", "................",
+  "................", "................", "................", "................",
+];
+const DUMPSTER_PAL = { A: "#4f7d58", B: "#335c3e", C: "#21402b", L: "#e5303d" };
+const DUMPSTER = [
+  "...AAAAAAAAAAAAAAAAAAAAAAAAAA...", "..AAAAAAAAAAAAAAAAAAAAAAAAAAAA..", "..CCCCCCCCCCCCCCCCCCCCCCCCCCCC..",
+  ...Array.from({ length: 10 }, (_, y) => (y % 3 === 1 ? "..BmBBBBBCBBBBBBBBBBBBCBBBBBmBC.." : "..BBBBBBBCBBBBBBBBBBBBCBBBBBBBC..").slice(0, 32)),
+  "..CCCCCCCCCCCCCCCCCCCCCCCCCCCCC.".slice(0, 32), "...nn....................nn.....",
+];
 export const OBJECT_SPRITES: Record<string, SpriteDef> = {
+  camera: S(CAMERA, { L: "#ff3040" }),
+  dumpster: S(DUMPSTER, DUMPSTER_PAL),
   plant: S(PALM), "plant~1": S(shift(PALM, 1, 0, 6)),
   neon: S(NEON, NEON_PAL), "neon~1": S(recolor(NEON, { x: "H" }, 0, 10), NEON_PAL),
   sign: S(SIGN, SIGN_PAL),
@@ -370,6 +384,11 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
   "spark~1": S([".q.q.", "..q..", "qqwqq", "..q..", ".q.q."], undefined, false),
   // Security's radio, worn at the hip.
   radio: S([".n", "mm", "mM", "mm"]),
+  // Enforcement (M5): a body bag on the floor and over the shoulder, a small pistol and its muzzle flash.
+  bag: S([".bbbbbbbbbb.", "bBBBBmBBBBBb", "bbbbbmbbbbbb", ".bbbbbbbbbb."], { b: "#18161e", B: "#2c2a34" }),
+  "bag:carry": S(["bbb.", "bBBb", "bBmb", "bBBb", "bBBb", ".bb."], { b: "#18161e", B: "#2c2a34" }),
+  gun: S(["nnnn", "Mn.."]),
+  flash: S([".q.", "qwq", ".q."], undefined, false),
   // Incidents (M4): marks over a head, a sick face, a scuffle cloud, and vomit on the floor.
   "inc:loud": S(["..qq", "..q9", "..q.", ".qq.", "qqq.", "qq.."]),
   "inc:loud~1": S(["...qq", "...q9", "...q.", "..qq.", ".qqq.", ".qq.."]),
@@ -608,6 +627,14 @@ export const PEOPLE: Record<string, LookSet> = {
   medic: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#eef0ec"], bottom: ["#eef0ec"], accent: ["#c0283c"], hat: ["#c0283c"],
     styles: [[{ o: "coverall", h: "crop", x: ["belt"] }], [{ o: "coverall", h: "bun", x: ["belt"] }]],
+  },
+  enforcer: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#3e2a22"], bottom: ["#1e1e24"], accent: ["#141418"], hat: ["#141418"],
+    styles: [[{ o: "longsleeve", h: "crop" }], [{ o: "longsleeve", h: "bun" }]],
+  },
+  operator: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#7a808c"], bottom: ["#2a2e38"], accent: ["#1c2030"], hat: ["#1c2030"],
+    styles: [[{ o: "polo", h: "short", x: ["glasses"] }], [{ o: "polo", h: "bob", x: ["glasses"] }]],
   },
   server: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#f6f1e6"], bottom: ["#141418"], accent: ["#1c1820"], hat: ["#141418"],

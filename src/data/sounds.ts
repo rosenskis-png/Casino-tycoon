@@ -31,5 +31,14 @@ export const SOUNDS: Record<string, SoundRecipe> = {
   cheer: [{ wave: "noise", f0: 3000, dur: 0.45, gain: 0.1 }, { wave: "triangle", f0: 660, f1: 990, dur: 0.18, gain: 0.08 }],
   retch: [{ wave: "sawtooth", f0: 160, f1: 90, dur: 0.22, gain: 0.07 }, { wave: "noise", f0: 400, at: 0.12, dur: 0.15, gain: 0.12 }],
   thud: [{ wave: "sine", f0: 110, f1: 45, dur: 0.18, gain: 0.3 }],
+  // Cheats and enforcement (M5): a catch, a beating (three punches, timed to the animation), a disappearance (one
+  // muffled shot and the fall).
+  caught: [{ wave: "square", f0: 988, dur: 0.09, gain: 0.07 }, { wave: "square", f0: 740, at: 0.11, dur: 0.09, gain: 0.07 }, { wave: "square", f0: 988, at: 0.22, dur: 0.09, gain: 0.07 }],
+  punch: [
+    { wave: "noise", f0: 600, at: 0.2, dur: 0.06, gain: 0.3 }, { wave: "sine", f0: 120, f1: 60, at: 0.2, dur: 0.08, gain: 0.25 },
+    { wave: "noise", f0: 600, at: 0.8, dur: 0.06, gain: 0.3 }, { wave: "sine", f0: 120, f1: 60, at: 0.8, dur: 0.08, gain: 0.25 },
+    { wave: "noise", f0: 500, at: 1.4, dur: 0.07, gain: 0.32 }, { wave: "sine", f0: 110, f1: 50, at: 1.4, dur: 0.1, gain: 0.28 },
+  ],
+  shot: [{ wave: "noise", f0: 2400, at: 0.6, dur: 0.05, gain: 0.35 }, { wave: "sine", f0: 160, f1: 50, at: 0.6, dur: 0.12, gain: 0.25 }, { wave: "sine", f0: 110, f1: 45, at: 0.95, dur: 0.18, gain: 0.3 }],
   urgent: [{ wave: "square", f0: 660, dur: 0.1, gain: 0.08 }, { wave: "square", f0: 660, at: 0.16, dur: 0.1, gain: 0.08 }],
 };

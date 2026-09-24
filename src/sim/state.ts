@@ -1,8 +1,9 @@
 // Saved game state: plain serializable data only. Derived caches live in the runtime (game.ts) and are rebuilt on load.
 import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
+import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export interface MapState {
   w: number;
@@ -88,9 +89,22 @@ export interface GuestData {
   chase: number;
   needs: Needs;
   mood: number;
-  /** Hidden tags (M5): luck shift and cheat flag. */
+  /** Hidden tags (docs/spec/cheats.md): payback shift (±LUCK_SHIFT or 0) and 1 for a cheat. */
   luck: number;
   cheat: number;
+  /**
+   * Cheating: seconds left in the current spell (0 honest), the tick the next spell may start, the take they
+   * mean to walk out with (0 once done cheating this visit), and 1 once caught this visit.
+   */
+  spell: number;
+  spellAt: number;
+  take: number;
+  caught: number;
+  /** Marked by the player: bits 1 marked, 2 alert on leaving, 4 alert on returning. */
+  mark: number;
+  /** Enforcement job holding them (id), or 0; 1 once beaten (they limp out slowly). */
+  held: number;
+  hurt: number;
   /**
    * Memory of this visit, for the visit score and chasing. `feel` sums how good each round felt over `rounds`;
    * `served` and `comped` drinks were pushed on them; `early` a big win early on; `peak` their highest
@@ -105,6 +119,15 @@ export interface GuestData {
     offerAt: number; sitAt: number; favSeat: number; favScore: number;
     /** 1 once security threw them out. */
     ejected: number;
+    /** What the machines' math expected them to win back (Σ bet × payback) and its variance, for the suspicion tools. */
+    ev: number;
+    v: number;
+    /** Wins so far, and how many (and what variance) the math expected: luck and rigged wins show here. */
+    hits: number;
+    hexp: number;
+    hvar: number;
+    /** 1 once banned this visit (a one-off guest who later joins the pool stays banned). */
+    banned: number;
   };
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
@@ -184,9 +207,13 @@ export interface Person {
   here: number;
   /** Times security has thrown them out. */
   ejects: number;
-  /** (M5) Banned and marked flags. */
+  /** 1 once banned for life (with their whole group); the player's mark bits (GuestData.mark). */
   ban: number;
   mark: number;
+  /** Hidden tags, for life (docs/spec/cheats.md), and times caught cheating. */
+  luck: number;
+  cheat: number;
+  caught: number;
 }
 
 /**
@@ -217,13 +244,16 @@ export type Activity =
   | "arrive" | "walk" | "wander" | "play" | "drink" | "restroom" | "cage" | "leave"
   | "idle" | "wait" | "clean" | "repair" | "offer" | "fetch" | "serve"
   // M4: a guard on the way to (or dealing with) an incident; a guest passed out or fighting; a paramedic treating.
-  | "respond" | "out" | "fight" | "treat";
+  | "respond" | "out" | "fight" | "treat"
+  // M5: a guest held for (or walked to) enforcement; an enforcer (or guard) carrying it out; carrying a bag
+  // away; a surveillance operator at a desk.
+  | "held" | "enforce" | "carry" | "watch";
 
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {
   id: number;
   /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
-  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic";
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;
@@ -246,6 +276,8 @@ export interface Agent {
   bar?: number;
   tray?: number[];
   due?: number;
+  /** Enforcers: 1 while carrying a bag. */
+  bag?: number;
   g?: GuestData;
 }
 
@@ -288,6 +320,32 @@ export interface Authorities {
   /** Closed by the authorities until this tick (-1 open); `revoked` once the license was lost. */
   closedUntil: number;
   revoked: number;
+}
+
+/**
+ * An enforcement job (docs/spec/cheats.md): who, what, ordered by the player or the house treatment for a caught
+ * cheat, and who is carrying it out. Stages: 0 waiting for staff, 1 on the way to the guest, 2 walking them
+ * somewhere (the exit, the enforcement room), 3 doing it (since `at`).
+ */
+export interface EnfJob {
+  id: number;
+  guest: number;
+  action: EnfAction;
+  house: number;
+  staff: number;
+  stage: number;
+  /** Where it happens (stage 2-3), or -1 where they stand; tick stage 3 began. */
+  tile: number;
+  at: number;
+}
+
+/** Enforcement state: the house treatment, rolling heat, jobs in progress, rumors and missing-person reports due. */
+export interface Enforcement {
+  policy: { first: EnfAction; repeat: EnfAction };
+  heat: number;
+  jobs: EnfJob[];
+  rumors: { at: number; type: string; rep: number; police: number; text: string }[];
+  missing: { at: number; name: number }[];
 }
 
 /** Closed by the police (a raid, or the license revoked): nobody comes in. */
@@ -342,6 +400,7 @@ export interface GameState {
   incidentDays: Record<string, number>[];
   rules: HouseRules;
   auth: Authorities;
+  enf: Enforcement;
   /** Visit counters: today and yesterday. */
   visits: { today: VisitStats; yday: VisitStats };
   outcome: "" | "won" | "lost";

@@ -2,7 +2,7 @@
 export { Game } from "./game";
 export type { CommandRecord } from "./game";
 export type { Command } from "./commands";
-export type { GameState, Agent, PlacedObject, NewsItem, GuestData, Ledger, Person, Ped, Incident, HouseRules } from "./state";
+export type { GameState, Agent, PlacedObject, NewsItem, GuestData, Ledger, Person, Ped, Incident, HouseRules, EnfJob } from "./state";
 export { SCHEMA_VERSION } from "./state";
 export type { SimEvent, NewsLevel } from "./events";
 export { serialize, loadState } from "./save";
@@ -23,3 +23,4 @@ export { modelOf, betOf } from "./gaming";
 export { incidentRates, incidentOf, LADDER, LADDER_NAMES, CALL_AFTER } from "./incidents";
 export { cutoff } from "./drinks";
 export { isStaff } from "./staff";
+export { suspicion, coverage, purposeTiles, type Suspicion } from "./cheats";

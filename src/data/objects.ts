@@ -8,7 +8,7 @@ export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hi
 export interface ObjectDef {
   id: string;
   name: string;
-  cat: "game" | "amenity" | "decor";
+  cat: "game" | "amenity" | "decor" | "security";
   w: number;
   h: number;
   cost: number;
@@ -103,10 +103,21 @@ export const OBJECTS: Record<string, ObjectDef> = {
     emits: [{ channel: "PRS", strength: 5, radius: 6 }, { channel: "NRG", strength: 2, radius: 4 }], sprite: "fountain", art: "whole", seats: [],
     desc: "A showpiece. Prestige for the whole area.",
   },
+  camera: {
+    id: "camera", name: "Camera", cat: "security", w: 1, h: 1, cost: 400, upkeep: 3, blocks: false, place: "indoor",
+    emits: [{ channel: "SRVH", strength: 3, radius: 6 }], sprite: "camera", art: "whole", seats: [],
+    desc: "A ceiling dome. Catches cheats in the act, but only while a surveillance operator watches from a Back office.",
+  },
+  dumpster: {
+    id: "dumpster", name: "Dumpster", cat: "security", w: 2, h: 1, cost: 300, upkeep: 1, blocks: true, place: "outdoor",
+    emits: [], sprite: "dumpster", art: "whole", seats: [],
+    desc: "Out back. Where your enforcers take what's left after a disappearance.",
+  },
 };
 
 export const OBJECT_CATS: { id: ObjectDef["cat"]; label: string }[] = [
   { id: "game", label: "Slots" },
   { id: "amenity", label: "Amenities" },
   { id: "decor", label: "Decoration" },
+  { id: "security", label: "Security" },
 ];

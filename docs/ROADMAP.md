@@ -59,7 +59,13 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Police standing and ladder: warning, fines, inspections, raid and closure, license revoked (scenario lost). Officers and paramedics walk the floor. Regulator standing shown (triggers in M5/M8).
 - Drinking fix: trays of 10, servers ask within 6 tiles, the next drink ordered at the last quarter, stronger drink unit; people now actually get drunk.
 - Authorities tab, incident art (marks, lying down, scuffles, vomit), guard/officer/paramedic figures, sounds. Save schema 6 (migration from 5).
-## M5 · Cheats, suspicion tools, enforcement, luck tags ☐
+## M5 · Cheats, suspicion tools, enforcement, luck tags ☑  (see docs/spec/cheats.md)
+- Hidden luck (3% lucky, 3% unlucky, exactly ±20 points of payback, shown as winning more or less often) and cheats (~1% of guests, for life; crews). Cheats play honestly between spells of rigged wins and leave once up by their take.
+- Caught in the act by guards in view, cameras watched by a surveillance operator in a Back office, or chance; marking makes a catch likelier. A catch is certain, recovers what they were up, and triggers the house treatment.
+- Suspicion tools on the guest card (session length, result vs expectation, wallet vs bankroll and ATM, a noisy cheat estimate), tiers set per scenario until the M9 research tree.
+- Marking with leave/return alerts; warn, ban (whole group), beating, disappearance by enforcers (guards warn and ban); an Enforcement room hides the dark two; house treatment for first and repeat offenses.
+- Consequences: rolling heat, witnesses, company (missing-person reports), innocent targets surfacing as rumors that cost reputation and police standing.
+- Cameras, dumpster, enforcer and operator figures, body bag, gun flash, punches, marked-guest ring, sounds. Save schema 7 (migration from 6).
 ## M6 · Construction: walls, rooms with purposes, outdoors, parcels, theming ☐
 ## M7 · Games catalog and table rules ☐
 ## M8 · Slot designer ☐

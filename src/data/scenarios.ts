@@ -1,4 +1,5 @@
 // Scenario maps, starting setups, populations and goals as data (FOUNDATIONS §20).
+import type { RoomPurpose } from "./rooms";
 export interface Rect { x: number; y: number; w: number; h: number }
 
 export interface Goals {
@@ -50,6 +51,10 @@ export interface ScenarioDef {
   /** Most guests on the floor at once. */
   maxGuests: number;
   goals: Goals | null;
+  /** Suspicion tool tiers available, 0-4 (docs/spec/cheats.md; research raises it from M9). */
+  tools: number;
+  /** Named rooms with a purpose, by any tile inside them. */
+  rooms?: { x: number; y: number; name: string; purpose: RoomPurpose }[];
   /** Not offered in the New game list (engine test maps). */
   hidden?: boolean;
 }
@@ -98,7 +103,7 @@ function bigFloor(): ScenarioDef {
     w, h, startCash: 1_000_000, grounds: [{ x: 1, y: 1, w: w - 2, h: h - 2 }], buildings: [{ x: bx, y: by, w: bw, h: bh }],
     walls: [], doors, water: [], entrances, sidewalks: [], objects, staff: { janitor: 20, tech: 20 },
     footfall: 0, street: {}, market: {},
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null, tools: 0,
   };
 }
 
@@ -124,16 +129,24 @@ function testFloor(): ScenarioDef {
     { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 }, { kind: "restroom", x: 31, y: 6, rot: 0 },
     { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
-    { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 47, y: 29, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
-    { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 45, y: 26, rot: 0 },
+    { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 41, y: 30, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
+    { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 43, y: 25, rot: 0 },
     { kind: "sign", x: 7, y: 17, rot: 0 }, { kind: "sign", x: 23, y: 11, rot: 0 }, { kind: "sign", x: 38, y: 12, rot: 0 },
+    // Cameras over the slot banks and the back room, watched from the office; a dumpster out back.
+    { kind: "camera", x: 8, y: 20, rot: 0 }, { kind: "camera", x: 18, y: 21, rot: 0 }, { kind: "camera", x: 28, y: 21, rot: 0 },
+    { kind: "camera", x: 38, y: 21, rot: 0 }, { kind: "camera", x: 28, y: 17, rot: 0 }, { kind: "camera", x: 42, y: 10, rot: 0 },
+    { kind: "dumpster", x: 44, y: 34, rot: 0 },
   );
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 3, tech: 2, server: 8, guard: 2 },
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 3, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1 },
+    // Two small rooms in the front-right corner: a security office and an enforcement room.
+    walls: [...LOT.walls, { x: 44, y: 23, w: 1, h: 8 }, { x: 45, y: 23, w: 4, h: 1 }, { x: 45, y: 27, w: 4, h: 1 }],
+    doors: [...LOT.doors, [44, 25], [44, 29]],
+    rooms: [{ x: 46, y: 25, name: "Security office", purpose: "office" }, { x: 46, y: 29, name: "Back room", purpose: "enforcement" }],
     footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
     market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 400, goals: null,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 400, goals: null, tools: 4,
   };
 }
 
@@ -160,6 +173,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     arrivals: 0.12,
     maxGuests: 300,
     goals: { worth: 30_000, rep: { type: "local", min: 60 }, by: { year: 1, month: 11 } },
+    tools: 2,
   },
   sandbox: {
     id: "sandbox",
@@ -177,6 +191,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     arrivals: 0.45,
     maxGuests: 400,
     goals: null,
+    tools: 4,
   },
   bigfloor: bigFloor(),
   testfloor: testFloor(),

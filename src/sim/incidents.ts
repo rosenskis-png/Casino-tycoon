@@ -89,7 +89,7 @@ function near(g: Game, grid: Grid, x: number, y: number, r: number, fn: (b: Agen
       for (let k = grid.head[Y * w + X]; k >= 0; k = grid.next[k]) fn(grid.list[k], Math.max(Math.abs(X - x), Math.abs(Y - y)));
 }
 
-const busy = (b: Agent) => b.act === "out" || b.act === "fight" || b.hidden === 1;
+const busy = (b: Agent) => b.act === "out" || b.act === "fight" || b.hidden === 1 || !!b.g?.held;
 
 /** Nearest other guest within r tiles, not in a's group, free to get into something. */
 function partner(g: Game, grid: Grid, a: Agent, r: number, ok: (b: Agent) => boolean = () => true): Agent | null {
@@ -402,6 +402,8 @@ function assign(g: Game, grid: Grid, a: Agent): boolean {
 
 function guardTick(g: Game, grid: () => Grid, a: Agent, r: Rng) {
   const s = g.state, w = s.map.w;
+  // Carrying out a warning or a ban (sim/cheats.ts runs that).
+  if (a.act === "enforce") return;
   // Patrolling: once a second, look for trouble to deal with.
   if (a.act === "wander" && (a.id + s.tick) % TICKS_PER_BEAT === 0 && s.incidents.length && assign(g, grid(), a)) return;
   if (a.act === "respond") {

@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8 (slot designer) moved after M10
+- Owner: build M9 next; the slot designer is mostly standalone. Order is now M9 → M10 → M8 → M11. Milestone names and tags keep their numbers.
+- Claude's call: M8 stays before M11, not after it, because balance tuning has to include player designs.
+- What the M8 readiness check found, for that chat: guest slot taste is a per-model lookup (`games[model]`) and needs preferences over design parameters (stock models become presets calibrated to today's values); the regulator has a ladder but no detection (an audit inspector is the default). Defaults to put to the owner: guests can't perceive payback directly, only through outcomes; near misses extend play, dressed-up losses please some types and put off Locals and High rollers; a design library shared across saves; bonus features and linked progressives possibly split into M8.5.
+- Moving M8 later resolves one conflict: machine stats "by guest type" can use M9's player's club instead of the Debug view.
+- M9 builds the regulator's first triggers instead (skimming, unpaid winnings, dealer collusion); rigging and near-miss triggers join them in M8.
+
 ## 2026-09-24 · M7 built (Claude's calls; see docs/spec/tables.md)
 - All numbers are starting values checked only against sanity flags: costs, wages (dealer $100, pit boss $140), round lengths, limit presets, tastes per type, `tableStake`, skill shares and costs, counter shares and gains, the pit boss and dealer catch rates, the counter-tagging rate, High rollers' data.
 - **Every game is unit-risk wagers in the slot paytable shape**, so luck, cheating, the suspicion tools and the books work unchanged. Blackjack draws loss / push / win / natural with the win chance solved for the exact edge (no doubles or splits drawn); craps odds are separate wagers placed only when a point is set.

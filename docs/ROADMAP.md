@@ -56,7 +56,7 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Incident catalog as data, each from a cause the player can see: drunkenness (loud, stumbling, spills, vomiting, passing out), disorder (arguments that turn into fights, yelling at staff, breakdowns), misconduct (planters), celebration (cheering, buying a round), social (flirting, another round). Vice, underage and drugs deferred.
 - Witnesses react by type tolerance; low-drama guests report; a guest with 3 unanswered reports calls the police.
 - House rules per category (Ignore / Lenient / Moderate / Strict); security guards warn or throw people out; bars and servers cut off drunk guests; guests mind being policed.
-- Police standing and ladder: warning, fines, inspections, raid and closure, license revoked (scenario lost). Officers and paramedics walk the floor. Regulator standing shown (triggers in M5/M8).
+- Police standing and ladder: warning, fines, inspections, raid and closure, license revoked (scenario lost). Officers and paramedics walk the floor. Regulator standing shown (triggers in M9 and M8).
 - Drinking fix: trays of 10, servers ask within 6 tiles, the next drink ordered at the last quarter, stronger drink unit; people now actually get drunk.
 - Authorities tab, incident art (marks, lying down, scuffles, vomit), guard/officer/paramedic figures, sounds. Save schema 6 (migration from 5).
 ## M5 · Cheats, suspicion tools, enforcement, luck tags ☑  (see docs/spec/cheats.md)
@@ -82,8 +82,8 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Dealers (a table opens only with its dealers) and pit bosses (table catches, tagging card counters). Onlookers at craps; the whole table cheers.
 - Hidden skill and card counters; rules-aware Locals and a new High rollers type who come for tables. Luck and cheating at every house game.
 - Table art generated per rotation, live cards, chips, dice and lit boards; a table card with rules and limits. Save schema 10 (migration from 9).
-## M8 · Slot designer ☐
 ## M9 · Staff depth, policies, marketing, comps, whales, events, research tree ☐
 Whale bankrolls are sized to game money (a variance crisis means several months of the casino's profit), not real-world millions.
 ## M10 · Audio, play-the-games-yourself ☐
+## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)
 ## M11 · Scenarios, tutorial, balance ☐

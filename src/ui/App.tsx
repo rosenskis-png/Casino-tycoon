@@ -6,6 +6,7 @@ import { play, unlockAudio } from "../platform/audio";
 import { FloorAudio } from "./floorAudio";
 import { TitleScreen } from "./title";
 import { PlayScreen } from "./play";
+import { reveal } from "./reveal";
 import { Designer } from "./designer/Designer";
 import { SlotsPanel } from "./designer/SlotsPanel";
 import type { SlotDesign } from "../data/designer";
@@ -189,7 +190,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   return (
     <div className="ct">
       <div className="top">
-        <span className="cash num">{g ? money(g.state.cash) : ""}</span>
+        <span className="cash num">{g ? money(playing && reveal.cash !== null ? reveal.cash : g.state.cash) : ""}</span>
         <span className="date num">{g ? formatDate(Math.floor(g.state.tick / TICKS_PER_DAY)) : ""}</span>
         {!playing && <div className="speeds">
           {SPEEDS.map((s) => (

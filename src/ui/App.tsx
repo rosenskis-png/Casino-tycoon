@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { formatDate, SPEEDS, TICKS_PER_DAY, type Command, type Game, type Speed } from "../sim";
 import { play, unlockAudio } from "../platform/audio";
+import { FloorAudio } from "./floorAudio";
+import { TitleScreen } from "./title";
+import { PlayScreen } from "./play";
 import { onHidden } from "../platform/lifecycle";
 import { Host } from "./host";
 import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
-import { save } from "./saves";
+import { AUTO_KEY, newGame, save } from "./saves";
 import { AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
@@ -42,6 +45,11 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const [sel, setSel] = useState<Selection>(null);
   const [showLog, setShowLog] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // The title screen shows at launch (skipped with #play, for the screenshot tool). The floor waits behind it.
+  const [title, setTitle] = useState(() => !location.hash.includes("play"));
+  const titleRef = useRef(title);
+  titleRef.current = title;
+  const floorRef = useRef<FloorAudio | null>(null);
   const tickerRef = useRef(new Ticker());
   const [, force] = useState(0);
 
@@ -50,21 +58,27 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     setHost(h);
     const ticker = tickerRef.current;
     let toastTimer = 0;
+    const floor = new FloorAudio(h);
+    floorRef.current = floor;
+    if (titleRef.current) { floor.enabled = false; h.setSpeed(0); }
     const lastSound = new Map<string, number>();
-    const sound = (id: string) => {
+    // Sounds with a place on the floor are heard from the camera; a jackpot carries across the floor.
+    const sound = (id: string, x?: number, y?: number) => {
       const now = performance.now();
       if (now - (lastSound.get(id) ?? 0) < 60) return;
       lastSound.set(id, now);
-      play(id);
+      if (x === undefined || y === undefined) { play(id); return; }
+      const p = floor.place(x + 0.5, y + 0.5);
+      play(id, { gain: id === "jackpot" ? Math.max(0.4, p.gain) : p.gain, pan: p.pan });
     };
     let unsub = () => {};
     const attach = (g: Game) => {
       unsub();
       unsub = g.bus.on((e) => {
-        if (e.type === "sound") sound(e.id);
-        else if (e.type === "jackpot") sound("jackpot");
-        else if (e.type === "broken") sound("broken");
-        else if (e.type === "incident" && INCIDENT_SOUND[e.kind]) sound(INCIDENT_SOUND[e.kind]);
+        if (e.type === "sound") sound(e.id, e.x, e.y);
+        else if (e.type === "jackpot") sound("jackpot", e.x, e.y);
+        else if (e.type === "broken") { const o = g.objById.get(e.obj); sound("broken", o?.x, o?.y); }
+        else if (e.type === "incident" && INCIDENT_SOUND[e.kind]) sound(INCIDENT_SOUND[e.kind], e.x, e.y);
         else if (e.type === "news") { ticker.push({ level: e.level, text: e.text }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
         else if (e.type === "commandRejected") {
           setToast(e.reason);
@@ -100,7 +114,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     h.start();
     (window as unknown as { __ctHost?: Host }).__ctHost = h;
     return () => {
-      h.stop(); input.dispose(); unsub(); offGame(); offHidden();
+      h.stop(); input.dispose(); unsub(); offGame(); offHidden(); floor.dispose();
       clearInterval(tickT); clearInterval(autosave);
       window.removeEventListener("pointerdown", unlock);
     };
@@ -117,6 +131,13 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
 
   const g = host?.game;
   const cur = tickerRef.current.current;
+  const playing = !!g?.state.yours && !title;
+  if (floorRef.current) floorRef.current.duck = playing ? 0.5 : 1;
+  const leaveTitle = () => {
+    setTitle(false);
+    if (floorRef.current) floorRef.current.enabled = true;
+    host?.setSpeed(1);
+  };
   const openTab = (id: TabId) => {
     play("click");
     setTab((t) => (t === id ? null : id));
@@ -134,13 +155,13 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       <div className="top">
         <span className="cash num">{g ? money(g.state.cash) : ""}</span>
         <span className="date num">{g ? formatDate(Math.floor(g.state.tick / TICKS_PER_DAY)) : ""}</span>
-        <div className="speeds">
+        {!playing && <div className="speeds">
           {SPEEDS.map((s) => (
             <button key={s} className={host?.speed === s ? "on" : ""} onClick={() => { host?.setSpeed(s); play("click"); }} aria-label={s ? `Speed ${s}` : "Pause"}>
               {SPEED_LABEL[s]}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
       <div className="ticker">
         <span className={`msg lv-${cur?.level ?? "info"}`}>{cur?.text ?? ""}</span>
@@ -153,11 +174,12 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
           <button className="fab" onClick={() => zoom(-1)} aria-label="Zoom in">+</button>
           <button className="fab" onClick={() => zoom(1)} aria-label="Zoom out">−</button>
         </div>
+        {host && playing && <PlayScreen host={host} />}
         {toast && <div className="toast">{toast}</div>}
       </div>
       {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} />}
-      {host && !showLog && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} />}
-      {host && !showLog && !sel && tab && (
+      {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} />}
+      {host && !showLog && !playing && !sel && tab && (
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>
           {tab === "build" ? <BuildPanel host={host} tool={tool} setTool={setTool} rot={rot} setRot={setRot} thumb={(k) => host.renderer.thumbnail(k)} /> :
@@ -172,13 +194,15 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
             <Placeholder when={(TABS.find((t) => t.id === tab) as { when?: string }).when ?? ""} />}
         </div>
       )}
-      <nav className="tabs">
+      {!playing && <nav className="tabs">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => openTab(t.id)}>
             <span className="i">{t.icon}</span>{t.label}
           </button>
         ))}
-      </nav>
+      </nav>}
+      {host && title && <TitleScreen hasGame={host.game.state.tick > 0} scenario={host.game.state.scenario} onContinue={leaveTitle}
+        onNew={(id) => { const n = newGame(Date.now(), id); host.setGame(n); save(n, AUTO_KEY); leaveTitle(); }} />}
     </div>
   );
 }

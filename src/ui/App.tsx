@@ -220,7 +220,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       {host && !showLog && !playing && !designing && !sel && tab && (
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>
-          {tab === "build" ? <BuildPanel host={host} tool={tool} setTool={setTool} rot={rot} setRot={setRot} thumb={(k) => host.renderer.thumbnail(k)} onDesigner={() => setDesigning(newDesignFor())} /> :
+          {tab === "build" ? <BuildPanel host={host} tool={tool} setTool={setTool} rot={rot} setRot={setRot} thumb={(k, d) => host.renderer.thumbnail(k, d)} onDesigner={() => setDesigning(newDesignFor())} /> :
             tab === "slots" ? <SlotsPanel g={host.game} open={(d) => setDesigning(d)} place={placeDesign} /> :
             tab === "game" ? <GamePanel host={host} onMenu={toMenu} /> :
             tab === "staff" ? <StaffPanel host={host} /> :

@@ -138,6 +138,10 @@ function bigFloor(): ScenarioDef {
  * and security guards. Measure guest behavior here, never
  * on a bare or deliberately flawed floor (docs/spec/guests.md §Targets).
  */
+/** A row of slots playing one design (M8), like `row`. */
+const designed = (kind: string, design: string, x: number, y: number, n: number, rot = 0): ScenarioDef["objects"] =>
+  row(kind, x, y, n, rot).map((o) => ({ ...o, design }));
+
 function testFloor(): ScenarioDef {
   const objects: ScenarioDef["objects"] = [];
   const kinds = ["slot_liberty", "slot_cherry", "slot_thunder"];
@@ -145,17 +149,17 @@ function testFloor(): ScenarioDef {
   for (const y0 of [19, 23]) for (const x0 of [9, 19, 29]) for (let k = 0; k < 8; k++) {
     objects.push({ kind: kinds[(k + x0) % 3], x: x0 + k, y: y0, rot: 2 }, { kind: kinds[(k + x0 + 1) % 3], x: x0 + k, y: y0 + 1, rot: 0 });
   }
-  // A quiet back room of quarter machines.
-  objects.push(...row("slot_cherry", 39, 8, 8));
+  // A quiet back room of quarter machines, and (M8) a few classic steppers.
+  objects.push(...row("slot_cherry", 39, 8, 4), ...designed("slot_stepper", "diamond", 43, 8, 4));
   // The east wing (M6): a high-limit room (next to the quiet back room), a show lounge and a club off the floor;
   // a restaurant, a smoking room and a card holders' lounge bar beyond them, with restrooms.
   objects.push(
-    ...row("slot_liberty", 51, 7, 6, 0), { kind: "restroom", x: 57, y: 5, rot: 0, w: 3, h: 2 }, { kind: "baccarat", x: 52, y: 10, rot: 0 }, ...row("slot_thunder", 57, 10, 4, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
+    ...row("slot_liberty", 51, 7, 3, 0), ...designed("slot_slant", "platinum", 54, 7, 3, 0), { kind: "restroom", x: 57, y: 5, rot: 0, w: 3, h: 2 }, { kind: "baccarat", x: 52, y: 10, rot: 0 }, ...row("slot_thunder", 57, 10, 4, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
     { kind: "showlounge", x: 51, y: 14, rot: 0, w: 9, h: 7 },
     { kind: "club", x: 51, y: 23, rot: 0, w: 9, h: 5 }, { kind: "restroom", x: 51, y: 28, rot: 0, w: 3, h: 2 },
     { kind: "restroom", x: 69, y: 10, rot: 0, w: 3, h: 2 }, { kind: "restroom", x: 69, y: 28, rot: 0, w: 3, h: 2 },
     { kind: "restaurant", x: 63, y: 6, rot: 0, w: 6, h: 4 },
-    ...row("slot_cherry", 63, 16, 8, 0), ...row("slot_liberty", 63, 19, 8, 2),
+    ...designed("slot_tall", "stampede", 63, 16, 4, 0), ...designed("slot_upright", "sphinx", 67, 16, 4, 0), ...row("slot_liberty", 63, 19, 8, 2),
     { kind: "bar", x: 64, y: 24, rot: 0, w: 5, h: 3 }, { kind: "plant", x: 72, y: 24, rot: 0 },
     { kind: "sign", x: 60, y: 20, rot: 0 }, { kind: "sign", x: 47, y: 19, rot: 0 }, { kind: "sign", x: 47, y: 7, rot: 0 },
   );
@@ -167,6 +171,8 @@ function testFloor(): ScenarioDef {
     ...row("vpoker", 9, 27, 4), { kind: "bingo", x: 38, y: 11, rot: 0 },
     // M9.5: a sportsbook facing the slot banks, below the pit.
     { kind: "sportsbook", x: 24, y: 14, rot: 0 },
+    // M8: a giant cabinet by the door, seen across the floor.
+    { kind: "slot_giant", x: 33, y: 15, rot: 0, design: "lantern" },
   );
   // Themes (M6.5): a Deco high-limit room, a Rat Pack showroom, an Atomic club, a Riviera diner, a Deco and Rat
   // Pack members' bar, and Tiki and Pirate pieces by the fountain on the main floor.

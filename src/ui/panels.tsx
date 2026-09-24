@@ -51,7 +51,7 @@ export function placeTool(s: Game["state"], id: string): string | null {
   return LEGACY_SLOTS[id] ? `place:${LEGACY_SLOTS[id]}` : `place:${cabKind(d)}@${id}`;
 }
 
-export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner }: { host: Host; tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string) => { url: string; w: number; h: number }; onDesigner?: () => void }) {
+export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner }: { host: Host; tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string, design?: string) => { url: string; w: number; h: number }; onDesigner?: () => void }) {
   const [theme, setTheme] = useState<ThemeId | "general">("general");
   const g = host.game, land = landForSale(g);
   const b = (t: Tool, label: string, sub?: string, img?: { url: string; w: number; h: number }) => (
@@ -106,7 +106,7 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
 }
 
 /** Slot machines to place: every design this casino can run, stock and the player's (M8). */
-function SlotPicks({ g, tool, setTool, onDesigner, thumb }: { g: Game; tool: Tool; setTool: (t: Tool) => void; onDesigner?: () => void; thumb?: (kind: string) => { url: string; w: number; h: number } }) {
+function SlotPicks({ g, tool, setTool, onDesigner, thumb }: { g: Game; tool: Tool; setTool: (t: Tool) => void; onDesigner?: () => void; thumb?: (kind: string, design?: string) => { url: string; w: number; h: number } }) {
   const s = g.state;
   const ids = [...Object.keys(STOCK_DESIGNS), ...Object.keys(s.designs)];
   return (
@@ -118,7 +118,7 @@ function SlotPicks({ g, tool, setTool, onDesigner, thumb }: { g: Game; tool: Too
         if (!t) return <button key={id} className="btn" disabled>{d.name}<small>{locks.length ? `Research: ${RESEARCH[locks[0]]?.name ?? locks[0]}` : why}</small></button>;
         return (
           <button key={id} className={`btn ${tool === t ? "on" : ""}`} onClick={() => setTool(tool === t ? "inspect" : (t as Tool))}>
-            {thumb && <img className="thumb" src={thumb(kind).url} width={thumb(kind).w * 2} height={thumb(kind).h * 2} alt="" />}
+            {thumb && (() => { const t2 = thumb(kind, LEGACY_SLOTS[id] ? undefined : id); return <img className="thumb" src={t2.url} width={t2.w * 2} height={t2.h * 2} alt="" />; })()}
             {d.name}<small>{money(price.cost)} · {s.designs[id]?.rigged ? "uncertified" : `${(d.rtp * 100).toFixed(0)}%`}</small>
           </button>
         );

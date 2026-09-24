@@ -36,6 +36,17 @@ export const STOCK_DESIGNS: Record<string, SlotDesign> = {
     rtp: 0.93, hit: 0.14, vol: 0.5, wild: "x2", stacks: false, fs: null, jackpots: [{ x: 1000, every: 150000 }],
     show: show({ lights: 1, light: 5, sound: 1, rollup: 0, speed: 0 }), cab: { type: "stepper", body: 8, topper: "sign" },
   },
+  platinum: {
+    id: "platinum", name: "Platinum Reserve", theme: "luxe", set: 0, layout: "r33", denom: 5, minBet: 1, maxBet: 5,
+    rtp: 0.94, hit: 0.18, vol: 0.5, wild: "x2", stacks: false, fs: null, jackpots: [{ x: 500, every: 60000 }],
+    show: show({ lights: 1, light: 1, sound: 1, call: "call_luxe", ldw: 0, speed: 0 }), cab: { type: "slant", body: 9, topper: "none" },
+  },
+  lantern: {
+    id: "lantern", name: "Lantern Fortune", theme: "dragon", set: 0, layout: "w243", denom: 0.01, minBet: 50, maxBet: 500,
+    rtp: 0.9, hit: 0.36, vol: 0.55, wild: "plain", stacks: false, fs: { every: 120, count: 1, retrigger: true, enh: "rand" },
+    jackpots: [{ x: 10, every: 300 }, { x: 50, every: 2500 }, { x: 250, every: 30000 }, { x: 2000, every: 900000 }],
+    show: show({ lights: 3, light: 5, sound: 3, call: "call_dragon", ldw: 2, speed: 2 }), cab: { type: "giant", body: 0, topper: "figure" },
+  },
 };
 /** Research needed before a stock design can be placed (data/research.ts). */
-export const STOCK_RESEARCH: Record<string, string> = { thunder: "bigslots", stampede: "freespins", sphinx: "freespins" };
+export const STOCK_RESEARCH: Record<string, string> = { thunder: "bigslots", stampede: "freespins", sphinx: "freespins", lantern: "freespins" };

@@ -16,6 +16,7 @@ export function buildScenarioMap(def: ScenarioDef): MapState {
     door: new Array(n).fill(DOOR_STATE.OPEN),
     entrances: [],
     gates: [],
+    lift: -1,
   };
   const fill = (r: { x: number; y: number; w: number; h: number }, f: (i: number, x: number, y: number) => void) => {
     for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (inBounds(m, x, y)) f(idx(m, x, y), x, y);
@@ -34,6 +35,8 @@ export function buildScenarioMap(def: ScenarioDef): MapState {
   // Unowned land stays VOID but is fixed so nothing can be built there.
   for (let i = 0; i < n; i++) if (m.terrain[i] === T.VOID) m.fixed[i] = 1;
   m.entrances = def.entrances.map(([x, y]) => idx(m, x, y));
+  // The hotel elevator (M9.6): an entrance on the floor, fixed so nothing is built over it.
+  if (def.elevator) { m.lift = idx(m, def.elevator[0], def.elevator[1]); m.entrances.push(m.lift); m.fixed[m.lift] = 1; }
   for (const q of def.gates ?? []) {
     const i = idx(m, q.x, q.y);
     m.door[i] = q.rule;

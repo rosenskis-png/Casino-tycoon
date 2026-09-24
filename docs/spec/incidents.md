@@ -30,7 +30,8 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
 
 - Chances are × the type's `incidents[category]`, × 0.4 with a guard in view within 6 tiles, × 0.4 for a guest already warned. A guest who starts one waits 20 s before the next (60 s after a warning).
 - **Underage gambling** (M9.5, misconduct): a child from a family, next to a machine, feeds it (a coin mark over their head). Guards step in from Lenient up and walk the child back to the adults (nobody is warned or thrown out); low-drama witnesses report it; an officer who sees it costs 4 standing and a fine.
-- **Deferred:** vice and the hotel elevator, drugs (cut from M9.5, unscheduled), bribery (M11).
+- **Vice and drugs** (M9.6): escorts working the floor, hookups in quiet spots, drug use; two more house rules (docs/spec/vice.md).
+- **Deferred:** bribery (M11).
 
 ## Types
 | | Locals | Retirees | Tourists | Party |

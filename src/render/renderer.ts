@@ -190,6 +190,12 @@ export class Renderer {
         if (f) g.drawImage(A.canvas, f.x - PAD, f.y - PAD, f.w + 2 * PAD, f.h + 2 * PAD, tx * ART - PAD, ty * ART + (k === "door:dress" ? 0 : 1) - PAD, f.w + 2 * PAD, f.h + 2 * PAD);
       }
     }
+    // The hotel elevator (M9.6): brass lift doors against the wall behind its tile.
+    if (m.lift >= 0) {
+      const lx = m.lift % w, ly = Math.floor(m.lift / w), f = A.frames.get("obj:lift");
+      if (f && lx >= X0 && lx < X0 + CHUNK && ly >= Y0 && ly < Y0 + CHUNK)
+        g.drawImage(A.canvas, f.x - PAD, f.y - PAD, f.w + 2 * PAD, f.h + 2 * PAD, (lx - X0) * ART - PAD, (ly + 1 - Y0) * ART - f.h - PAD, f.w + 2 * PAD, f.h + 2 * PAD);
+    }
     // Contact shadows under objects.
     const near = this.objectsIn(X0 - 2, Y0 - 2, X0 + CHUNK + 1, Y0 + CHUNK + 1);
     g.fillStyle = "rgba(12,4,8,0.34)";
@@ -716,7 +722,8 @@ export class Renderer {
             else if (inc === "breakdown" && face) blit("obj:inc:sob", px, py + (Math.floor(now / 400) & 1) * scale);
             else if (inc === "vomit") blit("obj:inc:sick", px, py);
             else if (inc === "cheer" || inc === "round") over("obj:inc:cheer", 1.5, 7);
-            else if (inc === "flirt") over("obj:inc:heart", 2.5, 5 + (Math.floor(now / 350) & 1));
+            else if (inc === "flirt" || inc === "hookup" || inc === "solicit") over("obj:inc:heart", 2.5, 5 + (Math.floor(now / 350) & 1));
+            else if (inc === "drugs") over("obj:inc:high", 2, 6 + (Math.floor(now / 250) & 1));
             else if (inc === "recruit") over("obj:glass", 2.5, 5);
             else if (inc === "fight") {
               over("obj:inc:angry", 2.5, 7 + (Math.floor(now / 200 + a.id) & 1));

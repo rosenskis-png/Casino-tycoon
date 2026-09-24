@@ -65,6 +65,8 @@ export interface ScenarioDef {
   whales?: boolean;
   /** (M9.5) Scheduled events allowed (default: all that fit its population); research projects done at the start. */
   events?: string[];
+  /** (M9.6) The hotel elevator: a floor tile against a wall (an entrance for hotel guests and escorts). */
+  elevator?: [number, number];
   research?: string[] | "build";
   /** Named rooms with a purpose, by any tile inside them. */
   rooms?: { x: number; y: number; name: string; purpose: RoomPurpose }[];
@@ -192,6 +194,7 @@ function testFloor(): ScenarioDef {
   );
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
+    elevator: [20, 5],
     ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1, dealer: 11, pitboss: 1 },
     // The tutorial lot, widened for the east wing.
     w: 80, grounds: [{ x: 2, y: 2, w: 76, h: 40 }], buildings: [...LOT.buildings, { x: 49, y: 4, w: 25, h: 28 }],
@@ -244,6 +247,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     name: "Free Play Lot",
     blurb: "An empty building and no goals.",
     ...LOT,
+    elevator: [20, 5],
     // Two neighboring lots for sale to the east (M6.5).
     w: 80, sidewalks: [{ from: [0, 42], to: [79, 42] }],
     parcels: [

@@ -25,6 +25,8 @@ export type SimEvent =
       vip: number; comp: number; unpaid: number;
       /** M9.5: a child (their visit isn't scored). */
       minor: number;
+      /** M9.6: came by the hotel elevator. */
+      hotel: number;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

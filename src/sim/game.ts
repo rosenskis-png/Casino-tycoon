@@ -35,10 +35,11 @@ import { newRegulator, regulatorSystem } from "./regulator";
 import { newWhale, whaleSystem } from "./whales";
 import { calendarSystem, newCalendar } from "./calendar";
 import { newResearch, researchSystem } from "./research";
+import { viceSystem } from "./vice";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem,
 ];
 
 export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";

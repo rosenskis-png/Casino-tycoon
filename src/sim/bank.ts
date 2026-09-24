@@ -2,7 +2,7 @@
 // loans, unpaid winnings, insolvency, jackpot insurance, and comps by theoretical loss.
 import {
   COMEBACK_COST, COMEBACK_SCORE, COMEBACK_SOONER, COMP_AT, COMP_KINDS, EMERGENCY_FEE, EMERGENCY_MIN, EMERGENCY_RATE, EMERGENCY_SHARE, EMERGENCY_STEP,
-  EVADED_FADE, INSOLVENT_MONTHS, INSURE_LOAD, INSURE_OVER, LOAN_RATE, LOAN_SHARE, LOAN_STEP, REG, SCANDAL_REP, SKIM_LEVELS, type CompKind,
+  EVADED_FADE, INSOLVENT_MONTHS, ROOM_COST, ROOM_STAY, INSURE_LOAD, INSURE_OVER, LOAN_RATE, LOAN_SHARE, LOAN_STEP, REG, SCANDAL_REP, SKIM_LEVELS, type CompKind,
 } from "../data/money";
 import { GUEST_TYPES } from "../data/guests";
 import { SCENARIOS } from "../data/scenarios";
@@ -101,7 +101,7 @@ export function expectedExcess(m: SlotModel, bet: number, over: number): number 
 // ---------------------------------------------------------------------------------------------------------
 // Comps (theoretical loss = what the math expects the guest to lose this visit).
 
-export const COMP_BIT: Record<CompKind, number> = { meal: 1, show: 2, back: 4 };
+export const COMP_BIT: Record<CompKind, number> = { meal: 1, show: 2, back: 4, room: 32 };
 export const COMP_USED: Record<"meal" | "show", number> = { meal: 8, show: 16 };
 export const theo = (gd: GuestData) => gd.mem.wagered - gd.mem.ev;
 
@@ -111,9 +111,13 @@ export function earnComps(g: Game, a: Agent) {
   // Targeted comps (the player's club, M9.5): one type only.
   if (c.only && c.only !== gd.type) return;
   for (const k of COMP_KINDS) {
-    if (!c[k] || gd.comp & COMP_BIT[k] || t < c[k]) continue;
+    const at = c[k] ?? 0;
+    if (!at || gd.comp & COMP_BIT[k] || t < at) continue;
+    // A room (M9.6) needs the hotel elevator.
+    if (k === "room" && g.state.map.lift < 0) continue;
     gd.comp |= COMP_BIT[k];
     g.state.bank.given++;
+    if (k === "room") { gd.floorTime = Math.round(gd.floorTime * ROOM_STAY); post(g, "comps", -ROOM_COST); }
     if (k !== "back") {
       gd.buzz = Math.min(20, gd.buzz + 3 * (GUEST_TYPES[gd.type]?.comps ?? 1));
       think(g, a, "comped");

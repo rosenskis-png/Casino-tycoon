@@ -113,6 +113,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 - **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
 - Drawn a row shorter in bright tees and caps.
 
+M9.6 Test Floor (vice and drugs on Moderate, a hotel elevator; 342 guests came by it): visit length 5.5 / 6.5 / 4.7 / 4.8 / 8.4 / 5.2 / 4.1 min, playing 2.2 / 2.8 / 0.9 / 0.9 / 3.5 / 0.8 / 1.0, visit score 0.63 / 0.62 / 0.58 / 0.57 / 0.60 / 0.66 / 0.68; reputation after 300 days 68 / 64 / 58 / 58 / 58 / 59 / 59. 65 escort pitches (19 left with one), 7 hookups, 37 drug uses. No sanity flags.
+
 M9.5 Test Floor (a sportsbook, Families and Conventioneers join, events all year): visit length 5.6 / 6.2 / 4.9 / 5.0 / 8.8 / 5.6 / 4.9 min (Locals / Retirees / Tourists / Party / High rollers / Families / Conventioneers), playing 2.3 / 3.0 / 0.9 / 0.7 / 4.3 / 1.1 / 0.9, loss per visit $44 / $27 / $46 / $25 / $245 / $30 / $34, visit score 0.63 / 0.62 / 0.55 / 0.61 / 0.61 / 0.60 / 0.58; reputation after 300 days 66 / 63 / 57 / 52 / 62 / 55 / 55. Only the old noisy flag ("cheats who got away mostly lost money").
 
 M9 Test Floor (staff skill and morale, whales): visit length 5.2 / 6.5 / 4.7 / 5.0 / 9.2 min, playing 2.2 / 2.7 / 0.8 / 0.7 / 3.6, loss per visit $41 / $27 / $38 / $48 / $476, visit score 0.63 / 0.61 / 0.57 / 0.57 / 0.59; reputation after 300 days 66 / 65 / 59 / 56 / 63. Three whales (the house won $10K, lost $30K, won $500). No sanity flags.
@@ -132,7 +134,7 @@ Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $
 - **Test floors must be realistic.** Measure on the Test Floor scenario (at least one of every object, signs, servers), never on the tutorial or an empty lot, or wayfinding failures swamp everything else.
 
 ## Save
-Schema 12 (M9.5): guests gain `minor`. Schema 11 (M9): guests gain `vip`, `comp` and `unpaid` (docs/spec/money.md). Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
+Schema 13 (M9.6): guests gain `drugs` and `high` (docs/spec/vice.md). Schema 12 (M9.5): guests gain `minor`. Schema 11 (M9): guests gain `vip`, `comp` and `unpaid` (docs/spec/money.md). Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
 
 Schema 5 (migration from 4): drink policy moves from the casino to each bar; guests gain a drink in hand, browsing time, frustration (replacing the fail count), liked machines and favorite-spot tracking; people gain favorite spots; servers gain a bar and start a fresh round.
 

@@ -55,6 +55,12 @@ if (sim.SCHEMA_VERSION >= 11) {
   g.dispatch({ type: "setComp", kind: "meal", at: 20 });
   g.dispatch({ type: "setComp", kind: "back", at: 5 });
 }
+if (sim.SCHEMA_VERSION >= 13) {
+  // M9.6: vice ignored, drugs lenient, a comped room (no elevator here: never given).
+  g.dispatch({ type: "setRule", cat: "vice", level: 0 });
+  g.dispatch({ type: "setRule", cat: "drugs", level: 1 });
+  g.dispatch({ type: "setComp", kind: "room", at: 20 });
+}
 if (sim.SCHEMA_VERSION >= 12) {
   // M9.5: research under way, an ad campaign.
   g.dispatch({ type: "setFunding", amount: 500 });

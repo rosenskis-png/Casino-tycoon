@@ -4,7 +4,7 @@ import { OBJECTS } from "../data/objects";
 import { covers, objFootprint, objSeats, type Command } from "../sim";
 import type { Host } from "./host";
 
-export type Tool = "inspect" | "wall" | "door" | "demolish" | "remove" | `place:${string}`;
+export type Tool = "inspect" | "wall" | "door" | "demolish" | "entrance" | "remove" | `place:${string}`;
 
 export interface InputCallbacks {
   tool(): Tool;
@@ -86,7 +86,7 @@ export class WorldInput {
       const x = b.x < a.x ? a.x - SW + 1 : a.x, y = b.y < a.y ? a.y - SH + 1 : a.y;
       return { type: "place", kind, x, y, rot, w, h };
     }
-    if (tool === "wall" || tool === "door" || tool === "demolish") {
+    if (tool === "wall" || tool === "door" || tool === "demolish" || tool === "entrance") {
       if (a.i < 0) return null;
       const tiles: number[] = [];
       const { w: mw, h: mh } = this.host.game.state.map;

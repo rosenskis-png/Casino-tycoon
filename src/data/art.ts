@@ -75,6 +75,94 @@ const CARPET_BOT = [
 ];
 const WALLPAPER = { A: "#1b3a33", B: "#25504a" };
 
+/** A 16×16 tile grid from a per-pixel letter rule (pure; built once at load). */
+const grid = (f: (x: number, y: number) => string): string[] =>
+  Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => f(x, y)).join(""));
+/** A fixed pseudo-random 0..n-1 per pixel, so textures look hand-scattered but never change. */
+const speck = (x: number, y: number, s: number, n: number) => (((x * 73856093) ^ (y * 19349663) ^ (s * 83492791)) >>> 0) % n;
+const ring = (x: number, y: number, cx: number, cy: number) => Math.hypot(x - cx, y - cy);
+
+// Desert ground (the lot outside): Vegas sand and dirt, muted for night so neon still owns the brights.
+const SAND = { a: "#a0844e", b: "#b39660", c: "#8d7244", d: "#6f5835", e: "#c8ad76" };
+const sand = (s: number, extra: (x: number, y: number) => string | null) => grid((x, y) => {
+  const e = extra(x, y);
+  if (e) return e;
+  const r = speck(x, y, s, 23);
+  return r === 0 ? "d" : r < 3 ? "c" : r < 6 ? "b" : r === 6 ? "e" : "a";
+});
+
+// Room floors (docs/spec/art.md): the general floor keeps the burgundy harlequin; every other purpose has its own.
+const ROOM_FLOORS: Record<string, SpriteDef> = {
+  // Bar: amber Art Deco lattice.
+  bar: S(grid((x, y) => ((x + y) % 8 === 0 || (x - y + 16) % 8 === 0 ? "C" : ((x >> 2) + (y >> 2)) & 1 ? "a" : "b")),
+    { a: "#553015", b: "#4a2911", C: "#9a7232" }, false),
+  bar2: S(grid((x, y) => ((x + y) % 8 === 0 || (x - y + 16) % 8 === 0 ? (x % 4 === 0 ? "c" : "C") : ((x >> 2) + (y >> 2)) & 1 ? "b" : "a")),
+    { a: "#553015", b: "#4a2911", C: "#9a7232", c: "#c29a4a" }, false),
+  // Restaurant: midnight navy with small gold florets.
+  restaurant: S(grid((x, y) => {
+    const d = ring(x, y, 7.5, 7.5);
+    return d < 1.2 ? "C" : d < 2.6 && (x === 7 || x === 8 || y === 7 || y === 8) ? "c" : (x + y) % 16 === 0 ? "b" : "a";
+  }), { a: "#1c2640", b: "#253257", c: "#5a5a6a", C: "#a48040" }, false),
+  restaurant2: S(grid((x, y) => ((x === 0 || x === 15) && (y === 0 || y === 15) ? "C" : (x + y) % 16 === 0 ? "b" : "a")),
+    { a: "#1c2640", b: "#253257", C: "#a48040" }, false),
+  // High-limit room: royal purple with gold medallions and a diamond between.
+  highlimit: S(grid((x, y) => {
+    const d = ring(x, y, 7.5, 7.5);
+    return d > 5 && d < 6.2 ? "C" : d < 2 ? "c" : d < 3 ? "C" : "a";
+  }), { a: "#3a1648", c: "#6e3a80", C: "#b08a3e" }, false),
+  highlimit2: S(grid((x, y) => {
+    const m = Math.abs(x - 7.5) + Math.abs(y - 7.5);
+    return m < 2 ? "C" : m < 3 ? "c" : "b";
+  }), { b: "#401a50", c: "#6e3a80", C: "#b08a3e" }, false),
+  // Club: black arcade carpet, dim neon zigzags, dots and triangles.
+  club: S(grid((x, y) => {
+    if (y === 4 + Math.abs((x % 8) - 4) || y === 5 + Math.abs((x % 8) - 4)) return "z";
+    if ((x === 12 && y === 12) || (x === 3 && y === 13)) return "x";
+    if (y >= 11 && y <= 13 && x >= 7 && x <= 9 && Math.abs(x - 8) <= y - 11) return "q";
+    return "a";
+  }), { a: "#140c1e", z: "#2a9aa8", x: "#b0357e", q: "#a8892a" }, false),
+  club2: S(grid((x, y) => {
+    if (ring(x, y, 11, 5) > 2.2 && ring(x, y, 11, 5) < 3.3) return "x";
+    if (x === 2 + (y >> 1) && y > 7) return "q";
+    if ((x === 4 && y === 3) || (x === 13 && y === 13)) return "z";
+    return "a";
+  }), { a: "#140c1e", z: "#2a9aa8", x: "#b0357e", q: "#a8892a" }, false),
+  // Show room: theater-red velvet with gold scrollwork bands.
+  show: S(grid((x, y) => (y === 0 || y === 15 ? "C" : y === 1 || y === 14 ? "c" : (x + (y >> 1)) % 4 === 0 && (y === 7 || y === 8) ? "C" : (x + y) & 1 ? "a" : "b")),
+    { a: "#7a1422", b: "#72121f", c: "#4e0c16", C: "#a9843a" }, false),
+  // Smoking room: brown-olive tweed, a little burnt.
+  smoking: S(grid((x, y) => { const r = speck(x, y, 5, 9); return r < 3 ? "a" : r < 6 ? "b" : r < 8 ? "c" : "d"; }),
+    { a: "#4a4630", b: "#554f36", c: "#3f3b28", d: "#5f5a3e" }, false),
+  smoking2: S(grid((x, y) => { const d = ring(x, y, 10, 6); if (d < 1.1) return "e"; if (d < 1.8) return "c"; const r = speck(x, y, 9, 9); return r < 3 ? "a" : r < 6 ? "b" : r < 8 ? "c" : "d"; }),
+    { a: "#4a4630", b: "#554f36", c: "#3f3b28", d: "#5f5a3e", e: "#231f15" }, false),
+  // Enforcement room: bare concrete, seams, cracks, a drain and a stain.
+  enforcement: S(grid((x, y) => {
+    if (x === 15 || y === 15) return "d";
+    if ((x === 4 && y >= 2 && y <= 5) || (x === 5 && y >= 5 && y <= 8) || (x === 6 && y === 9)) return "d";
+    const r = speck(x, y, 3, 17);
+    return r === 0 ? "d" : r < 4 ? "c" : r < 7 ? "b" : "a";
+  }), { a: "#5b5a56", b: "#65635e", c: "#52514d", d: "#3f3e3b" }, false),
+  enforcement2: S(grid((x, y) => {
+    if (x === 15 || y === 15) return "d";
+    if (ring(x, y, 7.5, 7.5) < 1.6) return (x + y) & 1 ? "d" : "k";
+    if (ring(x, y, 5, 10) < 3.2 && speck(x, y, 4, 3)) return "e";
+    const r = speck(x, y, 7, 17);
+    return r === 0 ? "d" : r < 4 ? "c" : r < 7 ? "b" : "a";
+  }), { a: "#5b5a56", b: "#65635e", c: "#52514d", d: "#3f3e3b", e: "#4a3a34" }, false),
+  // Back office: grey-blue commercial carpet tiles, pile running each way in turn.
+  office: S(grid((x, y) => (x === 15 || y === 15 ? "d" : (((x >> 3) + (y >> 3)) & 1 ? x : y) % 2 ? "b" : "a")),
+    { a: "#3c4658", b: "#445068", d: "#303848" }, false),
+  // The lot outside: sand, with pebbles, a dry scrub or wheel ruts.
+  // An entrance from the street: a paved apron with a brass threshold strip.
+  entry: S(grid((x, y) => (y === 0 ? "9" : y === 1 ? "7" : x === 0 || x === 15 ? "s" : (x + (y >> 2)) % 4 === 0 && y % 4 === 0 ? "S" : speck(x, y, 11, 7) ? "T" : "t")), undefined, false),
+  sand: S(sand(1, () => null), SAND, false),
+  sand2: S(sand(2, (x, y) => (ring(x, y, 5, 9) < 1.3 ? "d" : ring(x, y, 11, 4) < 1 ? "c" : null)), SAND, false),
+  sand3: S(sand(3, (x, y) => {
+    const l = (x === 7 && y > 9) || (x === 6 && y === 11) || (x === 8 && y === 10) || (x === 5 && y === 12) || (x === 9 && y === 12);
+    return l ? "g" : x === 7 && y === 9 ? "h" : null;
+  }), { ...SAND, g: "#5a5a2e", h: "#7a7a3e" }, false),
+};
+
 export const TILES: Record<string, SpriteDef> = {
   carpet: S([...CARPET_TOP, "dbaaaaaccaaaaabd", "baaaaacCCcaaaaab", "baaaaacCCcaaaaab", "dbaaaaaccaaaaabd", ...CARPET_BOT], undefined, false),
   carpet2: S([...CARPET_TOP, "dbaaaaaaaaaaaabd", "baaaaaacaaaaaaab", "baaaaaaacaaaaaab", "dbaaaaaaaaaaaabd", ...CARPET_BOT], undefined, false),
@@ -137,6 +225,7 @@ export const TILES: Record<string, SpriteDef> = {
     "TSSSSSSSSSSSSSSs", "TSStSSSSSSSSSSSs", "TSSSSSSSSSSSSSSs", "TSSSSSSSSSSSSSSs",
     "TSSSSSSSSSSSSSSs", "TSSSSSSSSStSSSSs", "TSSSSSSSSSSSSSSs", "ssssssssssssssss",
   ], undefined, false),
+  ...ROOM_FLOORS,
   void: S([
     "EEEEEEEEEEEEEEEE", "EEEEEEEEEEEEEEEE", "EEEiEEEEEEEEEEEE", "EEEEEEEEEEEeEEEE",
     "EEEEEEEEEEEEEEEE", "EEEEEEEEEEEEiEEE", "EeEEEEEEEEEEEEEE", "EEEEEEEEEEEEEEEE",

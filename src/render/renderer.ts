@@ -8,7 +8,7 @@ import { ANIMS, BOARD_CELLS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS, WHEEL_AT } fr
 import { CRAPS_OUTCOMES, TABLE_GAMES } from "../data/tables";
 import { ENF } from "../data/cheats";
 import { SCENARIOS } from "../data/scenarios";
-import { dims, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
+import { dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
@@ -25,6 +25,15 @@ const BASE_SHADOW = new Set(["plant", "neon", "sign"]);
 const CHAIR = ["front", "left", "back", "right"];
 const SEAT_DIR = ["down", "left", "up", "side"];
 /** Door rule markers (docs/spec/construction.md). */
+/** Which tiles of a room floor use its second design. */
+const FLOOR_ALT: Record<string, (x: number, y: number) => boolean> = {
+  bar: (x, y) => (x * 3 + y * 5) % 7 === 0,
+  restaurant: (x, y) => ((x + y) & 1) === 1,
+  highlimit: (x, y) => ((x + y) & 1) === 1,
+  club: (x, y) => (x * 5 + y * 3) % 3 === 0,
+  smoking: (x, y) => (x * 7 + y * 5) % 9 === 0,
+  enforcement: (x, y) => (x * 7 + y * 11) % 13 === 0,
+};
 const DOOR_MARK: Record<number, string> = { [DOOR_STATE.STAFF]: "door:staff", [DOOR_STATE.LOCKED]: "door:locked", [DOOR_STATE.CARD]: "door:card", [DOOR_STATE.DRESS]: "door:dress", [DOOR_STATE.ROLE]: "door:role" };
 
 export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
@@ -47,6 +56,7 @@ export class Renderer {
   // Two chunk caches: terrain + shading only (Close/Default, objects live) and with objects baked (Wide/Overview).
   private chunks = new Map<number, HTMLCanvasElement>();
   private dirty = new Set<number>();
+  private purposes = "";
   private farChunks = new Map<number, HTMLCanvasElement>();
   private farDirty = new Set<number>();
   private game: Game | null = null;
@@ -66,7 +76,15 @@ export class Renderer {
     this.dirty.clear();
     this.farChunks.clear();
     this.farDirty.clear();
-    this.unsub = g.bus.on((e: SimEvent) => { if (e.type === "tilesChanged") this.invalidate(e.tiles); });
+    this.purposes = "";
+    this.unsub = g.bus.on((e: SimEvent) => {
+      if (e.type === "tilesChanged") this.invalidate(e.tiles);
+      // A room given a new purpose gets a new floor: redraw when any room's purpose changes.
+      else if (e.type === "roomsChanged") {
+        const key = g.rooms.rooms.filter((r) => r.meta >= 0).map((r) => `${r.first}:${r.size}:${g.state.roomMeta[r.meta]?.purpose}`).join();
+        if (key !== this.purposes) { this.purposes = key; this.chunks.clear(); this.farChunks.clear(); }
+      }
+    });
   }
 
   private invalidate(tiles: number[]) {
@@ -95,7 +113,15 @@ export class Renderer {
   private tileSprite(x: number, y: number): string {
     const m = this.game!.state.map, i = y * m.w + x;
     switch (m.terrain[i]) {
-      case T.FLOOR: return m.outdoor[i] ? ((x * 7 + y * 13) % 5 ? "tile:grass" : "tile:grass2") : (x + y) & 1 ? "tile:carpet2" : "tile:carpet";
+      case T.FLOOR: {
+        if (m.entrances.includes(i) && i !== m.lift) return "tile:entry";
+        if (m.outdoor[i]) { const r = (x * 7 + y * 13) % 11; return r === 3 ? "tile:sand2" : r === 8 && (x ^ y) & 4 ? "tile:sand3" : "tile:sand"; }
+        // Each room purpose has its own floor (the general floor, and rooms with none, keep the harlequin).
+        const p = purposeAt(this.game!, i);
+        if (!p || p === "floor") return (x + y) & 1 ? "tile:carpet2" : "tile:carpet";
+        const two = FLOOR_ALT[p];
+        return two && two(x, y) ? `tile:${p}2` : `tile:${p}`;
+      }
       case T.WALL: {
         if (y + 1 >= m.h) return "tile:wall";
         const b = m.terrain[i + m.w];
@@ -166,7 +192,7 @@ export class Renderer {
     }
     // Land for sale (M6.5): a lighter tint over the parcel and a sign in the middle.
     for (const p of SCENARIOS[this.game!.state.scenario]?.parcels ?? []) {
-      if (this.game!.state.parcels.includes(p.id)) continue;
+      if (this.game!.state.parcels.includes(p.id) || p.rects.some((r) => r.x + r.w > w || r.y + r.h > h)) continue;
       for (const r of p.rects) {
         g.fillStyle = "rgba(242,210,122,0.06)";
         g.fillRect((r.x - X0) * ART, (r.y - Y0) * ART, r.w * ART, r.h * ART);
@@ -735,7 +761,7 @@ export class Renderer {
           const at = (k: string, dx = 0, dy = 0) => blit(k, px + (hx + dx) * scale, py + (hy + dy) * scale);
           if (a.g && a.g.drink > 0) at(a.g.dStr > 0 ? "obj:glass" : "obj:soda", 0, 1);
           else if (a.role === "server") at(a.act === "serve" ? "obj:tray:full" : "obj:tray", dir === "left" ? -3 : dir === "up" ? -1 : 0, a.act === "serve" ? -6 : -4);
-          else if (a.role === "janitor") at(a.act === "clean" && Math.floor(now / 220) & 1 ? "obj:mop~1" : "obj:mop", dir === "left" ? -2 : 1, -1);
+          else if (a.role === "janitor") at(a.act === "clean" && Math.floor(now / 120) & 1 ? "obj:mop~1" : "obj:mop", dir === "left" ? -2 : 1, -1);
           else if (a.role === "tech") at("obj:toolbox", 0, 3);
           else if (a.role === "guard") at("obj:radio", dir === "left" ? -1 : 0, 1);
           if (a.bag) blit("obj:bag:carry", px + (dir === "left" ? 5 : -1) * scale, py + 4 * scale);

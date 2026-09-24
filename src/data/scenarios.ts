@@ -86,6 +86,13 @@ const LOT = {
   sidewalks: [{ from: [0, 42] as [number, number], to: [55, 42] as [number, number] }],
 };
 
+/** The shared lot moved by (dx, dy) on a bigger map: the building, its doors and walls, the pond and the entrances. */
+function movedLot(dx: number, dy: number) {
+  const r = (q: Rect) => ({ ...q, x: q.x + dx, y: q.y + dy });
+  const p = ([x, y]: [number, number]): [number, number] => [x + dx, y + dy];
+  return { buildings: LOT.buildings.map(r), walls: LOT.walls.map(r), water: LOT.water.map(r), doors: LOT.doors.map(p), entrances: LOT.entrances.map(p) };
+}
+
 const row = (kind: string, x0: number, y: number, n: number, rot = 0) => Array.from({ length: n }, (_, k) => ({ kind, x: x0 + k, y, rot }));
 
 /** Largest-scale test floor (~20× the tutorial lot): banks of slots with bars, restrooms and cages, for the perf test. */
@@ -246,13 +253,16 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     id: "sandbox",
     name: "Free Play Lot",
     blurb: "An empty building and no goals.",
-    ...LOT,
-    elevator: [20, 5],
+    // The tutorial-size building on a lot about 8× the tutorial's (owner, 2026-09-24): room to grow on every side.
+    w: 184, h: 112,
+    grounds: [{ x: 2, y: 2, w: 156, h: 108 }],
+    ...movedLot(56, 68),
+    elevator: [76, 73],
+    sidewalks: [{ from: [0, 110], to: [183, 110] }],
     // Two neighboring lots for sale to the east (M6.5).
-    w: 80, sidewalks: [{ from: [0, 42], to: [79, 42] }],
     parcels: [
-      { id: "east", name: "East lot", rects: [{ x: 54, y: 2, w: 12, h: 40 }], price: 12_000 },
-      { id: "fareast", name: "Far east lot", rects: [{ x: 66, y: 2, w: 12, h: 40 }], price: 9_000 },
+      { id: "east", name: "East lot", rects: [{ x: 158, y: 2, w: 12, h: 108 }], price: 12_000 },
+      { id: "fareast", name: "Far east lot", rects: [{ x: 170, y: 2, w: 12, h: 108 }], price: 9_000 },
     ],
     startCash: 50_000,
     objects: [],

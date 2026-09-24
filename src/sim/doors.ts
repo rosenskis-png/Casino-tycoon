@@ -96,7 +96,7 @@ const commands: CommandTable<"setDoor"> = {
     validate(g, c) {
       const m = g.state.map, i = c.tile;
       if (!(i >= 0 && i < m.terrain.length) || m.terrain[i] !== T.DOOR) return "Not a door";
-      if (m.fixed[i] || m.entrances.includes(i)) return "The scenario's doors stay as they are";
+      if (m.entrances.includes(i)) return "The scenario's doors stay as they are";
       const rule = DOOR_RULES.find((r) => r.id === c.rule);
       if (!rule) return "Unknown rule";
       if (rule.arg === "type" && !GUEST_TYPES[c.arg ?? ""]) return "Pick a guest type";

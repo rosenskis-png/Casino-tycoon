@@ -24,7 +24,7 @@ declare module "./commands" {
 }
 
 const MAX_STAFF = 200;
-const CLEAN_TICKS = 2 * TICKS_PER_SECOND;
+const CLEAN_TICKS = TICKS_PER_SECOND;
 const REPAIR_TICKS = 6 * TICKS_PER_SECOND;
 const OFFER_TICKS = TICKS_PER_SECOND / 2;
 const SERVE_TICKS = TICKS_PER_SECOND / 2;

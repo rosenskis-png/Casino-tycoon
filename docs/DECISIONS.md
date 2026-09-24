@@ -2,6 +2,18 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M10 planned: audio and playing the games yourself (readiness defaults for the owner)
+- Plan in ROADMAP. Starting point: 25 synth recipes and one master mute. There's no distance, ambient bed, category volumes or working iPhone haptics yet.
+- Defaults put to the owner:
+  1. **Which games:** every house game incl. the sportsbook. Poker and bingo are excluded (FOUNDATIONS §23: player vs player).
+  2. **Blackjack depth:** hit, stand, double, one split, no insurance or surrender. Shuffled every hand, so no counting.
+  3. **Your money:** casino cash, on its own line in the books ("Owner's play"). It's kept out of machine and table stats, the gaming tax, skimming and the regulator.
+  4. **On the floor:** you don't appear and don't take a seat. Guests keep playing the same object.
+  5. **Haptics:** on for jackpots, placements and your wins. iPhone gets one light tick at most.
+  6. **Positional sound and ambient floor:** on.
+- Flagged: winning at your own tables pays out of thin air, because the table's bank is treated as outside money (NORTH_STAR: "gamble the house's fictional money as a diversion"). Owner-set rules can give the player an edge (e.g. a >100% video poker paytable with perfect play). That's accepted because hand-by-hand play earns too little to matter next to the casino's profit. Revisit in M11 if it doesn't hold.
+- Math tests planned: roulette, baccarat (exhaustive enumeration), keno and craps returns will be checked against their TABLE_GAMES edges. Blackjack and video poker get invariant tests only (hand values, dealer rules, paytable lookups).
+
 ## 2026-09-24 · M9.6 built: vice, drugs, the hotel elevator (Claude's calls; see docs/spec/vice.md)
 - Owner asked for the cut M9.5 items as their own pass, and for **staff caught stealing to be replaced automatically** (same job, room and bar; the ticker says so). Quits are still not replaced.
 - **The elevator is a scenario feature**, a fixed floor tile (Free Play and the Test Floor; not the tutorial): hotel guests come and go by it by type (Conventioneers 80% … Locals never). Old saves have none.

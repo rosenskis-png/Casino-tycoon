@@ -1179,7 +1179,8 @@ function noteSession(g: Game, a: Agent) {
   const o = g.objById.get(a.target);
   if (o && OBJECTS[o.kind].slot) {
     slotRemark(g, a, o, secs);
-    marketSession(g, a, o, secs, (id) => { think(g, a, id); noteThought(g.state, gameKey(o), id); });
+    // Wishes are about the floor, not this game: only a game's own remarks count toward its opinions.
+    marketSession(g, a, o, secs, (id) => { think(g, a, id); if (id.startsWith("slot")) noteThought(g.state, gameKey(o), id); });
   }
   noteSessionEnd(g.state, gameKey(o), gd.mood);
 }

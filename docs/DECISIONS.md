@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M7: games catalog and table rules (see docs/spec/tables.md)
+- Owner said "green light" and accepted every readiness default, with one change: **no M7.5**, the whole catalog ships in M7.
+- Catalog: blackjack, roulette, craps, baccarat, video poker, poker room (rake), keno and bingo. The sportsbook waits for the M9 event calendar.
+- Tables draw each bet from its exact odds, like slots; the cards, wheel and dice shown are that real result. No deck simulation.
+- Blackjack skill: guests make realistic mistakes, so the edge depends on who sits; card counters are a hidden trait and read like lucky or cheating guests.
+- Tables are social: several seats share one round, a table opens only with a dealer (paid staff), craps draws onlookers and watching counts as fun.
+- Limits per table: the minimum decides who can sit, the maximum caps exposure; a high-limit room multiplies both by 5.
+- Locals and a new High rollers type notice rule changes; Tourists and Party guests don't.
+- Game tastes per type are Claude's call, checked against sanity flags.
+- **Dealer collusion moves to M9** with hidden staff honesty (resolves the M5/M9 conflict). Table cheating by guests is in M7.
+
 ## 2026-09-24 · M6.5 built (Claude's calls; see docs/spec/themes.md, docs/spec/construction.md)
 - Theme math and numbers are starting values checked against sanity only: strength 3 / radius 4 per piece, walls cut 60%, clashing pairs count 2.5× (a clash has to hurt more than a good pair helps), unrelated themes muddle at 0.8, curated bonus 0.3, per-type `theming` 0.3 / 0.5 / 1.0 / 0.6.
 - **General items only count toward a theme where that theme is already present** from themed pieces, so a palm alone never "themes" a room; it can only reinforce one (the curated bonus).

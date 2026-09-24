@@ -108,6 +108,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 | Visit score | 0.58 | 0.57 | 0.50 | 0.53 | layout, `secPerDollar`, visit score weights in `visitScore` (fun time counts, amenity spending too), incidents seen, being policed |
 | Came for meal / show / club | 16/5/3% | 18/18/0% | 12/23/9% | 1/3/39% | `comeFor`, amenity tiers |
 
+M9 Test Floor (staff skill and morale, whales): visit length 5.2 / 6.5 / 4.7 / 5.0 / 9.2 min, playing 2.2 / 2.7 / 0.8 / 0.7 / 3.6, loss per visit $41 / $27 / $38 / $48 / $476, visit score 0.63 / 0.61 / 0.57 / 0.57 / 0.59; reputation after 300 days 66 / 65 / 59 / 56 / 63. Three whales (the house won $10K, lost $30K, won $500). No sanity flags.
+
 M7 Test Floor (a table pit, poker, keno, video poker, a bingo hall, baccarat in the high-limit room, three more restrooms; High rollers join): visit length 5.1 / 6.9 / 4.7 / 5.0 / 10.2 min (Locals / Retirees / Tourists / Party / High rollers), playing 2.1 / 2.9 / 0.9 / 0.7 / 4.1, loss per visit $40 / $29 / $58 / $46 / $340, visit score 0.62 / 0.63 / 0.56 / 0.60 / 0.61; reputation after 300 days 67 / 65 / 55 / 60 / 61. Where they play is in docs/spec/tables.md. No sanity flags on seed 1 (seed 3 shows the old noisy "cheats who got away mostly lost money", seen on M6.5 too).
 
 M6.5 Test Floor (themed rooms and a front yard with a pool): visit length 5.4 / 5.7 / 4.7 / 4.7 min, playing 2.0 / 2.0 / 0.6 / 0.7, visit score 0.58 / 0.59 / 0.53 / 0.54, came for the pool 3 / 4 / 10 / 7%; reputation after 300 days 63 / 62 / 56 / 54. No sanity flags.
@@ -123,7 +125,7 @@ Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $
 - **Test floors must be realistic.** Measure on the Test Floor scenario (at least one of every object, signs, servers), never on the tutorial or an empty lot, or wayfinding failures swamp everything else.
 
 ## Save
-Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
+Schema 11 (M9): guests gain `vip`, `comp` and `unpaid` (docs/spec/money.md). Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
 
 Schema 5 (migration from 4): drink policy moves from the casino to each bar; guests gain a drink in hand, browsing time, frustration (replacing the fail count), liked machines and favorite-spot tracking; people gain favorite spots; servers gain a bar and start a fresh round.
 

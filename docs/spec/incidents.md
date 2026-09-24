@@ -65,7 +65,7 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
   - below 15: a raid. Three officers come in, the casino is fined $1,500 and closed for 3 days (at most once every 30 days).
   - at 0: the license is revoked and the scenario is lost. The casino closes for 30 days, then reopens with standing 30 if you keep playing.
 - **Officers** walk the floor for 90 s after a call or an inspection. **Closed**: everyone is sent home (anyone passed out is carried out) and nobody comes in until it reopens, while costs keep running.
-- **Regulator**: standing shown (100), with no triggers yet (rigging and unpaid winnings: M8/M9).
+- **Regulator**: its own ladder and inspector since M9 (docs/spec/money.md); rigged machines join in M8.
 
 ## On the floor and in the UI
 - Marks over heads: a music note (loud), red "!!" (arguments, yelling, fights), a scuffle cloud at fighters' feet, tears (breakdown), a green face (vomiting), confetti (cheering, a round), a heart (flirting), a raised glass (another round). Passed-out guests lie on the floor with a "Z". Vomit and spills stay on the floor until swept. Guards wear black suits with a radio, officers navy with a cap, paramedics white.

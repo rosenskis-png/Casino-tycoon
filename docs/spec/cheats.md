@@ -24,7 +24,7 @@ frame; this is what was built. Numbers are starting values, tuned headless.
 - **Cheat**: each person is a cheat with their type's `cheat` share (1%; Retirees 0.5%). Kept for life by pool
   people. A cheat who leads a group brings a **crew**: each companion cheats too with chance 0.5.
 
-## Cheating (slots; tables from M7; dealer collusion in M9)
+## Cheating (slots; tables from M7; crooked dealers look away from M9)
 - A cheat arrives with a **take**: the most they mean to walk out with, log-normal median $400 (σ 0.5, $150–$2,500).
 - They play honestly between **spells**. After 20–60 s of honest play at a machine, a spell starts and lasts
   30–90 s. During a spell they bet the machine's maximum and half their wagers are rigged wins paying 4× the bet;
@@ -96,8 +96,8 @@ Each action adds to a rolling **enforcement heat** (warning 0.3, ban 0.5, beatin
 - **Innocent** (the sim knows): 2–8 days later a rumor reaches the ticker and the target's type loses reputation:
   warning 0.5, ban 1.5, beating 4, disappearance 8, × the type's `repSensitivity`. An innocent who disappeared
   also costs −6 police standing when the rumor lands.
-- **Importance** (VIPs, whales): hook only; they arrive in M9.
-- The regulator has no M5 triggers (its causes are rigging and unpaid winnings: M8/M9).
+- **Importance** (VIPs, whales): hook only. Whales arrived in M9 (docs/spec/money.md); enforcement on them has no extra cost yet.
+- The regulator has no M5 triggers. M9 gave it skimming, unpaid winnings and weak controls (docs/spec/money.md); rigged machines come with M8.
 
 ## On the floor and in the UI
 - Marked guests: a red dashed ring. Held guests stand still. Beaten guests walk bent over at half speed.

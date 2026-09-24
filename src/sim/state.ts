@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export interface MapState {
   w: number;
@@ -46,6 +46,8 @@ export interface PlacedObject {
   rules?: number[];
   lim?: number;
   tbl?: TableRound;
+  /** (M9) Bars and cages: 1 while crewed by a crooked bartender or teller (docs/spec/staff.md). */
+  crook?: number;
 }
 
 /**
@@ -216,6 +218,11 @@ export interface GuestData {
   /** (M7) Hidden: skill at games with choices (0 poor, 1 typical, 2 sharp) and 1 for a card counter. */
   skill: number;
   counter: number;
+  /** (M9) 1 for a whale (docs/spec/money.md). Comps this visit (bits, COMP_BIT): earned, and used. */
+  vip: number;
+  comp: number;
+  /** (M9) Winnings the house couldn't pay them this visit (dollars). */
+  unpaid: number;
 }
 
 /**
@@ -294,11 +301,23 @@ export type Activity =
   // M7: a dealer at their table; a guest watching a craps table.
   | "deal" | "look";
 
+/** (M9) A worker's hidden knack and honesty, morale, today's workload, and patrol zone (docs/spec/staff.md). */
+export interface StaffData {
+  q: number;
+  crook: number;
+  morale: number;
+  /** Beats spent working today, and beats counted. */
+  busy: number;
+  beats: number;
+  /** A tile of the room they're kept to, or -1 for anywhere. */
+  zone: number;
+}
+
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {
   id: number;
   /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
-  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss";
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;
@@ -324,6 +343,8 @@ export interface Agent {
   /** Enforcers: 1 while carrying a bag. */
   bag?: number;
   g?: GuestData;
+  /** (M9) Staff only. */
+  st?: StaffData;
 }
 
 /** An incident in progress (docs/spec/incidents.md). Ended ones are only counted. */
@@ -451,6 +472,51 @@ export interface GameState {
   outcome: "" | "won" | "lost";
   /** Land parcels bought (scenario parcel ids, M6.5). */
   parcels: string[];
+  /** (M9) Staff pay and theft, money and risk, the regulator, whales. */
+  crew: Crew;
+  bank: Bank;
+  reg: RegulatorState;
+  whale: WhaleState;
+}
+
+/** Pay per role (multiple of the market wage) and what went missing this month, per area, found at the count. */
+export interface Crew { pay: Record<string, number>; shrink: Record<string, number>; hist: number[] }
+
+/** Credit, tax, insurance and comps (docs/spec/money.md). */
+export interface Bank {
+  loan: number;
+  emergency: number;
+  /** Share of the gaming win skimmed; back taxes owed (hidden). */
+  skim: number;
+  evaded: number;
+  /** Insurance: cover above this payout (0 = off); expected excess of this month's wagers. */
+  insure: number;
+  insExp: number;
+  /** Emergency loans this month; months in a row closed below zero; unpaid winnings since the last audit. */
+  emergencies: number;
+  broke: number;
+  unpaid: number;
+  /** 1 while cash is below zero with no credit left (told once). */
+  low: number;
+  /** Comp thresholds on theoretical loss (0 = off), and comps given this month. */
+  comps: { meal: number; show: number; back: number };
+  given: number;
+}
+
+/** The regulator's inspector: next routine visit, the one on the floor (agent id or -1), and the last suspension. */
+export interface RegulatorState { next: number; here: number; suspendAt: number }
+
+/** A whale announced (arriving at `at`) or on the floor (`id`), and when the next is announced. */
+export interface WhaleState {
+  next: number;
+  due: { at: number; name: number; game: string; reqs: string[]; bankroll: number } | null;
+  id: number;
+  /** The whale on the floor: their game, what they started with, their name and bet per hand. */
+  game: string;
+  bankroll: number;
+  name: number;
+  bet: number;
+
 }
 
 export interface VisitStats { arrived: number; left: number; satSum: number; broke: number; walkedPast: number }

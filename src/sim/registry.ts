@@ -16,6 +16,8 @@ export interface System {
   /** Once per real second at 1× (TICKS_PER_BEAT). */
   beat?(g: Game): void;
   day?(g: Game): void;
+  /** Month-end, before any `month` hook: posts that belong to the month closing (the count, tax, interest). */
+  closeMonth?(g: Game): void;
   month?(g: Game): void;
   year?(g: Game): void;
 }

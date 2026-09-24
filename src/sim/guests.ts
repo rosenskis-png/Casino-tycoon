@@ -28,6 +28,10 @@ import { covers, objSeats, objSize, seatCount } from "./geometry";
 import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult } from "./amenities";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
+import { THEFT } from "../data/staff";
+import { greed, steal } from "./crew";
+import { comeBack, useComp } from "./bank";
+import { whaleLeft } from "./whales";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -348,7 +352,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
-    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0,
+    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0,
   };
   const a: Agent = {
     id: s.nextId++, role: "guest", x, y, nx: x, ny: y, t: 0, steps: r.int(10, 14), dest: at,
@@ -417,7 +421,8 @@ export function visitScore(a: Agent): VisitScore {
   const needs = Math.max(0, 1 - gd.mem.unmet / 3);
   // Thrown out by security: whatever else happened, the visit ended badly.
   // Beaten up: nothing else about the visit counts.
-  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.hurt ? 0 : gd.mem.ejected ? 0.4 : 1);
+  // Stiffed on their winnings (M9): little else matters.
+  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.hurt ? 0 : gd.mem.ejected ? 0.4 : 1) * (gd.unpaid ? 0.2 : 1);
   return { score, value, feel, needs, mood };
 }
 
@@ -436,7 +441,8 @@ export function depart(g: Game, a: Agent, vanished = false) {
   else if (vs.score < 0.45) think(g, a, "badTime");
   if (gd.why === "broke" && vs.value < 0.5) think(g, a, "badValue");
   else if (vs.value >= 1 && gd.why !== "broke" && gd.mem.wagered > gd.mem.won) think(g, a, "goodValue");
-  if (!vanished) afterVisit(g, a, vs.score);
+  if (!vanished) { afterVisit(g, a, vs.score); comeBack(g, a); }
+  if (gd.vip) whaleLeft(g, a);
   if (gd.mark & 2 && !vanished) news(g, "warn", `Marked guest ${guestName(gd.name)} is leaving.`);
   g.bus.emit({
     type: "departed", guestType: gd.type, pid: gd.pid, lead: gd.lead, minutes: (s.tick - gd.mem.arrived) / TICKS_PER_MIN, play: gd.mem.playTicks / TICKS_PER_MIN,
@@ -444,6 +450,7 @@ export function depart(g: Game, a: Agent, vanished = false) {
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
     fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker, skill: gd.skill, counter: gd.counter, marked: gd.mark & 1,
+    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid,
   });
   if (!vanished) walkAway(g, a);
   gone(g).add(a.id);
@@ -675,6 +682,8 @@ interface Candidate { o: number; appeal: number; d: number; seen: boolean }
  */
 function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./state").PlacedObject): number {
   const def = OBJECTS[o.kind];
+  // A whale (M9) plays only their game.
+  if (gd.vip) return isTable(o.kind) && def.game === g.state.whale.game && tableOpen(g, o) && canSit(g, gd, o) ? 3 : 0;
   if (isTable(o.kind)) return tableOpen(g, o) && canSit(g, gd, o) ? tableAppeal(g, gd, o) : 0;
   const m = machineModel(o, gd);
   if (!m) return 0;
@@ -1133,6 +1142,11 @@ function finishUse(g: Game, a: Agent, r: Rng) {
       if (amt > 0) { gd.wallet += amt; gd.withdrawn += amt; gd.trips++; think(g, a, "atm"); }
       else gd.withdrawn = gd.withdrawCap;
     }
+    // M9: a crooked teller shorts the drawer now and then.
+    if (def.serves === "cage" && o.crook) {
+      const cr = rng(g.state, "crew");
+      if (cr.chance(greed(null, THEFT.teller.p))) steal(g, "cage", cr.int(THEFT.teller.amount[0], THEFT.teller.amount[1]), a.y * g.state.map.w + a.x, "shorting the cage drawer", null, o);
+    }
   }
   release(g, a);
   a.act = "idle";
@@ -1241,7 +1255,8 @@ function guestTick(g: Game, a: Agent) {
       if (a.seat < 0 || !o) { release(g, a); a.act = "idle"; return; }
       const r = rng(g.state, "guests");
       if (a.timer === 0) {
-        const price = priceFor(o);
+        // A comped meal (M9) is on the house.
+        const free = useComp(gd, "meal"), price = free ? 0 : priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "food");
         post(g, "foodCost", -FOOD_COST);
@@ -1266,7 +1281,7 @@ function guestTick(g: Game, a: Agent) {
       if (a.timer === 0) { a.timer = 1; return; }
       if (ph.phase === "on") {
         if (a.timer === 1) {
-          const price = priceFor(o);
+          const free = useComp(gd, "show"), price = free ? 0 : priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "shows");
           if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }

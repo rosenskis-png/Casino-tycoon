@@ -11,6 +11,7 @@ import { objCells, objFootprint, objSeats, priceOf, sizeOk, type Placed } from "
 import { clearDoor } from "./doors";
 import { idx, inBounds } from "./map";
 import { post } from "./finance";
+import { crewAmenity } from "./crew";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -136,7 +137,9 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
       const p = placed(c.kind, c.x, c.y, c.rot, c.w, c.h);
       const f = placement(g, p) as { tiles: number[]; seats: number[] };
       const id = g.state.nextId++;
-      g.state.objects.push(newObject(id, c.kind, c.x, c.y, c.rot & 3, g.state.tick, p.w, p.h));
+      const o = newObject(id, c.kind, c.x, c.y, c.rot & 3, g.state.tick, p.w, p.h);
+      crewAmenity(g, o);
+      g.state.objects.push(o);
       post(g, "build", -priceOf(p).cost);
       g.rebuildOccupancy();
       g.tilesChanged([...f.tiles, ...f.seats]);

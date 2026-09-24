@@ -1214,6 +1214,15 @@ export const PEOPLE: Record<string, LookSet> = {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#7a808c"], bottom: ["#2a2e38"], accent: ["#1c2030"], hat: ["#1c2030"],
     styles: [[{ o: "polo", h: "short", x: ["glasses"] }], [{ o: "polo", h: "bob", x: ["glasses"] }]],
   },
+  // M9: the gaming regulator's inspector (grey suit, glasses), and a whale (white and gold, unmistakable).
+  inspector: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#8a8e98"], bottom: ["#3a3e48"], accent: ["#f6f1e6"], hat: ["#1c2030"],
+    styles: [[{ o: "blazer", h: "short", x: ["glasses"] }], [{ o: "blazer", h: "bun", x: ["glasses"] }]],
+  },
+  whale: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#c8a040", "#f0ece4"], top: ["#f2eee4", "#e8d8a8"], bottom: ["#f2eee4", "#e8d8a8"], accent: ["#e0b040"], hat: ["#f2eee4"],
+    styles: [[{ o: "blazer", h: "bald", x: ["glasses"] }, { o: "blazer", h: "quiff" }], [{ o: "dress", h: "bun", x: ["glasses"] }, { o: "dress", h: "long" }]],
+  },
   server: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#f6f1e6"], bottom: ["#141418"], accent: ["#1c1820"], hat: ["#141418"],
     styles: [[{ o: "waiter", h: "crop" }], [{ o: "waiter", h: "bun" }]],

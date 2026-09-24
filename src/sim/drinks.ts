@@ -10,6 +10,8 @@ import type { System } from "./registry";
 import type { Agent, BarPolicy, GuestData, PlacedObject } from "./state";
 import { rng } from "./rng";
 import { post } from "./finance";
+import { THEFT } from "../data/staff";
+import { greed, steal } from "./crew";
 import { think } from "./guests";
 import { priceTolerance } from "./amenities";
 
@@ -77,7 +79,7 @@ export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean): nu
  * Hands `a` a drink from bar `o` (at the bar, or brought by one of its servers). Pays unless comped. Returns
  * false when they can't pay (or already hold one).
  */
-export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: "bar" | "server", comped: boolean): boolean {
+export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: "bar" | "server", comped: boolean, server?: Agent): boolean {
   const gd = a.g!, pol = barPolicy(o), r = rng(g.state, "drinks");
   if (handsFull(gd)) return false;
   if (gd.intox >= cutoff(g)) { if (r.chance(0.5)) think(g, a, "cutOff"); return false; }
@@ -85,7 +87,14 @@ export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: 
   if (price > gd.wallet) return false;
   // The last sips of the old one go down in one.
   if (gd.drink > 0) gd.intox = Math.min(INTOX_CAP, gd.intox + gd.drink * gd.dStr * DRINK_UNIT);
-  if (price) { gd.wallet -= price; post(g, "bar", price); }
+  if (price) {
+    gd.wallet -= price;
+    post(g, "bar", price);
+    // M9: a crooked server (or bartender) pockets the money now and then.
+    const thief = via === "server" ? server : undefined, cr = rng(g.state, "crew"), w = g.state.map.w;
+    if (thief?.st?.crook && cr.chance(greed(thief, THEFT.server.p))) steal(g, "bar", price, thief.y * w + thief.x, "pocketing drink money", thief);
+    else if (via === "bar" && o?.crook && cr.chance(greed(null, THEFT.bartender.p))) steal(g, "bar", price, a.y * w + a.x, "pocketing drink money", null, o);
+  }
   post(g, "drinks", -DRINK_COST);
   gd.drink = 1;
   gd.dStr = gd.intend > 0 ? pol.strength : 0;

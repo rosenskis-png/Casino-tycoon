@@ -59,7 +59,7 @@ Drawn per person from a stable hash: how adventurous they are follows their type
 
 ## Staff
 
-- **Dealer** ($100/mo): walks to a table that needs one and stands at its dealer spot; a table (or keno board, bingo caller's stand) opens only when all its dealer spots are filled. Craps needs two. Guests don't sit at a closed table. Dealer collusion arrives in M9 with hidden staff honesty.
+- **Dealer** ($100/mo): walks to a table that needs one and stands at its dealer spot; a table (or keno board, bingo caller's stand) opens only when all its dealer spots are filled. Craps needs two. Guests don't sit at a closed table. Since M9 dealers have skill (faster rounds) and hidden honesty: a crook palms chips and never catches a cheat (docs/spec/staff.md).
 - **Pit boss** ($140/mo): patrols the tables. A cheat at a table in a pit boss's view (8 tiles, line of sight) is caught much more often (+1.2%/s, on top of guards, cameras and chance); a dealer watches their own table (+0.2%/s). A pit boss watching a card counter may tag them: the counter is marked and a yellow ticker item says so. What to do about it is the player's call.
 
 ## Guests

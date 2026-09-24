@@ -13,6 +13,8 @@ import { TICKS_PER_SECOND } from "./clock";
 import { faceTile } from "./wayfinding";
 import { acceptChance, barPolicy, cutoff, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
 import { OBJECTS } from "../data/objects";
+import { THEFT } from "../data/staff";
+import { firedWorker, greed, inZone, newStaffData, setPace, skillOf, steal } from "./crew";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -45,9 +47,12 @@ export function hireStaff(g: Game, role: string): Agent | null {
   const x = at % w, y = (at - x) / w;
   const a: Agent = {
     // Drink servers move briskly.
-    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: role === "server" || role === "guard" || role === "enforcer" ? r.int(6, 7) : r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
+    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: 10, dest: at, look: r.int(0, 1 << 20),
     act: "idle", next: "idle", target: -1, seat: -1, timer: 0, hidden: 0,
+    // M9: a hidden knack and honesty; skill sets the walking pace.
+    st: newStaffData(g, role),
   };
+  setPace(g, a);
   if (role === "server") { const b = leastServedBar(g); if (b >= 0) a.bar = b; }
   s.agents.push(a);
   return a;
@@ -64,10 +69,13 @@ function claimed(g: Game, role: string): Set<number> {
 function wanderStaff(g: Game, a: Agent) {
   const r = rng(g.state, "staff");
   const pts = g.state.wanderPoints;
-  const near = r.chance(0.7) ? nearbyTile(g, "staff", a.x, a.y, 12, a) : -1;
-  if (near >= 0) go(a, near, "idle");
-  else if (pts.length) go(a, r.pick(pts), "idle");
   a.target = -1;
+  // M9: a worker kept to a room patrols inside it, and heads back there first.
+  const zone = a.st?.zone ?? -1, w = g.state.map.w;
+  if (zone >= 0 && !inZone(g, a, a.y * w + a.x)) { if (g.walkable(zone)) go(a, zone, "idle"); return; }
+  const near = r.chance(0.7) || zone >= 0 ? nearbyTile(g, "staff", a.x, a.y, zone >= 0 ? 6 : 12, a) : -1;
+  if (near >= 0 && inZone(g, a, near)) go(a, near, "idle");
+  else if (pts.length && zone < 0) go(a, r.pick(pts), "idle");
 }
 
 function janitorFindWork(g: Game, a: Agent) {
@@ -77,7 +85,7 @@ function janitorFindWork(g: Game, a: Agent) {
   const here = a.y * w + a.x;
   let best = -1, bs = -Infinity;
   for (let i = 0; i < dirt.length; i++) {
-    if (!dirt[i] || taken.has(i) || !g.walkable(i)) continue;
+    if (!dirt[i] || taken.has(i) || !g.walkable(i) || !inZone(g, a, i)) continue;
     const s = dirt[i] * 4 - (Math.abs((i % w) - a.x) + Math.abs(Math.floor(i / w) - a.y)) / 3;
     if (s > bs) { bs = s; best = i; }
   }
@@ -105,7 +113,7 @@ function techFindWork(g: Game, a: Agent) {
   const here = a.y * w + a.x;
   let best = -1, spot = -1, bd = Infinity;
   for (const o of g.state.objects) {
-    if (!o.broken || taken.has(o.id)) continue;
+    if (!o.broken || taken.has(o.id) || !inZone(g, a, o.y * w + o.x)) continue;
     const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
     if (d >= bd) continue;
     const t = workSpot(g, o.id);
@@ -204,7 +212,7 @@ function deliverNext(g: Game, a: Agent) {
 function serverTick(g: Game, a: Agent) {
   const r = rng(g.state, "staff");
   if (a.act === "offer") {
-    if (a.timer === 0) { a.timer = OFFER_TICKS; return; }
+    if (a.timer === 0) { a.timer = Math.max(1, Math.round(OFFER_TICKS / skillOf(g, a))); return; }
     if (--a.timer > 0) return;
     const bar = serverBar(g, a);
     a.target = -1;
@@ -240,10 +248,10 @@ function serverTick(g: Game, a: Agent) {
     return deliverNext(g, a);
   }
   // serve
-  if (a.timer === 0) { a.timer = SERVE_TICKS; return; }
+  if (a.timer === 0) { a.timer = Math.max(1, Math.round(SERVE_TICKS / skillOf(g, a))); return; }
   if (--a.timer > 0) return;
   const b = g.state.agents.find((x) => x.id === a.target >> 1);
-  if (b?.g) serveDrink(g, b, serverBar(g, a) ?? undefined, "server", (a.target & 1) === 1);
+  if (b?.g) serveDrink(g, b, serverBar(g, a) ?? undefined, "server", (a.target & 1) === 1, a);
   deliverNext(g, a);
 }
 
@@ -257,7 +265,7 @@ function staffTick(g: Game, a: Agent) {
   }
   if (a.act === "offer" || a.act === "fetch" || a.act === "serve") return serverTick(g, a);
   if (a.act === "clean") {
-    if (a.timer === 0) { a.timer = CLEAN_TICKS; return; }
+    if (a.timer === 0) { a.timer = Math.max(1, Math.round(CLEAN_TICKS / skillOf(g, a))); return; }
     if (--a.timer > 0) return;
     const { w, h } = g.state.map;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -271,10 +279,15 @@ function staffTick(g: Game, a: Agent) {
   if (a.act === "repair") {
     const o = g.objById.get(a.target);
     if (!o || !o.broken) { a.target = -1; a.act = "idle"; return; }
-    if (a.timer === 0) { a.timer = REPAIR_TICKS; return; }
+    if (a.timer === 0) { a.timer = Math.max(1, Math.round(REPAIR_TICKS / skillOf(g, a))); return; }
     if (--a.timer > 0) return;
     o.broken = 0;
     g.bus.emit({ type: "sound", id: "fixed", x: o.x, y: o.y });
+    // M9: a crooked tech helps themselves from the machine's hopper.
+    const r = rng(g.state, "crew");
+    if (a.st?.crook && r.chance(greed(a, THEFT.tech.p))) {
+      steal(g, "machines", r.int(THEFT.tech.amount[0], THEFT.tech.amount[1]), a.y * g.state.map.w + a.x, `pocketing coins from ${OBJECTS[o.kind].name}`, a);
+    }
     a.target = -1;
     a.act = "idle";
     return;
@@ -294,7 +307,11 @@ const commands: CommandTable<"hire" | "fire"> = {
   },
   fire: {
     validate: (g, c) => (g.state.agents.some((a) => a.id === c.id && isStaff(a)) ? null : "Not on staff"),
-    apply(g, c) { g.state.agents = g.state.agents.filter((a) => a.id !== c.id); },
+    apply(g, c) {
+      const a = g.state.agents.find((b) => b.id === c.id);
+      if (a) firedWorker(g, a);
+      g.state.agents = g.state.agents.filter((b) => b.id !== c.id);
+    },
   },
 };
 
@@ -317,7 +334,5 @@ export const staffSystem: System = {
   },
 };
 
-/** Monthly wage bill by role, for the Staff tab. */
-export const wageOf = (role: string) => STAFF_ROLES[role]?.wage ?? 0;
 /** On the payroll (not a guest, and not a visiting officer or paramedic). */
 export const isStaff = (a: Agent) => a.role in STAFF_ROLES;

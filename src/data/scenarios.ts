@@ -60,6 +60,9 @@ export interface ScenarioDef {
   goals: Goals | null;
   /** Suspicion tool tiers available, 0-4 (docs/spec/cheats.md; research raises it from M9). */
   tools: number;
+  /** (M9) Gaming tax on the month's gaming win, 0-1; whether whales come (docs/spec/money.md). */
+  tax: number;
+  whales?: boolean;
   /** Named rooms with a purpose, by any tile inside them. */
   rooms?: { x: number; y: number; name: string; purpose: RoomPurpose }[];
   /** Not offered in the New game list (engine test maps). */
@@ -110,7 +113,7 @@ function bigFloor(): ScenarioDef {
     w, h, startCash: 1_000_000, grounds: [{ x: 1, y: 1, w: w - 2, h: h - 2 }], buildings: [{ x: bx, y: by, w: bw, h: bh }],
     walls: [], doors, water: [], entrances, sidewalks: [], objects, staff: { janitor: 20, tech: 20 },
     footfall: 0, street: {}, market: {},
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null, tools: 0,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0, maxGuests: 1, goals: null, tools: 0, tax: 0,
   };
 }
 
@@ -202,7 +205,7 @@ function testFloor(): ScenarioDef {
     ],
     footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
     market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 }, highroller: { size: 25, regulars: 0.3 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4, tax: 0.08, whales: true,
   };
 }
 
@@ -229,7 +232,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     arrivals: 0.12,
     maxGuests: 300,
     goals: { worth: 30_000, rep: { type: "local", min: 60 }, by: { year: 1, month: 11 } },
-    tools: 2,
+    tools: 2, tax: 0.05,
   },
   sandbox: {
     id: "sandbox",
@@ -253,7 +256,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     arrivals: 0.45,
     maxGuests: 400,
     goals: null,
-    tools: 4,
+    tools: 4, tax: 0.08, whales: true,
   },
   bigfloor: bigFloor(),
   testfloor: testFloor(),

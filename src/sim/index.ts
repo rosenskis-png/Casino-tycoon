@@ -26,5 +26,8 @@ export { tableOpen, dealerSeats, limitsNow } from "./tables";
 export { incidentRates, incidentOf, LADDER, LADDER_NAMES, CALL_AFTER } from "./incidents";
 export { cutoff } from "./drinks";
 export { isStaff } from "./staff";
+export { payOf, wageFor, skillOf, skillWord, roleMorale } from "./crew";
+export { debtOf, loanRoom, emergencyRoom, theo, COMP_BIT } from "./bank";
+export { NOT_INCOME } from "./finance";
 export { suspicion, coverage, purposeTiles, type Suspicion } from "./cheats";
 export { OBJECTS } from "../data/objects";

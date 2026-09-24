@@ -5,7 +5,9 @@ import { BUILD_COST, DOOR_RULES, DOOR_STATE, MAX_DOOR_FEE, T } from "../data/ter
 import { ROOM_HELP, ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { THEMES, THEME_IDS, type ThemeId } from "../data/themes";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
-import { STAFF_ROLES } from "../data/staff";
+import { STAFF_ROLES, PAY_MIN, PAY_MAX, PAY_STEP, ZONED_ROLES } from "../data/staff";
+import { COMP_AT, COMP_KINDS, COMP_NAMES, INSURE_OVER, LOAN_RATE, EMERGENCY_RATE, SKIM_LEVELS, REG_LADDER_NAMES } from "../data/money";
+import { TABLE_GAMES } from "../data/tables";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
@@ -17,6 +19,7 @@ import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
+  payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME,
   priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules,
 } from "../sim";
@@ -90,6 +93,7 @@ const SEEKING: Record<string, string> = {
 };
 
 function roleDoing(g: Game, a: Agent): string {
+  if (a.role === "inspector") return a.act === "leave" || a.next === "leave" ? "Leaving with their notes" : "Auditing the casino";
   const obj = a.target >= 0 ? g.objById.get(a.target) : undefined;
   const name = obj ? OBJECTS[obj.kind].name : "";
   switch (a.act) {
@@ -159,28 +163,54 @@ export function guestName(n: number): string {
 
 const moodFace = (m: number) => (m > 75 ? "😀" : m > 55 ? "🙂" : m > 40 ? "😐" : m > 25 ? "🙁" : "😠");
 
+const PAYS: number[] = [];
+for (let p = PAY_MIN; p <= PAY_MAX + 1e-9; p += PAY_STEP) PAYS.push(Math.round(p * 10) / 10);
+const moraleWord = (m: number) => (m >= 75 ? "happy" : m >= 50 ? "content" : m >= 30 ? "unhappy" : "miserable");
+
 export function StaffPanel({ host }: { host: Host }) {
   const g = host.game;
   const staff = g.state.agents.filter(isStaff);
   return (
     <>
-      <div className="grid">
-        {Object.values(STAFF_ROLES).map((r) => (
-          <button key={r.id} className="btn" onClick={() => g.dispatch({ type: "hire", role: r.id })}>
-            Hire {r.name}<small>{money(r.wage)}/mo · {staff.filter((a) => a.role === r.id).length} on staff</small>
-          </button>
-        ))}
-      </div>
+      {Object.values(STAFF_ROLES).map((r) => {
+        const n = staff.filter((a) => a.role === r.id).length, m = roleMorale(g, r.id);
+        return (
+          <div className="row" key={r.id} style={{ alignItems: "center" }}>
+            <span style={{ flex: 1 }}>{r.name}<br /><small className="muted">{n} on staff · {money(wageFor(g, r.id))}/mo each{m >= 0 ? ` · ${moraleWord(m)}` : ""}</small></span>
+            <select value={payOf(g, r.id)} onChange={(e) => g.dispatch({ type: "setPay", role: r.id, pay: Number(e.target.value) })}>
+              {PAYS.map((p) => <option key={p} value={p}>{Math.round(p * 100)}% pay</option>)}
+            </select>
+            <button className="btn" onClick={() => g.dispatch({ type: "hire", role: r.id })}>Hire</button>
+          </div>
+        );
+      })}
+      <p className="muted" style={{ margin: "8px 0" }}>Pay is set per job, against the going rate. Better pay buys more skilled, happier staff, and fewer who steal. Overwork and trouble on the floor wear morale down; miserable staff quit.</p>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
-      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table.</p>
+      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to one room.</p>
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
-          <span style={{ flex: 1 }}>{STAFF_ROLES[a.role].name} #{a.id}{a.role === "server" ? ` · ${barName(g, a.bar ?? -1)}` : ""}<br /><small className="muted">{roleDoing(g, a)}</small></span>
+          <span style={{ flex: 1 }}>{STAFF_ROLES[a.role].name} #{a.id}{a.role === "server" ? ` · ${barName(g, a.bar ?? -1)}` : ""} · {skillWord(skillOf(g, a))}{a.st ? `, ${moraleWord(a.st.morale)}` : ""}<br /><small className="muted">{roleDoing(g, a)}</small></span>
           <button className="btn danger" onClick={() => g.dispatch({ type: "fire", id: a.id })}>Fire</button>
         </div>
       ))}
     </>
+  );
+}
+
+/** The room a worker is kept to (janitors, techs, guards, pit bosses). */
+function StaffZone({ g, a }: { g: Game; a: Agent }) {
+  if (!ZONED_ROLES.includes(a.role) || !a.st) return null;
+  const rooms = roomChoices(g), z = a.st.zone, zr = z >= 0 ? g.rooms.roomOf[z] : -1;
+  const cur = rooms.find((r) => g.rooms.roomOf[r.tile] === zr)?.tile ?? -1;
+  return (
+    <div className="row">
+      <span className="muted">Works in</span>
+      <select value={cur} onChange={(e) => g.dispatch({ type: "setZone", id: a.id, tile: Number(e.target.value) })}>
+        <option value={-1}>Anywhere</option>
+        {rooms.map((r) => <option key={r.tile} value={r.tile}>{r.name}</option>)}
+      </select>
+    </div>
   );
 }
 
@@ -282,7 +312,7 @@ export function GuestsPanel({ host }: { host: Host }) {
 
 function LedgerRows({ l }: { l: Ledger }) {
   const rows = Object.entries(l).filter(([, v]) => Math.abs(v) >= 0.5);
-  const net = rows.filter(([k]) => k !== "start").reduce((a, [, v]) => a + v, 0);
+  const net = rows.filter(([k]) => !NOT_INCOME.has(k)).reduce((a, [, v]) => a + v, 0);
   return (
     <div className="kv">
       {rows.map(([k, v]) => <Fragment key={k}><b>{LEDGER_LABELS[k] ?? k}</b><span className={`num ${v < 0 ? "neg" : ""}`}>{money(v)}</span></Fragment>)}
@@ -303,6 +333,7 @@ export function FinancePanel({ host }: { host: Host }) {
         <b>Casino worth</b><span className="num">{money(worth(g))}</span>
         <b>Monthly bills</b><span className="num">{money(c.wages)} wages · {money(c.upkeep)} upkeep</span>
       </div>
+      <Credit g={g} />
       <p className="muted" style={{ margin: "10px 0 6px" }}>This month ({date[0].split(" ")[1]}, {date[1]})</p>
       <LedgerRows l={f.month} />
       {[...f.history].reverse().slice(0, 3).map((h) => (
@@ -311,6 +342,64 @@ export function FinancePanel({ host }: { host: Host }) {
           <LedgerRows l={h.l} />
         </Fragment>
       ))}
+    </>
+  );
+}
+
+/** Loans and emergency credit (docs/spec/money.md). */
+function Credit({ g }: { g: Game }) {
+  const s = g.state, b = s.bank;
+  const room = loanRoom(g), debt = debtOf(g);
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Credit</p>
+      <div className="kv">
+        <b>Loans</b><span className="num">{money(b.loan)} at {Math.round(LOAN_RATE * 100)}%/mo{b.emergency ? ` · emergency ${money(b.emergency)} at ${Math.round(EMERGENCY_RATE * 100)}%/mo` : ""}</span>
+        <b>Can borrow</b><span className="num">{money(room)} · emergency credit left {money(emergencyRoom(g))}</span>
+      </div>
+      <div className="grid">
+        <button className="btn" disabled={room < 1000} onClick={() => g.dispatch({ type: "borrow", amount: 1000 })}>Borrow $1K</button>
+        <button className="btn" disabled={room < 5000} onClick={() => g.dispatch({ type: "borrow", amount: 5000 })}>Borrow $5K</button>
+        <button className="btn" disabled={!debt || s.cash < 1000} onClick={() => g.dispatch({ type: "repay", amount: 1000 })}>Repay $1K</button>
+        <button className="btn" disabled={!debt || s.cash < debt} onClick={() => g.dispatch({ type: "repay", amount: debt })}>Repay all</button>
+      </div>
+      <p className="muted" style={{ margin: "4px 0" }}>If cash can't cover a payout or the bills, the bank lends at a steep rate, and it makes the papers. With no credit left, winnings go unpaid. Three months in a row below zero lose the scenario.</p>
+    </>
+  );
+}
+
+/** Policies (FOUNDATIONS §16): insurance, the tax and a skim, comps; pointers to the per-bar, per-table and house-rule settings. */
+export function PoliciesPanel({ host }: { host: Host }) {
+  const g = host.game, s = g.state, b = s.bank, sc = SCENARIOS[s.scenario];
+  return (
+    <>
+      <div className="kv">
+        <b>Jackpot insurance</b>
+        <span>
+          <select value={b.insure} onChange={(e) => g.dispatch({ type: "setInsurance", over: Number(e.target.value) })}>
+            {INSURE_OVER.map((v) => <option key={v} value={v}>{v ? `Cover payouts over ${money(v)}` : "None"}</option>)}
+          </select>
+        </span>
+        <b>Gaming tax</b><span className="num">{Math.round((sc?.tax ?? 0) * 100)}% of the gaming win, monthly</span>
+        <b>Skim</b>
+        <span>
+          <select value={b.skim} onChange={(e) => g.dispatch({ type: "setSkim", share: Number(e.target.value) })}>
+            {SKIM_LEVELS.map((v) => <option key={v} value={v}>{v ? `Keep ${Math.round(v * 100)}% off the books` : "Honest books"}</option>)}
+          </select>
+        </span>
+        {COMP_KINDS.map((k) => (
+          <Fragment key={k}>
+            <b>{COMP_NAMES[k]}</b>
+            <span>
+              <select value={b.comps[k]} onChange={(e) => g.dispatch({ type: "setComp", kind: k, at: Number(e.target.value) })}>
+                {COMP_AT.map((v) => <option key={v} value={v}>{v ? `After ${money(v)} of expected loss` : "Off"}</option>)}
+              </select>
+            </span>
+          </Fragment>
+        ))}
+      </div>
+      <p className="muted" style={{ margin: "4px 0" }}>Insurance pays the part of any single payout above the line; the premium is charged monthly on what was played. Skimmed money dodges the tax until an inspector finds it. Comps go to guests once their play is expected to have cost them that much this visit (the come-back offer, $10 of free play, brings regulars back sooner). {b.given ? `${b.given} comps given this month.` : ""}</p>
+      <p className="muted" style={{ margin: "4px 0" }}>Elsewhere: drink prices, comps and strength per bar (tap a bar); rules and limits per table (tap a table); staff pay (Staff); house rules and what happens to cheats (Authorities).</p>
     </>
   );
 }
@@ -356,7 +445,7 @@ export function AuthoritiesPanel({ host }: { host: Host }) {
       <div className="bar"><span>Police</span><div><i style={{ width: `${Math.round(p.standing)}%` }} /></div><span className="num">{Math.round(p.standing)}</span></div>
       <p className="muted" style={{ margin: "2px 0 8px" }}>{LADDER_NAMES[p.stage]} · {p.calls} police call{p.calls === 1 ? "" : "s"} so far. Trouble, unanswered reports and paramedics cost standing; it recovers slowly. At 0 the license is revoked.</p>
       <div className="bar"><span>Regulator</span><div><i style={{ width: `${Math.round(s.auth.regulator.standing)}%` }} /></div><span className="num">{Math.round(s.auth.regulator.standing)}</span></div>
-      <p className="muted" style={{ margin: "2px 0 8px" }}>The gaming regulator watches the games themselves. No concerns.</p>
+      <p className="muted" style={{ margin: "2px 0 8px" }}>{REG_LADDER_NAMES[s.auth.regulator.stage]}. The gaming regulator watches the games and the books: skimming, unpaid winnings and money going missing cost standing. Its inspector audits the casino every month or two. At 0 the license is revoked.</p>
       <p className="muted" style={{ margin: "10px 0 6px" }}>House rules: how strictly security steps in ({guards} guard{guards === 1 ? "" : "s"} on staff)</p>
       <div className="kv">
         {RULE_CATS.map((c) => (
@@ -430,12 +519,12 @@ export function LogSheet({ game, onClose }: { game: Game; onClose: () => void })
 
 function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: () => void }) {
   const g = host.game;
-  if (a.role === "officer" || a.role === "medic") {
+  if (a.role === "officer" || a.role === "medic" || a.role === "inspector") {
     return (
       <div className="sheet">
-        <h3>{a.role === "officer" ? "Police officer" : "Paramedic"}<button className="x" onClick={onClose}>✕</button></h3>
+        <h3>{a.role === "officer" ? "Police officer" : a.role === "medic" ? "Paramedic" : "Gaming inspector"}<button className="x" onClick={onClose}>✕</button></h3>
         <p>{roleDoing(g, a)}</p>
-        <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : "Here for a guest who passed out."}</p>
+        <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : a.role === "medic" ? "Here for a guest who passed out." : "From the gaming regulator: they audit the books and the games, and report when they leave."}</p>
       </div>
     );
   }
@@ -444,7 +533,9 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       <div className="sheet">
         <h3>{STAFF_ROLES[a.role].name} #{a.id}<button className="x" onClick={onClose}>✕</button></h3>
         <p>{roleDoing(g, a)}</p>
+        {a.st && <p className="muted">{skillWord(skillOf(g, a))} at the job · {moraleWord(a.st.morale)} (morale {Math.round(a.st.morale)}) · {money(wageFor(g, a.role))}/mo</p>}
         <ServerBar g={g} a={a} />
+        <StaffZone g={g} a={a} />
         <div className="row"><button className="btn danger" onClick={() => { g.dispatch({ type: "fire", id: a.id }); onClose(); }}>Fire</button></div>
       </div>
     );
@@ -460,6 +551,9 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       {incidentOf(g, a.id) && !INCIDENTS[incidentOf(g, a.id)!.kind].hidden && <p className="lv-warn">{INCIDENTS[incidentOf(g, a.id)!.kind].name}</p>}
       {(gd.warned > 0 || gd.unans > 0) && <p className="muted">{gd.warned > 0 ? `Warned by security${gd.warned > 1 ? ` ${gd.warned} times` : ""}. ` : ""}{gd.unans > 0 ? `${gd.unans} of their reports went unanswered${gd.called ? "; they called the police" : ""}.` : ""}</p>}
       {gd.caught > 0 && <p className="lv-bad">Caught cheating.</p>}
+      {gd.vip > 0 && <p className="lv-warn">A whale: plays {TABLE_GAMES[g.state.whale.game as keyof typeof TABLE_GAMES]?.name.toLowerCase() ?? "tables"} at about {money(g.state.whale.bet)} a hand; came with {money(g.state.whale.bankroll)}.</p>}
+      {gd.unpaid > 0 && <p className="lv-bad">Owed {money(gd.unpaid)} in winnings the casino couldn't pay.</p>}
+      {gd.comp > 0 && <p className="muted">Comped: {COMP_KINDS.filter((k) => gd.comp & COMP_BIT[k]).map((k) => COMP_NAMES[k].toLowerCase()).join(", ")}.</p>}
       {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && (
         <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{wording(t, gd.type, gd.name)}”</p>
       ))}

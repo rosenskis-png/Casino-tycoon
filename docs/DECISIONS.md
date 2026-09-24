@@ -2,6 +2,24 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M9 built (Claude's calls; see docs/spec/staff.md, docs/spec/money.md)
+- All numbers are starting values checked only against sanity flags: pay range 60–160%, skill = knack × pay^0.6 × morale, crook share 5% ÷ pay^1.5, theft chances and amounts, catch chances, overwork above 85% busy, quitting below morale 20, tax rates, loan and emergency rates, insurance loading, whale sizes and timing, comp thresholds.
+- **Dealers aren't worn down by a busy table** (dealing is the whole job); the first build counted it as overwork and every dealer on the Test Floor went miserable.
+- **Crooked guards, pit bosses and operators look away** from cheats and from staff theft; a crooked dealer never catches a cheat at their table (this is dealer collusion, per the M7 decision).
+- **Shrinkage is posted at the monthly count**, not as it happens: the books show where money went missing, a month late, never who.
+- **Policies tab** now holds insurance, the tax and skim, and comps; loans stay in Finance. Research stays a placeholder until M9.5.
+- **Whales** stay 20–30 real minutes (2–3× a high roller; weeks on the calendar) and a host shows them the floor, so they find their game.
+- Unpaid winnings under $100 cost 2 regulator points and go to the log only; bigger ones are urgent.
+- Test Floor, 300 days: staff morale averages ~44 at market pay, one crooked dealer caught, three whales (the house won $10K, lost $30K, won $500), five inspections, regulator 100, no sanity flags. Tutorial year-end cash $3.9K (m7 on the same seed: $5.0K; the 5% tax is ~$250 of that, the rest is seed noise from reshuffled staff draws). Big Floor timing unchanged against m7 on this machine.
+- **Flagged for the owner:** a whale can cost the house several months of profit in one visit (by design: FOUNDATIONS §17); insurance doesn't cover it, table limits do.
+
+## 2026-09-24 · Green light for M9: staff, money and risk, whales (see docs/spec/staff.md, docs/spec/money.md)
+- Owner said "green light" and accepted the readiness defaults, with two changes:
+  - **No hiring screen.** Staff quality scales with a pay slider per role (Claude: skill = a hidden personal knack × pay^0.6 × morale; better pay also means fewer crooks).
+  - **Security catches staff stealing** and they're fired (Claude: guards, pit bosses and watched cameras; crooked guards, pit bosses and operators look away).
+- Defaults accepted: one wage per role; ~5% crooks, seen only as monthly shrinkage per area; a gaming tax with skimming as a dark lever; a regulator ladder like the police with a visible inspector; loans at 50% of worth and 2%/month, emergency loans at 6% with a fee and a scandal, unpaid winnings, insolvency after 3 months; whales every 1-2 months where tables exist; comps by play (meal, show, come-back offer).
+- Claude's calls: comps key on theoretical loss (what the math expects a guest to lose), as real casinos rate play; the insurance premium is 1.3× the exact expected excess of the month's actual wagers; the tutorial's tax is 5% so its goal barely moves.
+
 ## 2026-09-24 · M9 split into M9 and M9.5 (planning; details wait for the green light)
 - Owner allowed two parts. Claude's split: M9 is inside the house (staff depth and honesty, the regulator, credit and insurance, whales and comps: leaks and variance); M9.5 is outside it (calendar and events, marketing, research tree and player's club, new crowds, vice). See ROADMAP.
 - Why this seam: M9's parts all feed each other (theft needs audits, audits feed the regulator, whales test credit), and M9.5's research tree has to gate things that already exist, including M9's.

@@ -2,13 +2,16 @@
 // multiple of the bet (0.5 = a loss dressed up as a win), `p` its probability; everything else loses.
 // `rtp` is the declared target; `npm run headless` fails unless Σ x·p equals it exactly.
 export interface Pay { x: number; p: number }
+/** A source of uniform numbers in [0, 1) (sim/rng.ts streams satisfy it). */
+export interface Uniform { next(): number }
 
 export interface SlotModel {
   id: string;
   name: string;
-  /** Dollars per credit; guests bet 1..maxCredits credits per wager. */
+  /** Dollars per credit; guests bet minCredits (default 1)..maxCredits credits per wager. */
   denom: number;
   maxCredits: number;
+  minCredits?: number;
   /** Seconds per round at 1× (one round = WAGERS_PER_ROUND wagers, docs/spec/clock.md). */
   spin: number;
   rtp: number;
@@ -28,6 +31,13 @@ export interface SlotModel {
    */
   shared?: boolean;
   win?: number;
+  /**
+   * (M8) Designed slots (docs/spec/designer.md): one spin drawn procedurally from the design's exact math (free
+   * spins played out), and its exact hit chance and per-spin variance. `pays` is then a summary of the same
+   * distribution (exact in mean) for insurance and the paytable views.
+   */
+  draw?: (r: Uniform) => number;
+  stats?: { v: number; h: number };
 }
 
 /** Wagers resolved per visible round: the main money-scale knob (docs/spec/clock.md). */

@@ -66,7 +66,8 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Marking with leave/return alerts; warn, ban (whole group), beating, disappearance by enforcers (guards warn and ban); an Enforcement room hides the dark two; house treatment for first and repeat offenses.
 - Consequences: rolling heat, witnesses, company (missing-person reports), innocent targets surfacing as rumors that cost reputation and police standing.
 - Cameras, dumpster, enforcer and operator figures, body bag, gun flash, punches, marked-guest ring, sounds. Save schema 7 (migration from 6).
-## M6 · Construction: walls, rooms with purposes, outdoors, parcels, theming ☐
+## M6 · Construction: doors, amenities as places, room purposes ◐  (see docs/spec/construction.md)
+## M6.5 · Themes, outdoors, land parcels ☐
 ## M7 · Games catalog and table rules ☐
 ## M8 · Slot designer ☐
 ## M9 · Staff depth, policies, marketing, comps, whales, events, research tree ☐

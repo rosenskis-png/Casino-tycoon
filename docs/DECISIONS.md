@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M6: construction (see docs/spec/construction.md)
+- Owner said "green light for m6".
+- **Themes** (owner): Ancient Rome, Ancient Egypt, Medieval, Rock & Roll, a few luxury flavors, a few old-school Vegas flavors, and a couple of Claude's picks. Claude's calls: luxury = Gilded Deco, Modern Luxe, Riviera; old Vegas = Rat Pack Lounge, Neon Atomic, Gold Rush; picks = Tropical Tiki, Pirate Cove. Hidden pairings are Claude's call (in the spec).
+- **Amenities are sized** (owner) and grow sensibly with size: more stalls, more seats and bartenders, and so on. Every FOUNDATIONS §8 amenity except those tied to M9 systems: bar, restrooms, cage, restaurant, show lounge, nightclub, smoking room and high-limit room now; pool, garden, patio bar and patio restaurant with the outdoors in M6.5.
+- **Room purposes:** the owner left the effects to Claude (in the spec).
+- **No weather or seasons outdoors** (owner): always hot, sunny pool-party weather; inside is inside.
+- **Door rules** (owner): open, staff only, locked, card holders, one guest type, one staff role, plus a fee for walking through. Claude's calls: until the M9 player's club, a "card holder" is a returning guest; a type rule reads as a dress code (types already look different); scenario doors and entrances can't be changed; a guest trapped behind doors they can't pass is let out by staff after 90 s, at 1 police-standing point each.
+- **Split** (Claude, from the readiness check): m6 = doors, sized amenities, room purposes, reasons to visit; m6.5 = themes, outdoors, parcels.
+- **Deferred to M9:** Families (minors and underage incidents) and the hotel elevator with vice.
+
 ## 2026-09-24 · M5 built (Claude's calls; see docs/spec/cheats.md)
 - All numbers are starting values tuned against sanity flags: take median $400, spells of 30-90 s after 20-60 s honest, rigged wins on half the wagers at 4× the bet, catch chances (0.1%/s by chance, +0.6%/s per guard in view, +0.4%/s per unit of watched camera field, ×2.5 marked), 8 cameras per operator, heat and consequence costs.
 - **Cheating is reliable, not jackpot-shaped**: scaling payouts by a factor left most spells losing on high-volatility machines, so a spell is rigged wins instead.

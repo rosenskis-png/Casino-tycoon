@@ -264,8 +264,8 @@ export class Game {
     if (this.commandLog.length > 200) this.commandLog.shift();
   }
 
-  /** One fixed simulation step. */
-  step() {
+  /** Applies queued commands now, without advancing time (menus that act while the game is paused, M8). */
+  flushCommands() {
     const q = this.queue;
     this.queue = [];
     for (const cmd of q) {
@@ -273,6 +273,11 @@ export class Game {
       if (!error) this.handlers.get(cmd.type)!.apply(this, cmd);
       this.record(cmd, error);
     }
+  }
+
+  /** One fixed simulation step. */
+  step() {
+    this.flushCommands();
     const s = this.state;
     for (const sys of this.systems) sys.tick?.(this);
     s.tick++;

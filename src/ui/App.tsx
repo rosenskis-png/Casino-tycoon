@@ -6,16 +6,22 @@ import { play, unlockAudio } from "../platform/audio";
 import { FloorAudio } from "./floorAudio";
 import { TitleScreen } from "./title";
 import { PlayScreen } from "./play";
+import { Designer } from "./designer/Designer";
+import { SlotsPanel } from "./designer/SlotsPanel";
+import type { SlotDesign } from "../data/designer";
 import { onHidden } from "../platform/lifecycle";
 import { Host } from "./host";
 import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
 import { AUTO_KEY, load, newGame, save } from "./saves";
+import { newDesign } from "../data/designer";
+import { placeTool } from "./panels";
 import { AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
   { id: "build", icon: "🔨", label: "Build" },
+  { id: "slots", icon: "🎰", label: "Slots" },
   { id: "staff", icon: "🧹", label: "Staff" },
   { id: "guests", icon: "🧑", label: "Guests" },
   { id: "finance", icon: "💰", label: "Finance" },
@@ -45,6 +51,10 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const [sel, setSel] = useState<Selection>(null);
   const [showLog, setShowLog] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef(0);
+  const showToast = (t: string) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 2200); };
+  /** (M8) The slot designer, open on a design. */
+  const [designing, setDesigning] = useState<SlotDesign | null>(null);
   // The title screen shows at launch (skipped with #play, for the screenshot tool). The floor waits behind it.
   const [title, setTitle] = useState(() => !location.hash.includes("play"));
   const titleRef = useRef(title);
@@ -155,6 +165,15 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     if (floorRef.current) floorRef.current.enabled = true;
     host?.setSpeed(1);
   };
+  /** Pick up a slot design to place from the Build tab. */
+  const placeDesign = (id: string) => {
+    const t = placeTool(host!.game.state, id);
+    if (!t) return;
+    setTab("build");
+    setTool(t as Tool);
+    setSel(null);
+  };
+  const newDesignFor = () => newDesign("");
   const openTab = (id: TabId) => {
     play("click");
     setTab((t) => (t === id ? null : id));
@@ -192,14 +211,17 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
           <button className="fab" onClick={() => zoom(1)} aria-label="Zoom out">−</button>
         </div>
         {host && playing && <PlayScreen host={host} />}
+        {host && designing && !playing && <Designer g={host.game} start={designing} toast={showToast} onClose={() => setDesigning(null)}
+          onPlace={(id) => { setDesigning(null); placeDesign(id); }} />}
         {toast && <div className="toast">{toast}</div>}
       </div>
       {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} />}
       {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} />}
-      {host && !showLog && !playing && !sel && tab && (
+      {host && !showLog && !playing && !designing && !sel && tab && (
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>
-          {tab === "build" ? <BuildPanel host={host} tool={tool} setTool={setTool} rot={rot} setRot={setRot} thumb={(k) => host.renderer.thumbnail(k)} /> :
+          {tab === "build" ? <BuildPanel host={host} tool={tool} setTool={setTool} rot={rot} setRot={setRot} thumb={(k) => host.renderer.thumbnail(k)} onDesigner={() => setDesigning(newDesignFor())} /> :
+            tab === "slots" ? <SlotsPanel g={host.game} open={(d) => setDesigning(d)} place={placeDesign} /> :
             tab === "game" ? <GamePanel host={host} onMenu={toMenu} /> :
             tab === "staff" ? <StaffPanel host={host} /> :
             tab === "guests" ? <GuestsPanel host={host} /> :
@@ -211,7 +233,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
             <Placeholder when={(TABS.find((t) => t.id === tab) as { when?: string }).when ?? ""} />}
         </div>
       )}
-      {!playing && <nav className="tabs">
+      {!playing && !designing && <nav className="tabs">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? "on" : ""} onClick={() => openTab(t.id)}>
             <span className="i">{t.icon}</span>{t.label}

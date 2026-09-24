@@ -22,10 +22,15 @@ export { newcomerRates, poolSummary, person } from "./pool";
 export { pedSpot, curbAppeal } from "./street";
 export { DRINK_PRICE, STRENGTHS } from "./drinks";
 export { betOf, machineModel, limitsOf, isTable, tableDefOf } from "./gaming";
-export { compiledOf, compiledById, designById, designIdOf, perfIndex, panelMix, statsOf, machinesOf, cantUse, certified, illegal } from "./design";
-export { compile } from "./design/compile";
-export { judge } from "./design/appeal";
-export { panel, parSheet, sessions } from "./design/lab";
+export {
+  compiledOf, compiledById, designById, designIdOf, perfIndex, panelMix, statsOf, machinesOf, cantUse, certified, certPending, illegal, sanitize,
+  designLocks, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind,
+} from "./design";
+export { compile, type Compiled } from "./design/compile";
+export { judge, feelOf } from "./design/appeal";
+export { panel, parSheet, sessions, ratingWord, INTENSITY_WORDS, type Panel, type SessionStats } from "./design/lab";
+export { spinFull, forces, type Force, type Outcome } from "./design/spin";
+export { seeded } from "./rng";
 export { tableOpen, dealerSeats, limitsNow } from "./tables";
 export { incidentRates, incidentOf, LADDER, LADDER_NAMES, CALL_AFTER } from "./incidents";
 export { cutoff } from "./drinks";

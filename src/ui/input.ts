@@ -73,7 +73,9 @@ export class WorldInput {
   private ghostFor(tool: Tool, a: ReturnType<WorldInput["tileAt"]>, b: ReturnType<WorldInput["tileAt"]>): Command | null {
     const w = this.host.game.state.map.w;
     if (tool.startsWith("place:")) {
-      const kind = tool.slice(6), def = OBJECTS[kind], rot = this.cb.rot() & 3;
+      // M8: a slot design rides along as place:<cabinet kind>@<design>.
+      const [kind, design] = tool.slice(6).split("@"), def = OBJECTS[kind], rot = this.cb.rot() & 3;
+      if (design) return { type: "place", kind, x: b.x, y: b.y, rot, design };
       if (!def?.sized) return { type: "place", kind, x: b.x, y: b.y, rot };
       // Sized amenities: drag out the area from the first tile (a tap gives the default size there). Width runs
       // along the front, so a quarter turn swaps which screen axis is which.

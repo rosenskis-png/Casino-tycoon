@@ -14,11 +14,12 @@ import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
 import { WAGERS_PER_ROUND } from "../data/games";
+import { STOCK_DESIGNS } from "../data/designs";
 import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
-  formatDate, describeGoals, goalStatus, monthlyCosts, worth, covers, compiledOf, designIdOf, designById, perfIndex, LEDGER_LABELS, MONTH_NAMES,
+  formatDate, describeGoals, goalStatus, monthlyCosts, worth, covers, compiledOf, designIdOf, designById, perfIndex, cantUse, designLocks, cabKind, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
@@ -41,7 +42,16 @@ export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: nu
 const TERRAIN_NAME: Record<number, string> = { [T.VOID]: "Unowned land", [T.FLOOR]: "Floor", [T.WALL]: "Wall", [T.DOOR]: "Door", [T.WATER]: "Water", [T.SIDEWALK]: "Sidewalk" };
 const FACING = ["down", "left", "up", "right"];
 
-export function BuildPanel({ host, tool, setTool, rot, setRot, thumb }: { host: Host; tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string) => { url: string; w: number; h: number } }) {
+/** The original machines keep their own kinds; every other design is placed as its cabinet's kind (M8). */
+const LEGACY_SLOTS: Record<string, string> = { cherry: "slot_cherry", liberty: "slot_liberty", thunder: "slot_thunder" };
+/** The Build tool that places a design, or null when it can't be placed now. */
+export function placeTool(s: Game["state"], id: string): string | null {
+  const d = designById(s, id);
+  if (!d || cantUse(s, id)) return null;
+  return LEGACY_SLOTS[id] ? `place:${LEGACY_SLOTS[id]}` : `place:${cabKind(d)}@${id}`;
+}
+
+export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner }: { host: Host; tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string) => { url: string; w: number; h: number }; onDesigner?: () => void }) {
   const [theme, setTheme] = useState<ThemeId | "general">("general");
   const g = host.game, land = landForSale(g);
   const b = (t: Tool, label: string, sub?: string, img?: { url: string; w: number; h: number }) => (
@@ -69,7 +79,8 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb }: { host: 
               </select>
             )}
           </p>
-          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
+          {c.id === "game" && <SlotPicks g={g} tool={tool} setTool={setTool} onDesigner={onDesigner} thumb={thumb} />}
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && !o.slot && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
             ? <button key={o.id} className="btn" disabled>{o.name}<small>Research: {RESEARCH[projectFor(o.id)].name}</small></button>
             : b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
         </Fragment>
@@ -86,11 +97,34 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb }: { host: 
           </div>
         </>
       )}
-      {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6)]?.desc}{OBJECTS[tool.slice(6)]?.sized && (() => {
+      {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6).split("@")[0]]?.slot ? "" : OBJECTS[tool.slice(6)]?.desc}{OBJECTS[tool.slice(6)]?.sized && (() => {
         const z = OBJECTS[tool.slice(6)].sized!;
         return ` Drag to size it: ${z.min[0]}–${z.max[0]} wide, ${z.min[1]}–${z.max[1]} deep (the front is the side it faces). Tap for ${OBJECTS[tool.slice(6)].w}×${OBJECTS[tool.slice(6)].h}.`;
       })()}</p>}
     </>
+  );
+}
+
+/** Slot machines to place: every design this casino can run, stock and the player's (M8). */
+function SlotPicks({ g, tool, setTool, onDesigner, thumb }: { g: Game; tool: Tool; setTool: (t: Tool) => void; onDesigner?: () => void; thumb?: (kind: string) => { url: string; w: number; h: number } }) {
+  const s = g.state;
+  const ids = [...Object.keys(STOCK_DESIGNS), ...Object.keys(s.designs)];
+  return (
+    <div className="grid">
+      {ids.map((id) => {
+        const d = designById(s, id)!, t = placeTool(s, id), why = cantUse(s, id), locks = designLocks(s, d, id);
+        const kind = t ? t.slice(6).split("@")[0] : cabKind(d);
+        const price = LEGACY_SLOTS[id] ? priceOf({ kind, x: 0, y: 0, rot: 0 }) : priceOf({ kind, x: 0, y: 0, rot: 0, design: id }, s);
+        if (!t) return <button key={id} className="btn" disabled>{d.name}<small>{locks.length ? `Research: ${RESEARCH[locks[0]]?.name ?? locks[0]}` : why}</small></button>;
+        return (
+          <button key={id} className={`btn ${tool === t ? "on" : ""}`} onClick={() => setTool(tool === t ? "inspect" : (t as Tool))}>
+            {thumb && <img className="thumb" src={thumb(kind).url} width={thumb(kind).w * 2} height={thumb(kind).h * 2} alt="" />}
+            {d.name}<small>{money(price.cost)} · {s.designs[id]?.rigged ? "uncertified" : `${(d.rtp * 100).toFixed(0)}%`}</small>
+          </button>
+        );
+      })}
+      {onDesigner && <button className="btn on" onClick={onDesigner}>Design a slot<small>the slot designer</small></button>}
+    </div>
   );
 }
 

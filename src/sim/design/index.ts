@@ -71,6 +71,8 @@ export function illegal(s: GameState, d: SlotDesign): string[] {
 }
 /** Research a design still needs here. */
 export function designLocks(s: GameState, d: SlotDesign, id?: string): string[] {
+  // Stock games come from their makers: only their own project gates them (the original three need none).
+  if (id && isStock(id)) return STOCK_RESEARCH[id] && !researched(s, STOCK_RESEARCH[id]) ? [STOCK_RESEARCH[id]] : [];
   const need = new Set<string>();
   const lr = LAYOUTS[d.layout].research;
   if (lr) need.add(lr);
@@ -78,7 +80,6 @@ export function designLocks(s: GameState, d: SlotDesign, id?: string): string[] 
   if (d.fs) need.add("freespins");
   const cr = CABINETS[d.cab.type].research;
   if (cr) need.add(cr);
-  if (id && STOCK_RESEARCH[id]) need.add(STOCK_RESEARCH[id]);
   return [...need].filter((p) => !researched(s, p));
 }
 /** Why a design can't be placed (or converted to) now, or null. */

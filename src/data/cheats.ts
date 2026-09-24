@@ -27,7 +27,7 @@ export const GUARD_SIGHT = 8;
 export const CATCH_PIT = 0.012;
 export const CATCH_DEALER = 0.002;
 export const PIT_SIGHT = 8;
-export const COUNT_SPOT = 0.004;
+export const COUNT_SPOT = 0.01;
 /** Marked guests are this much likelier to be caught. */
 export const MARKED = 2.5;
 /** Cameras one surveillance operator at a desk can watch. */

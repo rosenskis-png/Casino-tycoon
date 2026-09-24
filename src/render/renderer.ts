@@ -4,7 +4,8 @@
 import { DOOR_STATE, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
-import { ANIMS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS } from "../data/art";
+import { ANIMS, BOARD_CELLS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS, WHEEL_AT } from "../data/art";
+import { CRAPS_OUTCOMES, TABLE_GAMES } from "../data/tables";
 import { ENF } from "../data/cheats";
 import { SCENARIOS } from "../data/scenarios";
 import { dims, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
@@ -12,6 +13,8 @@ import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
 const ART = 16; // art pixels per tile
+/** The cabinet a machine draws with: its slot model, or the video poker cabinet (M7). */
+const cabinet = (kind: string) => OBJECTS[kind]?.slot ?? (OBJECTS[kind]?.game === "vpoker" ? "vpoker" : undefined);
 const CHUNK = 16; // tiles per chunk side
 const REACH = 4; // tiles a change can affect around it (light pools, tall sprites)
 const FACING = ["front", "left", "back", "right"] as const;
@@ -281,10 +284,18 @@ export class Renderer {
       // A chair seen from behind sits in front of whoever is on it.
       else if (st.kind === "chair") out.push({ key: `obj:chair:${CHAIR[st.f]}`, x: st.x * ART, y: st.y * ART, sort: st.y + (st.f === 2 ? 0.05 : -0.05) });
     }
+    const cab = cabinet(o.kind);
     if (def.art === "zone") {
       out.push(...this.zoneSprites(o));
-    } else if (def.slot) {
-      const key = `slot:${def.slot}:${facing}`, f = A.get(key)!;
+    } else if (def.cat === "table" && A.has(`obj:tbl_${o.kind}_${o.rot & 3}`)) {
+      // Tables (M7): a flat felt top; the roulette wheel sits over one end.
+      out.push({ key: `obj:tbl_${o.kind}_${o.rot & 3}`, x: o.x * ART, y: o.y * ART, sort: o.y + oh - 0.1 });
+      if (o.kind === "roulette") {
+        const at = WHEEL_AT[o.rot & 3], ex = at === "r" ? ow - 1 : 0, ey = at === "b" ? oh - 1 : 0;
+        out.push({ key: "obj:wheel", x: (o.x + ex) * ART + 2, y: (o.y + ey) * ART + 1, sort: o.y + oh - 0.09, anim: "wheel" });
+      }
+    } else if (cab) {
+      const key = `slot:${cab}:${facing}`, f = A.get(key)!;
       out.push({ key, x: o.x * ART, y: (o.y + 1) * ART - f.h, sort: o.y + 0.99, anim: "slot" });
     } else if (def.art === "tiled") {
       const n = Math.max(ow, oh), alongX = ow >= oh;
@@ -467,7 +478,13 @@ export class Renderer {
       for (const sp of this.objectSprites(o)) {
         const key = this.frameKey(sp.key, sp.anim, now, o.id);
         const px = ox + (sp.x / ART) * tp, py = oy + (sp.y / ART) * tp;
-        if (!def.slot || sp.key === "obj:stool") { items.push({ y: sp.sort, draw: () => blit(key, px, py) }); continue; }
+        if (def.cat === "table") {
+          // The wheel spins while a round is on; it stops for a while after each spin.
+          const k2 = sp.key === "obj:wheel" ? (o.tbl && tick - o.tbl.at > 60 ? key : "obj:wheel") : key;
+          items.push({ y: sp.sort, draw: () => blit(k2, px, py) });
+          continue;
+        }
+        if (!cabinet(o.kind) || sp.key === "obj:stool") { items.push({ y: sp.sort, draw: () => blit(key, px, py) }); continue; }
         const facing = FACING[o.rot & 3], f = F.get(sp.key)!;
         const player = playing.get(o.id);
         items.push({
@@ -482,7 +499,7 @@ export class Renderer {
             }
             // Spinning reels, visible from the front only; they stop left to right.
             if (facing === "front" && player && player.timer > 0) {
-              const strip = F.get(`reel:${def.slot}`)!, R = SLOT_REELS;
+              const strip = F.get(`reel:${cabinet(o.kind)}`)!, R = SLOT_REELS;
               for (let k = 0; k < 3; k++) {
                 if (player.timer <= k * 2) continue;
                 const off = Math.floor(now / 45 + k * 5 + o.id) % 12;
@@ -505,6 +522,88 @@ export class Renderer {
             }
           },
         });
+      }
+    }
+
+    // Tables (M7, docs/spec/tables.md): what the last round showed. Chips on each player's spot (a stack for a
+    // winner), cards for blackjack, baccarat and poker, the dice after a roll, the keno and bingo boards lit.
+    if (lod < 2) {
+      const seatedAt = new Map<number, Agent[]>();
+      for (const a of s.agents) if (a.act === "play" && a.seat >= 0 && a.x === a.nx && a.y === a.ny && g.objById.get(a.target)?.kind && OBJECTS[g.objById.get(a.target)!.kind].game) {
+        const l = seatedAt.get(a.target);
+        if (l) l.push(a); else seatedAt.set(a.target, [a]);
+      }
+      for (const o of s.objects) {
+        const def = OBJECTS[o.kind];
+        if (def.cat !== "table" || !o.tbl) continue;
+        const { w: ow, h: oh } = objSize(o);
+        if (o.x + ow < x0 - 1 || o.x > x1 + 1 || o.y + oh < y0 - 1 || o.y > y1 + 2) continue;
+        const tb = o.tbl, age = tick - tb.at, seats = objSeats(o), fam = def.game!;
+        const at = (fx: number, fy: number) => [ox + fx * tp, oy + fy * tp] as const;
+        const cx = o.x + ow / 2, cy = o.y + oh / 2;
+        const players = seatedAt.get(o.id) ?? [];
+        // Boards: lit numbers on the face (front view only).
+        if (fam === "keno" || fam === "bingo") {
+          if ((o.rot & 3) !== 0) continue;
+          const c = BOARD_CELLS[fam], f = F.get(`obj:${def.sprite}:front`);
+          if (!f) continue;
+          const bx = o.x * ART + Math.round((ow * ART - f.w) / 2), by = (o.y + oh) * ART - f.h;
+          const lit: number[] = fam === "keno" ? tb.out.slice(0, Math.min(20, Math.floor(age / 4) + 1)) : [];
+          if (fam === "bingo") { const n = Math.min(40, Math.floor(age / 12) + 3); for (let k = 0; k < n; k++) lit.push(((tb.at * 7 + k * 37 + o.id) % 75) + 1); }
+          items.push({
+            y: o.y + oh - 0.005,
+            draw: () => {
+              ctx.fillStyle = fam === "keno" ? "#ffd23f" : "#3ff2ff";
+              for (const n of lit) {
+                const col = (n - 1) % c.cols, row = Math.floor((n - 1) / c.cols);
+                if (row >= c.rows) continue;
+                ctx.fillRect(ox + ((bx + c.x0 + col * c.dx) / ART) * tp, oy + ((by + c.y0 + row * c.dy) / ART) * tp, 3 * scale, scale);
+              }
+            },
+          });
+          continue;
+        }
+        const top = o.y + oh - 0.08;
+        // Each player's spot: a chip while they play, a stack for a win just paid.
+        for (const a of players) {
+          const st = seats[a.seat];
+          if (!st) continue;
+          const v = FRONT_VEC[st.f], sx = st.x + 0.5 + v[0] * 0.62, sy = st.y + 0.5 + v[1] * 0.62;
+          const won = age < 50 && tb.seats[a.seat] === 2;
+          const [px, py] = at(sx, sy);
+          items.push({ y: top, draw: () => blit(won ? "obj:chips" : "obj:chip", px - 1.5 * scale, py - 2 * scale) });
+          if (fam === "blackjack" || fam === "poker") {
+            const k = (a.id + tb.at) & 3;
+            items.push({ y: top + 0.001, draw: () => { blit(k & 1 ? "obj:card:r" : "obj:card:k", px + (fam === "poker" ? -3 : 2) * scale, py - 3 * scale); blit(k & 2 ? "obj:card:k" : "obj:card:r", px + (fam === "poker" ? -1 : 4) * scale, py - 2.5 * scale); } });
+          }
+        }
+        if (!players.length) continue;
+        // The dealer's side: blackjack's hand, baccarat's two hands, poker's board cards, the dice.
+        const dv = FRONT_VEC[seats.find((q) => q.kind === "dealer")?.f ?? 0];
+        const dx0 = cx - dv[0] * (ow / 2 - 0.45), dy0 = cy - dv[1] * (oh / 2 - 0.45);
+        const [qx, qy] = at(dx0, dy0);
+        if (fam === "blackjack") items.push({ y: top, draw: () => { blit("obj:card:r", qx - 3 * scale, qy - 2 * scale); blit(age < 40 ? "obj:card:k" : "obj:cardback", qx + scale, qy - 2 * scale); } });
+        else if (fam === "baccarat") {
+          const coup = tb.out[0] ?? 0;
+          items.push({ y: top, draw: () => {
+            const [ax, ay] = at(cx, cy);
+            blit("obj:card:r", ax - 8 * scale, ay - 2 * scale); blit("obj:card:k", ax - 5 * scale, ay - 2 * scale);
+            blit("obj:card:k", ax + 2 * scale, ay - 2 * scale); blit("obj:card:r", ax + 5 * scale, ay - 2 * scale);
+            if (age < 50 && coup < 2) blit("obj:chips", ax + (coup === 0 ? 6 : -7) * scale, ay + 3 * scale);
+          } });
+        } else if (fam === "poker") {
+          items.push({ y: top, draw: () => { const [ax, ay] = at(cx, cy); for (let k = 0; k < 5; k++) blit(k < 3 || age > 20 ? (k & 1 ? "obj:card:k" : "obj:card:r") : "obj:cardback", ax + (k * 4 - 10) * scale, ay - 3 * scale); if (age > 50) blit("obj:chips", ax - 1.5 * scale, ay + 2 * scale); } });
+        } else if (fam === "craps" && age < 90) {
+          const oc = CRAPS_OUTCOMES[tb.out[0] ?? 0], tumble = age < 12;
+          const d1 = tumble ? 1 + ((now >> 6) % 6) : oc.dice[0], d2 = tumble ? 1 + ((now >> 6) + 3) % 6 : oc.dice[1];
+          const [ax, ay] = at(cx + dv[0] * (ow / 2 - 1), cy + dv[1] * (oh / 2 - 0.8));
+          items.push({ y: top, draw: () => { blit(`obj:die${d1}`, ax - 6 * scale, ay - 3 * scale); blit(`obj:die${d2}`, ax + scale, ay - 2 * scale); } });
+        }
+        // Poker and bingo: a sparkle over the winner of the last hand.
+        if (TABLE_GAMES[fam].pool && age < 60) {
+          const st = seats[tb.out[0] ?? -1];
+          if (st) { const [ax, ay] = at(st.x + 0.2, st.y - 0.9); items.push({ y: st.y + 0.5, draw: () => blit(Math.floor(now / 90) & 1 ? "obj:spark~1" : "obj:spark", ax, ay) }); }
+        }
       }
     }
 
@@ -665,13 +764,19 @@ export class Renderer {
       const set = a.role === "guest" ? a.g!.type : a.role;
       const sex = a.g ? a.g.sex & 1 : (a.look >> 2) & 1;
       let dir: string, pose: string;
-      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest");
+      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest" || a.act === "deal");
       const swimming = a.act === "swim" && atSeat && !!so0(a) && objSeats(so0(a)!)[a.seat]?.kind === "swim";
       const so = atSeat ? g.objById.get(a.target) : undefined;
-      if (so && OBJECTS[so.kind].sized) dir = SEAT_DIR[objSeats(so)[a.seat]?.f ?? 0];
+      const seatKind = so ? objSeats(so)[a.seat]?.kind : undefined;
+      if (so && (OBJECTS[so.kind].sized || OBJECTS[so.kind].cat === "table")) dir = SEAT_DIR[objSeats(so)[a.seat]?.f ?? 0];
       else if (atSeat) dir = FACE[(so?.rot ?? 0) & 3];
       else dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
-      if (atSeat && a.act !== "cage" && a.act !== "dance" && !swimming) pose = "s";
+      // Onlookers (M7) face the table they're watching.
+      if (a.act === "look" && !moving) {
+        const t = g.objById.get(a.target);
+        if (t) { const { w: tw, h: th } = objSize(t), ddx = t.x + tw / 2 - (a.x + 0.5), ddy = t.y + th / 2 - (a.y + 0.5); dir = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? "side" : "left") : ddy < 0 ? "up" : "down"; }
+      }
+      if (atSeat && a.act !== "cage" && a.act !== "dance" && !swimming && seatKind !== "stand" && seatKind !== "dealer") pose = "s";
       else pose = String(moving ? WALK[Math.min(1, Math.floor(2 * p)) + 2 * ((a.x + a.y) & 1)] : 0);
       // Dancing: stepping in place, turning now and then.
       if (a.act === "dance" && !moving) {

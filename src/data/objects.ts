@@ -185,13 +185,13 @@ const TABLES: Record<string, ObjectDef> = {
   },
   keno: {
     id: "keno", name: "Keno Lounge", cat: "table", w: 4, h: 1, cost: 2000, upkeep: 10, blocks: true, opaque: true, place: "indoor",
-    emits: [{ channel: "NRG", strength: 0.5, radius: 3 }], sprite: "board", art: "whole",
+    emits: [{ channel: "NRG", strength: 0.5, radius: 3 }], sprite: "keno", art: "facing",
     seats: [...front(0, 3, 1, "chair"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "keno",
     desc: "A board of 80 numbers and eight chairs. A draw every so often; cheap tickets, a steep edge.",
   },
   bingo: {
     id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 3500, upkeep: 15, blocks: true, opaque: true, place: "indoor",
-    emits: [{ channel: "NRG", strength: 2, radius: 4 }], sprite: "board", art: "whole",
+    emits: [{ channel: "NRG", strength: 2, radius: 4 }], sprite: "bingo", art: "facing",
     seats: [...front(0, 5, 1, "chair"), ...front(0, 5, 2, "chair"), ...front(0, 5, 3, "chair"), dealer(-1, 0)], game: "bingo",
     desc: "A caller and eighteen chairs. The prize is the cards sold less the house's hold: the fuller the room, the bigger it gets.",
   },

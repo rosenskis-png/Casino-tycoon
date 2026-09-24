@@ -19,6 +19,8 @@ export type SimEvent =
       warned: number; ejected: number; cheat: number; luck: number; caught: number; won: number; wagered: number;
       /** M6: minutes at a meal, a show or dancing; money spent on them and at doors; a smoker. */
       fun: number; spent: number; smoker: number;
+      /** M7: skill (0-2), a card counter, marked by the player or a pit boss. */
+      skill: number; counter: number; marked: number;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

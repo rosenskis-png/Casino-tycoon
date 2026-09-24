@@ -95,6 +95,17 @@ function dealerTick(g: Game, a: Agent) {
   else { a.act = "wait"; a.timer = RECHECK * SEC; }
 }
 
+/** A free floor tile within a couple of tiles of a table that this person can walk to, or -1. */
+function spotNear(g: Game, a: Agent, o: PlacedObject, r: Rng): number {
+  const { w, h } = g.state.map, { w: ow, h: oh } = objSize(o), here = a.y * w + a.x;
+  for (let k = 0; k < 12; k++) {
+    const x = o.x - 2 + r.int(0, ow + 3), y = o.y - 2 + r.int(0, oh + 3), i = y * w + x;
+    if (x < 0 || y < 0 || x >= w || y >= h || !g.walkable(i) || g.seatAt[i]) continue;
+    if (g.pathsFor(a).reachable(here, i)) return i;
+  }
+  return -1;
+}
+
 /** Pit bosses walk among the tables, stopping to watch a while at each. */
 function pitTick(g: Game, a: Agent) {
   if (isWalking(a)) return;
@@ -104,7 +115,7 @@ function pitTick(g: Game, a: Agent) {
   }
   const r = rng(g.state, "staff");
   const o = g.tables.length ? g.tables[r.int(0, g.tables.length - 1)] : null;
-  const t = o ? nearbyTile(g, "staff", o.x + (objSize(o).w >> 1), o.y + (objSize(o).h >> 1), 4, a) : nearbyTile(g, "staff", a.x, a.y, 10, a);
+  const t = o ? spotNear(g, a, o, r) : nearbyTile(g, "staff", a.x, a.y, 10, a);
   if (t >= 0) go(a, t, "wait");
   else { a.act = "wait"; a.timer = RECHECK * SEC; }
 }
@@ -151,7 +162,9 @@ export function canSit(g: Game, gd: GuestData, o: PlacedObject): boolean {
 /** The bet per hand for a guest at a table: their wish within the limits, rounded to chips, covered by the wallet. */
 function tableBet(g: Game, gd: GuestData, o: PlacedObject, r: Rng): number {
   const [lo, hi] = limitsNow(g, o);
-  let want = gd.spell > 0 ? hi : tableWant(gd);
+  // A cheat mid-spell presses (docs/spec/cheats.md), but paces it to their take, as at a machine: a slot cheat's
+  // take comes in over some forty rigged wagers.
+  let want = gd.spell > 0 ? Math.max(tableWant(gd), gd.take / 40) : tableWant(gd);
   // A counter spreads their bets with the count.
   if (gd.counter && OBJECTS[o.kind].game === "blackjack" && gd.spell <= 0) want = lo * r.pick(COUNT_SPREAD) * Math.max(1, want / lo / 2);
   const chip = lo >= 25 ? 5 : lo >= 1 ? 1 : 0.25;

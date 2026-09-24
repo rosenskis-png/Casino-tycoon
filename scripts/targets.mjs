@@ -17,8 +17,22 @@ g.bus.on((e) => {
   if (e.type === "arrived") (arr[e.guestType] ??= []).push(e);
 });
 const totals = {};
+// M7: who plays what, sampled every 5 s: per type, seats taken at machines and at each table game.
+const at = {}, fams = new Set();
 for (let d = 0; d < days; d++) {
-  for (let t = 0; t < sim.TICKS_PER_DAY; t++) g.step();
+  for (let t = 0; t < sim.TICKS_PER_DAY; t++) {
+    g.step();
+    if (t % 100) continue;
+    for (const a of g.state.agents) {
+      if (a.role !== "guest" || a.act !== "play" || a.seat < 0) continue;
+      const o = g.objById.get(a.target), def = o && sim.OBJECTS[o.kind];
+      if (!def) continue;
+      const k = def.cat === "table" ? def.game : def.game === "vpoker" ? "vpoker" : "slots";
+      fams.add(k);
+      const m = (at[a.g.type] ??= {});
+      m[k] = (m[k] ?? 0) + 1;
+    }
+  }
   g.bus.flush();
   const p = g.state.auth.police.standing;
   policeLow = Math.min(policeLow, p); policeHigh = Math.max(policeHigh, p);
@@ -34,7 +48,7 @@ const pct = (x) => (Number.isNaN(x) ? "–" : `${Math.round(x * 100)}%`);
 const f1 = (x) => (Number.isNaN(x) ? "–" : x.toFixed(1));
 const f2 = (x) => (Number.isNaN(x) ? "–" : x.toFixed(2));
 const usd = (x) => (Number.isNaN(x) ? "–" : `$${Math.round(x)}`);
-const types = ["local", "retiree", "tourist", "party"];
+const types = ["local", "retiree", "tourist", "party", "highroller"];
 const rows = [];
 const row = (label, f) => rows.push([label, ...types.map((t) => f(dep[t] ?? [], arr[t] ?? [], t))]);
 row("guests seen", (d) => String(d.length));
@@ -73,6 +87,10 @@ row("why they left", (d) => {
   for (const e of d) c[e.why] = (c[e.why] ?? 0) + 1;
   return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} ${Math.round((100 * n) / d.length)}%`).join(", ");
 });
+row("plays at (share of seats)", (_d, _a, t) => {
+  const m = at[t] ?? {}, n = Object.values(m).reduce((a, b) => a + b, 0);
+  return n ? Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${Math.round((100 * v) / n)}%`).join(", ") : "–";
+});
 const widths = [26, ...types.map(() => 26)];
 console.log(["", ...types].map((c, k) => String(c).padEnd(widths[k])).join(""));
 for (const r of rows) console.log(r.map((c, k) => String(c).padEnd(widths[k])).join(""));
@@ -88,6 +106,18 @@ const uses = {};
 for (const o of s.objects) uses[o.kind] = (uses[o.kind] ?? 0) + o.st.uses;
 const L = s.finance.total, m = (k) => usd(L[k] ?? 0);
 console.log(`amenities: meals ${(uses.restaurant ?? 0) + (uses.patiorestaurant ?? 0)}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}, pool ${uses.pool ?? 0}, garden ${uses.garden ?? 0}; food ${m("food")} (cost ${m("foodCost")}), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
+// Tables (M7): hold per game, by what was bet and paid.
+const hold = {};
+for (const o of s.objects) {
+  const def = sim.OBJECTS[o.kind];
+  if (!def.game) continue;
+  const h = (hold[def.game] ??= { in: 0, out: 0, n: 0, sessions: 0 });
+  h.in += o.st.coinIn; h.out += o.st.paidOut; h.n++; h.sessions += o.st.sessions;
+}
+console.log(`games: ${Object.entries(hold).map(([k, h]) => `${k} ${h.sessions} sessions, hold ${h.in ? ((100 * (h.in - h.out)) / h.in).toFixed(1) : "–"}%`).join("; ")}`);
+console.log(`books: tables ${m("tables")}, poker rake ${m("poker")}, keno & bingo ${m("keno")}, slots ${m("slots")}`);
+const counters = all.filter((e) => e.counter);
+console.log(`card counters: ${counters.length} (${counters.filter((e) => e.marked).length} marked), return ${ret(counters)}; skill poor/typical/sharp ${[0, 1, 2].map((k) => pct(share(all, (e) => e.skill === k))).join("/")}`);
 const bad = sim.checkInvariants(g);
 if (bad.length) { console.error(bad.slice(0, 10).join("\n")); process.exit(1); }
 
@@ -115,4 +145,9 @@ else {
   if (!cheats.some((e) => e.caught)) flags.push("no cheat was ever caught");
   if (med(cheats.filter((e) => !e.caught).map((e) => e.won - e.wagered)) <= 0) flags.push("cheats who got away mostly lost money");
 }
+// Tables (M7): every game gets played; the pool games' cut is exact.
+for (const [k, h] of Object.entries(hold)) if (!h.sessions) flags.push(`nobody ever played ${k}`);
+for (const [k, want] of [["bingo", 0.3]]) { const h = hold[k]; if (h?.in && Math.abs((h.in - h.out) / h.in - want) > 1e-6) flags.push(`${k} hold isn't exactly ${want * 100}%`); }
+if (hold.poker?.in && (hold.poker.in - hold.poker.out) / hold.poker.in > 0.1 + 1e-9) flags.push("poker took more than its rake");
+if (!Object.values(at).some((m) => Object.keys(m).some((k) => k !== "slots" && k !== "vpoker"))) flags.push("nobody plays tables");
 console.log(flags.length ? `\n⚠ ${flags.join("\n⚠ ")}` : "\nno sanity flags");

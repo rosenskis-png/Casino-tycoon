@@ -133,7 +133,7 @@ function testFloor(): ScenarioDef {
   // The east wing (M6): a high-limit room (next to the quiet back room), a show lounge and a club off the floor;
   // a restaurant, a smoking room and a card holders' lounge bar beyond them, with restrooms.
   objects.push(
-    ...row("slot_liberty", 51, 7, 8, 0), { kind: "baccarat", x: 52, y: 10, rot: 0 }, ...row("slot_thunder", 57, 10, 4, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
+    ...row("slot_liberty", 51, 7, 6, 0), { kind: "restroom", x: 57, y: 5, rot: 0, w: 3, h: 2 }, { kind: "baccarat", x: 52, y: 10, rot: 0 }, ...row("slot_thunder", 57, 10, 4, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
     { kind: "showlounge", x: 51, y: 14, rot: 0, w: 9, h: 7 },
     { kind: "club", x: 51, y: 23, rot: 0, w: 9, h: 5 }, { kind: "restroom", x: 51, y: 28, rot: 0, w: 3, h: 2 },
     { kind: "restroom", x: 69, y: 10, rot: 0, w: 3, h: 2 }, { kind: "restroom", x: 69, y: 28, rot: 0, w: 3, h: 2 },
@@ -171,7 +171,7 @@ function testFloor(): ScenarioDef {
   objects.push(
     // The back-corner bar pours strong drinks, a quarter of them free: the rowdy end of the floor.
     { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0, bar: { strength: 1.4, comp: 0.25 } },
-    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 }, { kind: "restroom", x: 31, y: 6, rot: 0 },
+    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 }, { kind: "restroom", x: 31, y: 6, rot: 0 }, { kind: "restroom", x: 33, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 29, rot: 2 },
     { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
     { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 41, y: 30, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },

@@ -10,13 +10,14 @@ import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
 import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
+import { bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
-  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale,
+  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules,
 } from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
@@ -105,7 +106,7 @@ function roleDoing(g: Game, a: Agent): string {
     case "fight": return "In a fight!";
     case "respond": return "Dealing with trouble";
     case "treat": return "Treating a guest";
-    case "wait": return "Waiting for the others";
+    case "wait": return a.role === "pitboss" ? "Watching the tables" : a.role === "dealer" ? "Waiting for a table" : "Waiting for the others";
     case "held": return a.g?.caught ? "Caught cheating: held by security" : "Held by security";
     case "enforce": return "Dealing with a guest";
     case "carry": return "Taking something out back";
@@ -114,6 +115,8 @@ function roleDoing(g: Game, a: Agent): string {
     case "show": return obj && showPhase(obj, g.state.tick).phase === "on" ? "Watching the show" : "Waiting for the show";
     case "dance": return "Dancing";
     case "smoke": return "Having a smoke";
+    case "deal": return `Dealing ${name}`;
+    case "look": return "Watching the craps table";
     case "walk":
       if (a.next === "held") return "Being walked away by security";
       if (a.next === "enforce") return "On the way to a guest";
@@ -133,7 +136,9 @@ function roleDoing(g: Game, a: Agent): string {
       if (a.next === "offer") return `Taking orders (${a.tray?.length ?? 0} so far)`;
       if (a.next === "fetch") return "Off to the bar";
       if (a.next === "serve") return "Bringing a drink";
-      if (a.next === "wait") return "Waiting for the others";
+      if (a.next === "deal") return `Heading to ${name}`;
+      if (a.next === "look") return "Going to watch the craps";
+      if (a.next === "wait") return a.role === "pitboss" ? "Walking the pit" : a.role === "dealer" ? "Waiting for a table" : "Waiting for the others";
       if (a.next === "respond") return "Heading to trouble";
       if (a.next === "treat") return "Rushing to a guest";
       return "Walking";
@@ -167,7 +172,7 @@ export function StaffPanel({ host }: { host: Host }) {
         ))}
       </div>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
-      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar.</p>
+      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table.</p>
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
@@ -557,15 +562,74 @@ function GuestDebug({ g, a }: { g: Game; a: Agent }) {
       <b>Mood</b><span className="num">{gd.mood.toFixed(0)}</span>
       <b>Needs</b><span className="num">B{gd.needs.bladder.toFixed(0)} T{gd.needs.thirst.toFixed(0)} H{gd.needs.hunger.toFixed(0)} F{gd.needs.fatigue.toFixed(0)}</span>
       <b>Time left</b><span className="num">{left.toFixed(1)} min</span>
-      <b>Hidden</b><span className="num">{gd.cheat ? `cheat · take ${money(gd.take)}${gd.spell ? ` · cheating (${gd.spell}s left)` : ""}` : "honest"}{gd.luck ? ` · ${gd.luck > 0 ? "lucky" : "unlucky"}` : ""}</span>
+      <b>Hidden</b><span className="num">{gd.cheat ? `cheat · take ${money(gd.take)}${gd.spell ? ` · cheating (${gd.spell}s left)` : ""}` : "honest"}{gd.luck ? ` · ${gd.luck > 0 ? "lucky" : "unlucky"}` : ""} · {["poor", "typical", "sharp"][gd.skill]} player{gd.counter ? " · counts cards" : ""}</span>
       <b>Knows floor</b><span className="num">{(gd.know * 100).toFixed(0)}%{gd.memDate >= 0 ? " · regular" : " · first visit"}</span>
       {p && <><b>Person</b><span className="num">visit {p.visits + 1} · savings {money(p.savings)} · feels {p.score.toFixed(0)} · chase {p.chase.toFixed(2)}</span></>}
     </div>
   );
 }
 
+/** The house edge a table's rules give (docs/spec/tables.md), in words. */
+function edgeText(fam: Family, rules: number[] | undefined): string {
+  const pc = (x: number) => `${(x * 100).toFixed(2)}%`;
+  switch (fam) {
+    case "vpoker": return `${pc(vpPayback(rules?.[0] ?? 0))} back with perfect play; less for most players`;
+    case "blackjack": return `${pc(bjBaseEdge(rules))} against perfect play; players' mistakes add to it`;
+    case "roulette": return pc(1 - 36 / pockets(rules));
+    case "craps": { const k = oddsAllowed(rules, 6); return `1.41% on the pass line${k ? `; odds up to ${rules?.[0] === 3 ? "3-4-5" : k}× pay true odds` : "; no odds"}`; }
+    case "baccarat": return `banker ${pc(1 - (0.458597 * (2 - commission(rules)) + (1 - 0.458597 - 0.446247)))}, player 1.24%, tie 14.36%`;
+    case "poker": return `a ${Math.round(pokerRake(rules) * 100)}% rake of each pot`;
+    case "keno": return "about 28% (the paytable)";
+    case "bingo": return `the hold: ${Math.round(bingoHold(rules) * 100)}% of cards sold`;
+  }
+}
+
+/** Table games and video poker (docs/spec/tables.md): open or waiting on dealers, rules, limits, edge, and how it's played. */
+function TableCard({ g, id }: { g: Game; id: number }) {
+  const o = g.objById.get(id), def = o && tableDefOf(o.kind);
+  if (!o || !def) return null;
+  const fam = def.id, rules = def.rules.map((_, k) => o.rules?.[k] ?? 0);
+  const set = (c: { rules?: number[]; lim?: number }) => g.dispatch({ type: "setTable", id, ...c });
+  const [lo, hi] = limitsNow(g, o), mult = lo / def.limits[o.lim ?? 0][0];
+  const need = dealerSeats(o).length, have = g.state.agents.filter((a) => a.role === "dealer" && a.act === "deal" && a.target === id).length;
+  const players = g.state.agents.filter((a) => a.role === "guest" && a.act === "play" && a.target === id).length;
+  const hold = o.st.coinIn ? (o.st.coinIn - o.st.paidOut) / o.st.coinIn : 0;
+  const lim = (l: [number, number]) => (def.pool ? `${money(l[0] * mult)} ${fam === "bingo" ? "a card" : "a hand"}` : `${money(l[0] * mult)}–${money(l[1] * mult)}`);
+  return (
+    <>
+      <div className="kv">
+        {need > 0 && <><b>Status</b><span>{tableOpen(g, o) ? `Open · ${players} playing` : `Closed: ${have} of ${need} dealer${need > 1 ? "s" : ""} (hire them in Staff)`}</span></>}
+        {fam === "vpoker" && <><b>Status</b><span>{o.broken ? "Broken down" : "Working"}</span></>}
+        <b>House edge</b><span>{edgeText(fam, o.rules)}</span>
+        <b>{def.pool ? "Stake" : "Limits"}</b>
+        <span>
+          <select value={o.lim ?? 0} onChange={(e) => set({ lim: Number(e.target.value) })}>
+            {def.limits.map((l, k) => <option key={k} value={k}>{lim(l)}</option>)}
+          </select>
+          {mult > 1 ? " (high-limit room ×5)" : ""}
+        </span>
+        {def.rules.map((r, k) => (
+          <Fragment key={r.id}>
+            <b>{r.name}</b>
+            <span>
+              <select value={rules[k]} onChange={(e) => { const next = rules.slice(); next[k] = Number(e.target.value); set({ rules: next }); }}>
+                {r.opts.map((label, j) => <option key={j} value={j}>{label}</option>)}
+              </select>
+            </span>
+          </Fragment>
+        ))}
+        <b>Played</b><span className="num">{o.st.sessions} sessions · {(o.st.rounds * WAGERS_PER_ROUND).toLocaleString()} {fam === "vpoker" ? "hands" : fam === "keno" || fam === "bingo" ? "games" : "hands"}</span>
+        <b>{def.pool ? "Money played" : "Bets"}</b><span className="num">{money(o.st.coinIn)}</span>
+        <b>House won</b><span className={`num ${hold < 0 ? "neg" : ""}`}>{money(o.st.coinIn - o.st.paidOut)} ({(hold * 100).toFixed(1)}%)</span>
+      </div>
+      {lo !== hi && !def.pool && <p className="muted" style={{ margin: "6px 0 0" }}>The minimum decides who sits down; the maximum caps what one hand can cost you.</p>}
+    </>
+  );
+}
+
 function ObjectStats({ host, id }: { host: Host; id: number }) {
   const o = host.game.objById.get(id)!;
+  if (OBJECTS[o.kind].game) return null;
   const m = modelOf(o.kind);
   if (!m) return o.st.uses ? <div className="kv"><b>Visits</b><span className="num">{o.st.uses}</span></div> : null;
   const hold = o.st.coinIn ? (o.st.coinIn - o.st.paidOut) / o.st.coinIn : 0;
@@ -605,6 +669,7 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
         <>
           <p className="muted">{OBJECTS[obj.kind].desc}</p>
           <AmenityCard g={g} id={obj.id} />
+          <TableCard g={g} id={obj.id} />
           <ObjectStats host={host} id={obj.id} />
           <BarPolicyEditor g={g} id={obj.id} />
           <div className="row">

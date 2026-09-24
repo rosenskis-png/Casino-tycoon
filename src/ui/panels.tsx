@@ -1041,7 +1041,8 @@ function HiddenValues({ g, tile }: { g: Game; tile: number }) {
   );
 }
 
-export function GamePanel({ host }: { host: Host }) {
+export function GamePanel({ host, onMenu }: { host: Host; onMenu?: (keep: boolean) => void }) {
+  const [menuAsk, setMenuAsk] = useState(false);
   const [, force] = useState(0);
   const [perf, setPerf] = useState<PerfResult | null>(null);
   const [perfMsg, setPerfMsg] = useState<string | null>(null);
@@ -1069,7 +1070,16 @@ export function GamePanel({ host }: { host: Host }) {
         <button className="btn" disabled={!hasSave(MANUAL_KEY)} onClick={() => { const r = load(MANUAL_KEY); replace(r.game, r.error); }}>Load save</button>
         <button className="btn" onClick={() => exportSave(g)}>Export<small>backup file</small></button>
         <button className="btn" onClick={async () => { const r = await importSave(); replace(r.game, r.error, "Imported."); }}>Import<small>backup file</small></button>
+        {onMenu && <button className="btn" onClick={() => setMenuAsk(!menuAsk)}>Main menu<small>scenarios, sound</small></button>}
       </div>
+      {onMenu && menuAsk && (
+        <div className="row">
+          <span className="muted" style={{ flex: "1 0 100%" }}>Save your progress before going to the main menu?</span>
+          <button className="btn on" onClick={() => onMenu(true)}>Save and go</button>
+          <button className="btn danger" onClick={() => onMenu(false)}>Go without saving<small>back to the last save</small></button>
+          <button className="btn" onClick={() => setMenuAsk(false)}>Cancel</button>
+        </div>
+      )}
       <div style={{ marginTop: 8 }}><SoundSettings /></div>
       <div className="row" style={{ marginTop: 8 }}>
         <select value={scenario} onChange={(e) => setScenario(e.target.value)} style={{ flex: 1 }}>

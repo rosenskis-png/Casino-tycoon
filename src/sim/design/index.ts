@@ -129,17 +129,23 @@ export function cantUse(s: GameState, id: string): string | null {
 export const machinesOf = (s: GameState, id: string) => s.objects.filter((o) => OBJECTS[o.kind]?.slot && designIdOf(o) === id);
 
 export function statsOf(s: GameState, id: string): DesignStats {
-  return (s.dstats[id] ??= { coinIn: 0, paidOut: 0, rounds: 0, sessions: 0, playTicks: 0, machDays: 0, feats: 0, jps: 0, rWin: 0, rDays: 0, born: -1, said: {} });
+  return (s.dstats[id] ??= { coinIn: 0, paidOut: 0, rounds: 0, sessions: 0, playTicks: 0, machDays: 0, feats: 0, jps: 0, rWin: 0, rDays: 0, theo: 0, born: -1, said: {} });
 }
-/** Performance index: a design's recent win per machine-day against the floor's slots (real slot directors' number). */
+/**
+ * Performance index (owner, M8.5): a design's theoretical win (coin-in × its house edge) per machine per day over
+ * the lifetime of all its machines here, against the same for every slot on the floor. 1.0 is average. Theoretical,
+ * so a jackpot paid out doesn't swing it; real slot directors rank games by it.
+ */
 export function perfIndex(s: GameState, id: string): number | null {
   const st = s.dstats[id];
-  if (!st || st.rDays < 3) return null;
+  if (!st || st.machDays < 3) return null;
   let w = 0, dd = 0;
-  for (const q of Object.values(s.dstats)) { w += q.rWin; dd += q.rDays; }
+  for (const q of Object.values(s.dstats)) { w += q.theo ?? 0; dd += q.machDays; }
   if (dd <= 0 || w <= 0) return null;
-  return st.rWin / st.rDays / (w / dd);
+  return (st.theo ?? 0) / st.machDays / (w / dd);
 }
+/** One line that explains the performance index next to it. */
+export const PERF_INDEX_HELP = "Performance index: what this game is expected to win per machine per day (its bets × its house edge, over the life of all its machines here), against the average slot on your floor. 1.0 is average; 1.5 means it earns half again as much.";
 
 /** Who a scenario's slot panel is made of: its population by type, weighted by how often each type comes. */
 export function panelMix(s: GameState): Record<string, number> {

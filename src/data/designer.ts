@@ -209,7 +209,7 @@ export const VIDEO_PAYS: number[][] = [
 ];
 export const R33_PAYS = [100, 50, 25, 15, 10, 8, 6, 5, 4];
 /** Hero 5-of-a-kind (video), 3 wilds (3×3) and 3 wilds (classic) at volatility 0 and 1 (scaled between). */
-export const TOP_PAY = { video: [300, 2000], r33: [150, 1000], classic: [500, 5000] };
+export const TOP_PAY = { video: [150, 12000], r33: [60, 6000], classic: [200, 25000] };
 /** Classic, per coin: 3 tops, 3 of each bar (3, 2, 1), any 3 bars, cherries (1, 2, 3). */
 export const CLASSIC_PAYS = { top: 100, bars: [40, 25, 10], anyBar: 5, cherry: [2, 5, 10] };
 /** Scatters (3, 4, 5, 6 of them) pay this many times the whole bet. */

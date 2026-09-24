@@ -98,7 +98,11 @@ export function panel(c: Compiled, mix: Record<string, number>): Panel {
     const j = judge(c, type);
     return { type, w: w / total, excitement: j.excitement, appeal: j.appeal, reasons: j.reasons };
   });
-  const excitement = byType.reduce((a, t) => a + t.w * t.excitement, 0);
+  // The panel's Excitement leans toward the guests who'd actually sit down at it (M8.5): a game made for one crowd
+  // rates by how that crowd felt, not by the average of people who'd walk past it.
+  const pw = byType.map((t) => t.w * (0.4 + Math.max(0, t.appeal)));
+  const pt = pw.reduce((a, b) => a + b, 0) || 1;
+  const excitement = byType.reduce((a, t, i) => a + (pw[i] / pt) * t.excitement, 0);
   const tally = new Map<string, number>();
   for (const t of byType) for (const r of t.reasons) tally.set(r, (tally.get(r) ?? 0) + t.w);
   const verdict = [...tally].filter(([, w]) => w >= 0.15).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([r]) => r);

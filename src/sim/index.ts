@@ -15,7 +15,7 @@ export { objSeats, objSize, objCells, objStaff, objFootprint, covers, dims, pric
 export { placement, landForSale } from "./build";
 export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult } from "./amenities";
 export type { Gate } from "./state";
-export { LEDGER_LABELS, monthlyCosts, worth } from "./finance";
+export { LEDGER_LABELS, monthlyCosts, worth, meterDebt } from "./finance";
 export { goalStatus, describeGoals } from "./goals";
 export { thoughtRates, guestCount } from "./guests";
 export { newcomerRates, poolSummary, person } from "./pool";
@@ -24,12 +24,13 @@ export { DRINK_PRICE, STRENGTHS } from "./drinks";
 export { betOf, machineModel, limitsOf, isTable, tableDefOf } from "./gaming";
 export {
   compiledOf, compiledById, designById, designIdOf, perfIndex, panelMix, statsOf, machinesOf, cantUse, certified, certPending, illegal, sanitize,
-  designLocks, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind,
+  designLocks, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind, PERF_INDEX_HELP,
 } from "./design";
+export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";
 export { judge, feelOf } from "./design/appeal";
 export { panel, parSheet, sessions, ratingWord, INTENSITY_WORDS, type Panel, type SessionStats } from "./design/lab";
-export { spinFull, forces, type Force, type Outcome } from "./design/spin";
+export { spinFull, forces, TIERS, type Force, type Outcome, type Orb } from "./design/spin";
 export { seeded } from "./rng";
 export { tableOpen, dealerSeats, limitsNow } from "./tables";
 export { incidentRates, incidentOf, LADDER, LADDER_NAMES, CALL_AFTER } from "./incidents";

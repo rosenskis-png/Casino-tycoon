@@ -79,6 +79,8 @@ export class Game {
   minRound = Infinity;
   /** (M8) The id the last `designSave` stored the design under (the designer reads it back). */
   lastDesign = "";
+  /** (M8.5) Slots in a big bonus now, and the tick it ends (onlookers gather). Runtime only. */
+  bonusNow = new Map<number, number>();
   readonly rooms = new RoomIndex();
   /**
    * Door rules (M6): restricted doors (tiles), and one path cache per set of them a person can pass. With no
@@ -115,7 +117,7 @@ export class Game {
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
-      cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {},
+      cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {}, meters: {}, ohist: {},
     };
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);

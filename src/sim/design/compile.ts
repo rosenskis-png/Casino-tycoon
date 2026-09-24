@@ -117,6 +117,10 @@ export interface Compiled {
   model: SlotModel;
 }
 
+/** Share of the base game's return in big wins at a volatility setting (M8.5: from none at 0 to almost all at 1). */
+export const volShare = (vol: number) => 0.9 * vol;
+/** How steeply big wins thin out toward the top award, by their share: 1 (M8's shape) up to half the return, then flatter. */
+const bigTilt = (s: number) => (s <= 0.45 ? 1 : 1 - ((s - 0.45) / 0.45) * 0.55);
 /** Wins at or above this many times the bet are "big" (the volatility slider's share). */
 export const bigAt = (lay: LayoutDef) => (lay.win === "classic" ? 20 : 10);
 const SYM_W = [0.35, 0.5, 0.6, 0.7, 1, 1, 1.1, 1.2, 1.3];
@@ -128,7 +132,7 @@ const EXPAND_W: Record<number, number> = { 3: 0.04, 4: 0.006, 5: 0.0008, 6: 0.00
 /** Wild chance per winning position in free spins with multiplier wilds, and ×2 vs ×3. */
 const WILDX = { p: 0.3, m2: 0.65 };
 /** Pays above this multiple of the bet are left off the ladders. */
-const MAX_X = 10000;
+const MAX_X = 25000;
 
 const lerpLog = (a: number, b: number, t: number) => a * Math.pow(b / a, t);
 const niceRound = (v: number) => {
@@ -332,13 +336,15 @@ export function solveLadder(src: Entry[], E: number, h: number, s: number, big: 
   if (!B.length) s = 0;
   let PB = 0;
   if (B.length && s > 0) {
+    // Big wins: chance ∝ natural weight ÷ pay^β; a flatter β (high volatility) puts more of them near the top.
+    const beta = bigTilt(s);
     let a = 0, b = 0;
-    for (const q of B) { a += q.nat; b += q.nat / q.x; }
+    for (const q of B) { const w = q.nat / Math.pow(q.x, beta); a += w * q.x; b += w; }
     const MB = a / b;
     PB = (s * E) / MB;
     // Big wins may take at most half the hits.
     if (PB > h * 0.5 && S.length) { PB = h * 0.5; s = (PB * MB) / E; }
-    for (const q of B) q.p = (PB * (q.nat / q.x)) / b;
+    for (const q of B) q.p = (PB * (q.nat / Math.pow(q.x, beta))) / b;
   }
   const ES = (1 - s) * E;
   // Mean of the small wins at tilt α (log-space weights for stability).
@@ -668,7 +674,7 @@ function build(d: SlotDesign, id: string): Compiled {
   const hWant = Math.min(Math.max(d.hit, hMin), hMax);
   const toBase = (hh: number) => ((hh - PJ) / (1 - PJ) - Q) / (1 - Q);
   const toAll = (hb: number) => PJ + (1 - PJ) * (Q + (1 - Q) * hb);
-  const s = 0.08 + 0.62 * d.vol;
+  const s = volShare(d.vol);
   const src = classic ? classicEntries(d, top) : videoEntries(d, pt, { wildx: false, expand: -1 });
   const solved = solveLadder(src, b, Math.min(0.95, Math.max(0.005, toBase(hWant))), s, big);
   const base = solved.lad;

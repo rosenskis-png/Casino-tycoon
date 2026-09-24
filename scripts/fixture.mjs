@@ -10,6 +10,43 @@ const g = sim.Game.create("horseshoe", 12345);
 const w = g.state.map.w;
 // M9.5: the tutorial starts with no research; the fixture builds as if it had it all.
 if (sim.SCHEMA_VERSION >= 12) g.state.research.done.push("bigslots", "tables", "tables2", "restaurant", "outdoors", "th_vegas", "th_ancient", "th_luxury", "th_fun");
+if (sim.SCHEMA_VERSION >= 16) {
+  // M8.5: a player design with hold & spin, a linked Grand, a must-hit-by Mini and a collector, run uncertified and
+  // placed as a bank of three with a sign; a stock pick game with a standalone progressive of its own.
+  g.state.research.done.push("video", "freespins", "holdspin", "cascades", "progressive", "linked", "bonusgames");
+  const d = sim.newDesign("");
+  Object.assign(d, {
+    name: "Fixture Link", hns: { every: 60, land: 1, values: 1 }, collect: { size: 0, every: 80, prize: "super", x: 50 },
+    jackpots: [{ x: 10, every: 0, kind: "mhb", inc: 0.01, cap: 1.5 }, { x: 50, every: 2000, how: "hns" }, { x: 500, every: 100000, kind: "linked", inc: 0.005, how: "hns" }],
+    look: { font: 3, fx: 2, top: 1, meters: 0, reels: 2, deck: 1 },
+  });
+  g.dispatch({ type: "designSave", d });
+  g.step();
+  const id = Object.keys(g.state.designs)[0];
+  g.dispatch({ type: "designRun", id, on: true });
+  g.step();
+  // The first free spots in a scan of the floor (the tutorial's layout moves between versions).
+  const put = (kind, design) => {
+    let why = "";
+    for (let y = 8; y < g.state.map.h - 4; y++) for (let x = 6; x < w - 6; x++) {
+      const c = { type: "place", kind, x, y, rot: 0, ...(design ? { design } : {}) };
+      why = g.check(c) ?? "";
+      if (!why) { g.dispatch(c); g.step(); return; }
+    }
+    console.log(`fixture: couldn't place ${kind}: ${why} (cash ${Math.round(g.state.cash)})`);
+  };
+  for (let k = 0; k < 3; k++) put("slot_upright", id);
+  put("bank_sign");
+  const t2 = { ...sim.STOCK_DESIGNS.treasure, id: "", name: "Fixture Pick", jackpots: [{ x: 10, every: 600, how: "pick" }, { x: 40, every: 4000, kind: "sa", inc: 0.004, how: "pick" }] };
+  g.dispatch({ type: "designSave", d: t2 });
+  g.step();
+  const id2 = Object.keys(g.state.designs)[1];
+  g.dispatch({ type: "designRun", id: id2, on: true });
+  g.step();
+  put("slot_upright", id2);
+  const sign = g.state.objects.find((o) => o.kind === "bank_sign");
+  if (sign) g.dispatch({ type: "signShow", obj: sign.id, id });
+}
 g.dispatch({ type: "place", kind: "bar", x: 30, y: 20, rot: 0 });
 g.dispatch({ type: "place", kind: "slot_thunder", x: 14, y: 20, rot: 1 });
 g.dispatch({ type: "hire", role: "tech" });

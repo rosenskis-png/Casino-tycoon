@@ -52,6 +52,10 @@ row("draw per trip", (d) => usd(med(d.filter((e) => e.trips).map((e) => e.withdr
 row("group 1 / 2 / 3+", (_d, a) => a.length ? `${pct(share(a, (e) => e.n === 1))}/${pct(share(a, (e) => e.n === 2))}/${pct(share(a, (e) => e.n >= 3))}` : "–");
 row("regular arrivals", (_d, a) => pct(share(a, (e) => e.regular)));
 row("visit score", (d) => f2(med(d.map((e) => e.score))));
+// M6: why groups came, and the time and money spent at meals, shows and the club.
+row("came for meal/show/club", (_d, a) => a.length ? `${pct(share(a, (e) => e.intent === "dine"))}/${pct(share(a, (e) => e.intent === "show"))}/${pct(share(a, (e) => e.intent === "club"))}` : "–");
+row("had fun (share, min)", (d) => { const f = d.filter((e) => e.fun > 0); return `${pct(f.length / Math.max(1, d.length))}, ${f1(med(f.map((e) => e.fun)))}`; });
+row("spent on amenities", (d) => usd(med(d.filter((e) => e.spent > 0).map((e) => e.spent))));
 row("warned / thrown out", (d) => `${pct(share(d, (e) => e.warned > 0))} / ${pct(share(d, (e) => e.ejected))}`);
 const CATS = { intox: ["loud", "stumble", "spill", "vomit", "passout"], disorder: ["argument", "fight", "yell", "breakdown"], misconduct: ["urinate"], celebration: ["cheer", "round"], social: ["flirt", "recruit"] };
 for (const [cat, kinds] of Object.entries(CATS))
@@ -78,6 +82,10 @@ const all = Object.values(dep).flat(), cheats = all.filter((e) => e.cheat), luck
 const ret = (xs) => { const w = xs.reduce((a, e) => a + e.wagered, 0); return w ? (xs.reduce((a, e) => a + e.won, 0) / w).toFixed(2) : "–"; };
 console.log(`cheats: ${cheats.length} of ${all.length} guests (${pct(cheats.length / all.length)}), ${cheats.filter((e) => e.caught).length} caught, house lost ${usd(cheats.reduce((a, e) => a + e.won - e.wagered, 0))} to them (${usd(med(cheats.map((e) => e.won - e.wagered)))} median); recovered ${usd(g.state.finance.total.recovered ?? 0)}; lucky ${lucky.length} return ${ret(lucky)}, unlucky ${unlucky.length} return ${ret(unlucky)}; enforcement ${totals._enf ?? 0}, banned ${totals._banned ?? 0}`);
 console.log(`reports ${totals._reports ?? 0}, police calls ${totals._calls ?? 0}, thrown out ${totals._ejected ?? 0}, paramedics ${totals._medic ?? 0}; police standing ${Math.round(policeLow)}–${Math.round(policeHigh)}, now ${Math.round(g.state.auth.police.standing)} (${sim.LADDER_NAMES[g.state.auth.police.stage]})`);
+const uses = {};
+for (const o of s.objects) uses[o.kind] = (uses[o.kind] ?? 0) + o.st.uses;
+const L = s.finance.total, m = (k) => usd(L[k] ?? 0);
+console.log(`amenities: meals ${uses.restaurant ?? 0}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}; food ${m("food")} (cost ${m("foodCost")}), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
 const bad = sim.checkInvariants(g);
 if (bad.length) { console.error(bad.slice(0, 10).join("\n")); process.exit(1); }
 
@@ -97,6 +105,7 @@ for (const t of types) {
 for (const [cat, kinds] of Object.entries(CATS)) if (!kinds.some((k) => incAll[k])) flags.push(`no ${cat} incidents at all`);
 if (!totals._ejected && !Object.values(dep).flat().some((e) => e.warned)) flags.push("guards never warned or threw anyone out");
 if (policeHigh - policeLow < 0.5) flags.push("police standing never moved");
+for (const k of ["restaurant", "showlounge", "club"]) if (!uses[k]) flags.push(`nobody ever used the ${k}`);
 // Cheats (M5): there are some, the ones who get away win something, and security catches some.
 if (!cheats.length) flags.push("no cheats at all");
 else {

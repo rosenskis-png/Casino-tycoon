@@ -376,7 +376,7 @@ function leaveFloor(g: Game, a: Agent) {
 
 function patrol(g: Game, a: Agent, r: Rng) {
   const pts = g.state.wanderPoints;
-  const t = r.chance(0.6) ? nearbyTile(g, "police", a.x, a.y, 10) : -1;
+  const t = r.chance(0.6) ? nearbyTile(g, "police", a.x, a.y, 10, a) : -1;
   if (t >= 0) go(a, t, "idle");
   else if (pts.length) go(a, r.pick(pts), "idle");
 }
@@ -390,7 +390,7 @@ function assign(g: Game, grid: Grid, a: Agent): boolean {
     const who = grid.byId.get(inc.actor);
     if (!who) continue;
     const d = Math.abs(who.x - a.x) + Math.abs(who.y - a.y);
-    if (d < bd && g.paths.reachable(here, who.y * w + who.x)) { bd = d; best = inc; }
+    if (d < bd && g.pathsFor(a).reachable(here, who.y * w + who.x)) { bd = d; best = inc; }
   }
   if (!best) return false;
   best.guard = a.id;

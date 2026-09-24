@@ -18,7 +18,14 @@ for (let t = 0; t < 2; t++) g.step();
 const bar = g.state.objects.find((o) => o.kind === "bar");
 if (bar) g.dispatch({ type: "setBar", id: bar.id, price: 1.5, comp: 0.25, strength: 1.4 });
 g.dispatch({ type: "build", what: "wall", tiles: [40, 41, 42].map((x) => 24 * w + x) });
+if (sim.SCHEMA_VERSION >= 8) { g.step(); g.dispatch({ type: "build", what: "door", tiles: [24 * w + 41] }); }
 g.dispatch({ type: "setRoom", tile: 10 * w + 40, name: "Back room", purpose: "office" });
+if (sim.SCHEMA_VERSION >= 8) {
+  // M6: a sized restaurant, a door rule with a fee.
+  g.dispatch({ type: "place", kind: "restaurant", x: 38, y: 20, rot: 0, w: 5, h: 3 });
+  for (let t = 0; t < 2; t++) g.step();
+  g.dispatch({ type: "setDoor", tile: 24 * w + 41, rule: 0, fee: 2 });
+}
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
 writeFileSync(file, sim.serialize(g));
 console.log(`wrote ${file} (${g.state.agents.length} agents, ${g.state.objects.length} objects)`);

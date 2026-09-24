@@ -148,13 +148,14 @@ const roomPurpose = (g: Game, i: number): RoomPurpose | "" => {
   return room && room.meta >= 0 ? g.state.roomMeta[room.meta]?.purpose ?? "" : "";
 };
 
-function nearestOf(g: Game, from: number, tiles: number[], taken?: Set<number>): number {
+function nearestOf(g: Game, who: Agent, from: number, tiles: number[], taken?: Set<number>): number {
+  const paths = g.pathsFor(who);
   const w = g.state.map.w, fx = from % w, fy = Math.floor(from / w);
   let best = -1, bd = Infinity;
   for (const t of tiles) {
     if (taken?.has(t)) continue;
     const d = Math.abs((t % w) - fx) + Math.abs(Math.floor(t / w) - fy);
-    if (d < bd && g.paths.reachable(from, t)) { bd = d; best = t; }
+    if (d < bd && paths.reachable(from, t)) { bd = d; best = t; }
   }
   return best;
 }
@@ -162,15 +163,15 @@ function nearestOf(g: Game, from: number, tiles: number[], taken?: Set<number>):
 const exits = (g: Game) => g.state.map.entrances.filter((e) => g.walkable(e));
 
 /** Where a bag goes: beside a dumpster if there's one to reach, else the nearest exit. */
-function dropSpot(g: Game, from: number): number {
+function dropSpot(g: Game, who: Agent, from: number): number {
   const { w, h } = g.state.map, spots: number[] = [];
   for (const o of g.state.objects) {
     if (o.kind !== "dumpster") continue;
     for (let y = o.y - 1; y <= o.y + 1; y++) for (let x = o.x - 1; x <= o.x + 2; x++)
       if (x >= 0 && y >= 0 && x < w && y < h && g.walkable(y * w + x)) spots.push(y * w + x);
   }
-  const d = nearestOf(g, from, spots);
-  return d >= 0 ? d : nearestOf(g, from, exits(g));
+  const d = nearestOf(g, who, from, spots);
+  return d >= 0 ? d : nearestOf(g, who, from, exits(g));
 }
 
 /** Share of cameras a surveillance operator at a desk is watching, 0-1. */
@@ -285,7 +286,7 @@ function assignJobs(g: Game, byId: Map<number, Agent>) {
     let best: Agent | null = null, bd = Infinity;
     for (const q of free(g, job)) {
       const d = Math.abs(q.x - t.x) + Math.abs(q.y - t.y);
-      if (d < bd && g.paths.reachable(q.y * w + q.x, t.y * w + t.x)) { bd = d; best = q; }
+      if (d < bd && g.pathsFor(q).reachable(q.y * w + q.x, t.y * w + t.x)) { bd = d; best = q; }
     }
     if (!best) continue;
     job.staff = best.id;
@@ -327,7 +328,7 @@ function jobTick(g: Game, job: EnfJob, byId: Map<number, Agent>) {
     if (isWalking(st)) return;
     if (Math.abs(st.x - t.x) + Math.abs(st.y - t.y) > 1) { go(st, here, "enforce"); return; }
     if (job.action === "warn") { job.stage = 3; job.at = s.tick; return; }
-    const dest = job.action === "ban" ? nearestOf(g, here, exits(g)) : nearestOf(g, here, purposeTiles(g, "enforcement"));
+    const dest = job.action === "ban" ? nearestOf(g, t, here, exits(g)) : nearestOf(g, t, here, purposeTiles(g, "enforcement"));
     if (dest < 0 || dest === here) { job.stage = 3; job.at = s.tick; job.tile = dest; act(g, job, t); return; }
     job.tile = dest;
     job.stage = 2;
@@ -423,7 +424,7 @@ function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
       // Over the shoulder and out to the dumpster.
       st.bag = 1;
       st.target = -1;
-      const to = dropSpot(g, st.y * w + st.x);
+      const to = dropSpot(g, st, st.y * w + st.x);
       if (to >= 0 && to !== st.y * w + st.x) go(st, to, "carry");
       else { st.bag = undefined; st.act = "idle"; }
       return;
@@ -497,8 +498,8 @@ function pauseThenGo(g: Game, a: Agent, tiles: number[]) {
   if (s.tick < (a.due ?? 0)) return;
   a.due = s.tick + r.int(6, 15) * SEC;
   const w = s.map.w;
-  const t = tiles.length ? tiles[r.int(0, tiles.length - 1)] : nearbyTile(g, "cheats", a.x, a.y, 10);
-  if (t >= 0 && t !== a.y * w + a.x && g.paths.reachable(a.y * w + a.x, t)) go(a, t, "idle");
+  const t = tiles.length ? tiles[r.int(0, tiles.length - 1)] : nearbyTile(g, "cheats", a.x, a.y, 10, a);
+  if (t >= 0 && t !== a.y * w + a.x && g.pathsFor(a).reachable(a.y * w + a.x, t)) go(a, t, "idle");
 }
 
 function enforcerTick(g: Game, a: Agent) {
@@ -521,7 +522,7 @@ function operatorTick(g: Game, a: Agent) {
   if (desks.length) {
     const taken = new Set<number>();
     for (const b of g.state.agents) if (b !== a && b.role === "operator") taken.add(b.act === "watch" ? b.y * w + b.x : b.dest);
-    const t = nearestOf(g, a.y * w + a.x, desks, taken);
+    const t = nearestOf(g, a, a.y * w + a.x, desks, taken);
     if (t >= 0) { if (t === a.y * w + a.x) a.act = "watch"; else go(a, t, "watch"); return; }
   }
   // No desk to be had: wander a while and look again.

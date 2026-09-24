@@ -1,9 +1,36 @@
 // Placeable object catalog. Geometry is given for rotation 0, where the object's front faces down (+y);
 // seats (access tiles) may lie outside the footprint on the floor around it. sim/geometry.ts rotates both.
 import type { Emission } from "./fields";
+import type { RoomPurpose } from "./rooms";
 
-/** stool/stand: a guest sits or stands there, visible; hidden: inside (restroom stalls). */
-export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hidden" }
+/**
+ * stool/stand: a guest sits or stands there, visible; hidden: inside (restroom stalls); chair: a table or show
+ * seat (drawn as a chair facing `f`); dance: a spot on a dance floor. `f` is a facing in the rotation-0 frame
+ * (0 down, 1 left, 2 up, 3 right).
+ */
+export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hidden" | "chair" | "dance"; f?: number }
+
+/**
+ * Amenities as places (FOUNDATIONS §8, docs/spec/construction.md): dragged to a size, with the layout, seats,
+ * staff, price and tier generated from it (sim/layout.ts). w is the front width, h the depth, in the object's own
+ * frame (row 0 is the back).
+ */
+export interface SizedDef {
+  layout: "bar" | "restroom" | "cage" | "restaurant" | "show" | "club";
+  min: [number, number];
+  max: [number, number];
+  /** Build cost: base + per tile of area. */
+  cost: [number, number];
+  /** Monthly upkeep: base + per seat + per staff member behind the counter (folded in, §8). */
+  upkeep: [number, number, number];
+  /** Tier names, and the seats each tier above the first needs. */
+  tiers: string[];
+  tierAt: number[];
+  /** Front tiles per bartender, cook or teller. */
+  staffEvery: number;
+  /** A room with this purpose makes the amenity one tier finer. */
+  purpose?: RoomPurpose;
+}
 
 export interface ObjectDef {
   id: string;
@@ -25,16 +52,20 @@ export interface ObjectDef {
   emits: Emission[];
   /** Directional sprites (front/back/side) or one sprite drawn per footprint tile ("tile:<id>"), or one whole sprite. */
   sprite: string;
-  art: "whole" | "facing" | "tiled";
+  art: "whole" | "facing" | "tiled" | "zone";
   seats: SeatDef[];
   /** Slot model id (data/games.ts). */
   slot?: string;
+  /** Sized amenities (M6): w and h above are the default size. */
+  sized?: SizedDef;
   /** What using it does for a guest. */
-  serves?: "thirst" | "bladder" | "cage" | "atm";
+  serves?: "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club";
   /** Seconds a visit takes at 1×. */
   use?: [number, number];
-  /** Guest-facing price per use, in real-looking dollars. */
+  /** Guest-facing price per use, in real-looking dollars (the default for a player-set price). */
   price?: number;
+  /** Player-set price range per use (tickets, cover charges, the restaurant's multiplier). */
+  priceRange?: [number, number];
   desc: string;
 }
 
@@ -57,25 +88,46 @@ export const OBJECTS: Record<string, ObjectDef> = {
     desc: "Loud, rare, huge wins. A jackpot here can dent your cash.",
   },
   bar: {
-    id: "bar", name: "Bar", cat: "amenity", w: 3, h: 1, cost: 2000, upkeep: 50, blocks: true, place: "indoor",
-    emits: [{ channel: "NRG", strength: 2, radius: 4 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "counter", art: "tiled",
-    seats: [{ dx: 0, dy: 1, kind: "stool" }, { dx: 1, dy: 1, kind: "stool" }, { dx: 2, dy: 1, kind: "stool" }],
-    serves: "thirst", use: [8, 15], price: 7,
-    desc: "Three stools and a bartender. Drinks loosen bets. Messy.",
+    id: "bar", name: "Bar", cat: "amenity", w: 3, h: 2, cost: 2000, upkeep: 50, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 2, radius: 4 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "counter", art: "zone",
+    seats: [], serves: "thirst", use: [8, 15], price: 7,
+    sized: { layout: "bar", min: [3, 2], max: [12, 6], cost: [800, 200], upkeep: [26, 4, 12], tiers: ["Bar", "Lounge", "Grand bar"], tierAt: [8, 16], staffEvery: 4, purpose: "bar" },
+    desc: "A counter with stools; deeper bars get lounge tables. Drinks loosen bets. Messy.",
   },
   restroom: {
     id: "restroom", name: "Restrooms", cat: "amenity", w: 2, h: 2, cost: 900, upkeep: 15, blocks: true, opaque: true, place: "indoor",
-    emits: [], sprite: "restroom", art: "whole",
-    seats: [{ dx: 0, dy: 2, kind: "hidden" }, { dx: 1, dy: 2, kind: "hidden" }],
-    serves: "bladder", use: [5, 9],
-    desc: "Two stalls. The doors face the front.",
+    emits: [], sprite: "restroom", art: "zone",
+    seats: [], serves: "bladder", use: [5, 9],
+    sized: { layout: "restroom", min: [2, 2], max: [8, 5], cost: [300, 150], upkeep: [7, 4, 0], tiers: ["Restrooms", "Lounge restrooms"], tierAt: [6], staffEvery: 0 },
+    desc: "A stall for every two tiles. The doors face the front.",
   },
   cage: {
     id: "cage", name: "Cashier Cage", cat: "amenity", w: 2, h: 1, cost: 1500, upkeep: 35, blocks: true, opaque: true, place: "indoor",
-    emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "cage", art: "tiled",
-    seats: [{ dx: 0, dy: 1, kind: "stand" }, { dx: 1, dy: 1, kind: "stand" }],
-    serves: "cage", use: [3, 5],
-    desc: "Winners cash out here, and guests who ran dry draw more money. A teller is included.",
+    emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "cage", art: "zone",
+    seats: [], serves: "cage", use: [3, 5],
+    sized: { layout: "cage", min: [2, 1], max: [8, 1], cost: [500, 500], upkeep: [5, 0, 15], tiers: ["Cashier cage"], tierAt: [], staffEvery: 1 },
+    desc: "A window and a teller per tile. Winners cash out here; guests who ran dry draw more money.",
+  },
+  restaurant: {
+    id: "restaurant", name: "Restaurant", cat: "amenity", w: 4, h: 4, cost: 3900, upkeep: 60, blocks: true, place: "indoor",
+    emits: [{ channel: "PRS", strength: 1.5, radius: 4 }, { channel: "PRV", strength: 1, radius: 3 }], sprite: "kitchen", art: "zone",
+    seats: [], serves: "hunger", use: [40, 80], price: 18, priceRange: [0.5, 3],
+    sized: { layout: "restaurant", min: [3, 3], max: [12, 10], cost: [1500, 150], upkeep: [30, 1.5, 12], tiers: ["Snack bar", "Diner", "Buffet"], tierAt: [8, 20], staffEvery: 4, purpose: "restaurant" },
+    desc: "A kitchen and tables. Fed guests stay longer. Some come just to eat.",
+  },
+  showlounge: {
+    id: "showlounge", name: "Show Lounge", cat: "amenity", w: 5, h: 5, cost: 6750, upkeep: 90, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 3, radius: 5 }, { channel: "PRS", strength: 2, radius: 4 }], sprite: "stage", art: "zone",
+    seats: [], serves: "show", use: [45, 45], price: 0, priceRange: [0, 40],
+    sized: { layout: "show", min: [4, 4], max: [14, 12], cost: [3000, 150], upkeep: [50, 1.5, 0], tiers: ["Lounge", "Showroom", "Theater"], tierAt: [24, 60], staffEvery: 0, purpose: "show" },
+    desc: "A stage and rows of seats. A show every so often, then the whole crowd gets up at once.",
+  },
+  club: {
+    id: "club", name: "Nightclub", cat: "amenity", w: 5, h: 5, cost: 6250, upkeep: 80, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 8, radius: 7 }, { channel: "PRV", strength: 1, radius: 3 }], sprite: "djbooth", art: "zone",
+    seats: [], serves: "club", use: [45, 120], price: 10, priceRange: [0, 40],
+    sized: { layout: "club", min: [4, 4], max: [14, 12], cost: [2500, 150], upkeep: [40, 2, 0], tiers: ["Dance hall", "Club", "Superclub"], tierAt: [16, 40], staffEvery: 0, purpose: "club" },
+    desc: "A DJ and a dance floor. Loud through the walls. Party crowds come for it; dancing is thirsty work.",
   },
   atm: {
     id: "atm", name: "ATM", cat: "amenity", w: 1, h: 1, cost: 600, upkeep: 6, blocks: true, opaque: true, place: "indoor",

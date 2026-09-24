@@ -32,12 +32,15 @@ export class PathCache {
   private compDirty = true;
   builds = 0;
   localBuilds = 0;
+  /** Caches sharing the memory budget (one per set of doors people can pass; docs/spec/construction.md). */
+  share = 1;
 
-  constructor(private g: Game) {}
+  /** `walk`: who this cache routes for can step on tile i. */
+  constructor(private g: Game, private walk: (i: number) => boolean) {}
 
   private get maxGlobal() {
     const { w, h } = this.g.state.map;
-    return Math.max(32, Math.min(1024, Math.floor(GLOBAL_BYTES / (2 * w * h))));
+    return Math.max(32, Math.min(1024, Math.floor(GLOBAL_BYTES / this.share / (2 * w * h))));
   }
 
   // --- components -------------------------------------------------------------------------------------
@@ -45,7 +48,7 @@ export class PathCache {
   private components(): Int32Array {
     if (!this.compDirty) return this.comp;
     const { w, h } = this.g.state.map;
-    const n = w * h, walk = this.g.walkable;
+    const n = w * h, walk = this.walk;
     const comp = new Int32Array(n).fill(-1);
     const q = new Int32Array(n);
     let label = 0;
@@ -92,7 +95,7 @@ export class PathCache {
   private build(dest: number): Uint16Array {
     this.builds++;
     const { w, h } = this.g.state.map;
-    const walk = this.g.walkable;
+    const walk = this.walk;
     const dist = new Uint16Array(w * h).fill(UNREACHED);
     if (!walk(dest)) return dist;
     const q = new Int32Array(w * h);
@@ -143,7 +146,7 @@ export class PathCache {
     if (L) return L;
     this.localBuilds++;
     const { w: W, h: H } = this.g.state.map;
-    const walk = this.g.walkable;
+    const walk = this.walk;
     const dx = dest % W, dy = (dest - dx) / W;
     const x0 = Math.max(0, dx - WINDOW), y0 = Math.max(0, dy - WINDOW);
     const w = Math.min(W - 1, dx + WINDOW) - x0 + 1, h = Math.min(H - 1, dy + WINDOW) - y0 + 1;

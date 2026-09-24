@@ -5,7 +5,7 @@ import type { Channel } from "./fields";
 import type { IncidentCat } from "./incidents";
 
 /** A quality a guest reacts to: the hidden field channels plus DIRT (litter near them). */
-export type Taste = Extract<Channel, "NRG" | "CRW" | "PRS" | "TRF"> | "DIRT";
+export type Taste = Extract<Channel, "NRG" | "CRW" | "PRS" | "TRF" | "SMK"> | "DIRT";
 export interface Pref { ideal: number; tol: number; w: number }
 export type QuitRule = "winGoal" | "lossLimit" | "broke" | "jackpot";
 
@@ -95,6 +95,13 @@ export interface GuestTypeDef {
   needs: { bladder: number; hunger: number; thirst: number; fatigue: number };
   /** Seconds of play per dollar lost that feel like good value (NORTH_STAR: time over money). */
   secPerDollar: number;
+  /**
+   * (M6) Share who come for a meal, a show or the club when the casino has one (docs/spec/construction.md). Each
+   * kind the casino has also adds this much (more for a finer one) to the type's arrivals.
+   */
+  comeFor: { dine: number; show: number; club: number };
+  /** (M6) Share who smoke. */
+  smokers: number;
 }
 
 const flat = (v = 1) => Array(12).fill(v);
@@ -124,6 +131,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.005, 0.012], pace: [0.9, 1.2], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.2], lossLimit: [0.6, 1], compSeek: 0.2 },
     needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.13 },
     secPerDollar: 6,
+    comeFor: { dine: 0.12, show: 0.05, club: 0.02 }, smokers: 0.25,
   },
   retiree: {
     id: "retiree", name: "Retirees",
@@ -148,6 +156,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.004, 0.009], pace: [0.7, 1], quit: { winGoal: 3, lossLimit: 4, broke: 0.5, jackpot: 1 }, winGoal: [0.3, 0.8], lossLimit: [0.5, 0.9], compSeek: 0.4 },
     needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.1 },
     secPerDollar: 12,
+    comeFor: { dine: 0.2, show: 0.2, club: 0 }, smokers: 0.15,
   },
   tourist: {
     id: "tourist", name: "Tourists",
@@ -172,6 +181,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.01, 0.022], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.05 },
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.18 },
     secPerDollar: 2.2,
+    comeFor: { dine: 0.15, show: 0.2, club: 0.1 }, smokers: 0.15,
   },
   party: {
     id: "party", name: "Party groups",
@@ -196,6 +206,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.009, 0.02], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.02 },
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.4, fatigue: 0.15 },
     secPerDollar: 3.3,
+    comeFor: { dine: 0.05, show: 0.1, club: 0.45 }, smokers: 0.35,
   },
 };
 export type GuestTypeId = keyof typeof GUEST_TYPES;

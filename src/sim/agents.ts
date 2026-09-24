@@ -4,6 +4,7 @@ import type { System } from "./registry";
 import type { Game } from "./game";
 import type { Activity, Agent } from "./state";
 import { rng } from "./rng";
+import { stepped } from "./doors";
 
 const WANDER_POINTS = 16;
 export const MAX_AGENTS = 20_000;
@@ -27,15 +28,15 @@ export function randomWalkable(g: Game, stream: string, indoor = true): number {
   return -1;
 }
 
-/** A random walkable tile within `r` tiles of (x, y) that can be reached from there, or -1. */
-export function nearbyTile(g: Game, stream: string, x: number, y: number, r: number): number {
+/** A random walkable tile within `r` tiles of (x, y) that `who` (or anyone) can reach from there, or -1. */
+export function nearbyTile(g: Game, stream: string, x: number, y: number, r: number, who?: Agent): number {
   const { w, h } = g.state.map;
   const rr = rng(g.state, stream), from = y * w + x;
   for (let k = 0; k < 12; k++) {
     const X = x + rr.int(-r, r), Y = y + rr.int(-r, r);
     if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
     const i = Y * w + X;
-    if (g.walkable(i) && !g.seatAt[i] && g.paths.reachable(from, i)) return i;
+    if (g.walkable(i) && !g.seatAt[i] && (who ? g.pathsFor(who) : g.publicPaths).reachable(from, i)) return i;
   }
   return -1;
 }
@@ -91,11 +92,12 @@ export const movementSystem: System = {
       if (a.nx !== a.x || a.ny !== a.y) {
         if (++a.t < a.steps) continue;
         a.x = a.nx; a.y = a.ny; a.t = 0;
+        if (g.gates.length) stepped(g, a, a.y * w + a.x);
       }
       if (!isWalking(a)) continue;
       const here = a.y * w + a.x;
       if (here === a.dest) { a.act = a.next; a.timer = 0; continue; }
-      const j = g.paths.next(here, a.dest, a.id);
+      const j = g.pathsFor(a).next(here, a.dest, a.id);
       // No way there (walled off, or the layout changed): give up and let the role decide again.
       if (j < 0) { a.act = "idle"; a.next = "idle"; a.timer = 0; continue; }
       a.nx = j % w; a.ny = (j - a.nx) / w;

@@ -1,8 +1,8 @@
 // Tab panels and the inspector.
 import { Fragment, useState } from "react";
 import { OBJECTS, OBJECT_CATS } from "../data/objects";
-import { BUILD_COST, T } from "../data/terrain";
-import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
+import { BUILD_COST, DOOR_RULES, DOOR_STATE, MAX_DOOR_FEE, T } from "../data/terrain";
+import { ROOM_HELP, ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
 import { STAFF_ROLES } from "../data/staff";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
@@ -15,6 +15,7 @@ import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
+  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase,
   type Agent, type Ledger, type HouseRules,
 } from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
@@ -47,10 +48,13 @@ export function BuildPanel({ tool, setTool, rot, setRot, thumb }: { tool: Tool; 
       {OBJECT_CATS.map((c) => (
         <Fragment key={c.id}>
           <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}</p>
-          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id).map((o) => b(`place:${o.id}`, o.name, `${money(o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id).map((o) => b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
         </Fragment>
       ))}
-      {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6)]?.desc}</p>}
+      {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6)]?.desc}{OBJECTS[tool.slice(6)]?.sized && (() => {
+        const z = OBJECTS[tool.slice(6)].sized!;
+        return ` Drag to size it: ${z.min[0]}–${z.max[0]} wide, ${z.min[1]}–${z.max[1]} deep (the front is the side it faces). Tap for ${OBJECTS[tool.slice(6)].w}×${OBJECTS[tool.slice(6)].h}.`;
+      })()}</p>}
     </>
   );
 }
@@ -59,6 +63,7 @@ export function BuildPanel({ tool, setTool, rot, setRot, thumb }: { tool: Tool; 
 
 const SEEKING: Record<string, string> = {
   bladder: "Looking for a restroom", thirst: "Looking for a bar", cage: "Looking for the cage", atm: "Looking for an ATM", exit: "Looking for the way out",
+  hunger: "Looking for somewhere to eat", show: "Looking for the show", club: "Looking for the club",
 };
 
 function roleDoing(g: Game, a: Agent): string {
@@ -83,6 +88,10 @@ function roleDoing(g: Game, a: Agent): string {
     case "enforce": return "Dealing with a guest";
     case "carry": return "Taking something out back";
     case "watch": return "Watching the cameras";
+    case "dine": return "Having a meal";
+    case "show": return obj && showPhase(obj, g.state.tick).phase === "on" ? "Watching the show" : "Waiting for the show";
+    case "dance": return "Dancing";
+    case "smoke": return "Having a smoke";
     case "walk":
       if (a.next === "held") return "Being walked away by security";
       if (a.next === "enforce") return "On the way to a guest";
@@ -95,6 +104,10 @@ function roleDoing(g: Game, a: Agent): string {
       if (a.next === "drink") return "Going for a drink";
       if (a.next === "restroom") return "Going to the restroom";
       if (a.next === "cage") return obj?.kind === "atm" ? "Going to the ATM" : "Going to the cage";
+      if (a.next === "dine") return "Going to eat";
+      if (a.next === "show") return "Going to the show";
+      if (a.next === "dance") return "Heading to the dance floor";
+      if (a.next === "smoke") return "Stepping out for a smoke";
       if (a.next === "offer") return `Taking orders (${a.tray?.length ?? 0} so far)`;
       if (a.next === "fetch") return "Off to the bar";
       if (a.next === "serve") return "Bringing a drink";
@@ -564,15 +577,16 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
   const obj = s.objects.find((o) => covers(o, x, y));
   return (
     <div className="sheet">
-      <h3>{obj ? OBJECTS[obj.kind].name : room ? meta?.name || (room.indoor ? "Room" : "Grounds") : TERRAIN_NAME[s.map.terrain[i]]}
+      <h3>{obj ? (OBJECTS[obj.kind].sized ? tierName(g, obj) : OBJECTS[obj.kind].name) : room ? meta?.name || (room.indoor ? "Room" : "Grounds") : TERRAIN_NAME[s.map.terrain[i]]}
         <button className="x" onClick={onClose}>✕</button></h3>
       {obj && (
         <>
           <p className="muted">{OBJECTS[obj.kind].desc}</p>
+          <AmenityCard g={g} id={obj.id} />
           <ObjectStats host={host} id={obj.id} />
           <BarPolicyEditor g={g} id={obj.id} />
           <div className="row">
-            <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(OBJECTS[obj.kind].cost / 2)} back</small></button>
+            <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(priceOf(obj).cost / 2)} back</small></button>
           </div>
         </>
       )}
@@ -582,6 +596,7 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
             <b>Area</b><span>{room.size} tiles, {room.indoor ? "indoors" : "outdoors"}</span>
             <b>Purpose</b><span>{ROOM_PURPOSES[meta?.purpose ?? "floor"]}</span>
           </div>
+          <p className="muted" style={{ margin: "6px 0" }}>{ROOM_HELP[meta?.purpose ?? "floor"]}</p>
           {room.indoor && <RoomEditor key={room.first} host={host} tile={i} name={meta?.name ?? ""} purpose={meta?.purpose ?? "floor"} />}
           {meta?.purpose === "enforcement" && (
             <>
@@ -592,9 +607,70 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
           {meta?.purpose === "office" && <p className="muted">Surveillance operators watch the cameras from here ({coverage(g).watching} at a desk, {coverage(g).cams} cameras).</p>}
         </>
       )}
-      {!room && !obj && <p className="muted">{TERRAIN_NAME[s.map.terrain[i]]}{s.map.fixed[i] ? " (part of the building)" : ""}</p>}
+      {!room && !obj && s.map.terrain[i] === T.DOOR && <DoorCard g={g} tile={i} />}
+      {!room && !obj && s.map.terrain[i] !== T.DOOR && <p className="muted">{TERRAIN_NAME[s.map.terrain[i]]}{s.map.fixed[i] ? " (part of the building)" : ""}</p>}
       {host.debug && <HiddenValues g={g} tile={i} />}
     </div>
+  );
+}
+
+/** A sized amenity (docs/spec/construction.md): tier, size, seats, staff and running cost; its price. */
+function AmenityCard({ g, id }: { g: Game; id: number }) {
+  const o = g.objById.get(id), def = o && OBJECTS[o.kind];
+  if (!o || !def?.sized) return null;
+  const d = dims(o), staff = objStaff(o).length, pr = def.priceRange;
+  const what = def.serves === "hunger" ? "Meal price" : def.serves === "show" ? "Ticket" : def.serves === "club" ? "Cover charge" : "";
+  const seats = def.serves === "bladder" ? "stalls" : def.serves === "cage" ? "windows" : def.serves === "club" ? "dance spots" : "seats";
+  return (
+    <>
+      <div className="kv">
+        <b>Size</b><span className="num">{d.w} × {d.h}: {seatCount(o)} {seats}{staff ? `, ${staff} staff` : ""}</span>
+        <b>Running cost</b><span className="num">{money(priceOf(o).upkeep)}/mo</span>
+        {def.serves === "show" && <><b>Show</b><span>{(() => { const p = showPhase(o, g.state.tick); return p.phase === "on" ? "On now" : `Next in ${Math.ceil(p.left / TICKS_PER_SECOND + (p.phase === "off" ? 30 : 0))} s`; })()}</span></>}
+      </div>
+      {pr && (
+        <div className="kv">
+          <b>{what}</b>
+          <span className="num">
+            <input type="range" min={pr[0]} max={pr[1]} step={def.serves === "hunger" ? 0.25 : 1} value={o.price ?? pr[0]} onChange={(e) => g.dispatch({ type: "setPrice", id, price: Number(e.target.value) })} />
+            {" "}{money(priceFor(o))}
+          </span>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** A door's rule (docs/spec/construction.md): who may pass, and a fee for guests. */
+function DoorCard({ g, tile }: { g: Game; tile: number }) {
+  const m = g.state.map, rule = m.door[tile], gate = m.gates.find((q) => q.i === tile);
+  const def = DOOR_RULES.find((r) => r.id === rule) ?? DOOR_RULES[0];
+  if (m.fixed[tile] || m.entrances.includes(tile)) return <p className="muted">{def.name}. Part of the building: this door stays as it is.</p>;
+  const set = (r: number, arg?: string, fee?: number) => {
+    const d = DOOR_RULES.find((x) => x.id === r)!;
+    const a = d.arg === "type" ? (arg && GUEST_TYPES[arg] ? arg : Object.keys(GUEST_TYPES)[0]) : d.arg === "role" ? (arg && STAFF_ROLES[arg] ? arg : Object.keys(STAFF_ROLES)[0]) : undefined;
+    g.dispatch({ type: "setDoor", tile, rule: r, arg: a, fee: d.fee ? fee ?? 0 : 0 });
+  };
+  const fee = gate?.fee ?? 0;
+  return (
+    <>
+      <div className="kv">
+        <b>Who passes</b>
+        <span>
+          <select value={rule} onChange={(e) => set(Number(e.target.value), gate?.arg, fee)}>
+            {DOOR_RULES.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </span>
+        {def.arg === "type" && <><b>Dressed as</b><span><select value={gate?.arg} onChange={(e) => set(rule, e.target.value, fee)}>{Object.values(GUEST_TYPES).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></span></>}
+        {def.arg === "role" && <><b>Role</b><span><select value={gate?.arg} onChange={(e) => set(rule, e.target.value)}>{Object.values(STAFF_ROLES).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></span></>}
+        {def.fee && <><b>Fee</b><span className="num"><input type="range" min={0} max={MAX_DOOR_FEE} step={1} value={fee} onChange={(e) => set(rule, gate?.arg, Number(e.target.value))} /> {fee ? money(fee) : "free"}</span></>}
+      </div>
+      <p className="muted" style={{ marginTop: 6 }}>
+        {rule === DOOR_STATE.CARD ? "Card holders are guests who've been here before; their companions come in with them. " : ""}
+        {rule !== DOOR_STATE.OPEN && rule !== DOOR_STATE.ROLE ? "Staff, police and paramedics always pass. " : ""}
+        Guests who can't pass go around, or can't get there at all. Anyone trapped gets let out by staff, eventually, and the police hear about it.
+      </p>
+    </>
   );
 }
 
@@ -680,7 +756,7 @@ export function GamePanel({ host }: { host: Host }) {
       )}
       <div className="kv" style={{ marginTop: 8 }}>
         <b>Frame</b><span className="num">{st.fps.toFixed(0)} fps · sim {st.simMs.toFixed(2)} ms · draw {st.drawMs.toFixed(2)} ms</span>
-        <b>World</b><span className="num">{guests} guests · {g.rooms.rooms.length} rooms · {g.paths.size} + {g.paths.localSize} path fields</span>
+        <b>World</b><span className="num">{guests} guests · {g.rooms.rooms.length} rooms · {g.publicPaths.size} + {g.publicPaths.localSize} path fields</span>
         <b>Day</b><span className="num">{Math.floor(g.state.tick / TICKS_PER_DAY) + 1} · tick {g.state.tick}</span>
       </div>
     </>

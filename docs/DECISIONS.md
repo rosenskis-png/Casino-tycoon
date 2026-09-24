@@ -2,6 +2,28 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M6 built (Claude's calls; see docs/spec/construction.md)
+- Numbers are starting values checked only against sanity flags: amenity costs and upkeep (a default bar, restroom and cage cost and run exactly as before), tier thresholds, meal $18 (house cost $6), show every 100 s for 45 s, cover $10, `comeFor` shares, smokers' shares and urge (~4½ min), the high-limit ×5, the 90 s let-out.
+- **Amenities draw extra arrivals, and those extras are the people who came for them:** each kind adds `comeFor` × (1 + 0.25 × tier) to a type's arrival rate, and an arriving group's reason is drawn at the same odds. People who came for something head roughly toward it and search a little longer; mazes still defeat them.
+- **Fun time counts in the visit score** like play time, and money spent at meals, shows, cover and doors counts like money lost.
+- **Existing bars become 3×2 areas** covering their old counter and stool row; restrooms and cages keep their shape. Nothing costs more than before.
+- Card holders are returning guests, and their companions come in with them. Staff, police, paramedics and escorted guests pass staff, card and dress-code doors; only that role passes a one-role door (plus guests an enforcer is walking there).
+- Trapped guests are let out only if a way out exists past unlocked doors; walls and locks still trap them (the M2.5 guarantee).
+- Smokers with nowhere to smoke cut the visit short. Smoke bothers non-smokers only past a low tolerance, so a smoke-free floor changes nothing.
+- Test Floor: an east wing (high-limit room, show lounge, club with restrooms, restaurant with restrooms, smoking room, card holders' bar); office and enforcement doors are staff only. **Fixed:** a sign had blocked the office door since M5, so the surveillance operator never reached the desk; M5's catch numbers on the Test Floor came from guards and chance only.
+- Big Floor steady state: ~2.1 → ~2.3 ms/tick at 5,000 guests (smokers walking out to the lot is much of it).
+- **Flagged for the owner:** the club has no bar of its own on the Test Floor, and party guests there drink less than in M4 (median peak 0.23, was 0.44). It's the kind of layout symptom the game is about, not a bug; a bar in or next to a club is the lever.
+
+## 2026-09-24 · Green light for M6: construction (see docs/spec/construction.md)
+- Owner said "green light for m6".
+- **Themes** (owner): Ancient Rome, Ancient Egypt, Medieval, Rock & Roll, a few luxury flavors, a few old-school Vegas flavors, and a couple of Claude's picks. Claude's calls: luxury = Gilded Deco, Modern Luxe, Riviera; old Vegas = Rat Pack Lounge, Neon Atomic, Gold Rush; picks = Tropical Tiki, Pirate Cove. Hidden pairings are Claude's call (in the spec).
+- **Amenities are sized** (owner) and grow sensibly with size: more stalls, more seats and bartenders, and so on. Every FOUNDATIONS §8 amenity except those tied to M9 systems: bar, restrooms, cage, restaurant, show lounge, nightclub, smoking room and high-limit room now; pool, garden, patio bar and patio restaurant with the outdoors in M6.5.
+- **Room purposes:** the owner left the effects to Claude (in the spec).
+- **No weather or seasons outdoors** (owner): always hot, sunny pool-party weather; inside is inside.
+- **Door rules** (owner): open, staff only, locked, card holders, one guest type, one staff role, plus a fee for walking through. Claude's calls: until the M9 player's club, a "card holder" is a returning guest; a type rule reads as a dress code (types already look different); scenario doors and entrances can't be changed; a guest trapped behind doors they can't pass is let out by staff after 90 s, at 1 police-standing point each.
+- **Split** (Claude, from the readiness check): m6 = doors, sized amenities, room purposes, reasons to visit; m6.5 = themes, outdoors, parcels.
+- **Deferred to M9:** Families (minors and underage incidents) and the hotel elevator with vice.
+
 ## 2026-09-24 · M5 built (Claude's calls; see docs/spec/cheats.md)
 - All numbers are starting values tuned against sanity flags: take median $400, spells of 30-90 s after 20-60 s honest, rigged wins on half the wagers at 4× the bet, catch chances (0.1%/s by chance, +0.6%/s per guard in view, +0.4%/s per unit of watched camera field, ×2.5 marked), 8 cameras per operator, heat and consequence costs.
 - **Cheating is reliable, not jackpot-shaped**: scaling payouts by a factor left most spells losing on high-volatility machines, so a spell is rigged wins instead.

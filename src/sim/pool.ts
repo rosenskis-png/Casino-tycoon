@@ -11,6 +11,7 @@ import { rng, type Rng } from "./rng";
 import { logNormal, range } from "./dist";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
 import { capacity, groupSize, guestCount, repFactor, room } from "./guests";
+import { amenityPull } from "./amenities";
 import { comeIn } from "./street";
 import { lifeTags, guestName } from "./cheats";
 import { news } from "./news";
@@ -175,7 +176,8 @@ export function newcomerRates(g: Game): Record<string, number> {
   for (const [t, w] of Object.entries(sc.population)) {
     const type = GUEST_TYPES[t];
     if (!type || !total) continue;
-    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * rm;
+    // What the casino has (a restaurant, shows, a club) draws extra people who come for it (M6).
+    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * rm * amenityPull(g, t);
   }
   return out;
 }

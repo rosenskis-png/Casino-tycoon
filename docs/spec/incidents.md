@@ -29,7 +29,7 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
 | Another round? | intox ≥ 0.2, mood > 65, a light drinker nearby | 0.0015 | +2 | the other's intended level +0.08 |
 
 - Chances are × the type's `incidents[category]`, × 0.4 with a guard in view within 6 tiles, × 0.4 for a guest already warned. A guest who starts one waits 20 s before the next (60 s after a warning).
-- **Deferred:** vice (escorts, couples; needs the hotel elevator, M6), underage guests (needs minors), drugs (M9 policies), bribery (M11).
+- **Deferred:** vice (escorts, couples; needs the hotel elevator, now M9), underage guests (needs minors), drugs (M9 policies), bribery (M11).
 
 ## Types
 | | Locals | Retirees | Tourists | Party |

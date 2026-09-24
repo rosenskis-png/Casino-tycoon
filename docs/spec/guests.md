@@ -4,7 +4,7 @@ Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.t
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.
-- **M3 roster:** Locals, Retirees, Tourists, Party groups (all men, all women or mixed). Waiting for the milestone that builds what they want: Families (M6/M9), date-night Couples, Conventioneers (M9), High rollers (M7/M9), Whales (M9). Advantage players are a hidden tag in M7. Couples are a group size, not a type.
+- **M3 roster:** Locals, Retirees, Tourists, Party groups (all men, all women or mixed). Waiting for the milestone that builds what they want: Families (M9), date-night Couples, Conventioneers (M9), High rollers (M7/M9), Whales (M9). Advantage players are a hidden tag in M7. Couples are a group size, not a type.
 - **The pool** (`state.pool`): each scenario's finite market of real people per recurring type (`market` in scenario data: size, and the share who are already regulars on day one). A person carries name, looks, type, savings, monthly income, spending money, floor knowledge and last visit, visit count, disposition (0–100), chasing level, next planned visit, ban and mark flags, and hidden luck and cheat tags for life with times caught (M5, docs/spec/cheats.md). Returning people are the same person; the disappeared are removed from the pool.
 - **One-off types** (Tourists, Party groups) are generated fresh. A Tourist leader joins the pool with a 5% chance when leaving.
 - **Reputation**: for recurring types, the average disposition of their people in the pool (moves only when someone visits). For one-off types, word of mouth: 2% of the way toward each departing guest's visit score.
@@ -88,24 +88,27 @@ Jackpots are red ("bad" news level: red but queued normally). Only jackpots of $
 ## Reference numbers and levers (sanity checks)
 Until the game is near v1.0 these numbers are **sanity checks, not tuning goals** (owner, 2026-09-23): mechanics still to come will move them. Use them to catch logic errors: a type that never plays, never drinks, always gives up, or a number that jumps for no reason after a change. The "design intent" column is the agreed M3 starting target, kept for the eventual tuning pass.
 
-Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M4 build (guards on moderate house rules; one bar pours strong drinks, a quarter comped):
+Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 build (the Test Floor gained the east wing: meals, shows, a club, smoking and high-limit rooms, docs/spec/construction.md; guards on moderate house rules; one bar pours strong drinks, a quarter comped):
 
 | | Locals | Retirees | Tourists | Party | Levers (↑ raises it) |
 |---|---|---|---|---|---|
-| Visit length (min) | 4.6 | 4.5 | 4.6 | 4.5 | ↑ `minutes`, ↑ `budget`, ↓ `play.stake`, ↓ quit-rule weights `winGoal`/`lossLimit`, ↑ `WAIT_LONG`, ↓ need rates (`needs`); `WAGERS_PER_ROUND` ↓ |
-| Playing (min) | 2.0 | 2.0 | 0.7 | 0.4 | ↓ `browse`, more signs/visible machines, ↑ bar and restroom capacity, fewer incidents in view (↑ `tolerance`, guards, stricter rules) |
-| Loss per visit | $55 | $38 | $26 | $0 | ↑ `play.stake`, ↑ `WAGERS_PER_ROUND`, lower paytable `rtp`, ↑ visit length |
-| Budget (median) | $90 | $60 | $175 | $135 | `budget.median` / `sigma` / `cap` |
-| Sober share | 27% | 61% | 12% | 6% | `drinking.sober` |
-| Drinkers' intended level (median) | 0.32 | 0.17 | 0.40 | 0.68 | `drinking.mean` / `sd`, intent shift in `spawnGuest` |
-| Drinks per drinker (median) | 1 | 1 | 1 | 2 | ↑ servers, ↑ bar policy `comp`, ↓ `price`, ↑ `drinking.accept`, ↓ `drinking.sip`, ↓ `OFFER_AGAIN`, ↑ `TRAY`, ↑ `OFFER_REACH` |
-| Drinks from servers | 79% | 69% | 93% | 89% | ratio of servers to bar stools |
-| Drinkers' peak intox (median) | 0.22 | 0.16 | 0.23 | 0.44 | drinks per drinker, ↑ `DRINK_UNIT`, ↑ strength, ↓ `SOBER_PER_MIN`, looser cut-off |
-| Overshoot > 0.3 | 8% | 4% | 4% | 2% | ↑ `drinking.overshoot` (drift), more drinks |
-| Never uses ATM | 38% | 74% | 31% | 26% | `atm.never` |
-| ATM draw per trip | $60 | $60 | $100 | $65 | `atm.draw` |
-| Group 1 / 2 / 3+ | 62/33/5% | 46/49/5% | 23/52/25% | 4–8 | `group` weights |
-| Visit score | 0.57 | 0.54 | 0.46 | 0.39 | layout, `secPerDollar`, visit score weights in `visitScore`, incidents seen, being policed |
+| Visit length (min) | 5.0 | 5.9 | 4.8 | 4.9 | ↑ `minutes`, ↑ `budget`, ↓ `play.stake`, ↓ quit-rule weights `winGoal`/`lossLimit`, ↑ `WAIT_LONG`, ↓ need rates (`needs`), meals (+2 min each); `WAGERS_PER_ROUND` ↓ |
+| Playing (min) | 2.0 | 2.3 | 0.6 | 0.6 | ↓ `browse`, more signs/visible machines, ↑ bar and restroom capacity, fewer incidents in view (↑ `tolerance`, guards, stricter rules); ↓ `comeFor` (time at shows and the club) |
+| Loss per visit | $50 | $31 | $20 | $30 | ↑ `play.stake`, ↑ `WAGERS_PER_ROUND`, lower paytable `rtp`, ↑ visit length |
+| Budget (median) | $90 | $60 | $175 | $115 | `budget.median` / `sigma` / `cap` |
+| Sober share | 29% | 60% | 12% | 5% | `drinking.sober` |
+| Drinkers' intended level (median) | 0.30 | 0.15 | 0.40 | 0.64 | `drinking.mean` / `sd`, intent shift in `spawnGuest` |
+| Drinks per drinker (median) | 1 | 1 | 1 | 1 | ↑ servers, ↑ bar policy `comp`, ↓ `price`, ↑ `drinking.accept`, ↓ `drinking.sip`, ↓ `OFFER_AGAIN`, ↑ `TRAY`, ↑ `OFFER_REACH`; a bar near the club |
+| Drinks from servers | 66% | 46% | 89% | 90% | ratio of servers to bar stools |
+| Drinkers' peak intox (median) | 0.22 | 0.22 | 0.23 | 0.23 | drinks per drinker, ↑ `DRINK_UNIT`, ↑ strength, ↓ `SOBER_PER_MIN`, looser cut-off |
+| Overshoot > 0.3 | 7% | 5% | 1% | 1% | ↑ `drinking.overshoot` (drift), more drinks |
+| Never uses ATM | 36% | 76% | 32% | 19% | `atm.never` |
+| ATM draw per trip | $50 | $30 | $100 | $70 | `atm.draw` |
+| Group 1 / 2 / 3+ | 60/35/5% | 40/55/5% | 29/49/22% | 4–8 | `group` weights |
+| Visit score | 0.58 | 0.57 | 0.50 | 0.53 | layout, `secPerDollar`, visit score weights in `visitScore` (fun time counts, amenity spending too), incidents seen, being policed |
+| Came for meal / show / club | 16/5/3% | 18/18/0% | 12/23/9% | 1/3/39% | `comeFor`, amenity tiers |
+
+Party guests drink less than in M4 (1 drink, peak 0.23; M4: 2, 0.44): many now come for the club, which has no bar of its own, so servers and bars see less of them. That's a layout symptom on this floor, not a logic error.
 
 Drunk tails (drinkers, scratch diagnostic): 30% of party drinkers reach 0.5+, 6–9% 0.8+, 1–3% 1.0+; Locals and Tourists 7–19% reach 0.5+. Incidents per 100 guests and warnings/ejections are in the same report (docs/spec/incidents.md). Party numbers rest on ~30 groups per run and swing a lot between seeds; incidents cost Tourists and Party guests 0.1–0.4 min of play on this floor (measured with incidents switched off), the designed cost of an unruly floor.
 
@@ -116,7 +119,7 @@ Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $
 - **Test floors must be realistic.** Measure on the Test Floor scenario (at least one of every object, signs, servers), never on the tutorial or an empty lot, or wayfinding failures swamp everything else.
 
 ## Save
-Schema 6 (M4): see docs/spec/incidents.md.
+Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
 
 Schema 5 (migration from 4): drink policy moves from the casino to each bar; guests gain a drink in hand, browsing time, frustration (replacing the fail count), liked machines and favorite-spot tracking; people gain favorite spots; servers gain a bar and start a fresh round.
 

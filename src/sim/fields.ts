@@ -5,10 +5,21 @@ import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
 import { OBJECTS } from "../data/objects";
 import { T } from "../data/terrain";
 import type { Game } from "./game";
+import { dims, objSize } from "./geometry";
+import { tierOf } from "./amenities";
+
+/** Room purposes that give off a quality throughout the room (docs/spec/construction.md): sources on a grid. */
+const ROOM_EMITS: Record<string, { ch: Channel; s: number; r: number }[]> = {
+  smoking: [{ ch: "SMK", s: 2, r: 4 }],
+  highlimit: [{ ch: "PRS", s: 1.2, r: 4 }, { ch: "PRV", s: 1.2, r: 4 }],
+};
+const ROOM_GRID = 3;
+/** Sized amenities: emissions grow with size (radius capped) and prestige with tier. */
+const MAX_SIZED_RADIUS = 10;
 
 interface Source { ch: Channel; cx: number; cy: number; s: number; r: number }
 
-export const MAX_RADIUS = Math.max(1, ...Object.values(OBJECTS).flatMap((o) => o.emits.map((e) => e.radius)));
+export const MAX_RADIUS = Math.max(MAX_SIZED_RADIUS, ...Object.values(OBJECTS).flatMap((o) => o.emits.map((e) => e.radius)));
 /** Beats of foot traffic per day, used to normalize TRF. */
 const TRF_SCALE = 10;
 
@@ -30,9 +41,28 @@ export class FieldEngine {
 
   collectSources() {
     this.sources = [];
-    for (const o of this.g.state.objects) {
-      const def = OBJECTS[o.kind];
-      for (const e of def.emits) this.sources.push({ ch: e.channel, cx: o.x + (def.w - 1) / 2, cy: o.y + (def.h - 1) / 2, s: e.strength, r: e.radius });
+    const g = this.g, s = g.state, w = s.map.w;
+    for (const o of s.objects) {
+      const def = OBJECTS[o.kind], { w: ow, h: oh } = objSize(o);
+      const cx = o.x + (ow - 1) / 2, cy = o.y + (oh - 1) / 2;
+      if (!def.sized) {
+        for (const e of def.emits) this.sources.push({ ch: e.channel, cx, cy, s: e.strength, r: e.radius });
+        continue;
+      }
+      // Bigger places give off more, farther; finer ones more prestige.
+      const d = dims(o), k = Math.sqrt((d.w * d.h) / (def.w * def.h)), grow = Math.round((Math.max(d.w, d.h) - Math.max(def.w, def.h)) / 2);
+      const tier = tierOf(g, o);
+      for (const e of def.emits) this.sources.push({ ch: e.channel, cx, cy, s: e.strength * k, r: Math.min(MAX_SIZED_RADIUS, e.radius + Math.max(0, grow)) });
+      if (tier) this.sources.push({ ch: "PRS", cx, cy, s: 1.5 * tier, r: Math.min(MAX_SIZED_RADIUS, 4 + Math.max(0, grow)) });
+    }
+    // Room purposes: sources on a grid over the room's floor.
+    for (const room of g.rooms.rooms) {
+      const em = room.meta >= 0 ? ROOM_EMITS[s.roomMeta[room.meta]?.purpose ?? ""] : undefined;
+      if (!em) continue;
+      for (let y = room.y0 + 1; y <= room.y1; y += ROOM_GRID) for (let x = room.x0 + 1; x <= room.x1; x += ROOM_GRID) {
+        if (g.rooms.roomOf[y * w + x] !== room.id) continue;
+        for (const e of em) this.sources.push({ ch: e.ch, cx: x, cy: y, s: e.s, r: e.r });
+      }
     }
   }
 

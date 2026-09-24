@@ -13,7 +13,9 @@ import { RoomIndex } from "./rooms";
 import { PathCache } from "./paths";
 import { FieldEngine } from "./fields";
 import { collectCommands, type Command } from "./commands";
-import { footprint, seats } from "./geometry";
+import { objCells, objSeats } from "./geometry";
+import { accessKey, canPassGate, doorSystem, gateList } from "./doors";
+import type { Agent } from "./state";
 import { movementSystem } from "./agents";
 import { newsSystem, news } from "./news";
 import { buildSystem, newObject } from "./build";
@@ -30,8 +32,11 @@ import { cheatSystem, newEnforcement } from "./cheats";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
 ];
+
+export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club";
+const emptyAmenities = (): Record<Serves, PlacedObject[]> => ({ thirst: [], bladder: [], cage: [], atm: [], hunger: [], show: [], club: [] });
 
 export interface CommandRecord { tick: number; cmd: Command; error: string | null }
 
@@ -50,7 +55,7 @@ export class Game {
   /** Slot machines by 16×16 sector (key sy * 4096 + sx), for nearby searches. */
   slotSectors = new Map<number, PlacedObject[]>();
   /** Amenities by what they serve. Cages also serve withdrawals ("atm"). */
-  amenities: Record<"thirst" | "bladder" | "cage" | "atm", PlacedObject[]> = { thirst: [], bladder: [], cage: [], atm: [] };
+  amenities: Record<Serves, PlacedObject[]> = emptyAmenities();
   /** Objects that block sight, per tile (walls and closed doors are checked from terrain). */
   opaque = new Uint8Array(0);
   /** Wayfinding signs. */
@@ -60,7 +65,12 @@ export class Game {
   /** Cheapest one-credit round on any placed slot model (Infinity when there are none). */
   minRound = Infinity;
   readonly rooms = new RoomIndex();
-  readonly paths = new PathCache(this);
+  /**
+   * Door rules (M6): restricted doors (tiles), and one path cache per set of them a person can pass. With no
+   * restricted doors everyone shares the first ("" key).
+   */
+  gates: number[] = [];
+  private caches = new Map<string, PathCache>();
   readonly fields = new FieldEngine(this);
   readonly commandLog: CommandRecord[] = [];
   private queue: Command[] = [];
@@ -68,6 +78,7 @@ export class Game {
   constructor(public state: GameState) {
     this.rebuildOccupancy();
     this.rooms.detect(state);
+    this.gates = gateList(state);
     this.fields.init();
     for (const s of this.systems) s.init?.(this);
   }
@@ -90,7 +101,7 @@ export class Game {
       outcome: "",
     };
     for (const o of def.objects) {
-      const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot);
+      const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);
       if (o.bar && obj.bar) Object.assign(obj.bar, o.bar);
       state.objects.push(obj);
     }
@@ -103,13 +114,51 @@ export class Game {
     return g;
   }
 
+  /** Physically walkable: open floor, or any door that isn't locked. Who may pass a door is `pathsFor`'s business. */
   walkable = (i: number): boolean => {
     const t = this.state.map.terrain[i];
-    return (t === T.FLOOR && !this.occ[i]) || (t === T.DOOR && this.state.map.door[i] === DOOR_STATE.OPEN);
+    return (t === T.FLOOR && !this.occ[i]) || (t === T.DOOR && this.state.map.door[i] !== DOOR_STATE.LOCKED);
   };
 
+  /** The path cache for a key (a string of 0/1 per restricted door: may this person pass it). */
+  pathsKey(key: string): PathCache {
+    let c = this.caches.get(key);
+    if (!c) {
+      const gates = this.gates, pos = new Map(gates.map((t, k) => [t, k]));
+      c = new PathCache(this, (i) => {
+        if (!this.walkable(i)) return false;
+        const k = pos.get(i);
+        return k === undefined || key.charCodeAt(k) === 49;
+      });
+      this.caches.set(key, c);
+      for (const pc of this.caches.values()) pc.share = this.caches.size;
+    }
+    return c;
+  }
+
+  /** The path cache for this person: doors they can't pass (a rule, a fee they can't pay) are walls to them. */
+  pathsFor(a: Agent): PathCache {
+    return this.pathsKey(this.gates.length ? accessKey(this, a) : "");
+  }
+
+  /** Routes that pass no restricted door (street-side checks with nobody in particular walking). */
+  get publicPaths(): PathCache {
+    return this.pathsKey("0".repeat(this.gates.length));
+  }
+
+  /** Whether this person may step onto tile i (restricted doors checked). */
+  canWalk(a: Agent, i: number): boolean {
+    return this.walkable(i) && canPassGate(this, a, i);
+  }
+
+  /** Door rules changed: rebuild the gate list and drop every path cache. */
+  gatesChanged() {
+    this.gates = gateList(this.state);
+    this.caches.clear();
+  }
+
   /** Whether any placed object serves this need. */
-  has(serves: "thirst" | "bladder" | "cage" | "atm"): boolean {
+  has(serves: Serves): boolean {
     return this.amenities[serves].length > 0;
   }
 
@@ -120,7 +169,7 @@ export class Game {
     this.objById.clear();
     this.slotSectors.clear();
     this.seatTiles.clear();
-    this.amenities = { thirst: [], bladder: [], cage: [], atm: [] };
+    this.amenities = emptyAmenities();
     this.minRound = Infinity;
     for (const o of this.state.objects) {
       const def = OBJECTS[o.kind];
@@ -136,13 +185,14 @@ export class Game {
         const m = SLOT_MODELS[def.slot];
         this.minRound = Math.min(this.minRound, m.denom * WAGERS_PER_ROUND);
       }
-      for (const p of footprint(def, o.x, o.y, o.rot)) {
+      for (const p of objCells(o)) {
+        if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
         objAt[p.y * w + p.x] = o.id;
-        if (def.blocks) occ[p.y * w + p.x] = o.id;
-        if (def.opaque) opaque[p.y * w + p.x] = 1;
+        if (p.c.block) occ[p.y * w + p.x] = o.id;
+        if (p.c.opaque) opaque[p.y * w + p.x] = 1;
       }
       const st: number[] = [];
-      for (const s of seats(def, o.x, o.y, o.rot)) {
+      for (const s of objSeats(o)) {
         st.push(s.y * w + s.x);
         if (s.x >= 0 && s.y >= 0 && s.x < w && s.y < h) seatAt[s.y * w + s.x] = o.id;
       }
@@ -158,7 +208,10 @@ export class Game {
   tilesChanged(tiles: number[]) {
     this.rooms.detect(this.state);
     this.rooms.reconcile(this.state);
-    this.paths.invalidate(tiles);
+    // A door demolished (or built) can change the gate list itself: then every cache goes; else only what's touched.
+    const gates = gateList(this.state);
+    if (gates.join() !== this.gates.join()) this.gatesChanged();
+    for (const c of this.caches.values()) c.invalidate(tiles);
     this.fields.tilesChanged(tiles);
     for (const s of this.systems) s.layout?.(this, tiles);
     this.bus.emit({ type: "tilesChanged", tiles });

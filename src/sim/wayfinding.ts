@@ -21,6 +21,7 @@ const SIGN_REACH = 40;
 export function blocksSight(g: Game, i: number): boolean {
   const t = g.state.map.terrain[i];
   if (t === T.WALL || t === T.VOID) return true;
+  // Any door that isn't plain open counts as closed (docs/spec/construction.md).
   if (t === T.DOOR && g.state.map.door[i] !== DOOR_STATE.OPEN) return true;
   return g.opaque[i] === 1;
 }
@@ -96,7 +97,7 @@ export function explore(g: Game, a: Agent, r: Rng, fit: (i: number) => number, t
       const i = Y * w + X;
       // Diagonals can't squeeze between two blocked tiles.
       if (dx && dy && !g.walkable(y * w + X) && !g.walkable(Y * w + x)) break;
-      if (!g.walkable(i) || blocksSight(g, i)) break;
+      if (!g.canWalk(a, i) || blocksSight(g, i)) break;
       x = X; y = Y;
       if (!g.seatAt[i]) { end = i; len = k; }
     }
@@ -126,18 +127,19 @@ export function signLeg(g: Game, a: Agent, r: Rng, targets: number[]): number {
     const from = besideSign(g, s);
     if (from < 0) continue;
     let dest = -1, bd = SIGN_REACH + 1;
+    const paths = g.pathsFor(a);
     for (const t of targets) {
       const d = dist(w, from, t);
-      if (d < bd && g.paths.reachable(from, t)) { bd = d; dest = t; }
+      if (d < bd && paths.reachable(from, t)) { bd = d; dest = t; }
     }
     if (dest < 0) continue;
     let p = from;
     for (let k = 0; k < SIGN_LEG && p !== dest; k++) {
-      const j = g.paths.next(p, dest, a.id);
+      const j = paths.next(p, dest, a.id);
       if (j < 0) break;
       p = j;
     }
-    if (p !== here && g.paths.reachable(here, p)) return p;
+    if (p !== here && paths.reachable(here, p)) return p;
   }
   return -1;
 }

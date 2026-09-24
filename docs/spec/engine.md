@@ -15,7 +15,7 @@ What the engine provides (M1, with the M2 fixes) and the rules for extending it.
 
 ## Commands and events
 - Each system brings its own commands (M2 fix). It declares their shapes by augmenting `CommandTypes` (`declare module "./commands" { interface CommandTypes { hire: { role: string } } }`) and lists handlers in its `commands` table (`CommandTable<"hire" | "fire">`). `Game` collects every system's table at construction; a type claimed twice throws.
-- Current owners: `build` (build, place, remove, setRoom), `guests` (spawnGuests, clearGuests: debug/perf), `staff` (hire, fire), `incidents` (setRule), `cheats` (mark, enforce, setTreatment; docs/spec/cheats.md).
+- Current owners: `build` (build, place, remove, setRoom, setPrice), `doors` (setDoor; docs/spec/construction.md), `guests` (spawnGuests, clearGuests: debug/perf), `staff` (hire, fire), `incidents` (setRule), `cheats` (mark, enforce, setTreatment; docs/spec/cheats.md).
 - Each handler has `validate` (returns a player-readable reason) and `apply`. `dispatch` validates immediately and queues; the queue applies at the next tick after re-validating. The last 200 results are kept in `game.commandLog` (runtime). `game.check(cmd)` validates without queuing (build ghosts).
 - Events (`src/sim/events.ts`) are emitted during steps and delivered on `bus.flush()` (once per frame): tile changes, news, sounds, jackpots, breakdowns, day/month, command rejections. Never saved.
 
@@ -23,11 +23,11 @@ What the engine provides (M1, with the M2 fixes) and the rules for extending it.
 - Commands that change terrain or objects call `game.tilesChanged(tiles)`. It refreshes the engine caches (rooms, path fields, quality fields), then calls every system's `layout(g, tiles)` hook (M2 fix), then emits `tilesChanged`. Systems repair their own state there: movement moves agents off newly blocked tiles, guests drop seats on objects that vanished, staff drop targets.
 
 ## RNG
-- `rng(state, "name")` returns a stream whose position is saved in `state.rng[name]`, seeded from the scenario seed and the name. Streams so far: `walkers` (wander points), `guests`, `arrivals`, `gaming`, `staff`, `smoke`, plus `pool`, `street`, `incidents`, `police`, and `cheats` (luck, cheating spells, catches, enforcement; M5).
+- `rng(state, "name")` returns a stream whose position is saved in `state.rng[name]`, seeded from the scenario seed and the name. Streams so far: `walkers` (wander points), `guests`, `arrivals`, `gaming`, `staff`, `smoke` (the smoke test's player), `smokers` (M6), plus `pool`, `street`, `incidents`, `police`, and `cheats` (luck, cheating spells, catches, enforcement; M5).
 - `npm run boundaries` fails if `sim/` uses `Math.random`, `Date.now`, `new Date(`, or browser globals.
 
 ## Grid and rooms
-- Terrain per tile: `VOID` (unowned), `FLOOR`, `WALL`, `DOOR`, `WATER` (`src/data/terrain.ts`), plus `outdoor`, `fixed` (scenario-owned, can't be changed) and `door` state (open / staff / locked).
+- Terrain per tile: `VOID` (unowned), `FLOOR`, `WALL`, `DOOR`, `WATER` (`src/data/terrain.ts`), plus `outdoor`, `fixed` (scenario-owned, can't be changed) and `door` rule (open / staff / locked / card / dress code / one role, M6), with rule details and fees in `map.gates`.
 - Players build walls on floor, doors in non-fixed walls, and demolish non-fixed walls/doors. Entrance tiles stay clear.
 - Rooms are detected by 4-way flood fill over floor, split by walls, doors, and the indoor/outdoor edge. Names and purposes live in `state.roomMeta`, keyed by an anchor tile; a room keeps the first meta whose anchor lies inside it, and metas whose room vanished or merged are dropped.
 
@@ -37,6 +37,7 @@ Two levels (`src/sim/paths.ts`, rebuilt after M2 for the 8,000-guest target), al
 - **Anchor fields**: full-map BFS fields toward one anchor per room per 16×16 sector, shared by every destination of that room in that sector (memory-budgeted at 24 MB, so ~260 on the largest maps).
 - `paths.next(here, dest, id)` gives the next step. On a tile the destination's local field reaches, go downhill on it; anywhere else, go downhill on the anchor's field. The anchor is itself reached by the local field, so routes are strictly downhill on one field and then the other: they can't loop. A destination whose local field can't reach its anchor gets a full-map field of its own.
 - `paths.reachable(a, b)` is exact, from connected-component labels of the walkable grid.
+- **Door rules (M6):** one `PathCache` per set of restricted doors a person may pass (`Game.pathsFor(agent)`, keyed by a 0/1 per restricted door). With no restricted doors there is one cache, as before; the memory budget is split between caches. Changing a door rule drops them all.
 - A layout change drops components, anchors and local fields wholesale (they're cheap), and full-map fields that reached a changed tile or its neighbor.
 - Walkable = floor without a blocking object, or an open door. Tie order between equal steps alternates by agent id, so crowds spread over parallel routes.
 - Guests look for machines within 3 sectors (~50 tiles), nearest 16 free ones considered, using a per-sector index of slots.

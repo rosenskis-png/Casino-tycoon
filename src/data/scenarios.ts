@@ -1,5 +1,6 @@
 // Scenario maps, starting setups, populations and goals as data (FOUNDATIONS §20).
 import type { RoomPurpose } from "./rooms";
+import { DOOR_STATE } from "./terrain";
 export interface Rect { x: number; y: number; w: number; h: number }
 
 export interface Goals {
@@ -40,7 +41,9 @@ export interface ScenarioDef {
    */
   market: Record<string, { size: number; regulars: number }>;
   /** Starting objects; a bar may start with its own drink policy (price multiplier, comped share, strength). */
-  objects: { kind: string; x: number; y: number; rot: number; bar?: { price?: number; comp?: number; strength?: number } }[];
+  objects: { kind: string; x: number; y: number; rot: number; w?: number; h?: number; bar?: { price?: number; comp?: number; strength?: number } }[];
+  /** Door rules set by the scenario (data/terrain DOOR_STATE; docs/spec/construction.md). */
+  gates?: { x: number; y: number; rule: number; arg?: string; fee?: number }[];
   staff: Record<string, number>;
   /** Guests who come on purpose: weight per guest type (multiplies the type's own base). */
   population: Record<string, number>;
@@ -123,6 +126,18 @@ function testFloor(): ScenarioDef {
   }
   // A quiet back room of quarter machines.
   objects.push(...row("slot_cherry", 39, 8, 8));
+  // The east wing (M6): a high-limit room (next to the quiet back room), a show lounge and a club off the floor;
+  // a restaurant, a smoking room and a card holders' lounge bar beyond them, with restrooms.
+  objects.push(
+    ...row("slot_liberty", 51, 7, 8, 0), ...row("slot_thunder", 51, 10, 8, 2), { kind: "plant", x: 59, y: 12, rot: 0 },
+    { kind: "showlounge", x: 51, y: 14, rot: 0, w: 9, h: 7 },
+    { kind: "club", x: 51, y: 23, rot: 0, w: 9, h: 5 }, { kind: "restroom", x: 51, y: 28, rot: 0, w: 3, h: 2 },
+    { kind: "restroom", x: 69, y: 10, rot: 0, w: 3, h: 2 }, { kind: "restroom", x: 69, y: 28, rot: 0, w: 3, h: 2 },
+    { kind: "restaurant", x: 63, y: 6, rot: 0, w: 6, h: 4 },
+    ...row("slot_cherry", 63, 16, 8, 0), ...row("slot_liberty", 63, 19, 8, 2),
+    { kind: "bar", x: 64, y: 24, rot: 0, w: 5, h: 3 }, { kind: "plant", x: 72, y: 24, rot: 0 },
+    { kind: "sign", x: 60, y: 20, rot: 0 }, { kind: "sign", x: 47, y: 19, rot: 0 }, { kind: "sign", x: 47, y: 7, rot: 0 },
+  );
   objects.push(
     // The back-corner bar pours strong drinks, a quarter of them free: the rowdy end of the floor.
     { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0, bar: { strength: 1.4, comp: 0.25 } },
@@ -130,7 +145,7 @@ function testFloor(): ScenarioDef {
     { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
     { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 41, y: 30, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
-    { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 43, y: 25, rot: 0 },
+    { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 43, y: 23, rot: 0 },
     { kind: "sign", x: 7, y: 17, rot: 0 }, { kind: "sign", x: 23, y: 11, rot: 0 }, { kind: "sign", x: 38, y: 12, rot: 0 },
     // Cameras over the slot banks and the back room, watched from the office; a dumpster out back.
     { kind: "camera", x: 8, y: 20, rot: 0 }, { kind: "camera", x: 18, y: 21, rot: 0 }, { kind: "camera", x: 28, y: 21, rot: 0 },
@@ -139,14 +154,25 @@ function testFloor(): ScenarioDef {
   );
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 3, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1 },
-    // Two small rooms in the front-right corner: a security office and an enforcement room.
-    walls: [...LOT.walls, { x: 44, y: 23, w: 1, h: 8 }, { x: 45, y: 23, w: 4, h: 1 }, { x: 45, y: 27, w: 4, h: 1 }],
-    doors: [...LOT.doors, [44, 25], [44, 29]],
-    rooms: [{ x: 46, y: 25, name: "Security office", purpose: "office" }, { x: 46, y: 29, name: "Back room", purpose: "enforcement" }],
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1 },
+    // The tutorial lot, widened for the east wing.
+    w: 80, grounds: [{ x: 2, y: 2, w: 76, h: 40 }], buildings: [...LOT.buildings, { x: 49, y: 4, w: 25, h: 28 }],
+    sidewalks: [{ from: [0, 42], to: [79, 42] }],
+    // Two small rooms in the front-right corner: a security office and an enforcement room (staff only). The
+    // east wing splits into six rooms.
+    walls: [...LOT.walls, { x: 44, y: 23, w: 1, h: 8 }, { x: 45, y: 23, w: 4, h: 1 }, { x: 45, y: 27, w: 4, h: 1 },
+      { x: 61, y: 5, w: 1, h: 26 }, { x: 50, y: 13, w: 11, h: 1 }, { x: 50, y: 21, w: 11, h: 1 }, { x: 62, y: 13, w: 11, h: 1 }, { x: 62, y: 22, w: 11, h: 1 }],
+    doors: [...LOT.doors, [44, 25], [44, 29], [49, 9], [49, 18], [49, 22], [61, 9], [61, 18], [61, 27], [60, 13], [67, 13]],
+    gates: [{ x: 44, y: 25, rule: DOOR_STATE.STAFF }, { x: 44, y: 29, rule: DOOR_STATE.STAFF }, { x: 61, y: 27, rule: DOOR_STATE.CARD }],
+    rooms: [
+      { x: 46, y: 25, name: "Security office", purpose: "office" }, { x: 46, y: 29, name: "Back room", purpose: "enforcement" },
+      { x: 50, y: 11, name: "High limit", purpose: "highlimit" }, { x: 50, y: 20, name: "Showroom", purpose: "show" },
+      { x: 50, y: 24, name: "Club", purpose: "club" }, { x: 62, y: 12, name: "Diner", purpose: "restaurant" },
+      { x: 62, y: 15, name: "Smoking lounge", purpose: "smoking" }, { x: 62, y: 23, name: "Members' bar", purpose: "bar" },
+    ],
     footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
     market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 400, goals: null, tools: 4,
+    population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4,
   };
 }
 

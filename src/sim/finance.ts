@@ -1,15 +1,16 @@
 // Books (FOUNDATIONS §14, docs/spec/clock.md): every cash movement posts to a category. Wages and upkeep are
 // monthly figures accrued each beat so cash moves smoothly; the month's ledger closes on the 1st.
-import { OBJECTS } from "../data/objects";
 import { STAFF_ROLES } from "../data/staff";
 import { MONTH_NAMES, TICKS_PER_BEAT, TICKS_PER_DAY, dateOfDay, daysInMonth } from "./clock";
 import type { Game } from "./game";
 import type { System } from "./registry";
 import { fmtMoney, news } from "./news";
+import { priceOf } from "./geometry";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", bar: "Bar sales", build: "Construction", sales: "Sold objects",
   wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics", recovered: "Recovered from cheats",
+  food: "Food sales", foodCost: "Food costs", shows: "Show tickets", cover: "Cover charges", doors: "Door fees",
 };
 const HISTORY_MONTHS = 24;
 
@@ -25,14 +26,14 @@ export function post(g: Game, cat: string, amount: number) {
 export function monthlyCosts(g: Game): { wages: number; upkeep: number } {
   let wages = 0, upkeep = 0;
   for (const a of g.state.agents) wages += STAFF_ROLES[a.role]?.wage ?? 0;
-  for (const o of g.state.objects) upkeep += OBJECTS[o.kind].upkeep;
+  for (const o of g.state.objects) upkeep += priceOf(o).upkeep;
   return { wages, upkeep };
 }
 
 /** Cash plus what everything placed would sell for. */
 export function worth(g: Game): number {
   let v = g.state.cash;
-  for (const o of g.state.objects) v += OBJECTS[o.kind].cost / 2;
+  for (const o of g.state.objects) v += priceOf(o).cost / 2;
   return v;
 }
 

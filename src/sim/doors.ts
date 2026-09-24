@@ -49,10 +49,12 @@ export const gateOf = (s: GameState, i: number): Gate | undefined => s.map.gates
 /** Staff, police and paramedics, guests held by security, and guests staff let out: past staff-only doors, free. */
 const escorted = (a: Agent) => !a.g || a.g.held > 0 || a.g.esc > 0;
 
-function passes(a: Agent, q: GateInfo): boolean {
+function passes(a: Agent, q: GateInfo, w: number): boolean {
   const gd = a.g;
   if (q.rule === DOOR_STATE.ROLE) return a.role === q.arg || (!!gd && gd.held > 0);
   if (escorted(a)) return q.rule !== DOOR_STATE.LOCKED;
+  // Whoever is in the doorway (they paid on the way in) may step off it, whatever their wallet says now.
+  if (a.y * w + a.x === q.i || a.ny * w + a.nx === q.i) return true;
   if (gd!.wallet + 1e-9 < q.fee) return false;
   if (q.rule === DOOR_STATE.OPEN) return true;
   if (q.rule === DOOR_STATE.CARD) return gd!.card > 0;
@@ -63,14 +65,15 @@ function passes(a: Agent, q: GateInfo): boolean {
 /** 0/1 per restricted door: which ones this person may pass right now (their path cache key). */
 export function accessKey(g: Game, a: Agent): string {
   let k = "";
-  for (const q of gateInfos(g)) k += passes(a, q) ? "1" : "0";
+  const w = g.state.map.w;
+  for (const q of gateInfos(g)) k += passes(a, q, w) ? "1" : "0";
   return k;
 }
 
 export function canPassGate(g: Game, a: Agent, i: number): boolean {
   if (!g.gates.length) return true;
   const q = gateInfos(g).find((x) => x.i === i);
-  return !q || passes(a, q);
+  return !q || passes(a, q, g.state.map.w);
 }
 
 /** Someone just stepped onto tile i: a guest walking through a door with a fee pays it. */

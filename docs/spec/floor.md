@@ -3,10 +3,10 @@
 ## Objects
 - `src/data/objects.ts`: footprint, cost, monthly upkeep, blocking, emissions, seats (access tiles) and what using it does. Geometry is given for rotation 0 (front faces down); `src/sim/geometry.ts` rotates footprint and seats. Rotation is picked in the Build tab.
 - Seats must be open floor, may not sit under another object or on another object's seat, and nothing may be built on a seat. Seat kinds: stool, stand, hidden (restroom stalls).
-- Amenities in M2 are fixed-size objects, not drag-sized zones (FOUNDATIONS §8 wants zones with tiers; that arrives with construction depth in M6). Bartender and teller cost is folded into upkeep.
-  - Bar (3×1, three stools): 15–30 s, $7 a drink, resets thirst, may intoxicate, may spill.
-  - Restrooms (2×2, two stalls): 5–9 s out of sight.
-  - Cashier cage (2×1, two windows): cash-outs on the way home, withdrawals for guests who ran dry.
+- Since M6 the bar, restrooms and cage are sized amenities (docs/spec/construction.md), along with the restaurant, show lounge and nightclub. Bartender and teller cost is folded into upkeep.
+  - Bar (3×2 by default: counter and three stools): $7 a drink, resets thirst, may intoxicate, may spill.
+  - Restrooms (2×2 by default, two stalls): 5–9 s out of sight.
+  - Cashier cage (2 windows by default): cash-outs on the way home, withdrawals for guests who ran dry.
 
 ## Staff (`src/sim/staff.ts`)
 - Hired from the Staff tab; they walk in from the street entrance. Fired staff leave at once. Wages are monthly.

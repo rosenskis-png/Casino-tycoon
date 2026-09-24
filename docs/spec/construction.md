@@ -22,9 +22,12 @@ Tap a door the player built to open its card. Scenario doors and entrances can't
 - **Routing:** every rule is real pathfinding. People who can't pass a door route around it or, when there's no
   way around, can't get there. Guests search and give up on needs as before (docs/spec/navigation.md).
 - **Trapped guests:** someone with no way out they're allowed through (a fee they can't pay on the only exit, a
-  dress-code door that isn't theirs) is trapped, and angry. After 90 seconds staff let them out: from then on
-  they pass any door except locked ones, without paying. Each guest let out this way costs 1 point of police
-  standing (a complaint).
+  dress-code door that isn't theirs) is trapped, and angry. After 90 seconds staff let them out, if any route out
+  exists past unlocked doors: from then on they pass any door except locked ones, without paying. Each guest let
+  out this way costs 1 point of police standing (a complaint). Walls are walls: behind locked doors or walls
+  they stay trapped, as before (docs/spec/navigation.md).
+- Whoever is standing in a doorway can always step off it (a guest who paid the fee and can't afford it again
+  isn't stuck in the door).
 - **Sight:** any door that isn't Open blocks sight, like a closed door today.
 - **Pathfinding (engine):** each rule set is a separate walkability layer. People who can pass the same set of
   restricted doors share one `PathCache`. With no restricted doors, one cache serves everyone, as before.
@@ -63,7 +66,9 @@ DJ are part of the amenity: they are drawn, and their pay is folded into upkeep 
 
 ## Why guests come (intent)
 - On arrival, some people come *for* something the casino has: a meal, a show, the club (`comeFor` per type).
-  They head there first. Afterwards some gamble with what's left ("Might as well try my luck").
+  They head there first. They don't sightsee first, they know roughly where it is (straight-line guessing
+  toward the nearest one, so a maze still defeats them), and they search 6 hops longer before giving up.
+  Afterwards some gamble with what's left ("Might as well try my luck"). A group shares the leader's reason.
 - Amenities also draw extra arrivals: each kind the casino has adds `comeFor` × (1 + 0.25 × tier) to the type's
   arrival rate (new arrivals and walk-ins).
 - **Visit score:** time at a meal, a show or dancing counts as time well spent, next to play time. Value =
@@ -85,9 +90,11 @@ A purpose is set on the room card. Effects:
   unchanged). Adds prestige and privacy throughout the room. Guests only sit there if their usual stake covers
   the minimum. Big bankrolls like it; small ones feel out of place.
 - **Smoking room:** smoke throughout the room, leaking through walls and doors. Smokers (a per-person trait:
-  Locals 25%, Retirees 15%, Tourists 15%, Party 35%) get an urge every 3–6 minutes. They satisfy it in a smoking
-  room (stay 20 s, or keep playing if they're already inside) or outdoors, if they can get there. If they can't,
-  they grow annoyed ("I need a smoke"), and leave early at the end. Non-smokers dislike smoke (the SMK taste);
+  Locals 25%, Retirees 15%, Tourists 15%, Party 35%; drawn on their own `smokers` stream) feel the urge build to
+  must-smoke about every 4½ minutes. They satisfy it in a smoking room (stay 20 s, or just light up where they
+  sit if they're already inside) or out on the lot, if they can get there; butts end up on the floor outside.
+  If there's nowhere, they grow annoyed ("I need a smoke") and cut the visit short (90 s more at most). Non-
+  smokers dislike smoke past a low tolerance (the SMK taste, a penalty only, so clean air changes nothing);
   smokers barely mind it.
 - **Enforcement room, Back office:** as in M5 (docs/spec/cheats.md).
 
@@ -97,6 +104,37 @@ A purpose is set on the room card. Effects:
   order. Restrooms and cages keep their shape.
 - Per-amenity prices (`price`) on restaurants, shows and clubs. Door rules and fees in `map.gates`.
 - Guests: new intents, `smoker`, `urge`, `esc` (let out by staff), and `mem.fun` / `mem.spent`.
+
+## Engine notes
+- `Game.walkable(i)` is now physical walkability (floor, or any door that isn't locked). Who may pass a door
+  is the path cache's business: `Game.pathsFor(agent)` (people), `Game.publicPaths` (nobody in particular),
+  `Game.canWalk(agent, i)` (a single step, for wayfinding's sight lines).
+- Sized amenities: `src/sim/layout.ts` builds cells (blocking or walkable), seats and staff spots from the size,
+  memoized; `src/sim/geometry.ts` rotates them (`objCells`, `objSeats`, `objStaff`, `priceOf`, `seatCount`).
+  Seats may lie on the amenity's own walkable cells; restroom stalls and cage windows sit off the front edge as
+  before (several stalls can share a tile).
+- Amenity helpers in `src/sim/amenities.ts`: tiers, prices, the show schedule, room purposes, the arrival pull
+  and intents, and the high-limit stake multiplier (a runtime cache per room list).
+- Fields: sized amenities give off more with size (strength × √(area ÷ default area), radius +½ per extra tile,
+  capped at 10) and +1.5 prestige per tier; room purposes add sources on a 3-tile grid (smoke 2 / radius 4;
+  high-limit prestige and privacy 1.2 / radius 4).
+
+## Measured (Test Floor, `npm run targets`, 300 days, seed 1)
+The Test Floor gained an east wing (M6): a high-limit room beside the quiet back room, a 9×7 show lounge
+("Theater"), a 9×5 club ("Superclub") with restrooms, then a restaurant ("Buffet") with restrooms, a smoking
+room of slots, and a card holders' bar ("Grand bar") behind a card door; the office and enforcement room doors
+are staff only.
+- Came for a meal / show / club: Locals 16/5/3%, Retirees 18/18/0%, Tourists 12/23/9%, Party 1/3/39%.
+- Had some fun (a meal, a show, dancing): 18% / 32% / 39% / 42% of guests, about a minute each.
+- 300 days: 220 meals, 308 show seats filled, 282 dances; food $4.1K (cost $1.4K), cover $2.9K; 23% smokers.
+- Reputation after 300 days: Locals 63, Retirees 60, Tourists 54, Party 52 (M5 on the old Test Floor: 63 / 58
+  / 48 / 46). No sanity flags.
+- The diner sits two rooms deep: about a quarter of the people who come for a meal give up finding it, which
+  is the maze working as designed.
+- Big Floor steady state (5,000 guests): ~2.3 ms/tick (m5: ~2.1). Much of the difference is smokers walking out
+  to the lot.
+- Fixed on the way: a sign blocked the Test Floor's office door since M5, so its surveillance operator never
+  reached the desk (camera catches were never measured there). It now watches.
 
 ## M6.5 (next): themes, outdoors, parcels
 - **12 themes:** Ancient Rome, Ancient Egypt, Medieval, Rock & Roll; luxury: Gilded Deco, Modern Luxe,

@@ -333,7 +333,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   tagGuest(g, gd, person, lead);
   gd.browse = Math.round(type.browse * range(r, [0.5, 1.5]) * (1 - gd.know) * (gd.memDate >= 0 ? 0.3 : 1));
   // Smokers (M6), drawn on their own stream so adding them left every other draw where it was.
-  const rs = rng(s, "smoke");
+  const rs = rng(s, "smokers");
   if (rs.chance(type.smokers)) { gd.smoker = 1; gd.urge = rs.int(0, 60); }
   // People who came for a meal, a show or the club don't sightsee first.
   if (INTENT_NEED[came]) gd.browse = 0;
@@ -357,7 +357,7 @@ export function spawnGroup(g: Game, typeId: string, at: number, person: Person |
     const m = spawnGuest(g, typeId, at, null, leader, sexOf());
     if (m) out.push(m);
   }
-  g.bus.emit({ type: "arrived", guestType: typeId, n: out.length, regular: person ? 1 : 0 });
+  g.bus.emit({ type: "arrived", guestType: typeId, n: out.length, regular: person ? 1 : 0, intent: leader.g!.intent });
   if (person && person.mark & 4) news(g, "warn", `Marked guest ${guestName(person.name)} is back.`);
   if (out.length > 1) groupMaps.delete(g);
   return out;
@@ -412,6 +412,7 @@ export function depart(g: Game, a: Agent, vanished = false) {
     budget: gd.bankroll, lost: gd.mem.wagered - gd.mem.won, intend: gd.mem.startIntend, peak: gd.mem.peak,
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
+    fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker,
   });
   if (!vanished) walkAway(g, a);
   gone(g).add(a.id);

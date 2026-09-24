@@ -12,11 +12,13 @@ export type SimEvent =
   | { type: "commandRejected"; command: string; reason: string }
   | { type: "jackpot"; obj: number; amount: number; x: number; y: number }
   | { type: "broken"; obj: number }
-  | { type: "arrived"; guestType: string; n: number; regular: number }
+  | { type: "arrived"; guestType: string; n: number; regular: number; intent: string }
   | {
       type: "departed"; guestType: string; pid: number; lead: number; minutes: number; play: number; budget: number; lost: number;
       intend: number; peak: number; atm: number; drinks: number; served: number; withdrawn: number; trips: number; score: number; why: string; chase: number;
       warned: number; ejected: number; cheat: number; luck: number; caught: number; won: number; wagered: number;
+      /** M6: minutes at a meal, a show or dancing; money spent on them and at doors; a smoker. */
+      fun: number; spent: number; smoker: number;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

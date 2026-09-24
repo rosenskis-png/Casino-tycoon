@@ -7,7 +7,7 @@ Guests don't know the floor. They act on what they can see, what they remember, 
 2. **Walking.** Once a guest picks a target it can see or knows the route to, it walks there on the path fields (`src/sim/paths.ts`). Locomotion is unchanged.
 
 ## Sight
-- Walls, closed or staff doors, and objects flagged `opaque` block sight: slot machines, restrooms, the cage. Bars, plants, fountains, neon and signs don't.
+- Walls, any door that isn't plain open (M6 rules: staff, locked, card, dress code, one role), and objects flagged `opaque` block sight: slot machines, restrooms, the cage. Bars, plants, fountains, neon and signs don't. Guests route around doors they may not pass (docs/spec/construction.md).
 - Sight radius 12 tiles. Line of sight is a short ray cast (Bresenham), done only when a guest decides what to do next, never every tick. Nothing is cached or saved.
 - Machines: a guest checks sight lines to at most 40 machines per look (a glance, not a survey), besides any it already knows.
 

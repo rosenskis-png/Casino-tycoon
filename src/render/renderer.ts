@@ -357,7 +357,7 @@ export class Renderer {
       ctx.restore();
       return;
     }
-    ctx.fillStyle = "#2a1a00";
+    ctx.fillStyle = "#ffd23f";
     ctx.fillText(c.d.name.toUpperCase().slice(0, 14), cx, py + 3.6 * scale);
     const host = { meters: g.state.meters, own: {}, id };
     const shared = c.levels.map((l, i) => ({ l, i })).filter((q) => q.l.kind === "linked" || q.l.kind === "mhb").slice(-2).reverse();
@@ -367,7 +367,7 @@ export class Renderer {
       ctx.fillStyle = cols[k];
       ctx.shadowColor = cols[k];
       ctx.shadowBlur = 3 * scale;
-      ctx.fillText(`$${v >= 1e5 ? Math.round(v).toLocaleString("en-US") : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, cx, py + (5.8 + k * 2.9) * scale);
+      ctx.fillText(`$${v >= 1e5 ? Math.round(v).toLocaleString("en-US") : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, cx, py + (6 + k * 2.6) * scale);
     });
     ctx.restore();
   }

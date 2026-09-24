@@ -656,8 +656,9 @@ export function Machine(p: MachineProps) {
         const l = c.levels[i];
         return (
           <div key={i} className={`meter ${l.kind !== "fixed" ? "prog" : ""}`} style={{ "--mc": levelColor(levels, i) } as CSSProperties}>
-            <small>{levelName(levels, i)}{l.kind === "linked" ? " · LINKED" : l.kind === "mhb" ? ` · MUST HIT BY ${fmt(l.cap * d.maxBet * d.denom)}` : ""}</small>
+            <small>{levelName(levels, i)}{l.kind === "linked" ? " 🔗" : ""}</small>
             <b>{fmt(meterOf(i))}</b>
+            {l.kind === "mhb" && <em>MUST HIT BY {fmt(l.cap * d.maxBet * d.denom).replace(".00", "")}</em>}
           </div>
         );
       }) : c.q > 0 ? (

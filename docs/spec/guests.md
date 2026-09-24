@@ -113,6 +113,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 - **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
 - Drawn a row shorter in bright tees and caps.
 
+M8.5 Test Floor (five bonus games replace eight old machines, a linked bank with a sign; wider ratings, recalibrated slot appeal, hunters): visit length 5.9 / 7.2 / 4.7 / 5.6 / 8.1 / 5.5 / 5.1 min, playing 2.3 / 3.4 / 1.1 / 1.0 / 3.3 / 1.2 / 1.7, loss per visit $39 / $31 / $50 / $38 / $286 / $24 / $53, visit score 0.66 / 0.65 / 0.59 / 0.62 / 0.59 / 0.63 / 0.62; reputation after 300 days 70 / 65 / 57 / 60 / 59 / 56 / 57. No sanity flags.
+
 M8 Test Floor (designed machines of every cabinet type; guests judge slots by design): visit length 5.8 / 6.8 / 5.0 / 5.3 / 6.1 / 5.1 / 4.9 min, playing 2.5 / 3.1 / 1.0 / 0.6 / 2.2 / 0.8 / 0.9, loss per visit $42 / $28 / $36 / $10 / $40 / $5 / $32, visit score 0.67 / 0.63 / 0.59 / 0.64 / 0.61 / 0.62 / 0.64; reputation after 300 days 68 / 64 / 60 / 63 / 61 / 59 / 57. No sanity flags.
 
 M9.6 Test Floor (vice and drugs on Moderate, a hotel elevator; 342 guests came by it): visit length 5.5 / 6.5 / 4.7 / 4.8 / 8.4 / 5.2 / 4.1 min, playing 2.2 / 2.8 / 0.9 / 0.9 / 3.5 / 0.8 / 1.0, visit score 0.63 / 0.62 / 0.58 / 0.57 / 0.60 / 0.66 / 0.68; reputation after 300 days 68 / 64 / 58 / 58 / 58 / 59 / 59. 65 escort pitches (19 left with one), 7 hookups, 37 drug uses. No sanity flags.

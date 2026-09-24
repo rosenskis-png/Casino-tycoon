@@ -465,18 +465,18 @@ const SIGN = [
 ];
 const SIGN_PAL = { L: "#2f7a52", G: "#1e5a3c", g: "#123a26" };
 
-// (M8.5) Bank sign (32×24): a gold marquee on two posts; a lit title strip and three rows of meter digits. The
-// renderer writes the design's live meters over it.
+// (M8.5) Bank sign (32×24): a gold marquee on two posts with a dark board; the renderer writes the game's name and
+// its live meters on it.
 const BANK_SIGN = [
   ".999999999999999999999999999999.",
   "98888888888888888888888888888889",
   "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
-  "98yqqqqyYYYYYYYYYYYYYYYYYYYYyy89",
+  "98yYYYYYYYYYYYYYYYYYYYYYYYYYYy89",
   "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
-  "98yxxxxyxxxxyxxxxyxxxxyxxxxyyy89",
-  "98yxXxxyxXxxyxXxxyxXxxyxXxxyyy89",
   "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
-  "98yzzzzyzzzzyzzzzyzzzzyzzzzyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
+  "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
   "98yyyyyyyyyyyyyyyyyyyyyyyyyyyy89",
   "98888888888888888888888888888889",
   ".777777777777777777777777777777.",

@@ -229,3 +229,4 @@
 .sm-banner.k-hns,.sm-banner.k-pick{background:radial-gradient(ellipse,rgba(60,0,60,.9),rgba(0,0,0,.7))}
 .sm-banner.k-small b{font-size:18px}
 .sm-hns .spot.orb b,.sy.orb b{color:#fff;-webkit-text-stroke:0;text-shadow:0 1px 0 #000,0 0 3px #000,0 0 6px #000;font-size:calc(var(--cell) * .24)}
+.sm-meters .meter em{font:900 7px/1.1 Impact,sans-serif;font-style:normal;letter-spacing:.5px;color:#fff;opacity:.85;white-space:nowrap}

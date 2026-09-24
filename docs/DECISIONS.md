@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8.5 built: bonuses and progressives (Claude's calls; see docs/spec/designer.md "As built in M8.5")
+- Everything in the M8.5 plan and the owner's notes: hold & spin, pick, wheel (and the topper wheel), cascades, collector, offer and mystery, each exact and with its own screen; standalone, linked and must-hit-by progressives; bank signs; hunters; onlookers; the pull of big meters; opinions by game kind for six months; a lifetime performance index explained in game; logo fonts and the machine's face; interface size; spaces in names; the slam-stop and no-spoiler fixes.
+- **Found causes of the owner's bugs:** names lost their spaces because every keystroke trimmed the name; a tap during free spins jumped to the end of the whole feature (showing its total), and the "up/down" line and the top bar showed a result as soon as the sim settled it.
+- **Ratings (owner):** volatility now spans Intensity ~1 to 10 (big wins' share 0-90%, higher top awards, flatter at the top); Excitement is steeper and the panel leans toward the guests who'd sit down, so a game made for its crowd rates high and a clumsy one low (2.5-8.4 on a mixed panel; 0-10 per type). The stock designs keep their M8 math (volatility values re-expressed); slot appeal was refitted and the original three stay within ±0.15.
+- **Must-hit-by meters are per design (linked)**, like real mystery banks; collectors always keep progress on the machine (a per-player reset would make payback inexact); opinions are not yet split by guest type. Flagged for the owner in the hand-off.
+- **Progressive chance scales with the bet** (payback the same at every bet within 0.01%); in the lab a progressive pays its average.
+- Five stock bonus games (Ember Link, Grand Wheel, Neon Tumble, Prospector's Haul, Treasure Cove) replace eight old machines on the Test Floor; numbers stay close to M8 (docs/spec/guests.md), no sanity flags. Tutorial year-end cash moves with seed luck (one seed hit an early big jackpot). Big Floor steady state within ~5% of m8.
+- Save schema 16 (migration from 15).
+
 ## 2026-09-24 · Green light for M8.5 (owner's answers)
 - Owner said "green light for m8.5" and agreed to the plan, with changes:
   - **Big meters draw guests even without a bank sign**, just less; a sign strengthens the pull.

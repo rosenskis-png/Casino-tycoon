@@ -10,10 +10,11 @@ import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
 import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
+import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
 import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
-  incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER,
+  incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   type Agent, type Ledger, type HouseRules,
 } from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
@@ -78,7 +79,15 @@ function roleDoing(g: Game, a: Agent): string {
     case "respond": return "Dealing with trouble";
     case "treat": return "Treating a guest";
     case "wait": return "Waiting for the others";
+    case "held": return a.g?.caught ? "Caught cheating: held by security" : "Held by security";
+    case "enforce": return "Dealing with a guest";
+    case "carry": return "Taking something out back";
+    case "watch": return "Watching the cameras";
     case "walk":
+      if (a.next === "held") return "Being walked away by security";
+      if (a.next === "enforce") return "On the way to a guest";
+      if (a.next === "carry") return "Carrying a bag out back";
+      if (a.next === "watch") return "Going to the camera desk";
       if (a.next === "leave") return a.role === "guest" ? "Heading home" : "Leaving";
       if (a.next === "clean") return "Off to sweep up";
       if (a.next === "repair") return `On the way to fix ${name}`;
@@ -332,6 +341,27 @@ export function AuthoritiesPanel({ host }: { host: Host }) {
       {list.map(([k, n]) => (
         <div className={`thought ${INCIDENTS[k].mood < 0 ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{INCIDENTS[k].name}</span></div>
       ))}
+      <EnforcementSummary g={g} rates={rates} />
+    </>
+  );
+}
+
+function EnforcementSummary({ g, rates }: { g: Game; rates: Record<string, number> }) {
+  const s = g.state, cov = coverage(g);
+  const enforcers = s.agents.filter((a) => a.role === "enforcer").length;
+  const room = purposeTiles(g, "enforcement").length > 0, office = purposeTiles(g, "office").length > 0;
+  const heat = s.enf.heat;
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Cheats and enforcement</p>
+      <div className="kv">
+        <b>Caught</b><span className="num">{Math.round(rates._caught ?? 0)} a day · {Math.round(rates._enf ?? 0)} dealt with · {Math.round(rates._banned ?? 0)} banned</span>
+        <b>Cameras</b><span className="num">{cov.cams} · {cov.watching} operator{cov.watching === 1 ? "" : "s"} watching{cov.cams ? ` (${Math.round(cov.share * 100)}% covered)` : ""}{cov.cams && !office ? " · no Back office" : ""}</span>
+        <b>Enforcers</b><span className="num">{enforcers}{room ? "" : " · no enforcement room (it happens on the floor)"}</span>
+        <b>Heat</b><span className={`num ${heat >= 4 ? "neg" : ""}`}>{heat < 0.5 ? "None" : heat < 2 ? "Low" : heat < 4 ? "Talked about" : heat < 8 ? "High" : "Notorious"}</span>
+      </div>
+      <p className="muted" style={{ margin: "6px 0 0" }}>What happens to a cheat your staff catch:</p>
+      <TreatmentEditor g={g} />
     </>
   );
 }
@@ -389,10 +419,84 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       {companionsText(g, a) && <p className="muted">{companionsText(g, a)}</p>}
       {incidentOf(g, a.id) && !INCIDENTS[incidentOf(g, a.id)!.kind].hidden && <p className="lv-warn">{INCIDENTS[incidentOf(g, a.id)!.kind].name}</p>}
       {(gd.warned > 0 || gd.unans > 0) && <p className="muted">{gd.warned > 0 ? `Warned by security${gd.warned > 1 ? ` ${gd.warned} times` : ""}. ` : ""}{gd.unans > 0 ? `${gd.unans} of their reports went unanswered${gd.called ? "; they called the police" : ""}.` : ""}</p>}
+      {gd.caught > 0 && <p className="lv-bad">Caught cheating.</p>}
       {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && (
         <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{wording(t, gd.type, gd.name)}”</p>
       ))}
+      <SuspicionTools g={g} a={a} />
+      <MarkAndAct g={g} a={a} />
       {host.debug && <GuestDebug g={g} a={a} />}
+    </div>
+  );
+}
+
+const mins = (secs: number) => (secs < 60 ? `${Math.round(secs)} s` : `${(secs / 60).toFixed(1)} min`);
+
+/** The suspicion tools this scenario allows (docs/spec/cheats.md), tier by tier. */
+function SuspicionTools({ g, a }: { g: Game; a: Agent }) {
+  const tier = SCENARIOS[g.state.scenario].tools;
+  if (!tier) return null;
+  const q = suspicion(g, a);
+  const sign = (n: number) => `${n >= 0 ? "+" : "−"}${money(Math.abs(n))}`;
+  return (
+    <div className="kv" style={{ marginTop: 8 }}>
+      <b>Time</b><span className="num">{mins(q.floorSecs)} here{q.machineSecs ? ` · ${mins(q.machineSecs)} at this machine` : ""}</span>
+      {tier >= 2 && <><b>Result</b><span className="num">{sign(q.net)} vs {sign(q.expected)} expected · {q.reading}</span></>}
+      {tier >= 3 && <><b>Money</b><span className="num">{money(q.wallet)} now · brought {money(q.brought)}{q.trips ? ` · ATM ${money(q.drawn)} (${q.trips} trip${q.trips === 1 ? "" : "s"})` : " · no ATM"}</span></>}
+      {tier >= 4 && <><b>Cheat estimate</b><span className={`num ${q.estimate >= 0.5 ? "neg" : ""}`}>{Math.round(q.estimate * 100)}%</span></>}
+    </div>
+  );
+}
+
+const ACTION_VERB: Record<EnfAction, string> = { warn: "Warn", ban: "Ban for life", beat: "Beat up", vanish: "Make disappear" };
+
+/** Mark a guest (with alerts), and order enforcement: the dark two ask for a second tap. */
+function MarkAndAct({ g, a }: { g: Game; a: Agent }) {
+  const [armed, setArmed] = useState<EnfAction | "">("");
+  const gd = a.g!, mark = gd.mark;
+  const job = g.state.enf.jobs.find((j) => j.id === gd.held);
+  const setMark = (flags: number) => g.dispatch({ type: "mark", id: a.id, flags });
+  return (
+    <>
+      <div className="row">
+        <label><input type="checkbox" checked={!!(mark & 1)} onChange={(e) => setMark(e.target.checked ? 1 | (mark & 6) : 0)} /> Marked</label>
+        {mark & 1 ? <label><input type="checkbox" checked={!!(mark & 2)} onChange={(e) => setMark((mark & ~2) | (e.target.checked ? 2 : 0))} /> Alert when leaving</label> : null}
+        {mark & 1 ? <label><input type="checkbox" checked={!!(mark & 4)} onChange={(e) => setMark((mark & ~4) | (e.target.checked ? 4 : 0))} /> Alert when back</label> : null}
+      </div>
+      {job ? <p className="lv-warn">{ENF[job.action].name}{job.house ? " (house treatment)" : ""}: {job.stage === 0 ? "waiting for staff" : "under way"}.</p> : (
+        <div className="row">
+          {ENF_ACTIONS.map((k) => {
+            const why = g.check({ type: "enforce", id: a.id, action: k });
+            const dark = k === "beat" || k === "vanish";
+            return (
+              <button key={k} className={`btn ${dark ? "danger" : ""}`} disabled={!!why} title={why ?? ENF[k].desc}
+                onClick={() => { if (dark && armed !== k) return setArmed(k); setArmed(""); g.dispatch({ type: "enforce", id: a.id, action: k }); }}>
+                {armed === k ? "Tap again" : ACTION_VERB[k]}{why ? <small>{why}</small> : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The house treatment for caught cheats: first offense and any later one (the enforcement room's setting). */
+function TreatmentEditor({ g }: { g: Game }) {
+  const p = g.state.enf.policy;
+  const pick = (which: "first" | "repeat", v: EnfAction) => g.dispatch({ type: "setTreatment", ...p, [which]: v });
+  return (
+    <div className="kv" style={{ marginTop: 6 }}>
+      {(["first", "repeat"] as const).map((w) => (
+        <Fragment key={w}>
+          <b>{w === "first" ? "Caught once" : "Caught again"}</b>
+          <span>
+            <select value={p[w]} onChange={(e) => pick(w, e.target.value as EnfAction)}>
+              {ENF_ACTIONS.map((k) => <option key={k} value={k}>{ENF[k].name}</option>)}
+            </select>
+          </span>
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -418,6 +522,7 @@ function GuestDebug({ g, a }: { g: Game; a: Agent }) {
       <b>Mood</b><span className="num">{gd.mood.toFixed(0)}</span>
       <b>Needs</b><span className="num">B{gd.needs.bladder.toFixed(0)} T{gd.needs.thirst.toFixed(0)} H{gd.needs.hunger.toFixed(0)} F{gd.needs.fatigue.toFixed(0)}</span>
       <b>Time left</b><span className="num">{left.toFixed(1)} min</span>
+      <b>Hidden</b><span className="num">{gd.cheat ? `cheat · take ${money(gd.take)}${gd.spell ? ` · cheating (${gd.spell}s left)` : ""}` : "honest"}{gd.luck ? ` · ${gd.luck > 0 ? "lucky" : "unlucky"}` : ""}</span>
       <b>Knows floor</b><span className="num">{(gd.know * 100).toFixed(0)}%{gd.memDate >= 0 ? " · regular" : " · first visit"}</span>
       {p && <><b>Person</b><span className="num">visit {p.visits + 1} · savings {money(p.savings)} · feels {p.score.toFixed(0)} · chase {p.chase.toFixed(2)}</span></>}
     </div>
@@ -478,6 +583,13 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
             <b>Purpose</b><span>{ROOM_PURPOSES[meta?.purpose ?? "floor"]}</span>
           </div>
           {room.indoor && <RoomEditor key={room.first} host={host} tile={i} name={meta?.name ?? ""} purpose={meta?.purpose ?? "floor"} />}
+          {meta?.purpose === "enforcement" && (
+            <>
+              <p className="muted" style={{ margin: "8px 0 0" }}>Enforcers wait here, and beatings and disappearances happen here, out of sight. What happens to a cheat your staff catch:</p>
+              <TreatmentEditor g={g} />
+            </>
+          )}
+          {meta?.purpose === "office" && <p className="muted">Surveillance operators watch the cameras from here ({coverage(g).watching} at a desk, {coverage(g).cams} cameras).</p>}
         </>
       )}
       {!room && !obj && <p className="muted">{TERRAIN_NAME[s.map.terrain[i]]}{s.map.fixed[i] ? " (part of the building)" : ""}</p>}

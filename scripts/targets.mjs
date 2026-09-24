@@ -74,6 +74,9 @@ const s = g.state, pool = sim.poolSummary(g);
 console.log(`\nafter ${days} days: ${s.agents.filter((a) => a.role === "guest").length} on the floor, pool ${pool.size}, regulars ${JSON.stringify(pool.regulars)}, chasers ${pool.chasers}`);
 console.log(`reputation ${Object.entries(s.rep).map(([t, r]) => `${t} ${r.toFixed(0)}`).join(", ")}; cash ${Math.round(s.cash)}; walked past yesterday ${s.visits.yday.walkedPast}`);
 console.log(`incidents: ${Object.entries(incAll).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(", ")}`);
+const all = Object.values(dep).flat(), cheats = all.filter((e) => e.cheat), lucky = all.filter((e) => !e.cheat && e.luck > 0), unlucky = all.filter((e) => !e.cheat && e.luck < 0);
+const ret = (xs) => { const w = xs.reduce((a, e) => a + e.wagered, 0); return w ? (xs.reduce((a, e) => a + e.won, 0) / w).toFixed(2) : "–"; };
+console.log(`cheats: ${cheats.length} of ${all.length} guests (${pct(cheats.length / all.length)}), ${cheats.filter((e) => e.caught).length} caught, house lost ${usd(cheats.reduce((a, e) => a + e.won - e.wagered, 0))} to them (${usd(med(cheats.map((e) => e.won - e.wagered)))} median); recovered ${usd(g.state.finance.total.recovered ?? 0)}; lucky ${lucky.length} return ${ret(lucky)}, unlucky ${unlucky.length} return ${ret(unlucky)}; enforcement ${totals._enf ?? 0}, banned ${totals._banned ?? 0}`);
 console.log(`reports ${totals._reports ?? 0}, police calls ${totals._calls ?? 0}, thrown out ${totals._ejected ?? 0}, paramedics ${totals._medic ?? 0}; police standing ${Math.round(policeLow)}–${Math.round(policeHigh)}, now ${Math.round(g.state.auth.police.standing)} (${sim.LADDER_NAMES[g.state.auth.police.stage]})`);
 const bad = sim.checkInvariants(g);
 if (bad.length) { console.error(bad.slice(0, 10).join("\n")); process.exit(1); }
@@ -94,4 +97,10 @@ for (const t of types) {
 for (const [cat, kinds] of Object.entries(CATS)) if (!kinds.some((k) => incAll[k])) flags.push(`no ${cat} incidents at all`);
 if (!totals._ejected && !Object.values(dep).flat().some((e) => e.warned)) flags.push("guards never warned or threw anyone out");
 if (policeHigh - policeLow < 0.5) flags.push("police standing never moved");
+// Cheats (M5): there are some, the ones who get away win something, and security catches some.
+if (!cheats.length) flags.push("no cheats at all");
+else {
+  if (!cheats.some((e) => e.caught)) flags.push("no cheat was ever caught");
+  if (med(cheats.filter((e) => !e.caught).map((e) => e.won - e.wagered)) <= 0) flags.push("cheats who got away mostly lost money");
+}
 console.log(flags.length ? `\n⚠ ${flags.join("\n⚠ ")}` : "\nno sanity flags");

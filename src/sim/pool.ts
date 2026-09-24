@@ -12,6 +12,9 @@ import { logNormal, range } from "./dist";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
 import { capacity, groupSize, guestCount, repFactor, room } from "./guests";
 import { comeIn } from "./street";
+import { lifeTags, guestName } from "./cheats";
+import { news } from "./news";
+import { BEATEN_SCORE } from "../data/cheats";
 
 /** How much one visit moves a person's disposition. */
 const SCORE_RATE = 0.5;
@@ -43,8 +46,9 @@ export function makePerson(s: GameState, type: GuestTypeDef, r: Rng, score: numb
     score: Math.max(0, Math.min(100, score + range(r, [-10, 10]))), chase: 0, fav: [],
     // Regulars are already on a schedule: their next visit falls somewhere in their usual interval.
     next: regular ? Math.round(r.next() * type.returns.days.median * 2 * TICKS_PER_DAY) : -1,
-    here: 0, ejects: 0, ban: 0, mark: 0,
+    here: 0, ejects: 0, ban: 0, mark: 0, luck: 0, cheat: 0, caught: 0,
   };
+  Object.assign(p, lifeTags(p.id, type));
   return p;
 }
 
@@ -57,6 +61,26 @@ export function seedPool(s: GameState, def: ScenarioDef, know: Record<string, nu
     for (let k = 0; k < m.size; k++) s.pool.push(makePerson(s, type, r, s.rep[t] ?? 50, r.chance(m.regulars), know[t] ?? 0.5));
     s.rep[t] = poolRep(s, t) ?? s.rep[t];
   }
+}
+
+/** A scandal lowers a type's reputation: every person of a recurring type thinks a little less of the place. */
+export function hitReputation(g: Game, type: string, pts: number) {
+  const s = g.state, t = GUEST_TYPES[type];
+  if (!t || !pts) return;
+  if (recurring(t)) {
+    for (const p of s.pool) if (p.type === type) p.score = Math.max(0, p.score - pts);
+    s.rep[type] = poolRep(s, type) ?? s.rep[type];
+  } else s.rep[type] = Math.max(0, (s.rep[type] ?? 50) - pts);
+}
+
+/** Gone for good (docs/spec/cheats.md): out of the pool. */
+export function removePerson(g: Game, id: number) {
+  const s = g.state, k = s.pool.findIndex((p) => p.id === id);
+  if (k < 0) return;
+  const type = s.pool[k].type;
+  s.pool.splice(k, 1);
+  index.delete(g);
+  s.rep[type] = poolRep(s, type) ?? s.rep[type];
 }
 
 /** Reputation of a recurring type: the average disposition of its people. */
@@ -87,6 +111,8 @@ export function afterVisit(g: Game, a: Agent, score: number) {
     // One of the few one-off guests who will come back: they join the pool.
     p = makePerson(s, type, r, score * 100, false);
     p.savings = Math.max(p.savings, gd.withdrawCap);
+    // They are who they were on this visit.
+    Object.assign(p, { luck: gd.luck, cheat: gd.cheat, caught: gd.caught, mark: gd.mark });
     s.pool.push(p);
   }
   if (!recurring(type)) {
@@ -105,7 +131,9 @@ export function afterVisit(g: Game, a: Agent, score: number) {
   if (gd.mem.favSeat >= 0 && score >= 0.5) p.fav = [gd.mem.favSeat, ...p.fav.filter((t) => t !== gd.mem.favSeat)].slice(0, 3);
   p.visits++;
   if (gd.mem.ejected && gd.pid === p.id) p.ejects++;
+  if (gd.mem.banned) p.ban = 1;
   p.score += (score * 100 - p.score) * SCORE_RATE;
+  if (gd.hurt) p.score = Math.max(0, p.score - BEATEN_SCORE);
   // Chasing: starts rarely, and only on floors that make it easy to keep playing; then grows visit by visit.
   const e = easiness(a);
   if (p.chase === 0) { if (r.chance(type.chase * e)) p.chase = 0.1; }
@@ -171,7 +199,9 @@ export const poolSystem: System = {
     // Regulars whose day has come.
     for (const p of s.pool) {
       if (p.here || p.next < 0 || p.next > s.tick) continue;
-      if (full || p.ban || p.cash < BROKE) { p.next = s.tick + r.int(1, 3) * TICKS_PER_DAY; continue; }
+      // Banned: turned away at the door (the log notes it); they try less and less.
+      if (p.ban) { news(g, "info", `${guestName(p.name)}, banned for life, was turned away at the door.`, true); p.next = r.chance(0.5) ? s.tick + r.int(10, 40) * TICKS_PER_DAY : -1; continue; }
+      if (full || p.cash < BROKE) { p.next = s.tick + r.int(1, 3) * TICKS_PER_DAY; continue; }
       send(g, p, r);
     }
     // People coming on purpose for the first time (or giving the place another try); one-off types straight

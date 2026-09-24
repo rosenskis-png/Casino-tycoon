@@ -84,6 +84,14 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   warned: { text: "Security gave me a warning.", alt: ["Alright, alright, I'll calm down."], voice: { party: ["Buzzkill."] }, bad: true },
   ejected: { text: "They threw me out!", alt: ["I'm never coming back here!"], bad: true },
   friendEjected: { text: "They threw my friend out!", alt: ["Security's way too uptight here."], bad: true },
+  // Cheats and enforcement (docs/spec/cheats.md).
+  banned: { text: "Banned? For what?!", alt: ["I'm never setting foot in here again."], bad: true },
+  sawBan: { text: "They just marched someone out.", alt: ["Security just walked a guy out."], bad: true },
+  sawBeating: { text: "Did they just beat that guy up?!", alt: ["I just saw them rough someone up."], voice: { retiree: ["Good heavens, they hit him!"] }, bad: true },
+  sawVanish: { text: "They dragged someone off!", alt: ["I don't want to know what I just saw."], bad: true },
+  friendBeaten: { text: "They beat up my friend!", alt: ["We're getting out of here."], bad: true },
+  whereFriend: { text: "Has anyone seen my friend?", alt: ["Where did they go?"], bad: true },
+  beaten: { text: "Ow. Just let me go home.", bad: true },
   cutOff: { text: "They cut me off!", alt: ["What do you mean, no more drinks?"], voice: { party: ["Lame. So lame."] }, bad: true },
 };
 

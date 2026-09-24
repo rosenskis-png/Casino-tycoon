@@ -16,7 +16,7 @@ export type SimEvent =
   | {
       type: "departed"; guestType: string; pid: number; lead: number; minutes: number; play: number; budget: number; lost: number;
       intend: number; peak: number; atm: number; drinks: number; served: number; withdrawn: number; trips: number; score: number; why: string; chase: number;
-      warned: number; ejected: number;
+      warned: number; ejected: number; cheat: number; luck: number; caught: number; won: number; wagered: number;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

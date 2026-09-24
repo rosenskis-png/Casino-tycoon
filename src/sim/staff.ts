@@ -45,7 +45,7 @@ export function hireStaff(g: Game, role: string): Agent | null {
   const x = at % w, y = (at - x) / w;
   const a: Agent = {
     // Drink servers move briskly.
-    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: role === "server" || role === "guard" ? r.int(6, 7) : r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
+    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: role === "server" || role === "guard" || role === "enforcer" ? r.int(6, 7) : r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
     act: "idle", next: "idle", target: -1, seat: -1, timer: 0, hidden: 0,
   };
   if (role === "server") { const b = leastServedBar(g); if (b >= 0) a.bar = b; }
@@ -151,7 +151,7 @@ function nextCustomer(g: Game, a: Agent, bar: PlacedObject): Agent | null {
   let best: Agent | null = null, bs = SERVER_REACH;
   for (const b of g.state.agents) {
     const gd = b.g;
-    if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight") continue;
+    if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
     if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
     const s = Math.abs(b.x - fx) + Math.abs(b.y - fy) + (isWalking(b) ? 6 : 0);
     if (s < bs) { bs = s; best = b; }
@@ -215,7 +215,7 @@ function serverTick(g: Game, a: Agent) {
       for (const b of g.state.agents) {
         if (a.tray!.length >= TRAY) break;
         const gd = b.g;
-        if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight") continue;
+        if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
         if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > OFFER_REACH) continue;
         if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
         const comped = rollComp(g, gd, pol);

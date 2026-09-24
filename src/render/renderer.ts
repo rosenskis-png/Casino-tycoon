@@ -5,7 +5,8 @@ import { T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
 import { ANIMS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS } from "../data/art";
-import { objSeats, objSize, pedSpot, type Agent, type Game, type PlacedObject, type SimEvent } from "../sim";
+import { ENF } from "../data/cheats";
+import { objSeats, objSize, pedSpot, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
@@ -158,6 +159,8 @@ export class Renderer {
     for (const o of near) {
       const def = OBJECTS[o.kind], { w: ow, h: oh } = objSize(o);
       const px = (o.x - X0) * ART, py = (o.y - Y0) * ART;
+      // Ceiling fixtures (cameras) cast no shadow on the floor.
+      if (!def.blocks) continue;
       if (BASE_SHADOW.has(def.sprite)) {
         const bx = px + ART / 2, by = py + oh * ART - 1;
         g.fillRect(bx - 3, by - 2, 7, 1); g.fillRect(bx - 5, by - 1, 11, 2); g.fillRect(bx - 3, by + 1, 7, 1);
@@ -406,8 +409,19 @@ export class Renderer {
       if (inc.other >= 0) incBy.set(inc.other, inc.kind === "recruit" || inc.kind === "flirt" ? "" : inc.kind);
     }
     const anim = (key: string) => this.frameKey(key, key.slice(4), now, 0);
+    // Enforcement in progress (docs/spec/cheats.md): who is doing what to whom, and how far along (0-1).
+    const acting = new Map<number, { job: EnfJob; p: number; other: Agent | undefined; staff: boolean }>();
+    for (const job of s.enf.jobs) {
+      if (job.stage !== 3) continue;
+      const p = Math.min(1, (tick + alpha - job.at) / (ENF[job.action].secs * TICKS_PER_SECOND));
+      const st = s.agents.find((a) => a.id === job.staff), gt = s.agents.find((a) => a.id === job.guest);
+      if (st) acting.set(st.id, { job, p, other: gt, staff: true });
+      if (gt) acting.set(gt.id, { job, p, other: st, staff: false });
+    }
     // People. set = look set (guest type or staff role), fx/fy = tile position, dir/step = pose frame.
     const WALK = [1, 0, 2, 0];
+    // Three punches over a beating.
+    const hitNow = (p: number) => (p > 0.1 && p < 0.22) || (p > 0.4 && p < 0.52) || (p > 0.7 && p < 0.82);
     const HAND: Record<string, [number, number]> = { down: [6, 8], up: [-1, 8], side: [5, 8], left: [0, 8] };
     const person = (a: Agent | null, set: string, sex: number, look: number, fx: number, fy: number, dir: string, pose: string) => {
       if (fx < x0 - 1 || fx > x1 + 1 || fy < y0 - 1 || fy > y1 + 2) return;
@@ -419,6 +433,10 @@ export class Renderer {
       if (lod >= 3) {
         const d = Math.max(2, tp * 0.45), color = atlas.lookColor[set][sex][v];
         items.push({ y: fy, draw: () => { ctx.fillStyle = color; ctx.fillRect(Math.round(sx - d / 2), Math.round(sy - d), Math.ceil(d), Math.ceil(d)); } });
+        return;
+      }
+      if (pose === "bag") {
+        items.push({ y: fy + 0.02, draw: () => blit("obj:bag", sx - 6 * scale, sy + 1 * scale) });
         return;
       }
       if (pose === "lie") {
@@ -440,10 +458,23 @@ export class Renderer {
       }
       const seated = pose === "s";
       const key = `p:${set}:${sex}:${v}:${dir}${pose}`;
-      const px = sx - 4 * scale, py = sy + (5 - 15 + (seated ? SIT_DROP : 0)) * scale;
+      // Beaten guests walk doubled over.
+      const bent = a?.g?.hurt ? SIT_DROP : 0;
+      const px = sx - 4 * scale, py = sy + (5 - 15 + (seated ? SIT_DROP : 0) + bent) * scale;
       items.push({
         y: fy + 0.02,
         draw: () => {
+          // Marked guests: a red dashed ring at their feet.
+          if (a?.g && a.g.mark & 1 && lod < 3) {
+            ctx.save();
+            ctx.strokeStyle = "#ff4d5e";
+            ctx.lineWidth = Math.max(1, scale);
+            ctx.setLineDash([2 * scale, 2 * scale]);
+            ctx.beginPath();
+            ctx.ellipse(sx, sy + 4 * scale, Math.max(4, tp * 0.36), Math.max(2, tp * 0.16), 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
           if (!seated) blit("obj:shadow", px, sy + 3 * scale);
           blit(key, px, py);
           if (lod >= 2 || !a) return;
@@ -473,6 +504,15 @@ export class Renderer {
           else if (a.role === "janitor") at(a.act === "clean" && Math.floor(now / 220) & 1 ? "obj:mop~1" : "obj:mop", dir === "left" ? -2 : 1, -1);
           else if (a.role === "tech") at("obj:toolbox", 0, 3);
           else if (a.role === "guard") at("obj:radio", dir === "left" ? -1 : 0, 1);
+          if (a.bag) blit("obj:bag:carry", px + (dir === "left" ? 5 : -1) * scale, py + 4 * scale);
+          const act = acting.get(a.id);
+          if (act?.staff && act.job.action === "vanish" && act.p > 0.1 && act.p < 0.35) {
+            at("obj:gun", dir === "left" ? -3 : 0, -2);
+            if (act.p > 0.2 && act.p < 0.27) at("obj:flash", dir === "left" ? -5 : 3, -3);
+          }
+          // The scuffle, between the two of them.
+          if (act?.staff && act.job.action === "beat" && hitNow(act.p) && lod < 2 && act.other)
+            blit(anim("obj:inc:fight"), px + 2 * scale + ((act.other.x - a.x) * tp) / 2, py + 11 * scale + ((act.other.y - a.y) * tp) / 2);
         },
       });
       if (a?.role === "tech" && a.act === "repair" && lod < 2) {
@@ -503,6 +543,19 @@ export class Renderer {
       if (a.act === "out") pose = "lie";
       // Fighting: squared up and shoving back and forth.
       if (a.act === "fight") { fx += 0.12 * Math.sin(now / 70 + a.id); pose = String(1 + (Math.floor(now / 140 + a.id) & 1)); }
+      // Enforcement: face each other; the enforcer lunges on each punch and the guest reels back; a disappearance
+      // ends lying down, then in a bag.
+      const act = acting.get(a.id);
+      if (act?.other) {
+        const o = act.other, dx = o.x - a.x, dy = o.y - a.y;
+        dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "side" : dx < 0 ? "left" : dir) : dy < 0 ? "up" : "down";
+        if (act.job.action === "beat" && hitNow(act.p)) {
+          const k = act.staff ? 0.18 : -0.14, n = Math.max(1, Math.abs(dx) + Math.abs(dy));
+          fx += (k * dx) / n; fy += (k * dy) / n;
+          pose = act.staff ? "1" : "2";
+        }
+        if (!act.staff && act.job.action === "vanish") pose = act.p >= 0.6 ? "bag" : act.p >= 0.3 ? "lie" : pose;
+      }
       person(a, set, sex, a.look, fx, fy, dir, pose);
     }
     // Pedestrians on the sidewalk.

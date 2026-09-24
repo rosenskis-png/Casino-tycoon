@@ -26,10 +26,11 @@ import { drinkSystem } from "./drinks";
 import { poolSystem, seedPool } from "./pool";
 import { streetSystem } from "./street";
 import { incidentSystem, newAuthorities, DEFAULT_RULES } from "./incidents";
+import { cheatSystem, newEnforcement } from "./cheats";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem,
+  movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
 ];
 
 export interface CommandRecord { tick: number; cmd: Command; error: string | null }
@@ -84,7 +85,7 @@ export class Game {
       pool: [], peds: [],
       finance: { month: { start: def.startCash }, history: [], total: { start: def.startCash } },
       thoughts: [{}],
-      incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES }, auth: newAuthorities(),
+      incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES }, auth: newAuthorities(), enf: newEnforcement(),
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "",
     };
@@ -93,6 +94,8 @@ export class Game {
       if (o.bar && obj.bar) Object.assign(obj.bar, o.bar);
       state.objects.push(obj);
     }
+    // Named rooms (the Test Floor's office and enforcement room).
+    for (const r of def.rooms ?? []) state.roomMeta.push({ anchor: r.y * map.w + r.x, name: r.name, purpose: r.purpose });
     seedPool(state, def);
     const g = new Game(state);
     for (const [role, k] of Object.entries(def.staff)) for (let i = 0; i < k; i++) hireStaff(g, role);

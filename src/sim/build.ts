@@ -23,7 +23,7 @@ function buildable(g: Game, what: "wall" | "door" | "demolish", i: number): bool
   const m = g.state.map;
   if (i < 0 || i >= m.terrain.length || m.fixed[i]) return false;
   const t = m.terrain[i];
-  if (what === "wall") return t === T.FLOOR && !g.occ[i] && !g.seatAt[i] && !m.entrances.includes(i);
+  if (what === "wall") return t === T.FLOOR && !g.occ[i] && !g.objAt[i] && !g.seatAt[i] && !m.entrances.includes(i);
   if (what === "door") return t === T.WALL;
   return t === T.WALL || t === T.DOOR;
 }

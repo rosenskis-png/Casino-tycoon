@@ -9,7 +9,7 @@ import { fmtMoney, news } from "./news";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", bar: "Bar sales", build: "Construction", sales: "Sold objects",
-  wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics",
+  wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics", recovered: "Recovered from cheats",
 };
 const HISTORY_MONTHS = 24;
 

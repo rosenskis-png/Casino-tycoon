@@ -2,6 +2,7 @@
 // rebuilds caches. Every released schema keeps a real save in tests/saves/ that `npm run check` loads and steps.
 import { SCENARIOS } from "../data/scenarios";
 import { GUEST_TYPES } from "../data/guests";
+import { lifeTags } from "./cheats";
 import { Game } from "./game";
 import { SCHEMA_VERSION, type GameState } from "./state";
 import { T } from "../data/terrain";
@@ -116,6 +117,22 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
       if (a.role !== "guest" || !g) continue;
       Object.assign(g, { buzz: 0, warned: 0, unans: 0, called: 0, incAt: 0 });
       g.mem.ejected = 0;
+    }
+    return s;
+  },
+  // 6 → 7 (M5): cheats, suspicion and enforcement. People get their hidden tags for life (from their id, at their
+  // type's share); guests on the floor take their person's (one-offs stay honest and ordinary for this visit), with
+  // the math so far taken as expected. Default house treatment: a ban.
+  6: (s) => {
+    s.enf = { policy: { first: "ban", repeat: "ban" }, heat: 0, jobs: [], rumors: [], missing: [] };
+    for (const p of s.pool) Object.assign(p, { ...lifeTags(p.id, GUEST_TYPES[p.type] ?? GUEST_TYPES.local), caught: 0 });
+    const pool = new Map(s.pool.map((p: any) => [p.id, p]));
+    for (const a of s.agents) {
+      const g = a.g;
+      if (a.role !== "guest" || !g) continue;
+      const p: any = g.pid >= 0 ? pool.get(g.pid) : null;
+      Object.assign(g, { luck: p?.luck ?? 0, cheat: 0, spell: 0, spellAt: 0, take: 0, caught: 0, mark: p?.mark ?? 0, held: 0, hurt: 0 });
+      Object.assign(g.mem, { ev: g.mem.won, v: Math.max(1, g.mem.wagered * 10), hits: 0, hexp: 0, hvar: 0, banned: 0 });
     }
     return s;
   },

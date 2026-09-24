@@ -17,19 +17,20 @@ frame; this is what was built. Numbers are starting values, tuned headless.
 
 ## Hidden tags
 - **Luck**: 3% of people are lucky and 3% unlucky (they cancel out). A lucky guest's payback on any machine is
-  +20 points (an 88% machine pays them 108%), an unlucky guest's −20. Pool people keep theirs for life;
-  one-off guests draw per visit.
+  exactly +20 points (an 88% machine pays them 108%), an unlucky guest's −20: a lucky guest's losing wager is drawn
+  again with chance 0.2 / (payback × (1 − hit rate)); an unlucky guest's win is voided with chance 0.2 / payback
+  (`npm run headless` checks both are real probabilities giving exactly ±20). So luck shows as winning more often,
+  like cheating does. Pool people keep theirs for life; one-off guests draw per visit.
 - **Cheat**: each person is a cheat with their type's `cheat` share (1%; Retirees 0.5%). Kept for life by pool
   people. A cheat who leads a group brings a **crew**: each companion cheats too with chance 0.5.
-- Payouts under a luck or cheat multiplier are rounded to the quarter by an unbiased coin (`cheats` stream), so
-  the books stay exact.
 
 ## Cheating (slots only; tables and dealer collusion arrive in M7)
 - A cheat arrives with a **take**: the most they mean to walk out with, log-normal median $400 (σ 0.5, $150–$2,500).
-- They play honestly between **spells**. After 40–120 s of honest play at a machine, a spell starts and lasts
-  20–60 s. During a spell they bet the machine's maximum and every wager pays at 250% (instead of the machine's
-  payback).
-- Up by their take, they stop cheating, cash out and leave ("done"). Otherwise the visit runs as normal.
+- They play honestly between **spells**. After 20–60 s of honest play at a machine, a spell starts and lasts
+  30–90 s. During a spell they bet the machine's maximum and half their wagers are rigged wins paying 4× the bet;
+  the rest play normally (about 245% back). Rigged wins are steady, not jackpots, so a spell reliably pays.
+- Up by their take, they stop cheating, cash out and leave ("done"). Until then they ignore the usual quit rules
+  (win goal, loss limit, a jackpot) and plan on 1.5× their type's usual floor time. Their group can still take them home.
 - A cheat who was warned stops cheating for the rest of that visit.
 
 ## Getting caught in the act
@@ -54,9 +55,11 @@ Free Play 4, test floors 4.
 2. **Win/loss vs expectation**: net result next to what the machines' math expected (±), with a plain reading
    ("about as expected", "well above", "far above").
 3. **Wallet vs arrival bankroll**, plus ATM trips and draws.
-4. **Cheat estimate**: a probability. Built from how far above expectation they are (heavy-tailed, so honest
-   jackpot winners and lucky guests produce real false positives), the type's prior share, and a noisy factor
-   that shifts every 30 seconds. Capped at 92% unless they were caught (then 100%).
+4. **Cheat estimate**: a probability. Built from how odd their play is, in standard deviations from the math:
+   how often they win (rigged wins and luck both show there) plus half of how much (jackpots show there), against
+   a model of honest players (the math, 3% lucky, 3% unlucky, a broad tail for hot streaks) and cheats (well above, around 7 SDs,
+   or no different yet); the type's prior share; and a noisy factor that shifts every 30 seconds. Capped at 92%
+   unless they were caught (then 100%). Lucky honest guests and hot streaks produce real false positives.
 
 ## Marking
 Any guest can be marked from their card. Marked guests show a red ring on the floor. Options: alert when they
@@ -89,7 +92,7 @@ Each action adds to a rolling **enforcement heat** (warning 0.3, ban 0.5, beatin
   (1 − drama): −2 police standing each (at most 3 per incident); the first one puts a rumor on the ticker.
 - **Company**: the target's group. A beating: they are upset (+15 annoyance) and leave with them; 50% they call
   the police (−4). A disappearance: they look for their friend for a minute, then report them missing (−8
-  police, red ticker) and leave.
+  police, red ticker).
 - **Innocent** (the sim knows): 2–8 days later a rumor reaches the ticker and the target's type loses reputation:
   warning 0.5, ban 1.5, beating 4, disappearance 8, × the type's `repSensitivity`. An innocent who disappeared
   also costs −6 police standing when the rumor lands.
@@ -99,7 +102,7 @@ Each action adds to a rolling **enforcement heat** (warning 0.3, ban 0.5, beatin
 ## On the floor and in the UI
 - Marked guests: a red dashed ring. Held guests stand still. Beaten guests walk bent over at half speed.
   The bag is a black body bag carried over the enforcer's shoulder. Enforcers wear a dark leather jacket;
-  operators a grey shirt with a headset.
+  operators a grey polo and glasses.
 - Guest card: the suspicion tools the scenario allows; Mark (with the two alert options); Warn / Ban / Beat /
   Disappear (the last two ask for a second tap). A caught guest shows "Caught cheating".
 - Room card for an Enforcement room: the house treatment for a first and a repeat offense (also in the
@@ -108,7 +111,8 @@ Each action adds to a rolling **enforcement heat** (warning 0.3, ban 0.5, beatin
 
 ## Save
 Schema 7 (migration from 6): people gain `luck`, `cheat` (drawn from a hash of their id at the type's share),
-`caught`; guests gain `mark`, `spell`, `spellAt`, `take`, `caught`, `held`, `hurt`, `mem.ev`, `mem.v`;
+`caught`; guests gain `mark`, `spell`, `spellAt`, `take`, `caught`, `held`, `hurt`, `mem.ev`, `mem.v`,
+`mem.hits`, `mem.hexp`, `mem.hvar`, `mem.banned`;
 `person.ban` 1 = banned (2 is never used: the disappeared are removed); state gains `enf` (policy, heat, jobs,
-rumors, counts per day). New roles: `operator`, `enforcer`. New activities: `held`, `escorted`, `enforce`,
-`carry`, `watch`.
+rumors, missing-person reports due; counts per day under `_caught`, `_enf`, `_banned`). Enforcers gain `bag`.
+New roles: `operator`, `enforcer`. New activities: `held`, `enforce`, `carry`, `watch`. New RNG stream: `cheats`.

@@ -159,7 +159,7 @@ function nextCustomer(g: Game, a: Agent, bar: PlacedObject): Agent | null {
   let best: Agent | null = null, bs = SERVER_REACH;
   for (const b of g.state.agents) {
     const gd = b.g;
-    if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
+    if (!gd || gd.minor || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
     if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
     const s = Math.abs(b.x - fx) + Math.abs(b.y - fy) + (isWalking(b) ? 6 : 0);
     if (s < bs) { bs = s; best = b; }
@@ -223,7 +223,7 @@ function serverTick(g: Game, a: Agent) {
       for (const b of g.state.agents) {
         if (a.tray!.length >= TRAY) break;
         const gd = b.g;
-        if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
+        if (!gd || gd.minor || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
         if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > OFFER_REACH) continue;
         if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
         const comped = rollComp(g, gd, pol);

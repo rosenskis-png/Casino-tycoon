@@ -10,7 +10,7 @@ import { SCENARIOS } from "../data/scenarios";
 import { wageFor } from "./crew";
 
 export const LEDGER_LABELS: Record<string, string> = {
-  start: "Starting cash", slots: "Slot win", tables: "Table win", poker: "Poker rake", keno: "Keno & bingo", bar: "Bar sales", build: "Construction", sales: "Sold objects",
+  start: "Starting cash", slots: "Slot win", tables: "Table win", poker: "Poker rake", keno: "Keno & bingo", sports: "Sportsbook", marketing: "Marketing", research: "Research", bar: "Bar sales", build: "Construction", sales: "Sold objects",
   wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics", recovered: "Recovered from cheats",
   food: "Food sales", foodCost: "Food costs", shows: "Show tickets", cover: "Cover charges", doors: "Door fees", poolFees: "Pool entry", land: "Land",
   tax: "Gaming tax", interest: "Loan interest", loanFees: "Loan fees", borrowed: "Borrowed", repaid: "Repaid", insurance: "Insurance claims",

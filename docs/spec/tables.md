@@ -15,7 +15,7 @@ FOUNDATIONS §7 and §7.2 are the frame; this is what M7 builds. Owner's calls a
 | Keno lounge | 4×1 board | 8 chairs | 1 dealer (writer) | 20 s | 27.7% / 28.6% / 28.7% (4 / 6 / 8 spots) | slow, cheap, retirees |
 | Bingo hall | 6×1 board | 18 chairs | 1 dealer (caller) | 25 s | the hold (30%) | a crowd game; the prize grows with the room |
 
-Build menu: machines under **Games**, tables and lounges under **Tables**. Tapping one opens its card: open or waiting on dealers, the house edge its rules give, the limits and rules (dropdowns), and what it has taken. Sportsbook waits for the M9 event calendar.
+Build menu: machines under **Games**, tables and lounges under **Tables**. Tapping one opens its card: open or waiting on dealers, the house edge its rules give, the limits and rules (dropdowns), and what it has taken. The sportsbook arrived in M9.5 with the event calendar (docs/spec/calendar.md).
 
 Code: `src/data/tables.ts` (rules, limits, the math), `src/sim/tables.ts` (dealing, dealers, pit bosses, `setTable`), `src/sim/gaming.ts` (machines, and `settle`, which books every round), objects in `src/data/objects.ts`.
 

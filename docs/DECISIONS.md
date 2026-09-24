@@ -2,6 +2,19 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M9.5 built (green light; Claude's calls; see docs/spec/calendar.md, docs/spec/research.md)
+- Owner said "green light for m9.5" with no readiness questions, so every design call below is Claude's and starting values only.
+- **Vice, the hotel elevator and a drug policy are cut** (the roadmap named them first to cut). They're unscheduled; say if they should come back as their own milestone.
+- **Events are short in real time** (a day is 10 s), so their multipliers are strong: a convention brings Conventioneers ×40 for 4–7 days (a few dozen of them). Sportsbook and poker appeal also rise on their nights.
+- **Research gates building** in the tutorial only: it starts with no projects done (tables, restaurants, shows, the club, outdoors, themes, cameras and Thunder Jackpot need research). Free Play, the Test Floor and the Big Floor start with every building project; information projects (overlays, heatmaps, the club, extra suspicion tiers) must be researched everywhere. Saves from M9 and earlier keep everything they could build.
+- **The player's club** reveals types and value on the guest card, counts the floor by type, lets comps target one type, and relabels card doors. Guest breakdowns (machine and table stats by type) are a separate project after it.
+- **Families:** children are a row shorter, carry no money, stay near the adults and aren't scored; underage gambling is a misconduct incident that guards resolve by walking the child back.
+- Test Floor: a sportsbook below the pit, an 11th dealer as a spare (a crooked dealer fired early had been leaving roulette closed all run), Families and Conventioneers in the population and street mix.
+- Big Floor headless: 7.3 ms/tick against m9's 6.8 on the same machine (one run each, spawn burst included).
+
+## 2026-09-24 · Green light for M9.5
+- Owner said "green light for m9.5".
+
 ## 2026-09-24 · M9 built (Claude's calls; see docs/spec/staff.md, docs/spec/money.md)
 - All numbers are starting values checked only against sanity flags: pay range 60–160%, skill = knack × pay^0.6 × morale, crook share 5% ÷ pay^1.5, theft chances and amounts, catch chances, overwork above 85% busy, quitting below morale 20, tax rates, loan and emergency rates, insurance loading, whale sizes and timing, comp thresholds.
 - **Dealers aren't worn down by a busy table** (dealing is the whole job); the first build counted it as overwork and every dealer on the Test Floor went miserable.

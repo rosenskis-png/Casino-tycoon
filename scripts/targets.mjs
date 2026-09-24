@@ -12,17 +12,21 @@ const g = sim.Game.create("testfloor", seed);
 const dep = {}, arr = {}, inc = {}, incAll = {};
 // M9: staff, whales and the regulator, from the ticker.
 const m9 = { caught: 0, quit: 0, whales: [], inspections: 0, audits: 0, found: 0 };
+// M9.5: events started, children seen.
+const m95 = { events: {}, kids: 0, kidPlayed: 0 };
 g.bus.on((e) => {
   if (e.type !== "news") return;
   if (/ caught .* \(\$/.test(e.text)) m9.caught++;
   if (/ quit: /.test(e.text)) m9.quit++;
+  const ev = / starts today: /.test(e.text) && e.text.split(" starts today")[0];
+  if (ev) m95.events[ev] = (m95.events[ev] ?? 0) + 1;
   if (/^An inspector/.test(e.text)) m9.inspections++;
   if (/^The gaming inspector found/.test(e.text)) { m9.audits++; if (!/nothing wrong/.test(e.text)) m9.found++; }
 });
 let policeLow = 100, policeHigh = 0;
 g.bus.on((e) => {
   if (e.type === "incident") { ((inc[e.guestType] ??= {})[e.kind] = (inc[e.guestType][e.kind] ?? 0) + 1); incAll[e.kind] = (incAll[e.kind] ?? 0) + 1; }
-  if (e.type === "departed") (dep[e.guestType] ??= []).push(e);
+  if (e.type === "departed") { if (e.minor) { m95.kids++; if (e.wagered) m95.kidPlayed++; return; } (dep[e.guestType] ??= []).push(e); }
   if (e.type === "arrived") (arr[e.guestType] ??= []).push(e);
 });
 const totals = {};
@@ -57,7 +61,7 @@ const pct = (x) => (Number.isNaN(x) ? "–" : `${Math.round(x * 100)}%`);
 const f1 = (x) => (Number.isNaN(x) ? "–" : x.toFixed(1));
 const f2 = (x) => (Number.isNaN(x) ? "–" : x.toFixed(2));
 const usd = (x) => (Number.isNaN(x) ? "–" : `$${Math.round(x)}`);
-const types = ["local", "retiree", "tourist", "party", "highroller"];
+const types = ["local", "retiree", "tourist", "party", "highroller", "family", "conventioneer"];
 const rows = [];
 const row = (label, f) => rows.push([label, ...types.map((t) => f(dep[t] ?? [], arr[t] ?? [], t))]);
 row("guests seen", (d) => String(d.length));
@@ -168,6 +172,11 @@ if (days >= 120 && !whales.length) flags.push("no whale ever came");
 if (whales.some((e) => !e.wagered)) flags.push("a whale never played");
 if (days >= 120 && !m9.audits) flags.push("the regulator never audited");
 if (s.auth.regulator.standing < 60) flags.push("regulator standing fell on an honest floor");
+// M9.5: the calendar, families.
+console.log(`events: ${Object.entries(m95.events).map(([k, n]) => `${k} ${n}`).join(", ") || "none"}; children ${m95.kids}; sportsbook ${usd(tot.sports ?? 0)}`);
+if (days >= 60 && !Object.keys(m95.events).length) flags.push("no event ever started");
+if (m95.kidPlayed) flags.push("a child wagered money");
+if (days >= 60 && !m95.kids) flags.push("no family ever brought children");
 for (const [k, want] of [["bingo", 0.3]]) { const h = hold[k]; if (h?.in && Math.abs((h.in - h.out) / h.in - want) > 1e-6) flags.push(`${k} hold isn't exactly ${want * 100}%`); }
 if (hold.poker?.in && (hold.poker.in - hold.poker.out) / hold.poker.in > 0.1 + 1e-9) flags.push("poker took more than its rake");
 if (!Object.values(at).some((m) => Object.keys(m).some((k) => k !== "slots" && k !== "vpoker"))) flags.push("nobody plays tables");

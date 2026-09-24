@@ -9,7 +9,7 @@ import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
 import { save } from "./saves";
-import { AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
+import { AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
   { id: "build", icon: "🔨", label: "Build" },
@@ -17,7 +17,7 @@ const TABS = [
   { id: "guests", icon: "🧑", label: "Guests" },
   { id: "finance", icon: "💰", label: "Finance" },
   { id: "policies", icon: "📜", label: "Policies" },
-  { id: "research", icon: "🔬", label: "Research", when: "M9.5" },
+  { id: "research", icon: "🔬", label: "Research" },
   { id: "authorities", icon: "⚖️", label: "Authorities" },
   { id: "goals", icon: "🏆", label: "Goals" },
   { id: "game", icon: "⚙️", label: "Game" },
@@ -166,6 +166,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
             tab === "guests" ? <GuestsPanel host={host} /> :
             tab === "finance" ? <FinancePanel host={host} /> :
             tab === "policies" ? <PoliciesPanel host={host} /> :
+            tab === "research" ? <ResearchPanel host={host} /> :
             tab === "goals" ? <GoalsPanel host={host} /> :
             tab === "authorities" ? <AuthoritiesPanel host={host} /> :
             <Placeholder when={(TABS.find((t) => t.id === tab) as { when?: string }).when ?? ""} />}

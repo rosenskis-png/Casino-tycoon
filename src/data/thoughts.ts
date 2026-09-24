@@ -4,6 +4,8 @@
 export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<string, string[]>; bad?: boolean }
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
+  // Families (M9.5).
+  underageSeen: { text: "Is that kid playing a slot?", alt: ["Where are that child's parents?"], bad: true },
   // Money (M9, docs/spec/money.md).
   comped: { text: "They comped me! Nice.", alt: ["Look at that, it's on the house.", "Free dinner for my trouble."], voice: { highroller: ["About time they took care of me."] } },
   unpaid: { text: "They won't pay my winnings!", alt: ["I won fair and square and they can't pay?", "I'm calling the gaming commission."], bad: true },

@@ -29,5 +29,7 @@ export { isStaff } from "./staff";
 export { payOf, wageFor, skillOf, skillWord, roleMorale } from "./crew";
 export { debtOf, loanRoom, emergencyRoom, theo, COMP_BIT } from "./bank";
 export { NOT_INCOME } from "./finance";
+export { locked, projectFor, researched, available as projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns } from "./research";
+export { runningEvents, adFees } from "./calendar";
 export { suspicion, coverage, purposeTiles, type Suspicion } from "./cheats";
 export { OBJECTS } from "../data/objects";

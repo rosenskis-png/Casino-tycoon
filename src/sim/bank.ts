@@ -16,6 +16,7 @@ import { fmtMoney, news } from "./news";
 import { hitReputation, person } from "./pool";
 import { adjustRegulator } from "./regulator";
 import { think } from "./guests";
+import { hasClub } from "./research";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -24,6 +25,8 @@ declare module "./commands" {
     setSkim: { share: number };
     setInsurance: { over: number };
     setComp: { kind: CompKind; at: number };
+    /** With the player's club: comps for one guest type only ("" = everyone). */
+    targetComps: { who: string };
   }
 }
 
@@ -33,7 +36,7 @@ export const newBank = (): Bank => ({
 });
 
 /** Ledger lines that make up the gaming win (taxed). */
-export const GAMING = ["slots", "tables", "poker", "keno"];
+export const GAMING = ["slots", "tables", "poker", "keno", "sports"];
 
 export const debtOf = (g: Game) => g.state.bank.loan + g.state.bank.emergency;
 /** What the casino owns before debt: cash (if any) plus resale value and land. */
@@ -105,6 +108,8 @@ export const theo = (gd: GuestData) => gd.mem.wagered - gd.mem.ev;
 /** After a round: comps the guest's play has now earned. */
 export function earnComps(g: Game, a: Agent) {
   const gd = a.g!, c = g.state.bank.comps, t = theo(gd);
+  // Targeted comps (the player's club, M9.5): one type only.
+  if (c.only && c.only !== gd.type) return;
   for (const k of COMP_KINDS) {
     if (!c[k] || gd.comp & COMP_BIT[k] || t < c[k]) continue;
     gd.comp |= COMP_BIT[k];
@@ -136,7 +141,11 @@ export function comeBack(g: Game, a: Agent) {
 
 // ---------------------------------------------------------------------------------------------------------
 
-const commands: CommandTable<"borrow" | "repay" | "setSkim" | "setInsurance" | "setComp"> = {
+const commands: CommandTable<"borrow" | "repay" | "setSkim" | "setInsurance" | "setComp" | "targetComps"> = {
+  targetComps: {
+    validate: (g, c) => (c.who && !hasClub(g.state) ? "Needs the player's club" : c.who && !GUEST_TYPES[c.who] ? "Unknown type" : null),
+    apply(g, c) { g.state.bank.comps.only = c.who; },
+  },
   borrow: {
     validate: (g, c) => (!(c.amount > 0) || c.amount % LOAN_STEP ? "Borrow in whole thousands" : c.amount > loanRoom(g) ? "The bank won't lend that much" : null),
     apply(g, c) {

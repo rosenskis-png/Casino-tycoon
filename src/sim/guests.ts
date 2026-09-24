@@ -352,7 +352,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
-    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0,
+    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0, minor: 0,
   };
   const a: Agent = {
     id: s.nextId++, role: "guest", x, y, nx: x, ny: y, t: 0, steps: r.int(10, 14), dest: at,
@@ -388,14 +388,27 @@ export function spawnGroup(g: Game, typeId: string, at: number, person: Person |
   const leader = spawnGuest(g, typeId, at, person, null, sexOf(), intent ?? pickIntent(g, typeId, rng(g.state, "arrivals")));
   if (!leader) return out;
   out.push(leader);
+  // Families (M9.5): the first one or two are adults, the rest children.
+  const adults = type?.kids ? r.int(type.kids.adults[0], type.kids.adults[1]) : n;
   for (let k = 1; k < n; k++) {
     const m = spawnGuest(g, typeId, at, null, leader, sexOf());
-    if (m) out.push(m);
+    if (!m) continue;
+    if (k >= adults) makeMinor(m.g!);
+    out.push(m);
   }
   g.bus.emit({ type: "arrived", guestType: typeId, n: out.length, regular: person ? 1 : 0, intent: leader.g!.intent });
   if (person && person.mark & 4) news(g, "warn", `Marked guest ${guestName(person.name)} is back.`);
   if (out.length > 1) groupMaps.delete(g);
   return out;
+}
+
+/** A child: no money, no drinking, no gambling, no hidden tags. */
+function makeMinor(gd: GuestData) {
+  Object.assign(gd, {
+    minor: 1, bankroll: 0, wallet: 0, withdrawCap: 0, atm: 0, stake: 0, intend: 0, drift: 0, smoker: 0, urge: 0,
+    cheat: 0, luck: 0, take: 0, counter: 0, skill: 0, compSeek: 0, browse: 0, intent: "gamble",
+  });
+  gd.mem.startIntend = 0;
 }
 
 /** Group size for a new arrival of this type (1..8). */
@@ -435,6 +448,8 @@ export function depart(g: Game, a: Agent, vanished = false) {
   release(g, a);
   const vs = visitScore(a);
   s.visits.today.left++;
+  // Children tag along: the adults' visit is the family's.
+  if (gd.minor) { g.bus.emit({ type: "departed", ...departedFields(g, a, vs.score), minor: 1 }); if (!vanished) walkAway(g, a); gone(g).add(a.id); return; }
   s.visits.today.satSum += vs.score;
   if (gd.why === "broke") s.visits.today.broke++;
   if (vs.score >= 0.72) think(g, a, "goodTime");
@@ -444,16 +459,22 @@ export function depart(g: Game, a: Agent, vanished = false) {
   if (!vanished) { afterVisit(g, a, vs.score); comeBack(g, a); }
   if (gd.vip) whaleLeft(g, a);
   if (gd.mark & 2 && !vanished) news(g, "warn", `Marked guest ${guestName(gd.name)} is leaving.`);
-  g.bus.emit({
-    type: "departed", guestType: gd.type, pid: gd.pid, lead: gd.lead, minutes: (s.tick - gd.mem.arrived) / TICKS_PER_MIN, play: gd.mem.playTicks / TICKS_PER_MIN,
+  g.bus.emit({ type: "departed", ...departedFields(g, a, vs.score), minor: 0 });
+  if (!vanished) walkAway(g, a);
+  gone(g).add(a.id);
+}
+
+/** What the "departed" event reports about a guest (reports and tests read it). */
+function departedFields(g: Game, a: Agent, score: number) {
+  const gd = a.g!, s = g.state;
+  return {
+    guestType: gd.type, pid: gd.pid, lead: gd.lead, minutes: (s.tick - gd.mem.arrived) / TICKS_PER_MIN, play: gd.mem.playTicks / TICKS_PER_MIN,
     budget: gd.bankroll, lost: gd.mem.wagered - gd.mem.won, intend: gd.mem.startIntend, peak: gd.mem.peak,
-    atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
+    atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
     fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker, skill: gd.skill, counter: gd.counter, marked: gd.mark & 1,
     vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid,
-  });
-  if (!vanished) walkAway(g, a);
-  gone(g).add(a.id);
+  };
 }
 
 const goneSets = new WeakMap<Game, Set<number>>();
@@ -962,6 +983,11 @@ function decide(g: Game, a: Agent) {
   const r = rng(g.state, "guests");
   lookAround(g, a);
   if (gd.why) return startLeaving(g, a, gd.why);
+  // Children (M9.5) stay near the adults; a restroom trip is the only thing they do on their own.
+  if (gd.minor) {
+    if (n.bladder >= 70 && g.has("bladder") && !(gd.gaveUp & NEED_BIT.bladder) && goUse(g, a, "bladder") === "ok") return;
+    return standBy(g, a);
+  }
   if (n.fatigue >= 100) { think(g, a, "tired"); return startLeaving(g, a, "tired"); }
   if (gd.mood < 15) { think(g, a, "badTime"); return startLeaving(g, a, "unhappy"); }
   if (n.hunger >= 100) { think(g, a, "hungry"); gd.mem.unmet++; return startLeaving(g, a, "hungry"); }

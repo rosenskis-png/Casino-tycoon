@@ -4,7 +4,7 @@
 // tools and the books treat every game alike.
 import type { Pay, SlotModel } from "./games";
 
-export type Family = "vpoker" | "blackjack" | "roulette" | "craps" | "baccarat" | "poker" | "keno" | "bingo";
+export type Family = "vpoker" | "blackjack" | "roulette" | "craps" | "baccarat" | "poker" | "keno" | "bingo" | "sports";
 
 /** A rule the player sets per table: option labels (default first) and how rules-aware guests read each (−1..1). */
 export interface RuleDef { id: string; name: string; opts: string[]; score: number[] }
@@ -22,7 +22,7 @@ export interface TableDef {
   /** Players needed before a hand is dealt. */
   minPlayers: number;
   /** Ledger line. */
-  ledger: "slots" | "tables" | "poker" | "keno";
+  ledger: "slots" | "tables" | "poker" | "keno" | "sports";
   /** Wants privacy: better in a high-limit room, worse where foot traffic runs past. */
   privacy?: boolean;
   /** Draws onlookers (craps). */
@@ -73,6 +73,12 @@ export const TABLE_GAMES: Record<Family, TableDef> = {
     id: "bingo", name: "Bingo", round: 25, minPlayers: 1, ledger: "keno", pool: true,
     rules: [{ id: "hold", name: "House hold", opts: ["30%", "20%", "40%"], score: [0, 0.5, -0.5] }],
     limits: [[2, 2], [1, 1], [5, 5]],
+  },
+  // M9.5 (docs/spec/calendar.md): bets on a game at a price; the book's vig is the edge.
+  sports: {
+    id: "sports", name: "Sportsbook", round: 30, minPlayers: 1, ledger: "sports",
+    rules: [{ id: "vig", name: "Price", opts: ["-110", "-105", "-120"], score: [0, 0.5, -0.6] }],
+    limits: [[5, 500], [10, 1000], [25, 2500]],
   },
 };
 
@@ -244,3 +250,11 @@ export function kenoModel(spots: number): SlotModel {
 // ---- Pool games: the house's cut.
 export const bingoHold = (rules: Rules | undefined) => [0.3, 0.2, 0.4][ruleOf(rules, 0)] ?? 0.3;
 export const pokerRake = (rules: Rules | undefined) => (ruleOf(rules, 0) === 1 ? 0.05 : 0.1);
+
+// ---- Sportsbook (M9.5): a bet on one of two even sides at American odds −N: a win returns the stake plus 100/N.
+export const SPORTS_PRICE = [110, 105, 120];
+export const sportsX = (rules: Rules | undefined) => 1 + 100 / SPORTS_PRICE[ruleOf(rules, 0)];
+export function sportsModel(rules: Rules | undefined): SlotModel {
+  const x = sportsX(rules);
+  return model(`sp:${ruleOf(rules, 0)}`, "Sportsbook", [{ x, p: 0.5 }], { shared: true, win: x, jackpotX: 100 });
+}

@@ -4,7 +4,7 @@ Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.t
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.
-- **M3 roster:** Locals, Retirees, Tourists, Party groups (all men, all women or mixed). **M7 adds High rollers** (docs/spec/tables.md): a recurring type with a small pool, $2,000 budgets, sharp and rules-aware, who come mostly for tables (`tableDraw`). Still waiting for the milestone that builds what they want: Families (M9), date-night Couples, Conventioneers (M9), Whales (M9). Card counters are a hidden tag (M7). Couples are a group size, not a type.
+- **M3 roster:** Locals, Retirees, Tourists, Party groups (all men, all women or mixed). **M7 adds High rollers** (docs/spec/tables.md): a recurring type with a small pool, $2,000 budgets, sharp and rules-aware, who come mostly for tables (`tableDraw`). M9 adds whales (events, docs/spec/money.md). **M9.5 adds Conventioneers and Families** (below; docs/spec/calendar.md). Still waiting: date-night Couples. Card counters are a hidden tag (M7). Couples are a group size, not a type.
 - **The pool** (`state.pool`): each scenario's finite market of real people per recurring type (`market` in scenario data: size, and the share who are already regulars on day one). A person carries name, looks, type, savings, monthly income, spending money, floor knowledge and last visit, visit count, disposition (0–100), chasing level, next planned visit, ban and mark flags, and hidden luck and cheat tags for life with times caught (M5, docs/spec/cheats.md). Returning people are the same person; the disappeared are removed from the pool.
 - **One-off types** (Tourists, Party groups) are generated fresh. A Tourist leader joins the pool with a 5% chance when leaving.
 - **Reputation**: for recurring types, the average disposition of their people in the pool (moves only when someone visits). For one-off types, word of mouth: 2% of the way toward each departing guest's visit score.
@@ -108,6 +108,13 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 | Visit score | 0.58 | 0.57 | 0.50 | 0.53 | layout, `secPerDollar`, visit score weights in `visitScore` (fun time counts, amenity spending too), incidents seen, being policed |
 | Came for meal / show / club | 16/5/3% | 18/18/0% | 12/23/9% | 1/3/39% | `comeFor`, amenity tiers |
 
+## Families (M9.5)
+- One-off groups of 3–5: one or two adults, the rest children. Adults gamble lightly (cheap slots, bingo), rarely drink, and come for the pool, meals and shows; they mind drunks, fights and mess (they report), and smoke as everyone does.
+- **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
+- Drawn a row shorter in bright tees and caps.
+
+M9.5 Test Floor (a sportsbook, Families and Conventioneers join, events all year): visit length 5.6 / 6.2 / 4.9 / 5.0 / 8.8 / 5.6 / 4.9 min (Locals / Retirees / Tourists / Party / High rollers / Families / Conventioneers), playing 2.3 / 3.0 / 0.9 / 0.7 / 4.3 / 1.1 / 0.9, loss per visit $44 / $27 / $46 / $25 / $245 / $30 / $34, visit score 0.63 / 0.62 / 0.55 / 0.61 / 0.61 / 0.60 / 0.58; reputation after 300 days 66 / 63 / 57 / 52 / 62 / 55 / 55. Only the old noisy flag ("cheats who got away mostly lost money").
+
 M9 Test Floor (staff skill and morale, whales): visit length 5.2 / 6.5 / 4.7 / 5.0 / 9.2 min, playing 2.2 / 2.7 / 0.8 / 0.7 / 3.6, loss per visit $41 / $27 / $38 / $48 / $476, visit score 0.63 / 0.61 / 0.57 / 0.57 / 0.59; reputation after 300 days 66 / 65 / 59 / 56 / 63. Three whales (the house won $10K, lost $30K, won $500). No sanity flags.
 
 M7 Test Floor (a table pit, poker, keno, video poker, a bingo hall, baccarat in the high-limit room, three more restrooms; High rollers join): visit length 5.1 / 6.9 / 4.7 / 5.0 / 10.2 min (Locals / Retirees / Tourists / Party / High rollers), playing 2.1 / 2.9 / 0.9 / 0.7 / 4.1, loss per visit $40 / $29 / $58 / $46 / $340, visit score 0.62 / 0.63 / 0.56 / 0.60 / 0.61; reputation after 300 days 67 / 65 / 55 / 60 / 61. Where they play is in docs/spec/tables.md. No sanity flags on seed 1 (seed 3 shows the old noisy "cheats who got away mostly lost money", seen on M6.5 too).
@@ -125,7 +132,7 @@ Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $
 - **Test floors must be realistic.** Measure on the Test Floor scenario (at least one of every object, signs, servers), never on the tutorial or an empty lot, or wayfinding failures swamp everything else.
 
 ## Save
-Schema 11 (M9): guests gain `vip`, `comp` and `unpaid` (docs/spec/money.md). Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
+Schema 12 (M9.5): guests gain `minor`. Schema 11 (M9): guests gain `vip`, `comp` and `unpaid` (docs/spec/money.md). Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
 
 Schema 5 (migration from 4): drink policy moves from the casino to each bar; guests gain a drink in hand, browsing time, frustration (replacing the fail count), liked machines and favorite-spot tracking; people gain favorite spots; servers gain a bar and start a fresh round.
 

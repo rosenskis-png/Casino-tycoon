@@ -49,7 +49,7 @@ is recovered (the ledger's *Recovered* line). Their offense count goes up (kept 
 house treatment for a first or a repeat offense follows (below). They are held on the spot until it's carried out.
 
 ## Suspicion tools (the guest card)
-Tiers are research in M9; until then each scenario sets how many are available (`tools`): Lucky Horseshoe 2,
+Since M9.5 research raises the tier above the scenario's own (docs/spec/research.md); each scenario sets how many it starts with (`tools`): Lucky Horseshoe 2,
 Free Play 4, test floors 4.
 1. **Session length**: time on the floor and at this machine.
 2. **Win/loss vs expectation**: net result next to what the machines' math expected (±), with a plain reading

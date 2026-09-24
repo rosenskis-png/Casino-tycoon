@@ -187,6 +187,17 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.whale = { next: -1, due: null, id: -1, game: "", bankroll: 0, name: 0, bet: 0 };
     return s;
   },
+  // 11 → 12 (M9.5): the calendar (drawn on the next day), no campaigns, and research. Games already in progress
+  // keep everything they could build (every building project done); new types get a starting reputation.
+  11: (s) => {
+    for (const a of s.agents) if (a.role === "guest" && a.g) a.g.minor = 0;
+    s.cal = { year: 0, events: [] };
+    s.ads = [];
+    const BUILD = ["tables", "tables2", "poker", "draw", "vpoker", "sports", "bigslots", "restaurant", "shows", "club", "outdoors", "th_vegas", "th_ancient", "th_luxury", "th_fun", "cameras"];
+    s.research = { funding: 0, project: "", points: {}, done: BUILD };
+    for (const t of ["family", "conventioneer"]) if (SCENARIOS[s.scenario]?.population[t] && s.rep[t] === undefined) s.rep[t] = 50;
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

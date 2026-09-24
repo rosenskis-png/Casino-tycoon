@@ -28,3 +28,10 @@ export function formatDate(dayIndex: number): string {
 }
 
 export const dayOfTick = (tick: number) => Math.floor(tick / TICKS_PER_DAY);
+
+/** Day count since the scenario start for a calendar date (the inverse of dateOfDay). */
+export function dayOfDate(year: number, month: number, day: number): number {
+  let d = (year - 1) * YEAR_DAYS + day - 1;
+  for (let m = 0; m < month; m++) d += MONTH_DAYS[m];
+  return d;
+}

@@ -8,6 +8,7 @@ import { DOOR_STATE, T } from "../data/terrain";
 import type { Game } from "./game";
 import type { System } from "./registry";
 import { isClosed, type Agent, type Ped } from "./state";
+import { demand } from "./calendar";
 import { rng } from "./rng";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
 import { SIGHT, canSee } from "./wayfinding";
@@ -211,7 +212,7 @@ export const streetSystem: System = {
     for (const [t, w] of Object.entries(sc.street)) {
       const type = GUEST_TYPES[t];
       if (!type || !total) continue;
-      if (r.chance(Math.min(1, (sc.footfall * w * type.arrival.base * type.arrival.season[month]) / total))) spawnPasserBy(g, t);
+      if (r.chance(Math.min(1, (sc.footfall * w * type.arrival.base * type.arrival.season[month] * demand(s, t)) / total))) spawnPasserBy(g, t);
     }
   },
 };

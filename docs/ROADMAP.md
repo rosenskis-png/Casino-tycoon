@@ -90,11 +90,14 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Whales announced 2 days ahead with requests and companions (several months of profit on the line); comps (meal, show, come-back offer) by theoretical loss.
 - Finance and Staff tab controls, inspector and whale looks. Save schema 11 (migration from 10).
 Whale bankrolls are sized to game money (a variance crisis means several months of the casino's profit), not real-world millions.
-## M9.5 · Outside the house: calendar, marketing, research, new crowds ☐  (skills 1 and 5: the market and the calendar)
-- Seasons and scheduled events (conventions, fight nights, tournaments, holidays, sports) announced ahead; a sportsbook.
-- Marketing campaigns per guest type; Conventioneers and Families (minors, underage incidents).
-- Research: monthly funding, a tree across games, amenities, themes, staff tools and information (overlays, suspicion tools, heatmaps, stat breakdowns); the player's club (reveals types, targeted comps, real card holders).
-- Hotel elevator with vice, and a drug policy (first to cut if the milestone runs long).
+## M9.5 · Outside the house: calendar, marketing, research, new crowds ☑  (see docs/spec/calendar.md, docs/spec/research.md)
+- A yearly calendar of events (New Year, holidays, spring break, summer, the big game, playoffs, fight nights, conventions, poker tournaments), announced a week ahead, multiplying arrivals by type; seasons per type.
+- Marketing campaigns per guest type (1, 3 or 6 months, a monthly fee). A sportsbook (−110 vig, busiest on sports nights).
+- Conventioneers (waves with conventions) and Families (children who never gamble or drink, stay with the adults, and sometimes feed a machine: underage gambling).
+- Research: monthly funding and a tree of 26 projects (games, amenities, themes, cameras, suspicion tiers, overlays, heatmaps, the player's club, guest breakdowns). The tutorial starts with none; the open scenarios start with every building project.
+- Player's club: guest types and value on the card, who's on the floor by type, targeted comps. Research and Policies tabs. Save schema 12 (migration from 11).
+- **Cut** (flagged): the hotel elevator with vice, and a drug policy. Unscheduled.
+
 ## M10 · Audio, play-the-games-yourself ☐
 ## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)
 ## M11 · Scenarios, tutorial, balance ☐

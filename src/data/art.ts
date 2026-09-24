@@ -635,8 +635,8 @@ export const DECOR_SPRITES: Record<string, SpriteDef> = {
   ]),
   // Outdoors (M6.5): pool water and deck, loungers, garden hedges, flower beds, benches and path, umbrellas
   // over outdoor tables, and a for-sale sign on unowned land.
-  water: S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 2 * y) % 11 === 0 ? "V" : (x * 3 + y) % 7 === 0 ? "v" : "U")).join("")), undefined, false),
-  "water~1": S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 2 * y + 5) % 11 === 0 ? "V" : (x * 3 + y + 3) % 7 === 0 ? "v" : "U")).join("")), undefined, false),
+  water: S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 3 * y) % 23 === 0 ? "V" : (y % 5 === 2 && (x + y) % 8 < 3) ? "v" : "U")).join("")), undefined, false),
+  "water~1": S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 3 * y + 7) % 23 === 0 ? "V" : (y % 5 === 2 && (x + y + 4) % 8 < 3) ? "v" : "U")).join("")), undefined, false),
   deck: S(Array.from({ length: 16 }, (_, y) => (y % 4 === 3 ? "tttttttttttttttt" : "TTTTTTTTTTTTTTTT")), undefined, false),
   lounger: S([
     "................", "................", "................", "...wwwwwwwww....", "...wUwUwUwUww...",

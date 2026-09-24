@@ -2,7 +2,7 @@
 
 FOUNDATIONS §3 (space), §5 (theming), §8 (amenities as places). NORTH_STAR "Amenities as places", "Shaping the
 space", "Dark levers". Owner decisions 2026-09-24 (DECISIONS.md). M6.5 adds themes, outdoor amenities and land
-parcels (below).
+parcels (below; themes in docs/spec/themes.md).
 
 ## Doors (`setDoor`)
 Tap a door the player built to open its card. Scenario doors and entrances can't be changed.
@@ -136,15 +136,32 @@ are staff only.
 - Fixed on the way: a sign blocked the Test Floor's office door since M5, so its surveillance operator never
   reached the desk (camera catches were never measured there). It now watches.
 
-## M6.5 (next): themes, outdoors, parcels
-- **12 themes:** Ancient Rome, Ancient Egypt, Medieval, Rock & Roll; luxury: Gilded Deco, Modern Luxe,
-  Riviera; old Vegas: Rat Pack Lounge, Neon Atomic, Gold Rush; plus Tropical Tiki and Pirate Cove. About 4
-  decor pieces each; general decor quietly counts toward the themes it suits.
-- **Hidden theme pairings.** Good pairs: Rome + Riviera, Rome + Egypt, Deco + Rat Pack, Tiki + Pirate,
-  Tiki + Neon Atomic, Rock + Neon Atomic. Clashes: Egypt + Medieval, Rock + Modern Luxe, Gold Rush + Riviera,
-  Medieval + Neon Atomic. Everything else is neutral. THM channels, a curated bonus, clash penalties and
-  per-room coherence follow §5.
-- **Outdoors:** always hot and sunny, pool-party weather (no weather or season effects). Pool, garden, patio bar
-  and patio restaurant as sized amenities.
-- **Land parcels:** bought per scenario, turning into owned outdoor land.
+## Outdoors (M6.5)
+Always hot and sunny: no weather or season effects (owner). Outdoor amenities are sized like the indoor ones
+and go only on outdoor ground.
+
+| Amenity | Size | Layout | Seats | Tiers |
+|---|---|---|---|---|
+| Pool | 4–14 × 3–10 | loungers on every other tile of the back row (deck between), water with a deck edge either side, a lifeguard | loungers + swimmers | Pool · Pool deck (20+) · Lagoon (50+) |
+| Garden | 4–12 × 3–10 | hedges round the back and sides, a path up the middle and along the open front, benches beside the path, flower beds | benches | Garden · Formal garden (10+) |
+| Patio bar | 3–12 × 2–6 | a bar, tables under umbrellas | as the bar | Patio bar · Beach bar · Grand patio |
+| Patio restaurant | 3–12 × 3–10 | a grill, tables under umbrellas | as the restaurant | Snack shack · Terrace · Terrace grill |
+
+- **Pool:** some people come for it (`comeFor.pool`: Locals 3%, Retirees 5%, Tourists 15%, Party 20% of the
+  pull). A swim (60–120 s) is fun and a little tiring; a lounger rests the feet (fatigue −30). Entry $0–$20
+  (default free), paid once a visit ("Pool entry").
+- **Garden:** guests with sore feet (fatigue ≥ 70, after trying a show) sit on a bench for 30–60 s (fatigue
+  −40). Free. Gives off prestige, privacy and a little cleanliness.
+- Patio bars and restaurants work exactly like the indoor ones; their servers work the grounds (an outdoor
+  area is a room).
+- Guests on the grounds head back inside through the nearest door they can see.
+
+## Land parcels (M6.5)
+- A scenario lists parcels (`parcels` in `src/data/scenarios.ts`): name, rects, price. Unowned tiles in them
+  show a faint gold border and a For Sale sign.
+- **Buy** from Build → Land, or by tapping the land: its unowned tiles become owned outdoor ground (buildable,
+  not fixed); "Land" in the books. Land counts toward worth at what was paid.
+- Free Play Lot now has two: East lot (12×40, $12K) and Far east lot (12×40, $9K). Free Play saves from
+  before M6.5 have a smaller map, so the lots aren't offered there.
+- Saves: schema 9 adds `parcels` (ids bought).
 - **Deferred to M9:** Families (they bring minors and underage incidents) and the hotel elevator, with vice.

@@ -1,7 +1,7 @@
 // Slot designs in the casino (docs/spec/designer.md §10-11): which design a machine plays, the player's designs
 // and their certification, what a design costs and needs, per-design numbers, and the commands the designer
 // sends. The math is in compile.ts; how guests judge a design in appeal.ts.
-import { STOCK_RESEARCH } from "../../data/designs";
+import { STOCK_DESIGNS, STOCK_RESEARCH } from "../../data/designs";
 import {
   CABINETS, DENOMS, FS_COUNTS, FS_ENH, FS_EVERY, LAYOUTS, NEAR_RANGE, RTP_RANGE, RTP_RIGGED, SLOT_THEMES, TOPPERS,
   type CabType, type SlotDesign,
@@ -9,6 +9,7 @@ import {
 import { OBJECTS } from "../../data/objects";
 import { SCENARIOS } from "../../data/scenarios";
 import { GUEST_TYPES } from "../../data/guests";
+import { SYNERGY, THEME_IDS } from "../../data/themes";
 import type { CommandTable } from "../commands";
 import type { System } from "../registry";
 import type { DesignStats, GameState, PlacedObject } from "../state";
@@ -48,7 +49,33 @@ export function compiledById(s: GameState, id: string): Compiled | undefined {
   if (!c) byDesign.set(d, (c = compile(d, `${id}~${h32(mathKey(d))}`)));
   return c;
 }
-export const compiledOf = (s: GameState, o: PlacedObject) => compiledById(s, designIdOf(o));
+/** Per-machine cache (runtime): the design it plays, compiled, and each type's appeal. Checked against the design object. */
+interface SlotInfo { o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array }
+const infos = new Map<number, SlotInfo>();
+export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
+  const inf = infos.get(o.id);
+  // The original kinds (no design field) always play the same stock design; designs are replaced, never edited in place.
+  if (inf && inf.o === o && (o.design === undefined || (s.designs[o.design]?.d ?? STOCK_DESIGNS[o.design]) === inf.d)) return inf;
+  const id = designIdOf(o), c = compiledById(s, id);
+  if (!c) return undefined;
+  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme) };
+  if (infos.size > 50000) infos.clear();
+  infos.set(o.id, n);
+  return n;
+}
+export const compiledOf = (s: GameState, o: PlacedObject) => slotInfo(s, o)?.c;
+
+/**
+ * How a design's theme sits in a room dominated by each theme (per unit of a type's taste for theming): its own theme
+ * pleases, a good pairing helps, a clash hurts; Classic Vegas suits the old-Vegas rooms (docs/spec/designer.md §5).
+ */
+function themeFit(theme: string): Float32Array {
+  const mine = THEME_IDS.indexOf(theme as never), out = new Float32Array(THEME_IDS.length);
+  THEME_IDS.forEach((t, dom) => {
+    out[dom] = mine === dom ? 0.15 : mine >= 0 ? 0.25 * SYNERGY[mine][dom] : theme === "classic" && (t === "ratpack" || t === "atomic" || t === "deco") ? 0.08 : 0;
+  });
+  return out;
+}
 
 /** The object kind a design's cabinet is placed as (the original machines count as uprights and steppers). */
 export const cabKind = (d: SlotDesign) => CABINETS[d.cab.type].kind;

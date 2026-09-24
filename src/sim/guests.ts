@@ -32,9 +32,8 @@ import { THEFT } from "../data/staff";
 import { greed, steal } from "./crew";
 import { comeBack, useComp } from "./bank";
 import { whaleLeft } from "./whales";
-import { compiledOf, statsOf } from "./design";
+import { compiledOf, slotInfo, statsOf } from "./design";
 import { judged } from "./design/appeal";
-import { SYNERGY, THEME_IDS } from "../data/themes";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -714,26 +713,27 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   // A whale (M9) plays only their game.
   if (gd.vip) return isTable(o.kind) && def.game === g.state.whale.game && tableOpen(g, o) && canSit(g, gd, o) ? 3 : 0;
   if (isTable(o.kind)) return tableOpen(g, o) && canSit(g, gd, o) ? tableAppeal(g, gd, o) : 0;
-  const m = machineModel(g.state, o, gd);
+  const inf = def.slot ? slotInfo(g.state, o) : undefined;
+  const m = inf ? inf.c.model : machineModel(g.state, o, gd);
   if (!m) return 0;
   const mult = stakeMult(g, o);
   if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * (m.minCredits ?? 1) * mult)) return 0;
   if (def.game) return (type.games[def.game] ?? 0) + type.rules * rulesScore(def.game, o.rules) * 0.5;
-  return slotAppeal(g, gd.type, o);
+  return slotAppeal(g, gd.type, o, inf);
 }
 
 /**
  * (M8) A slot design's appeal to a type (docs/spec/designer.md §5), and how it sits in its room: a design whose theme
  * matches the room's (or pairs well with it) pleases guests who care about theming; a clash puts them off.
  */
-export function slotAppeal(g: Game, type: string, o: import("./state").PlacedObject): number {
-  const c = compiledOf(g.state, o);
-  if (!c) return 0;
-  let v = judged(c, type).appeal;
-  const th = g.fields.themes, t = GUEST_TYPES[type];
-  if (th.active && t.theming > 0) {
-    const dom = th.tileQuality(o.y * g.state.map.w + o.x).dom, mine = THEME_IDS.indexOf(c.d.theme as never);
-    if (dom >= 0) v += t.theming * (mine === dom ? 0.15 : mine >= 0 ? 0.25 * SYNERGY[mine][dom] : c.d.theme === "classic" && ["ratpack", "atomic", "deco"].includes(THEME_IDS[dom]) ? 0.08 : 0);
+export function slotAppeal(g: Game, type: string, o: import("./state").PlacedObject, info = slotInfo(g.state, o)): number {
+  if (!info) return 0;
+  let v = info.ap.get(type);
+  if (v === undefined) info.ap.set(type, (v = judged(info.c, type).appeal));
+  const th = g.fields.themes;
+  if (th.active) {
+    const dom = th.dom[o.y * g.state.map.w + o.x];
+    if (dom >= 0) v += GUEST_TYPES[type].theming * info.th[dom];
   }
   return v;
 }

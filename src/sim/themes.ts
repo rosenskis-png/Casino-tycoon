@@ -31,6 +31,8 @@ export class ThemeField {
   /** Per-tile quality from the tile's own mix, and the final score guests read (tile + room coherence). */
   q = new Float32Array(0);
   score = new Float32Array(0);
+  /** (M8) Dominant theme per tile (index into THEME_IDS, -1 none), kept with `q`. */
+  dom = new Int8Array(0);
   /** Per room: dominant theme (-1 none) and coherence. */
   rooms: { dom: number; coh: number }[] = [];
   private sources: Src[] = [];
@@ -43,6 +45,7 @@ export class ThemeField {
     this.themed = mk(); this.gen = mk(); this.clash = mk();
     this.q = new Float32Array(n);
     this.score = new Float32Array(n);
+    this.dom = new Int8Array(n).fill(-1);
   }
 
   /** Where an object stands, as hidden places: indoors or out, near water, the room's purpose. */
@@ -86,7 +89,7 @@ export class ThemeField {
       for (const [t, wgt] of Object.entries(tags.clashesTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 2, cx, cy, s: 1.5 * (wgt ?? 0) });
     }
     if (themedAny && !this.active) { this.active = true; this.alloc(); }
-    if (!themedAny && this.active) { this.active = false; this.themed = []; this.gen = []; this.clash = []; this.q = new Float32Array(0); this.score = new Float32Array(0); this.rooms = []; }
+    if (!themedAny && this.active) { this.active = false; this.themed = []; this.gen = []; this.clash = []; this.q = new Float32Array(0); this.score = new Float32Array(0); this.dom = new Int8Array(0); this.rooms = []; }
   }
 
   /** Recompute everything a change in this box can reach (or the whole map). */
@@ -110,7 +113,7 @@ export class ThemeField {
         v[y * w + x] += src.s * (1 - d / (r + 0.5)) * (walls ? Math.pow(keep, walls) : 1);
       }
     }
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.q[y * w + x] = this.tileQuality(y * w + x).q;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const tq = this.tileQuality(y * w + x); this.q[y * w + x] = tq.q; this.dom[y * w + x] = tq.dom; }
     this.coherence();
   }
 

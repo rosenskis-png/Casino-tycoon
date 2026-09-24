@@ -8,7 +8,7 @@ import { TABLE_GAMES, ruleOf, vpModel, type TableDef } from "../data/tables";
 import type { Game } from "./game";
 import type { System } from "./registry";
 import type { Agent, GameState, GuestData, PlacedObject } from "./state";
-import { compiledOf, designIdOf, statsOf } from "./design";
+import { slotInfo, statsOf } from "./design";
 import { lastSpin } from "./design/compile";
 import { judged } from "./design/appeal";
 import { rng, type Rng } from "./rng";
@@ -82,7 +82,7 @@ function vpFor(o: PlacedObject, skill: number): SlotModel {
 /** The machine model an object plays for this guest (slots: its design's; video poker: by the player's skill). */
 export function machineModel(s: GameState, o: PlacedObject, gd?: GuestData): SlotModel | undefined {
   const def = OBJECTS[o.kind];
-  if (def?.slot) return compiledOf(s, o)?.model;
+  if (def?.slot) return slotInfo(s, o)?.c.model;
   if (def?.game === "vpoker") return vpFor(o, gd?.skill ?? 1);
   return undefined;
 }
@@ -188,13 +188,15 @@ function resolve(g: Game, a: Agent) {
   // How the round felt: a feature, a real win, a win smaller than the stake, a near miss.
   gd.mem.feel += feats ? 1.5 : won >= wagered ? 1 : won > 0 ? (m.ldwFeel ?? 0.3) * (won / wagered) : Math.min(1, near * 0.1);
   o.last = { tick: g.state.tick, win: jackpot ? 2 : feats ? 3 : won > 0 ? 1 : 0 };
-  if (slot) {
-    const c = compiledOf(g.state, o)!, id = designIdOf(o), st = statsOf(g.state, id);
+  const inf = slot ? slotInfo(g.state, o) : undefined;
+  if (inf) {
+    const st = statsOf(g.state, inf.id);
     st.coinIn += wagered; st.paidOut += won; st.rounds++; st.feats += feats; st.jps += jps; st.rWin += wagered - won;
-    gd.game = id;
-    if (feats) { gd.sf = (gd.sf ?? 0) + feats; gd.extra = (gd.extra ?? 0) + Math.round(fsSpins * FS_SPIN * m.spin * TICKS_PER_SECOND); g.bus.emit({ type: "sound", id: c.d.show.call, x: o.x, y: o.y }); }
+    gd.game = inf.id;
+    if (feats) { gd.sf = (gd.sf ?? 0) + feats; gd.extra = (gd.extra ?? 0) + Math.round(fsSpins * FS_SPIN * m.spin * TICKS_PER_SECOND); g.bus.emit({ type: "sound", id: inf.d.show.call, x: o.x, y: o.y }); }
     // Excitement buys hold: time on a thrilling machine counts for more in the visit's value (docs/spec/designer.md §5).
-    const ex = judged(c, gd.type).excitement;
+    let ex = inf.ex.get(gd.type);
+    if (ex === undefined) inf.ex.set(gd.type, (ex = judged(inf.c, gd.type).excitement));
     gd.mem.thrill = (gd.mem.thrill ?? 0) + (m.spin * TICKS_PER_SECOND) * (0.06 * ex - 0.3);
   }
   if (!jackpot && won >= wagered * 4) g.bus.emit({ type: "sound", id: "win", x: o.x, y: o.y });

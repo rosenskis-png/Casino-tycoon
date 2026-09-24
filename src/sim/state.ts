@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export interface MapState {
   w: number;
@@ -69,7 +69,7 @@ export interface GuestData {
   /** 0 or 1, drawn from the group's makeup (party groups are all men, all women, or mixed). */
   sex: number;
   /** Why they came (M6 adds a meal, a show, the club): they head there first. */
-  intent: "gamble" | "drink" | "dine" | "show" | "club";
+  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool";
   /** 1 for a returning guest (a "card holder" at card doors until the M9 player's club). */
   card: number;
   /** Smokers (M6): 1, with the urge building 0-100 (satisfied in a smoking room or outdoors). */
@@ -78,7 +78,7 @@ export interface GuestData {
   /** Trapped behind doors they can't pass: the tick it started (-1 not), and 1 once staff let them out. */
   trapAt: number;
   esc: number;
-  /** 1 once they've paid a club's cover this visit. */
+  /** Paid this visit (bits): 1 a club's cover, 2 the pool. */
   paid: number;
   name: number;
   /** Visit budget on arrival and money in hand now (dollars). */
@@ -274,7 +274,9 @@ export type Activity =
   // away; a surveillance operator at a desk.
   | "held" | "enforce" | "carry" | "watch"
   // M6: eating, at a show (seated, waiting or watching), dancing, having a smoke.
-  | "dine" | "show" | "dance" | "smoke";
+  | "dine" | "show" | "dance" | "smoke"
+  // M6.5: at the pool (swimming or on a lounger), sitting in a garden.
+  | "swim" | "rest";
 
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {
@@ -431,6 +433,8 @@ export interface GameState {
   /** Visit counters: today and yesterday. */
   visits: { today: VisitStats; yday: VisitStats };
   outcome: "" | "won" | "lost";
+  /** Land parcels bought (scenario parcel ids, M6.5). */
+  parcels: string[];
 }
 
 export interface VisitStats { arrived: number; left: number; satSum: number; broke: number; walkedPast: number }

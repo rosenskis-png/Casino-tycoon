@@ -87,6 +87,31 @@ function build(sd: SizedDef, w: number, h: number): Layout {
       for (let y = 1; y < h; y++) for (let x = 0; x < w; x++) { L.cells[y * w + x] = open("dance"); L.seats.push({ dx: x, dy: y, kind: "dance", f: 2 }); }
       break;
     }
+    case "pool": {
+      // Loungers along the back row, then the water (swimmers on every tile), with a deck edge either side.
+      for (let x = 0; x < w; x++) { L.cells[x] = open("deck"); if (x % 2 === 0) { L.cells[x] = open("lounger"); L.seats.push({ dx: x, dy: 0, kind: "lounger", f: 0 }); } }
+      for (let y = 1; y < h; y++) for (let x = 0; x < w; x++) {
+        if (x === 0 || x === w - 1) { L.cells[y * w + x] = open("deck"); continue; }
+        L.cells[y * w + x] = open("water");
+        L.seats.push({ dx: x, dy: y, kind: "swim", f: (x + y) & 3 });
+      }
+      L.staff.push({ dx: w - 1, dy: 0, k: "lifeguard" });
+      break;
+    }
+    case "garden": {
+      // Hedges round the back and sides, a path up the middle and along the open front, benches beside the
+      // path (every other tile), flower beds everywhere else.
+      const cx = Math.floor(w / 2);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x, front = y === h - 1;
+        if (front) { L.cells[i] = open("path"); continue; }
+        if (y === 0 || x === 0 || x === w - 1) { L.cells[i] = solid("hedge"); continue; }
+        if (x === cx) { L.cells[i] = open("path"); continue; }
+        if (Math.abs(x - cx) === 1 && y % 2 === 1) { L.cells[i] = open("bench"); L.seats.push({ dx: x, dy: y, kind: "bench", f: x < cx ? 3 : 1 }); continue; }
+        L.cells[i] = solid("flowers");
+      }
+      break;
+    }
   }
   return L;
 }

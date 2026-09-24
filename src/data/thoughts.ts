@@ -51,6 +51,13 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   lostExit: { text: "I can't find the way out.", alt: ["How do I get out of here?"], bad: true },
   trapped: { text: "I'm trapped in here!", bad: true },
   // M6: doors, meals, shows, the club, smoke.
+  wherePool: { text: "Wasn't there supposed to be a pool?", bad: true },
+  whereSit: { text: "Is there anywhere to sit down around here?", bad: true },
+  swim: { text: "The water's perfect!", alt: ["Best part of the trip."], voice: { party: ["Pool party!"] } },
+  sunbathing: { text: "I could lie here all day.", alt: ["Nothing beats this sun."] },
+  garden: { text: "What a peaceful garden.", alt: ["Nice to get some quiet."], voice: { retiree: ["Such lovely flowers."] } },
+  goodTheme: { text: "I love the theming in here.", alt: ["This place really has a look."], voice: { tourist: ["It's like stepping into a movie!"] } },
+  badTheme: { text: "I don't like the theming in this area.", alt: ["This place can't decide what it wants to be."], bad: true },
   doorFee: { text: "Paying to use a door?!", alt: ["They charge you to walk through here?"], bad: true },
   letOut: { text: "Finally, someone let me out.", bad: true },
   whereFood: { text: "Is there anywhere to eat?", bad: true },

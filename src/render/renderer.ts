@@ -6,6 +6,7 @@ import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
 import { ANIMS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS } from "../data/art";
 import { ENF } from "../data/cheats";
+import { SCENARIOS } from "../data/scenarios";
 import { dims, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
@@ -158,6 +159,21 @@ export class Renderer {
         if (this.isWall(x - 1, y)) g.fillRect(px, py, 2, ART);
       }
     }
+    // Land for sale (M6.5): a lighter tint over the parcel and a sign in the middle.
+    for (const p of SCENARIOS[this.game!.state.scenario]?.parcels ?? []) {
+      if (this.game!.state.parcels.includes(p.id)) continue;
+      for (const r of p.rects) {
+        g.fillStyle = "rgba(242,210,122,0.06)";
+        g.fillRect((r.x - X0) * ART, (r.y - Y0) * ART, r.w * ART, r.h * ART);
+        g.fillStyle = "rgba(242,210,122,0.35)";
+        g.fillRect((r.x - X0) * ART, (r.y - Y0) * ART, r.w * ART, 1);
+        g.fillRect((r.x - X0) * ART, (r.y + r.h - Y0) * ART - 1, r.w * ART, 1);
+        g.fillRect((r.x - X0) * ART, (r.y - Y0) * ART, 1, r.h * ART);
+        g.fillRect((r.x + r.w - X0) * ART - 1, (r.y - Y0) * ART, 1, r.h * ART);
+        const f = A.frames.get("obj:forsale"), cx = r.x + Math.floor(r.w / 2), cy = r.y + Math.floor(r.h / 2);
+        if (f) g.drawImage(A.canvas, f.x - PAD, f.y - PAD, f.w + 2 * PAD, f.h + 2 * PAD, (cx - X0) * ART - PAD, (cy + 1 - Y0) * ART - f.h - PAD, f.w + 2 * PAD, f.h + 2 * PAD);
+      }
+    }
     // Door rules: a marker on each restricted door (a fee shows as a coin).
     const fees = new Map(m.gates.map((q) => [q.i, q.fee]));
     for (let ty = 0; ty < CHUNK; ty++) for (let tx = 0; tx < CHUNK; tx++) {
@@ -179,7 +195,7 @@ export class Renderer {
       if (!def.blocks) continue;
       if (def.art === "zone") {
         for (const c of objCells(o)) if (c.c.block && c.c.k !== "stage") g.fillRect((c.x - X0) * ART + 2, (c.y - Y0) * ART + 3, ART, ART);
-      } else if (BASE_SHADOW.has(def.sprite)) {
+      } else if (BASE_SHADOW.has(def.sprite) || def.tags?.theme) {
         const bx = px + ART / 2, by = py + oh * ART - 1;
         g.fillRect(bx - 3, by - 2, 7, 1); g.fillRect(bx - 5, by - 1, 11, 2); g.fillRect(bx - 3, by + 1, 7, 1);
       } else if (def.sprite === "fountain") {
@@ -329,9 +345,21 @@ export class Renderer {
       const keys = sp === "kitchen" && F !== "front" ? ["obj:kitchen:top"] : [`obj:${sp}:${F}:${part}`, `obj:${sp}:${F}:b`, `obj:${sp}:${F}:a`, `obj:${sp}:front:${part}`];
       put(keys, c.x, c.y, c.y + 0.99, sp);
     });
+    const outdoor = def.place === "outdoor";
     for (const c of cells) {
       const k = c.c.k;
-      if (k === "table" || k === "dtable") put([`obj:${k}`], c.x, c.y, c.y + 0.5);
+      if (k === "table" || k === "dtable") {
+        put([`obj:${k}`], c.x, c.y, c.y + 0.5);
+        // Outdoor tables get a striped umbrella.
+        if (outdoor) { const f = A.get("obj:umbrella")!; out.push({ key: "obj:umbrella", x: c.x * ART, y: c.y * ART - f.h + 2, sort: c.y + 0.6 }); }
+      }
+      else if (k === "water") put(["obj:water"], c.x, c.y, c.y - 0.46, "water");
+      else if (k === "deck") put(["obj:deck"], c.x, c.y, c.y - 0.46);
+      else if (k === "lounger") { put(["obj:deck"], c.x, c.y, c.y - 0.46); put(["obj:lounger"], c.x, c.y, c.y - 0.1); }
+      else if (k === "hedge") put(["obj:hedge"], c.x, c.y, c.y + 0.99);
+      else if (k === "flowers") put(["obj:flowers"], c.x, c.y, c.y + 0.5);
+      else if (k === "path") put(["obj:path"], c.x, c.y, c.y - 0.46);
+      else if (k === "bench") { put(["obj:path"], c.x, c.y, c.y - 0.46); put(["obj:bench"], c.x, c.y, c.y - 0.05); }
       else if (k === "stage") {
         put(["obj:stage"], c.x, c.y, c.y - 0.45);
         if (c.dy === 0) put(["obj:stage:curtain"], c.x, c.y, c.y - 0.4);
@@ -536,6 +564,9 @@ export class Renderer {
         });
         return;
       }
+      // Swimming: the standing figure, sunk to the chest in water.
+      const swim = pose === "swim";
+      if (swim) pose = String(Math.floor(now / 500 + (a?.id ?? 0)) & 1);
       const seated = pose === "s";
       const key = `p:${set}:${sex}:${v}:${dir}${pose}`;
       // Beaten guests walk doubled over.
@@ -555,8 +586,9 @@ export class Renderer {
             ctx.stroke();
             ctx.restore();
           }
-          if (!seated) blit("obj:shadow", px, sy + 3 * scale);
+          if (!seated && !swim) blit("obj:shadow", px, sy + 3 * scale);
           blit(key, px, py);
+          if (swim) { ctx.fillStyle = "rgba(28,94,140,0.92)"; ctx.fillRect(Math.round(px - 2 * scale), Math.round(py + 8 * scale), Math.ceil(12 * scale), Math.ceil(8 * scale)); ctx.fillStyle = "rgba(154,216,242,0.8)"; ctx.fillRect(Math.round(px - 2 * scale), Math.round(py + 8 * scale), Math.ceil(12 * scale), Math.max(1, Math.round(scale))); }
           if (lod >= 2 || !a) return;
           const face = dir === "left" ? "left" : dir === "up" ? "" : dir === "down" ? "down" : "side";
           const intox = a.g?.intox ?? 0;
@@ -601,10 +633,11 @@ export class Renderer {
       }
     };
     const FACE = ["up", "side", "down", "left"];
+    const so0 = (a: Agent) => (a.target >= 0 ? g.objById.get(a.target) : undefined);
     // People who come with an amenity: cooks behind the kitchen, performers on stage during a show, the DJ.
     if (lod < 3) for (const o of s.objects) {
       const L = OBJECTS[o.kind].sized?.layout;
-      if (L !== "restaurant" && L !== "show" && L !== "club") continue;
+      if (L !== "restaurant" && L !== "show" && L !== "club" && L !== "pool") continue;
       const { w: ow, h: oh } = objSize(o);
       if (o.x + ow < x0 - 1 || o.x > x1 + 1 || o.y + oh < y0 - 1 || o.y > y1 + 2) continue;
       const on = L !== "show" || showPhase(o, tick).phase === "on";
@@ -612,9 +645,10 @@ export class Renderer {
       const face = FACE[(o.rot + 2) & 3];
       objStaff(o).forEach((st, k) => {
         const look = o.id * 7 + k * 13;
-        const set = L === "restaurant" ? "server" : "party", beat = L === "restaurant" ? "0" : String(WALK[Math.floor(now / (L === "club" ? 200 : 320) + k) & 3]);
+        const set = L === "restaurant" ? "server" : L === "pool" ? "guard" : "party";
+        const beat = L === "restaurant" || L === "pool" ? "0" : String(WALK[Math.floor(now / (L === "club" ? 200 : 320) + k) & 3]);
         // Drawn just behind the counter or booth they work at, so it covers their lower half.
-        person(null, set, L === "club" ? 0 : (look >> 1) & 1, look, st.x, st.y - (L === "show" ? 0 : 0.3), face, beat);
+        person(null, set, L === "club" ? 0 : (look >> 1) & 1, look, st.x, st.y - (L === "show" || L === "pool" ? 0 : 0.3), face, beat);
       });
     }
     for (const a of s.agents) {
@@ -631,12 +665,13 @@ export class Renderer {
       const set = a.role === "guest" ? a.g!.type : a.role;
       const sex = a.g ? a.g.sex & 1 : (a.look >> 2) & 1;
       let dir: string, pose: string;
-      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance");
+      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest");
+      const swimming = a.act === "swim" && atSeat && !!so0(a) && objSeats(so0(a)!)[a.seat]?.kind === "swim";
       const so = atSeat ? g.objById.get(a.target) : undefined;
       if (so && OBJECTS[so.kind].sized) dir = SEAT_DIR[objSeats(so)[a.seat]?.f ?? 0];
       else if (atSeat) dir = FACE[(so?.rot ?? 0) & 3];
       else dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
-      if (atSeat && a.act !== "cage" && a.act !== "dance") pose = "s";
+      if (atSeat && a.act !== "cage" && a.act !== "dance" && !swimming) pose = "s";
       else pose = String(moving ? WALK[Math.min(1, Math.floor(2 * p)) + 2 * ((a.x + a.y) & 1)] : 0);
       // Dancing: stepping in place, turning now and then.
       if (a.act === "dance" && !moving) {
@@ -659,7 +694,7 @@ export class Renderer {
         }
         if (!act.staff && act.job.action === "vanish") pose = act.p >= 0.6 ? "bag" : act.p >= 0.3 ? "lie" : pose;
       }
-      person(a, set, sex, a.look, fx, fy, dir, pose);
+      person(a, set, sex, a.look, fx, fy, dir, swimming ? "swim" : pose);
     }
     // Pedestrians on the sidewalk.
     for (const pd of s.peds) {

@@ -385,6 +385,290 @@ const danceFrame = (k: number) => Array.from({ length: 16 }, (_, y) => Array.fro
   return "abc"[((x >> 2) + (y >> 2) + k) % 3];
 }).join(""));
 
+// ---------------------------------------------------------------------------------------------------------
+// Themed decor (M6.5, docs/spec/themes.md): four 1×1 pieces per theme, 16 wide, standing on their tile's
+// bottom. Symmetric pieces are drawn as left halves and mirrored (light left, shade right).
+const PLINTH = ["..tttttttttttt..", "..TTTTTTTTTTTTt.", "...tTTTTTTTTt...", "...tTTTTTTTTt...", "..ssssssssssss.."];
+const M = (rows: string[], swap: Record<string, string> = {}) => mir(rows, swap);
+const SH = { p: "P", T: "t", N: "n", 9: "8", 5: "4", R: "r", h: "g", H: "h", V: "v", S: "s", F: "f", Z: "z", X: "x" };
+
+export const DECOR_SPRITES: Record<string, SpriteDef> = {
+  // Ancient Rome: marble, gold, crimson.
+  rome_column: S(M([
+    "..TTTTTT", "..tttttt", "...TpTpT", "....tttt", "....pTpT", "....pTpT", "....pTpT", "....pTpT", "....pTpT",
+    "....pTpT", "....pTpT", "....pTpT", "....pTpT", "....pTpT", "....pTpT", "....pTpT", "....pTpT", "....pTpT",
+    "....pTpT", "...ttttt", "..TTTTTT", "..tttttt",
+  ], SH)),
+  rome_bust: S([
+    "......pppp......", ".....pppppP.....", ".....pTppTP.....", ".....ppppPP.....", "......pPPP......",
+    "....ppppPPPP....", "...pRRRRRRRRP...", "...pppppPPPPP...", "....ppppPPPP....", "...tttttttttt...",
+    ...PLINTH.slice(1, 4), "...tTTTTTTTTt...", ...PLINTH.slice(3),
+  ]),
+  rome_urn: S(M([
+    "...h.H.h", "..hHhHhH", ".hHLhHLh", "..hLhhLh", "...LhLLh", "....ssss", "...TTTTT", "..TppppT",
+    "..TpTTpT", "..TppppT", "...TpppT", "....TTTT", "...ttttt", "..tttttt",
+  ], SH)),
+  rome_standard: S([
+    ".....8.99.8.....", "....8899998.....", "...8.89998.8....", ".......98.......", "...RRRRRRRRRR...",
+    "...RR8R8R8RRr...", "...RRRRRRRRRr...", "...R8RR8RR8Rr...", "...rrrrrrrrrr...", ".......87.......",
+    ".......87.......", ".......87.......", ".......87.......", ".......87.......", "......8877......", ".....ssssss.....",
+  ]),
+  // Ancient Egypt: sandstone, lapis, gold.
+  egypt_obelisk: S([
+    ".......99.......", "......9TTt......", "......TTTt......", "......TUTt......", "......TTTt......",
+    ".....TT8Ttt.....", ".....TTTTtt.....", ".....TUTTtt.....", ".....TT8Ttt.....", ".....TTTTtt.....",
+    ".....T8TTtt.....", ".....TTUTtt.....", ".....TTTTtt.....", "....TTT8TTtt....", "....TTTTTTtt....",
+    "....TTUTT8tt....", "....TTTTTTtt....", "...ssssssssss...", "...SSSSSSSSSs...", "..ssssssssssss..",
+  ], { T: "#d8b870", t: "#a88848" }),
+  egypt_pharaoh: S([
+    "......9999......", ".....UU99UU.....", "....U9UUUU9U....", "...U9UssssU9U...", "...U9sessesU9U..",
+    "...U9UsssSU9U...", "..UU9UsSSsU9UU..", "..U9UUUssUUU9U..", "..U9U..99..U9U..", "..UU9..99..9UU..",
+    "...U9.9999.9U...", "...tttttttttt...", ...PLINTH.slice(1),
+  ], { s: "#c8905a", S: "#9a6a3a", e: "#1b0e14" }),
+  egypt_papyrus: S([
+    "..h.G.h..h.G.h..", ".hGh.hGhhGh.hGh.", "..h..hG..Gh..h..", "....h.GhhG.h....", ".....hGGGGh.....",
+    "......GhhG......", ".......GG.......", "......UUUU......", ".....U9999U.....", ".....UUUUUU.....",
+    ".....U9U9UU.....", ".....UUUUUU.....", "......UUUU......", ".....ssssss.....",
+  ]),
+  egypt_cat: S([
+    "......y..y......", "......yyyy......", ".....yy9yyy.....", ".....yyyyyy.....", "......yyyy......",
+    "......yyyy......", ".....yyyyyy.....", ".....yyyyyyY....", ".....yyyyyyY....", "....yyyyyyyyy...",
+    "....yyyyyyyyy...", "...tttttttttt...", ...PLINTH.slice(1),
+  ]),
+  // Medieval: iron, oak, heraldic red and gold.
+  med_armor: S(M([
+    ".....NNN", "....NnNN", "....NyyN", "....NNNN", "...NNnnN", "..NNNNNN", "..nNNNNN", "..nNNnNN",
+    "..nNNNNN", "...NNnNN", "...NNNNN", "...NnNNN", "...NN..N", "...NN..N", "...Nn..N", "..NNN..N",
+    "..sssssss", "..ssssss",
+  ].map((r) => r.slice(0, 8)), { N: "n" })),
+  med_banner: S([
+    ".888888888888...", "..RRRRRRRRRR....", "..RRR9999RRR....", "..RR99RR99RR....", "..RRR9999RRR....",
+    "..RRRR99RRRR....", "..RRR9999RRR....", "..RRRRRRRRRR....", "..RRRRRRRRRR....", "...RRRRRRRR.....",
+    "....RRRRRR......", ".....RRRR.......", "......RR........", "......2.........", "......2.........",
+    "......2.........", ".....222........", "....ssssss......",
+  ]),
+  med_brazier: S([
+    "......q.q.......", ".....qXqqX......", "....qXqXXqq.....", "....qqXXqXq.....", ".....qqqqq......",
+    "...mmmmmmmmmm...", "...mMmMmMmMmm...", "....mmmmmmmm....", ".......mm.......", "......m..m......",
+    ".....m....m.....", "....m......m....", "...mm......mm...",
+  ]),
+  med_shield: S([
+    "..n..........n..", "...n........n...", "....n......n....", ".....RRRRRR.....", "....RR9RR9RR....",
+    "....R999999R....", "....RR9RR9RR....", "....RRR99RRR....", ".....RR99RR.....", "......RRRR......",
+    "...n...RR...n...", "..n..........n..", "......2222......", "......2222......", ".....ssssss.....",
+  ]),
+  // Rock & Roll: red lacquer, chrome, amp black.
+  rock_guitar: S([
+    ".......nn.......", ".......mn.......", ".......mn.......", ".......2m.......", ".......2m.......",
+    ".......2m.......", ".......2m.......", ".....RRRRR......", "....RRRRRRR.....", ".....RRRRR......",
+    "....RRmnmRRR....", "...RRRnnnRRRR...", "...RRRmnmRRRR...", "...RRRRRRRRRR...", "....RRRRRRRR....",
+    "......2222......", ".....ssssss.....",
+  ]),
+  rock_amps: S([
+    "..bbbbbbbbbbbb..", "..bBBBBBBBBBBb..", "..bBmmBBBBmmBb..", "..bBmnBBBBmnBb..", "..bBBBBBBBBBBb..",
+    "..bqBBBBBBBBqb..", "..bbbbbbbbbbbb..", "..bBBBBBBBBBBb..", "..bBmmmBBmmmBb..", "..bBmyymmyymBb..",
+    "..bBmyymmyymBb..", "..bBmmmBBmmmBb..", "..bBBBBBBBBBBb..", "..bbbbbbbbbbbb..", "...m........m...",
+  ], { b: "#1a1622", B: "#2c2638" }),
+  rock_jukebox: S(M([
+    "....zzzz", "...zZZZZ", "..zZqqqq", "..zqRRRR", ".zqRyyyy", ".zqRyXXy", ".zqRyyyy", ".zqRRRRR",
+    ".zqR9999", ".zqRnnnn", ".zqRnmnm", ".zqRnnnn", ".zqRRRRR", ".zqRxxxx", ".zqRRRRR", ".zzzzzzz",
+  ], { Z: "z", q: "q" })),
+  rock_record: S([
+    "..222222222222..", "..2wwwwwwwwww2..", "..2w99999999w2..", "..2w9888888w2...", "..2w98y9y89w2...",
+    "..2w98yyy89w2...", "..2w98y9y89w2...", "..2w9888889w2...", "..2w99999999w2..", "..2wwwwwwwwww2..",
+    "..222222222222..", ".......22.......", ".......22.......", "......2222......", ".....ssssss.....",
+  ].map((r) => r.padEnd(16, ".").slice(0, 16))),
+  // Gilded Deco: black lacquer and gold.
+  deco_lamp: S(M([
+    "...99999", "..900000", "...99999", "....9999", ".....888", "......98", "......98", "......98",
+    "......98", "......98", "......98", "......98", "......98", "......98", "......98", ".....888",
+    "....9888", "...yyyyy", "..yyyyyy",
+  ], SH)),
+  deco_statue: S([
+    "........9.......", ".......999......", "......9998......", ".....99.98......", "....9...98......",
+    ".......998......", "......9.98......", ".....9...9......", "....9.....9.....", "...yyyyyyyyyy...",
+    "...y99999999y...", "...yyyyyyyyyy...", "...yyyyyyyyyy...", "...yy8yyyy8yy...", "..yyyyyyyyyyyy..",
+  ]),
+  deco_screen: S(M([
+    "..yyyyyy", ".yyyyyyy", ".yy9yy9y", ".yyy9y99", ".yyyy999", ".y999999", ".yyyy999", ".yyy9y99",
+    ".yy9yy9y", ".yyyyyyy", ".y888888", ".yyyyyyy", ".yyyyyyy", ".8....8.",
+  ])),
+  deco_urn: S(M([
+    "..l...L.", "...lLLlL", "....lLLL", ".....LLL", "....yyyy", "...y9999", "..yyyyyy", "..yyy9yy",
+    "..yy999y", "..yyy9yy", "...yyyyy", "....yyyy", "....8888", "...yyyyy",
+  ])),
+  // Modern Luxe: chrome, glass, white.
+  luxe_sculpture: S([
+    ".....NNNNN......", "....NnnnnNN.....", "...Nn....nNN....", "...Nn.....nN....", "...NN.....nN....",
+    "....NN...nNN....", ".....NNNNNN.....", "......NNNN......", ".......Nn.......", ".......Nn.......",
+    "....wwwwwwww....", "....wNNNNNNw....", "....wwwwwwww....", "....wPPPPPPw....", "....wwwwwwww....",
+  ]),
+  luxe_orchid: S([
+    "......w.w.......", ".....wxwXw......", "......wxw.......", ".......l.w......", ".......lwxw.....",
+    ".......l.w......", "......LlL.......", ".....LLlLL......", "....VVVVVVVV....", "....VvvvvvvV....",
+    "....VvhhhhvV....", "....VvvvvvvV....", "....VVVVVVVV....",
+  ], { V: "#d6f0ffcc", v: "#9ad8f288" }),
+  luxe_glass: S(M([
+    "..NNNNNN", "..NVVVVV", "..NVvVVV", "..NVVvVV", "..NVVVvV", "..NVVVVV", "..NVvVVV", "..NVVvVV",
+    "..NVVVvV", "..NVVVVV", "..NVVVVV", "..NVVVVV", "..NNNNNN", "..n.....",
+  ], { V: "V" }), { V: "#d6f0ff99", v: "#ffffffaa" }),
+  luxe_lamp: S([
+    "...wwww.........", "..wwwwww........", "..wwwwww........", "...Nwww.........", "....N...........",
+    ".....N..........", "......N.........", ".......N........", "........N.......", "........N.......",
+    "........N.......", "........N.......", "........N.......", "........N.......", ".......NNN......", "......wwwww.....",
+  ]),
+  // Riviera: cypress, lemons, terracotta, blue stripes.
+  riv_cypress: S(M([
+    ".......l", "......lL", "......lL", ".....lLL", ".....lLL", ".....LLL", "....lLLL", "....lLjL",
+    "....LLLL", "....lLLL", "...lLLjL", "...lLLLL", "...LLLLL", "....LLLL", "......44", ".....ssc",
+    ".....ccc", "....cccc",
+  ], { L: "l", j: "L" }), { c: "#b8643a" }),
+  riv_lemon: S([
+    "....LhLLhL......", "...hLqLhLqLh....", "..LhLLhqLLhLh...", "..hqLhLLhLqLL...", "...LhLqLhLLh....",
+    "....hLLhLqL.....", "......44........", "......43........", "......43........", ".....cccc.......",
+    "....cCcccc......", "....cccccc......", ".....cccc.......",
+  ].map((r) => r.padEnd(16, ".")), { c: "#b8643a", C: "#e0905a", q: "#ffe040" }),
+  riv_amphora: S(M([
+    ".....ccc", "....c.cc", "....cccc", ".....ccc", "....cccc", "...ccCcc", "..cccCcc", "..ccCccc",
+    "..cccccc", "...ccccc", "....cccc", ".....ccc", "......cc", ".....ccc",
+  ], { C: "c" }), { c: "#b8643a", C: "#e0905a" }),
+  riv_parasol: S([
+    "......UwUwU.....", "....UwUwUwUwU...", "...UwUwUwUwUwU..", "..UUwwUUwwUUwwU.", "......N.........",
+    "......N.........", "......N.........", "....wwwwwww.....", "....wwwwwww.....", ".....n...n......",
+    ".....n...n......",
+  ].map((r) => r.padEnd(16, "."))),
+  // Rat Pack Lounge: walnut, red velvet, chrome.
+  rat_mic: S([
+    ".......nn.......", "......nNNn......", "......nNNn......", ".......nn.......", ".......N........",
+    ".......N........", ".......N........", ".......N........", ".......N........", ".......N........",
+    ".......N........", ".......N........", ".......N........", "......NNN.......", ".....NnnnN......",
+  ]),
+  rat_lamp: S([
+    ".....RRRRRR.....", "....RRRRRRRr....", "...RRRRRRRRrr...", "...rrrrrrrrrr...", ".......99.......",
+    ".......88.......", "......5555......", "...5555555555...", "...4444444444...", "....3......3....",
+    "....3......3....",
+  ]),
+  rat_chair: S([
+    "...rRRRRRRRRr...", "..rRRORRORRRRr..", "..rRRRRRRRRRRr..", "..rRRORRORRRRr..", "..rRRRRRRRRRRr..",
+    ".5rrrrrrrrrrrr5.", ".5RRRRRRRRRRRR5.", ".5RRRRRRRRRRRR5.", ".5rrrrrrrrrrrr5.", ".44..........44.",
+  ]),
+  rat_marquee: S([
+    "q.q.q.q.q.q.q.q.", "rrrrrrrrrrrrrrr.", "q.rwwwwwwwwwr.q.", ".rrwRRwwRRwwrr..", "q.rwwwwwwwwwr.q.",
+    ".rrwwRRRRwwwrr..", "q.rwwwwwwwwwr.q.", "rrrrrrrrrrrrrrr.", "q.q.q.q.q.q.q.q.", "......22........",
+    "......22........", "......22........", ".....2222.......",
+  ].map((r) => r.padEnd(16, "."))),
+  // Neon Atomic: chrome, turquoise, pink neon.
+  atom_rocket: S(M([
+    ".......x", "......nN", "......NN", ".....nNN", ".....NzN", ".....NzN", ".....NNN", ".....NNN",
+    "....xNNN", "...xxNNN", "..xx.NNN", "..x..NNN", "......qq", "......Xq", ".......q", ".....sss",
+  ], SH)),
+  atom_star: S([
+    ".......x........", "...x...x...x....", "....x..x..x.....", ".....xxxxx......", "..xxxxXXXxxxx...",
+    ".....xxxxx......", "....x..x..x.....", "...x...x...x....", ".......x........", ".......N........",
+    ".......N........", ".......N........", ".......N........", "......NNN.......", ".....sssss......",
+  ]),
+  atom_atom: S([
+    "...z........z...", "....z......z....", ".....z.NN.z.....", "..NNNNzzzzNNNN..", ".N...zxXXxz...N.",
+    "..NNNNzzzzNNNN..", ".....z.NN.z.....", "....z......z....", "...z........z...", ".......NN.......",
+    ".......NN.......", "......NNNN......", ".....wwwwww.....",
+  ]),
+  atom_lava: S([
+    "......nnnn......", ".....nXxxXn.....", ".....XxXXxX.....", ".....xXxxXx.....", "......XxxX......",
+    "......xXXx......", ".....nnnnnn.....", ".....NNNNNN.....", "....NNNNNNNN....",
+  ]),
+  // Gold Rush: weathered wood, iron, gold nuggets.
+  gold_cart: S([
+    "...9.99.9.99....", "..9999999999....", "..4444444444....", "..4333433343....", "..4444444444....",
+    "..3333333333....", "..mm......mm....", ".mMMm....mMMm...", "..mm......mm....", "ssssssssssssss..",
+  ].map((r) => r.padEnd(16, "."))),
+  gold_barrel: S(M([
+    "...44444", "..433333", "..mmmmmm", "..433434", "..433434", "..433434", "..mmmmmm", "..433434",
+    "..433434", "..mmmmmm", "...33333",
+  ], { 4: "3" })),
+  gold_cactus: S([
+    ".......hh.......", "......hHHh......", "......hHHh......", "..hh..hHHh......", ".hHHh.hHHh..hh..",
+    ".hHHh.hHHh.hHHh.", ".hHHhhhHHh.hHHh.", "..hHHHHHHhhhHHh.", "...hhhhHHHHHHh..", "......hHHhhhh...",
+    "......hHHh......", "......hHHh......", "......hHHh......", ".....tttttt.....",
+  ]),
+  gold_wanted: S([
+    "..PPPPPPPPPPPP..", "..PkkPkPkkPkkP..", "..PPPPPPPPPPPP..", "..PPPPssssPPPP..", "..PPPsesseSPPP..",
+    "..PPPPssssPPPP..", "..PPPP4444PPPP..", "..PPPPPPPPPPPP..", "..PPkkPPPkkkPP..", "..PPPPPPPPPPPP..",
+    "...4........4...", "...4........4...", "...4........4...", "..44........44..",
+  ], { s: "#c8905a", e: "#1b0e14" }),
+  // Tropical Tiki: carved wood, bamboo, flame.
+  tiki_idol: S(M([
+    "...44444", "..455555", "..454444", "..45y5yy", "..455555", "..454444", "..45RRRR", "..45wRwR",
+    "..455555", "..454455", "..455555", "..454444", "..455555", "..444444", "...33333",
+  ], { 5: "4", w: "w" })),
+  tiki_torch: S([
+    ".......q........", "......qXq.......", "......qXXq......", ".......qq.......", "......4554......",
+    ".......54.......", ".......54.......", ".......44.......", ".......54.......", ".......54.......",
+    ".......44.......", ".......54.......", ".......54.......", "......4444......",
+  ]),
+  tiki_bamboo: S([
+    ".h.h.h.h.h.h.h..", ".HhHhHhHhHhHhH..", ".HhHhHhHhHhHhH..", ".4444444444444..", ".HhHhHhHhHhHhH..",
+    ".HhHhHhHhHhHhH..", ".HhHhHhHhHhHhH..", ".4444444444444..", ".HhHhHhHhHhHhH..", ".HhHhHhHhHhHhH..",
+    ".HhHhHhHhHhHhH..", ".h.h.h.h.h.h.h..",
+  ], { H: "#c8b060", h: "#8a7838" }),
+  tiki_drum: S(M([
+    "...PPPPP", "..PpPPPP", "..PPPPPP", "..444444", "..4R4R4R", "..454545", "..4R4R4R", "..454545",
+    "..444444", "...44444", "...3..33",
+  ], { p: "P", 5: "4" })),
+  // Pirate Cove: ship timber, iron, gold.
+  pirate_wheel: S([
+    ".......4........", "...4...4...4....", "....4.444.4.....", ".....4...4......", "...44.4.4.44....",
+    "..4444.9.4444...", "...44.4.4.44....", ".....4...4......", "....4.444.4.....", "...4...4...4....",
+    ".......4........", ".......3........", "......333.......", ".....sssss......",
+  ]),
+  pirate_chest: S([
+    "..444444444444..", ".45555555555554..", ".4mmmmmmmmmmmm4.", ".49q9q999q9q994.", ".4444449944444..",
+    ".4555559955554..", ".4555555555554..", ".4mmmmmmmmmmmm4.", ".4555555555554..", ".44444444444444.",
+  ].map((r) => r.slice(0, 16))),
+  pirate_anchor: S([
+    ".......mm.......", "......m..m......", ".......mm.......", "....mmmmmmmm....", ".......mm.......",
+    ".......mm.......", ".......mm.......", ".......mm.......", "..m....mm....m..", "..mm...mm...mm..",
+    "...mm..mm..mm...", "....mmmmmmmm....", ".....PPPPPP.....", "....PpPPpPPP....",
+  ]),
+  pirate_cannon: S([
+    "................", "..mmmmmmmmmm....", ".mMMMMMMMMMmm...", ".mMmmmmmmmmMmy..", ".mMMMMMMMMMmm...",
+    "..mmmmmmmmmm....", "...44.....44....", "..4334...4334...", "..4334...4334...", "...44.....44....",
+  ]),
+  // Outdoors (M6.5): pool water and deck, loungers, garden hedges, flower beds, benches and path, umbrellas
+  // over outdoor tables, and a for-sale sign on unowned land.
+  water: S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 2 * y) % 11 === 0 ? "V" : (x * 3 + y) % 7 === 0 ? "v" : "U")).join("")), undefined, false),
+  "water~1": S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x + 2 * y + 5) % 11 === 0 ? "V" : (x * 3 + y + 3) % 7 === 0 ? "v" : "U")).join("")), undefined, false),
+  deck: S(Array.from({ length: 16 }, (_, y) => (y % 4 === 3 ? "tttttttttttttttt" : "TTTTTTTTTTTTTTTT")), undefined, false),
+  lounger: S([
+    "................", "................", "................", "...wwwwwwwww....", "...wUwUwUwUww...",
+    "...wwwwwwwwww...", "...UwUwUwUwUw...", "...wwwwwwwwww...", "...UwUwUwUwUw...", "...wwwwwwwwww...",
+    "...UwUwUwUwUw...", "...wwwwwwwwww...", "...n........n...",
+  ]),
+  hedge: S([
+    "..hHhHhHhHhHhH..", ".hHLHhLHhHLHhHh.", "hHHhHHHhHHHhHHHh", "hLHHhLHHhHLHhHLh", "hHHhHHhHHHhHHHhh",
+    "hHLHhHHLHhHHLHhh", "hhHHhHhHHhHhHHhg", "ghhhghhhghhhghhg", "gggggggggggggggg",
+  ]),
+  flowers: S([
+    "................", "................", "................", "................", "................",
+    "..x..q..X..x..q.", ".xhx.qhq.hx.xhx.", "..hG..h.GhG..h..", ".GhGhGhGhGhGhGh.", "gGgGgGgGgGgGgGgg",
+    "gggggggggggggggg",
+  ], undefined, "tb"),
+  bench: S([
+    "................", "................", "................", "................", "................",
+    "..444444444444..", "..555555555555..", "..444444444444..", "..mm........mm..", "..555555555555..",
+    "..333333333333..", "..mm........mm..",
+  ]),
+  path: S(Array.from({ length: 16 }, (_, y) => Array.from({ length: 16 }, (_, x) => ((x * 5 + y * 3) % 9 === 0 ? "s" : "t")).join("")), undefined, false),
+  umbrella: S([
+    "....RwRwRwRw....", "..RwRwRwRwRwRw..", ".RRwwRRwwRRwwRR.", "......nn........", "......nn........",
+    "......nn........",
+  ].map((r) => r.slice(0, 16))),
+  forsale: S([
+    "..PPPPPPPPPPPP..", "..PRRRRRRRRRRP..", "..PRwRwRwwRwRP..", "..PRRRRRRRRRRP..", "..PP9PP9P9PPPP..",
+    "..PPPPPPPPPPPP..", "......44........", "......44........", "......44........", "......44........",
+    ".....4444.......",
+  ]),
+};
+
 export const ZONE_SPRITES: Record<string, SpriteDef> = {
   // A bar counter piece without a bartender, and a cage window with a teller, for long counters.
   "counter:front:m": S([...BAR_BOTTLES, ...BAR_TOP, ...BAR_FRONT], BAR_PAL, "tb"),
@@ -442,6 +726,7 @@ export const ZONE_SPRITES: Record<string, SpriteDef> = {
 
 export const OBJECT_SPRITES: Record<string, SpriteDef> = {
   ...ZONE_SPRITES,
+  ...DECOR_SPRITES,
   camera: S(CAMERA, { L: "#ff3040" }),
   dumpster: S(DUMPSTER, DUMPSTER_PAL),
   plant: S(PALM), "plant~1": S(shift(PALM, 1, 0, 6)),
@@ -540,6 +825,7 @@ export const ANIMS: Record<string, { ms: number; seq?: number[] }> = {
   speaker: { ms: 180 },
   backdrop: { ms: 600 },
   dance: { ms: 300 },
+  water: { ms: 700 },
   slot: { ms: 450 },
   mop: { ms: 220 },
   "inc:loud": { ms: 250 },
@@ -560,6 +846,13 @@ export const LIGHTS: Record<string, LightDef> = {
   kitchen: { color: "#ffb050", r: 2.2, k: 0.3, front: 0.8 },
   stage: { color: "#ffe0a0", r: 3.2, k: 0.45, front: 0.6 },
   djbooth: { color: "#ff4fa0", r: 4, k: 0.55 },
+  tiki_torch: { color: "#ffb050", r: 2.2, k: 0.45 },
+  med_brazier: { color: "#ff9a40", r: 2.4, k: 0.45 },
+  atom_star: { color: "#ff4fa0", r: 3, k: 0.55 },
+  rat_marquee: { color: "#ffd23f", r: 2.6, k: 0.45 },
+  rock_jukebox: { color: "#3ff2ff", r: 2, k: 0.35 },
+  deco_lamp: { color: "#ffe0a0", r: 2.4, k: 0.35 },
+  atom_lava: { color: "#ff4fa0", r: 1.4, k: 0.3 },
   slot_cherry: { color: "#ff7ab4", r: 1.5, k: 0.35, front: 0.7 },
   slot_liberty: { color: "#ffc94a", r: 1.5, k: 0.3, front: 0.7 },
   slot_thunder: { color: "#4fe8ff", r: 1.6, k: 0.4, front: 0.7 },

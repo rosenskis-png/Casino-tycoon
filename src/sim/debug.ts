@@ -16,6 +16,7 @@ import { loadState, serialize } from "./save";
 import { objCells, objSeats, seatCount, sizeOk, dims } from "./geometry";
 import { DOOR_RULES, DOOR_STATE } from "../data/terrain";
 import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
+import { SCENARIOS } from "../data/scenarios";
 import { MAX_PEDS } from "./street";
 import { TRAY } from "./staff";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
@@ -118,7 +119,7 @@ export function checkInvariants(g: Game): string[] {
       grp.leads += gd.lead;
       if (grp.type !== gd.type) p.push(`group ${gd.group} mixes types`);
       groups.set(gd.group, grp);
-      if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
+      if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
       if (a.act === "play") {
         const o = s.objects.find((o) => o.id === a.target);
         if (o) {
@@ -344,6 +345,17 @@ export function smoke(opts: { days: number; seeds: number[]; scenario?: string }
     for (let t = 0; t < TICKS_PER_DAY; t++) { g.step(); copy.step(); }
     if (serialize(copy) !== serialize(g)) problems.push(`seed ${seed}: reloaded save diverged from the original`);
   }
+  // Land (M6.5): buy every parcel on Free Play, build on it, and a day must stay clean.
+  const lg = Game.create("sandbox", 4);
+  for (const p of SCENARIOS.sandbox.parcels ?? []) lg.dispatch({ type: "buyParcel", id: p.id });
+  lg.step();
+  if (lg.state.parcels.length !== (SCENARIOS.sandbox.parcels ?? []).length) problems.push("land: parcels didn't sell");
+  lg.dispatch({ type: "place", kind: "pool", x: 58, y: 10, rot: 0, w: 8, h: 6 });
+  lg.dispatch({ type: "place", kind: "tiki_torch", x: 57, y: 10, rot: 0 });
+  lg.dispatch({ type: "spawnGuests", n: 60 });
+  for (let t = 0; t < TICKS_PER_DAY; t++) lg.step();
+  if (!lg.state.objects.some((o) => o.kind === "pool")) problems.push("land: couldn't build on bought land");
+  problems.push(...checkInvariants(lg).map((q) => `land: ${q}`));
   // The Test Floor has every kind of object, door rule and room purpose (M6): a day on it must stay clean too.
   run("testfloor", 3, 1, (g, d) => { for (const q of checkInvariants(g)) problems.push(`test floor day ${d + 1}: ${q}`); });
   return { ok: problems.length === 0, problems: problems.slice(0, 30) };

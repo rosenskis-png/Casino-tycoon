@@ -22,7 +22,7 @@ import { walkAway } from "./street";
 import { tagGuest, guestName } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
-import { seatCount } from "./geometry";
+import { objSeats, seatCount } from "./geometry";
 import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult } from "./amenities";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
@@ -59,12 +59,14 @@ const WAIT_LONG = 120;
 const GROUP_PULL = 0.2;
 /** Intoxication worn off per real minute on the floor. */
 const SOBER_PER_MIN = 0.02;
-type Need = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club";
-const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8, hunger: 16, show: 32, club: 64 };
-const WHERE: Record<Need, string> = { thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm", hunger: "whereFood", show: "whereShow", club: "whereClub" };
-const ACT_OF: Record<Need, Agent["act"]> = { thirst: "drink", bladder: "restroom", cage: "cage", atm: "cage", hunger: "dine", show: "show", club: "dance" };
+type Need = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
+const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8, hunger: 16, show: 32, club: 64, pool: 256, garden: 512 };
+const WHERE: Record<Need, string> = {
+  thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm", hunger: "whereFood", show: "whereShow", club: "whereClub", pool: "wherePool", garden: "whereSit",
+};
+const ACT_OF: Record<Need, Agent["act"]> = { thirst: "drink", bladder: "restroom", cage: "cage", atm: "cage", hunger: "dine", show: "show", club: "dance", pool: "swim", garden: "rest" };
 /** Why someone came → what serves it. */
-const INTENT_NEED: Record<string, Need> = { dine: "hunger", show: "show", club: "club" };
+const INTENT_NEED: Record<string, Need> = { dine: "hunger", show: "show", club: "club", pool: "pool" };
 /** Smoke: how smokers and everyone else take it (penalty only; clean air isn't remarked on). */
 const SMOKE_PREF = { smoker: { tol: 4, w: 0.1 }, other: { tol: 0.8, w: 0.8 } };
 /** Smokers' urge per second (100 = must smoke; every 3-6 minutes) and seconds a smoke takes. */
@@ -180,7 +182,11 @@ function localDirt(g: Game, i: number): number {
 }
 
 function tasteAt(g: Game, t: Taste, i: number): number {
-  return t === "DIRT" ? localDirt(g, i) : g.fields.get(t, i);
+  if (t === "DIRT") return localDirt(g, i);
+  if (t === "THM") return g.fields.themes.at(i);
+  // A coherent themed room reads as more prestigious (M6.5).
+  if (t === "PRS") return g.fields.get("PRS", i) + 0.8 * Math.max(0, g.fields.themes.at(i));
+  return g.fields.get(t, i);
 }
 
 interface Fit { score: number; worst: { t: Taste; hi: boolean; mag: number } | null; best: { t: Taste; mag: number } | null }
@@ -203,6 +209,14 @@ export function fitAt(g: Game, type: GuestTypeDef, i: number, gd?: GuestData): F
       worst = { t: "SMK", hi: true, mag: -s };
     }
   }
+  // Theming (M6.5): weighted by how much the type cares; a muddle stings more than good theming pleases.
+  const th = g.fields.themes.active ? g.fields.themes.at(i) : 0;
+  if (th) {
+    const c = type.theming * (th > 0 ? 0.25 * th : 0.4 * th);
+    score += c;
+    if (c < 0 && (!worst || -c > worst.mag)) worst = { t: "THM", hi: false, mag: -c };
+    else if (c >= 0.15 && type.theming >= 0.5) best = { t: "THM", mag: c };
+  }
   for (const [t, p] of Object.entries(type.prefs) as [Taste, Pref][]) {
     const v = tasteAt(g, t, i);
     const s = prefScore(p, v);
@@ -215,9 +229,9 @@ export function fitAt(g: Game, type: GuestTypeDef, i: number, gd?: GuestData): F
 }
 
 const BAD_THOUGHT: Record<Taste, [string | null, string | null]> = {
-  NRG: ["nrgLo", "nrgHi"], CRW: ["crwLo", "crwHi"], PRS: ["prsLo", null], TRF: [null, "trfHi"], DIRT: [null, "dirty"], SMK: [null, "smoky"],
+  NRG: ["nrgLo", "nrgHi"], CRW: ["crwLo", "crwHi"], PRS: ["prsLo", null], TRF: [null, "trfHi"], DIRT: [null, "dirty"], SMK: [null, "smoky"], THM: ["badTheme", null],
 };
-const GOOD_THOUGHT: Record<Taste, string> = { NRG: "gNRG", CRW: "gCRW", PRS: "gPRS", TRF: "gTRF", DIRT: "gCLN", SMK: "gCLN" };
+const GOOD_THOUGHT: Record<Taste, string> = { NRG: "gNRG", CRW: "gCRW", PRS: "gPRS", TRF: "gTRF", DIRT: "gCLN", SMK: "gCLN", THM: "goodTheme" };
 
 // ---------------------------------------------------------------------------------------------------------
 // Thoughts. Counted by id per day (the Guests tab averages the last ~2 days); the wording is the card's business.
@@ -532,7 +546,7 @@ function startLeaving(g: Game, a: Agent, why: string) {
 function lookAround(g: Game, a: Agent) {
   const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
   // Cages are on the ATM list too; look at each object once.
-  for (const what of ["thirst", "bladder", "cage", "atm", "hunger", "show", "club"] as Need[])
+  for (const what of ["thirst", "bladder", "cage", "atm", "hunger", "show", "club", "pool", "garden"] as Need[])
     for (const o of g.amenities[what]) {
       if (what === "atm" && OBJECTS[o.kind].serves === "cage") continue;
       const t = faceTile(g, o);
@@ -557,7 +571,7 @@ function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
     if (!paths.reachable(here, t)) continue;
     known = true;
     // Priced places (a meal, a show, a club's cover): only if they can pay.
-    if ((what === "hunger" || what === "show" || (what === "club" && !(gd.paid & 1))) && priceFor(o) > gd.wallet + 1e-9) continue;
+    if ((what === "hunger" || what === "show" || what === "pool" || (what === "club" && !(gd.paid & 1))) && priceFor(o) > gd.wallet + 1e-9) continue;
     const k = freeSeat(g, o.id);
     if (k < 0) continue;
     const st = seatTile(g, o.id, k);
@@ -873,6 +887,8 @@ function amenityFirst(g: Game, a: Agent, r: Rng): boolean {
   }
   if (n.hunger >= 70 && tryAmenity(g, a, r, "hunger", n.hunger / 50)) return true;
   if (n.fatigue >= 80 && tryAmenity(g, a, r, "show", 0.6)) return true;
+  // M6.5: sore feet, and a garden bench to sit on.
+  if (n.fatigue >= 70 && tryAmenity(g, a, r, "garden", 0.6)) return true;
   if (gd.smoker && gd.urge >= 100 && !(gd.gaveUp & SMOKE_BIT)) {
     if (goSmoke(g, a)) return true;
     // Nowhere to smoke: they cut the visit short.
@@ -1213,6 +1229,39 @@ function guestTick(g: Game, a: Agent) {
       if (r.chance(0.4)) think(g, a, "danced");
       return doneWith(g, a, r);
     }
+    case "swim": {
+      // The pool (M6.5): a swim (fun, a little tiring) or a stretch on a lounger (a rest); entry paid once a visit.
+      const o = g.objById.get(a.target);
+      if (a.seat < 0 || !o) { release(g, a); a.act = "idle"; return; }
+      const r = rng(g.state, "guests");
+      if (a.timer === 0) {
+        if (!(gd.paid & 2)) {
+          const price = priceFor(o);
+          if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.pool; release(g, a); a.act = "idle"; return; }
+          pay(g, gd, price, "poolFees");
+          gd.paid |= 2;
+        }
+        a.timer = useTicks(g, a, r);
+        return;
+      }
+      gd.mem.fun++;
+      if (--a.timer > 0) return;
+      const lounging = objSeats(o)[a.seat]?.kind === "lounger";
+      if (lounging) gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 30);
+      else { gd.buzz = Math.min(20, gd.buzz + 5); gd.needs.fatigue = Math.min(100, gd.needs.fatigue + 5); }
+      if (r.chance(0.4)) think(g, a, lounging ? "sunbathing" : "swim");
+      return doneWith(g, a, r);
+    }
+    case "rest": {
+      // A garden bench (M6.5): quiet, and the feet stop hurting.
+      if (a.seat < 0 || !g.objById.has(a.target)) { release(g, a); a.act = "idle"; return; }
+      const r = rng(g.state, "guests");
+      if (a.timer === 0) { a.timer = useTicks(g, a, r); return; }
+      if (--a.timer > 0) return;
+      gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 40);
+      if (r.chance(0.4)) think(g, a, "garden");
+      return doneWith(g, a, r);
+    }
     case "smoke": {
       // A cigarette, where they stand (a smoking room, or out on the lot); butts end up on the floor outside.
       if (a.timer === 0) { a.timer = SMOKE_SECS * TICKS_PER_SECOND; return; }
@@ -1238,7 +1287,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   n.thirst = Math.min(100, n.thirst + rate.thirst);
   n.hunger = Math.min(100, n.hunger + rate.hunger);
   // Dancing is thirsty, tiring work; sitting through a show or a meal rests the feet.
-  const dancing = a.act === "dance" && a.timer > 0, resting = a.act === "show" || a.act === "dine";
+  const dancing = a.act === "dance" && a.timer > 0, resting = a.act === "show" || a.act === "dine" || a.act === "rest";
   if (dancing) n.thirst = Math.min(100, n.thirst + rate.thirst);
   n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : dancing ? 2 : resting ? 0.3 : 0.8));
   // Smokers: the urge builds; inside a smoking room they light up where they are.

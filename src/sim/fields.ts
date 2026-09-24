@@ -7,6 +7,7 @@ import { T } from "../data/terrain";
 import type { Game } from "./game";
 import { dims, objSize } from "./geometry";
 import { tierOf } from "./amenities";
+import { ThemeField } from "./themes";
 
 /** Room purposes that give off a quality throughout the room (docs/spec/construction.md): sources on a grid. */
 const ROOM_EMITS: Record<string, { ch: Channel; s: number; r: number }[]> = {
@@ -27,8 +28,10 @@ export class FieldEngine {
   values = {} as Record<Channel, Float32Array>;
   private sources: Source[] = [];
   recomputes = 0;
+  /** Theme fields and scores (M6.5, docs/spec/themes.md). */
+  readonly themes: ThemeField;
 
-  constructor(private g: Game) {}
+  constructor(private g: Game) { this.themes = new ThemeField(g); }
 
   /** Full rebuild (new game or load). */
   init() {
@@ -36,6 +39,7 @@ export class FieldEngine {
     for (const c of CHANNELS) this.values[c] = new Float32Array(w * h);
     this.collectSources();
     this.recomputeRegion(0, 0, w - 1, h - 1);
+    this.themes.update(0, 0, w - 1, h - 1);
     this.updateCrowd();
   }
 
@@ -79,6 +83,8 @@ export class FieldEngine {
     this.collectSources();
     const R = MAX_RADIUS + 1;
     this.recomputeRegion(Math.max(0, x0 - R), Math.max(0, y0 - R), Math.min(w - 1, x1 + R), Math.min(h - 1, y1 + R));
+    // Themes: a purpose change or new walls can change a whole room's coherence, so scores refresh map-wide.
+    this.themes.update(x0, y0, x1, y1);
   }
 
   private recomputeRegion(x0: number, y0: number, x1: number, y1: number) {
@@ -129,7 +135,7 @@ export class FieldEngine {
 }
 
 /** Wall tiles crossed on the Bresenham line between two tiles, endpoints excluded. Doors count half. */
-function wallsBetween(terrain: number[], w: number, x0: number, y0: number, x1: number, y1: number): number {
+export function wallsBetween(terrain: number[], w: number, x0: number, y0: number, x1: number, y1: number): number {
   let n = 0;
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
   const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;

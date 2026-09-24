@@ -12,6 +12,8 @@ export interface Goals {
   by: { year: number; month: number };
 }
 
+export interface Parcel { id: string; name: string; rects: Rect[]; price: number }
+
 export interface ScenarioDef {
   id: string;
   name: string;
@@ -42,6 +44,8 @@ export interface ScenarioDef {
   market: Record<string, { size: number; regulars: number }>;
   /** Starting objects; a bar may start with its own drink policy (price multiplier, comped share, strength). */
   objects: { kind: string; x: number; y: number; rot: number; w?: number; h?: number; bar?: { price?: number; comp?: number; strength?: number } }[];
+  /** Land for sale (M6.5): unowned tiles in these rects become owned outdoor ground when bought. */
+  parcels?: Parcel[];
   /** Door rules set by the scenario (data/terrain DOOR_STATE; docs/spec/construction.md). */
   gates?: { x: number; y: number; rule: number; arg?: string; fee?: number }[];
   staff: Record<string, number>;
@@ -138,6 +142,25 @@ function testFloor(): ScenarioDef {
     { kind: "bar", x: 64, y: 24, rot: 0, w: 5, h: 3 }, { kind: "plant", x: 72, y: 24, rot: 0 },
     { kind: "sign", x: 60, y: 20, rot: 0 }, { kind: "sign", x: 47, y: 19, rot: 0 }, { kind: "sign", x: 47, y: 7, rot: 0 },
   );
+  // Themes (M6.5): a Deco high-limit room, a Rat Pack showroom, an Atomic club, a Riviera diner, a Deco and Rat
+  // Pack members' bar, and Tiki and Pirate pieces by the fountain on the main floor.
+  const d = (kind: string, x: number, y: number) => ({ kind, x, y, rot: 0 });
+  objects.push(
+    d("deco_lamp", 50, 5), d("deco_lamp", 60, 5), d("deco_statue", 50, 11), d("deco_urn", 60, 11),
+    d("rat_marquee", 60, 16), d("rat_mic", 50, 15),
+    d("atom_star", 60, 23), d("rock_amps", 55, 29), d("atom_lava", 57, 29),
+    d("rat_chair", 62, 29), d("deco_urn", 72, 27), d("rat_lamp", 70, 24),
+    d("riv_lemon", 70, 6), d("riv_amphora", 71, 8), d("riv_cypress", 62, 11),
+    d("pirate_chest", 47, 21), d("tiki_idol", 42, 21),
+  );
+  // Outdoors (M6.5): a garden, a pool with a patio bar and a patio restaurant, tiki torches and a parasol.
+  objects.push(
+    { kind: "garden", x: 34, y: 33, rot: 0, w: 6, h: 5 },
+    { kind: "pool", x: 50, y: 33, rot: 0, w: 8, h: 6 },
+    { kind: "patiobar", x: 59, y: 33, rot: 0, w: 4, h: 3 },
+    { kind: "patiorestaurant", x: 64, y: 33, rot: 0, w: 5, h: 4 },
+    d("tiki_torch", 49, 33), d("tiki_torch", 58, 39), d("tiki_idol", 58, 33), d("riv_parasol", 60, 38), d("riv_lemon", 69, 33),
+  );
   objects.push(
     // The back-corner bar pours strong drinks, a quarter of them free: the rowdy end of the floor.
     { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0, bar: { strength: 1.4, comp: 0.25 } },
@@ -162,7 +185,7 @@ function testFloor(): ScenarioDef {
     // east wing splits into six rooms.
     walls: [...LOT.walls, { x: 44, y: 23, w: 1, h: 8 }, { x: 45, y: 23, w: 4, h: 1 }, { x: 45, y: 27, w: 4, h: 1 },
       { x: 61, y: 5, w: 1, h: 26 }, { x: 50, y: 13, w: 11, h: 1 }, { x: 50, y: 21, w: 11, h: 1 }, { x: 62, y: 13, w: 11, h: 1 }, { x: 62, y: 22, w: 11, h: 1 }],
-    doors: [...LOT.doors, [44, 25], [44, 29], [49, 9], [49, 18], [49, 22], [61, 9], [61, 18], [61, 27], [60, 13], [67, 13]],
+    doors: [...LOT.doors, [44, 25], [44, 29], [49, 9], [49, 18], [49, 22], [61, 9], [61, 18], [61, 27], [60, 13], [67, 13], [56, 31]],
     gates: [{ x: 44, y: 25, rule: DOOR_STATE.STAFF }, { x: 44, y: 29, rule: DOOR_STATE.STAFF }, { x: 61, y: 27, rule: DOOR_STATE.CARD }],
     rooms: [
       { x: 46, y: 25, name: "Security office", purpose: "office" }, { x: 46, y: 29, name: "Back room", purpose: "enforcement" },
@@ -206,6 +229,12 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     name: "Free Play Lot",
     blurb: "An empty building and no goals.",
     ...LOT,
+    // Two neighboring lots for sale to the east (M6.5).
+    w: 80, sidewalks: [{ from: [0, 42], to: [79, 42] }],
+    parcels: [
+      { id: "east", name: "East lot", rects: [{ x: 54, y: 2, w: 12, h: 40 }], price: 12_000 },
+      { id: "fareast", name: "Far east lot", rects: [{ x: 66, y: 2, w: 12, h: 40 }], price: 9_000 },
+    ],
     startCash: 50_000,
     objects: [],
     staff: {},

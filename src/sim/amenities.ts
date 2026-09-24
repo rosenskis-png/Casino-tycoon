@@ -35,6 +35,7 @@ export const tierName = (g: Game, o: PlacedObject) => OBJECTS[o.kind].sized?.tie
 export function priceFor(o: PlacedObject): number {
   const def = OBJECTS[o.kind];
   if (def.serves === "hunger") return Math.round((def.price ?? 0) * (o.price ?? 1) * 100) / 100;
+  if (def.serves === "garden") return 0;
   return o.price ?? def.price ?? 0;
 }
 
@@ -57,8 +58,8 @@ export function showPhase(o: PlacedObject, tick: number): { phase: "on" | "seati
 }
 
 /** The kinds of place people come for, and what they serve. */
-export const DRAWS: { intent: "dine" | "show" | "club"; serves: Serves }[] = [
-  { intent: "dine", serves: "hunger" }, { intent: "show", serves: "show" }, { intent: "club", serves: "club" },
+export const DRAWS: { intent: "dine" | "show" | "club" | "pool"; serves: Serves }[] = [
+  { intent: "dine", serves: "hunger" }, { intent: "show", serves: "show" }, { intent: "club", serves: "club" }, { intent: "pool", serves: "pool" },
 ];
 
 /** Each kind the casino has pulls its share of a type (more for a finer one): comeFor × (1 + 0.25 × best tier). */
@@ -79,7 +80,7 @@ export function amenityPull(g: Game, typeId: string): number {
 }
 
 /** Why an arriving group came: a meal, a show, the club (at the share of arrivals those pulls account for), or undefined. */
-export function pickIntent(g: Game, typeId: string, r: Rng): "dine" | "show" | "club" | undefined {
+export function pickIntent(g: Game, typeId: string, r: Rng): "dine" | "show" | "club" | "pool" | undefined {
   const type = GUEST_TYPES[typeId];
   if (!type) return undefined;
   const p = pulls(g, type), total = 1 + p.reduce((a, b) => a + b, 0);

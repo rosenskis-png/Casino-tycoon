@@ -24,6 +24,8 @@ for (let d = 0; d < days; d++) {
   policeLow = Math.min(policeLow, p); policeHigh = Math.max(policeHigh, p);
   // Reports, police calls and ejections are counted by the sim per day; add up yesterday's.
   if (d > 0) for (const [k, n] of Object.entries(g.state.incidentDays[1] ?? {})) if (k.startsWith("_")) totals[k] = (totals[k] ?? 0) + n;
+  // Thought counts for the day just ended (the day hook has already started a new one).
+  for (const k of ["goodTheme", "badTheme"]) totals[k] = (totals[k] ?? 0) + (g.state.thoughts[1]?.[k] ?? 0);
 }
 
 const med = (xs) => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
@@ -53,7 +55,7 @@ row("group 1 / 2 / 3+", (_d, a) => a.length ? `${pct(share(a, (e) => e.n === 1))
 row("regular arrivals", (_d, a) => pct(share(a, (e) => e.regular)));
 row("visit score", (d) => f2(med(d.map((e) => e.score))));
 // M6: why groups came, and the time and money spent at meals, shows and the club.
-row("came for meal/show/club", (_d, a) => a.length ? `${pct(share(a, (e) => e.intent === "dine"))}/${pct(share(a, (e) => e.intent === "show"))}/${pct(share(a, (e) => e.intent === "club"))}` : "–");
+row("came for meal/show/club/pool", (_d, a) => a.length ? ["dine", "show", "club", "pool"].map((k) => pct(share(a, (e) => e.intent === k))).join("/") : "–");
 row("had fun (share, min)", (d) => { const f = d.filter((e) => e.fun > 0); return `${pct(f.length / Math.max(1, d.length))}, ${f1(med(f.map((e) => e.fun)))}`; });
 row("spent on amenities", (d) => usd(med(d.filter((e) => e.spent > 0).map((e) => e.spent))));
 row("warned / thrown out", (d) => `${pct(share(d, (e) => e.warned > 0))} / ${pct(share(d, (e) => e.ejected))}`);
@@ -85,7 +87,7 @@ console.log(`reports ${totals._reports ?? 0}, police calls ${totals._calls ?? 0}
 const uses = {};
 for (const o of s.objects) uses[o.kind] = (uses[o.kind] ?? 0) + o.st.uses;
 const L = s.finance.total, m = (k) => usd(L[k] ?? 0);
-console.log(`amenities: meals ${uses.restaurant ?? 0}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}; food ${m("food")} (cost ${m("foodCost")}), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
+console.log(`amenities: meals ${(uses.restaurant ?? 0) + (uses.patiorestaurant ?? 0)}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}, pool ${uses.pool ?? 0}, garden ${uses.garden ?? 0}; food ${m("food")} (cost ${m("foodCost")}), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
 const bad = sim.checkInvariants(g);
 if (bad.length) { console.error(bad.slice(0, 10).join("\n")); process.exit(1); }
 
@@ -105,7 +107,8 @@ for (const t of types) {
 for (const [cat, kinds] of Object.entries(CATS)) if (!kinds.some((k) => incAll[k])) flags.push(`no ${cat} incidents at all`);
 if (!totals._ejected && !Object.values(dep).flat().some((e) => e.warned)) flags.push("guards never warned or threw anyone out");
 if (policeHigh - policeLow < 0.5) flags.push("police standing never moved");
-for (const k of ["restaurant", "showlounge", "club"]) if (!uses[k]) flags.push(`nobody ever used the ${k}`);
+for (const k of ["restaurant", "showlounge", "club", "pool", "garden", "patiobar", "patiorestaurant"]) if (!uses[k]) flags.push(`nobody ever used the ${k}`);
+console.log(`theming thoughts: good ${totals.goodTheme ?? 0}, bad ${totals.badTheme ?? 0} (whole run)`);
 // Cheats (M5): there are some, the ones who get away win something, and security catches some.
 if (!cheats.length) flags.push("no cheats at all");
 else {

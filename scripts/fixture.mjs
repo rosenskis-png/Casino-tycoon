@@ -26,6 +26,12 @@ if (sim.SCHEMA_VERSION >= 8) {
   for (let t = 0; t < 2; t++) g.step();
   g.dispatch({ type: "setDoor", tile: 24 * w + 41, rule: 0, fee: 2 });
 }
+if (sim.SCHEMA_VERSION >= 9) {
+  // M6.5: themed decor, a garden and a pool outside.
+  g.dispatch({ type: "place", kind: "deco_lamp", x: 20, y: 8, rot: 0 });
+  g.dispatch({ type: "place", kind: "tiki_torch", x: 40, y: 34, rot: 0 });
+  g.dispatch({ type: "place", kind: "garden", x: 34, y: 33, rot: 0, w: 4, h: 3 });
+}
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
 writeFileSync(file, sim.serialize(g));
 console.log(`wrote ${file} (${g.state.agents.length} agents, ${g.state.objects.length} objects)`);

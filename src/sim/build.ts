@@ -2,6 +2,7 @@
 import { BUILD_COST, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
+import { SCENARIOS } from "../data/scenarios";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
@@ -20,6 +21,8 @@ declare module "./commands" {
     setRoom: { tile: number; name?: string; purpose?: RoomPurpose };
     /** A restaurant's price multiplier, a show's ticket or a club's cover charge. */
     setPrice: { id: number; price: number };
+    /** Buy a land parcel the scenario offers (M6.5). */
+    buyParcel: { id: string };
   }
 }
 
@@ -81,7 +84,27 @@ export function objectTiles(o: PlacedObject, w: number): number[] {
 /** Blocking cells of an object (for staff standing beside the counter, etc.). */
 export const solidTiles = (o: PlacedObject, w: number) => objCells(o).filter((c) => c.c.block).map((c) => c.y * w + c.x);
 
-const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPrice"> = {
+/** Land the scenario sells that fits this map: its price, size, whether it's bought, and a tile test. */
+export function landForSale(g: Game): { id: string; name: string; price: number; tiles: number; owned: boolean; at: (i: number) => boolean }[] {
+  const m = g.state.map;
+  return (SCENARIOS[g.state.scenario]?.parcels ?? [])
+    .filter((p) => p.rects.every((r) => r.x >= 0 && r.y >= 0 && r.x + r.w <= m.w && r.y + r.h <= m.h))
+    .map((p) => ({
+      id: p.id, name: p.name, price: p.price, owned: g.state.parcels.includes(p.id),
+      tiles: p.rects.reduce((a, r) => a + r.w * r.h, 0),
+      at: (i: number) => p.rects.some((r) => { const x = i % m.w, y = Math.floor(i / m.w); return x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h; }),
+    }));
+}
+
+/** Tiles of a parcel that are still unowned land. */
+export function parcelTiles(g: Game, id: string): number[] {
+  const p = SCENARIOS[g.state.scenario]?.parcels?.find((q) => q.id === id), m = g.state.map, out: number[] = [];
+  for (const r of p?.rects ?? []) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++)
+    if (inBounds(m, x, y) && m.terrain[idx(m, x, y)] === T.VOID) out.push(idx(m, x, y));
+  return out;
+}
+
+const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPrice" | "buyParcel"> = {
   build: {
     validate(g, c) {
       const ok = c.tiles.filter((i) => buildable(g, c.what, i));
@@ -165,6 +188,28 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
       return c.price >= range[0] && c.price <= range[1] ? null : "Price out of range";
     },
     apply(g, c) { g.objById.get(c.id)!.price = Math.round(c.price * 100) / 100; },
+  },
+  buyParcel: {
+    validate(g, c) {
+      const p = SCENARIOS[g.state.scenario]?.parcels?.find((q) => q.id === c.id);
+      if (!p) return "No such land";
+      if (g.state.parcels.includes(c.id)) return "Already yours";
+      // Saves from before the map grew don't have this land on their map.
+      const m = g.state.map;
+      if (p.rects.some((r) => r.x < 0 || r.y < 0 || r.x + r.w > m.w || r.y + r.h > m.h) || !parcelTiles(g, c.id).length) return "Not on this map";
+      if (p.price > g.state.cash) return "Not enough cash";
+      return null;
+    },
+    apply(g, c) {
+      const p = SCENARIOS[g.state.scenario]!.parcels!.find((q) => q.id === c.id)!, m = g.state.map;
+      const tiles = parcelTiles(g, c.id);
+      // Bought land becomes owned outdoor ground.
+      for (const i of tiles) { m.terrain[i] = T.FLOOR; m.outdoor[i] = 1; m.fixed[i] = 0; }
+      g.state.parcels.push(c.id);
+      post(g, "land", -p.price);
+      g.tilesChanged(tiles);
+      g.bus.emit({ type: "sound", id: "build" });
+    },
   },
 };
 

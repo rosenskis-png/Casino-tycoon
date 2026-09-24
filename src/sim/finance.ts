@@ -6,11 +6,12 @@ import type { Game } from "./game";
 import type { System } from "./registry";
 import { fmtMoney, news } from "./news";
 import { priceOf } from "./geometry";
+import { SCENARIOS } from "../data/scenarios";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", bar: "Bar sales", build: "Construction", sales: "Sold objects",
   wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics", recovered: "Recovered from cheats",
-  food: "Food sales", foodCost: "Food costs", shows: "Show tickets", cover: "Cover charges", doors: "Door fees",
+  food: "Food sales", foodCost: "Food costs", shows: "Show tickets", cover: "Cover charges", doors: "Door fees", poolFees: "Pool entry", land: "Land",
 };
 const HISTORY_MONTHS = 24;
 
@@ -34,6 +35,8 @@ export function monthlyCosts(g: Game): { wages: number; upkeep: number } {
 export function worth(g: Game): number {
   let v = g.state.cash;
   for (const o of g.state.objects) v += priceOf(o).cost / 2;
+  // Land keeps what was paid for it.
+  for (const p of SCENARIOS[g.state.scenario]?.parcels ?? []) if (g.state.parcels.includes(p.id)) v += p.price;
   return v;
 }
 

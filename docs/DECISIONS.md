@@ -2,6 +2,19 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M5 built (Claude's calls; see docs/spec/cheats.md)
+- All numbers are starting values tuned against sanity flags: take median $400, spells of 30-90 s after 20-60 s honest, rigged wins on half the wagers at 4× the bet, catch chances (0.1%/s by chance, +0.6%/s per guard in view, +0.4%/s per unit of watched camera field, ×2.5 marked), 8 cameras per operator, heat and consequence costs.
+- **Cheating is reliable, not jackpot-shaped**: scaling payouts by a factor left most spells losing on high-volatility machines, so a spell is rigged wins instead.
+- **Luck is exact and shows as win frequency**: a lucky guest's losing wager is redrawn, an unlucky guest's win voided, at chances that shift payback by exactly ±20 points (checked by `npm run headless`). This makes lucky guests real false positives for the tools.
+- **The cheat estimate reads mostly how often someone wins**, plus half of how much, against honest play with a broad tail. Measured: cheats median 75%, honest winners 1 in 100 above 27%.
+- Cheats after their take ignore the usual quit rules and plan 1.5× the usual floor time.
+- Suspicion tools per scenario: Lucky Horseshoe 2 (time, result vs expectation), Free Play and the test floors 4.
+- Default house treatment: a ban for a first and a repeat offense. Enforcers are $150/mo, operators $120/mo, cameras $400, dumpsters $300.
+- Guards can carry out warnings and bans; a beating or disappearance needs an enforcer. Without anyone on staff, a caught cheat is banned and shown out on the spot.
+- A disappeared person is removed from the pool; a beaten one loses 40 disposition and their visit scores 0.
+- Banned people still try now and then and are turned away at the door (log only).
+- **Flagged for the owner:** on the tutorial (no security), cheats cost about $1.5K-2.3K of a $5K-7K yearly slot win. That's the intended pressure (hire a guard; mark the big winners), but it makes the $30K goal a little harder.
+
 ## 2026-09-24 · Green light for M5: cheats, suspicion tools, enforcement, luck tags (see docs/spec/cheats.md)
 - Owner said "green light" for M5.
 - **Cheats are about 1% of guests** (owner): uncommon, not a constant stream.

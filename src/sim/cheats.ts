@@ -216,6 +216,7 @@ function caught(g: Game, a: Agent) {
   const up = Math.min(gd.wallet, Math.max(0, gd.mem.won - gd.mem.wagered));
   if (up > 0) { gd.wallet -= up; post(g, "recovered", up); }
   count(s, "_caught");
+  g.bus.emit({ type: "sound", id: "caught", x: a.x, y: a.y });
   news(g, "bad", `Caught cheating: ${guestName(gd.name)}${o ? ` at ${OBJECTS[o.kind].name}` : ""}${up > 0 ? `; ${fmtMoney(up)} recovered` : ""}.`);
   const action = offense > 1 ? s.enf.policy.repeat : s.enf.policy.first;
   order(g, a, action, 1);
@@ -327,7 +328,7 @@ function jobTick(g: Game, job: EnfJob, byId: Map<number, Agent>) {
     if (Math.abs(st.x - t.x) + Math.abs(st.y - t.y) > 1) { go(st, here, "enforce"); return; }
     if (job.action === "warn") { job.stage = 3; job.at = s.tick; return; }
     const dest = job.action === "ban" ? nearestOf(g, here, exits(g)) : nearestOf(g, here, purposeTiles(g, "enforcement"));
-    if (dest < 0 || dest === here) { job.stage = 3; job.at = s.tick; job.tile = dest; return; }
+    if (dest < 0 || dest === here) { job.stage = 3; job.at = s.tick; job.tile = dest; act(g, job, t); return; }
     job.tile = dest;
     job.stage = 2;
     go(t, dest, "held");
@@ -349,6 +350,7 @@ function jobTick(g: Game, job: EnfJob, byId: Map<number, Agent>) {
     }
     job.stage = 3;
     job.at = s.tick;
+    act(g, job, t);
     return;
   }
   // Stage 3: doing it.
@@ -364,6 +366,11 @@ function consequences(g: Game, job: EnfJob, t: Agent, witnesses: boolean): numbe
   if (ENF[job.action].police) adjustPolice(g, -ENF[job.action].police * mult);
   count(g.state, "_enf");
   return mult;
+}
+
+/** It starts: the sound of it (the animation is the renderer's, from the job's stage and start tick). */
+function act(g: Game, job: EnfJob, t: Agent) {
+  if (job.action === "beat" || job.action === "vanish") g.bus.emit({ type: "sound", id: job.action === "beat" ? "punch" : "shot", x: t.x, y: t.y });
 }
 
 function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
@@ -411,6 +418,7 @@ function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
       s.enf.jobs.splice(s.enf.jobs.indexOf(job), 1);
       gd.held = 0;
       gd.why = "vanished";
+      t.act = "idle";
       depart(g, t, true);
       // Over the shoulder and out to the dumpster.
       st.bag = 1;

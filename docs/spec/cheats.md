@@ -108,6 +108,18 @@ Each action adds to a rolling **enforcement heat** (warning 0.3, ban 0.5, beatin
 - Room card for an Enforcement room: the house treatment for a first and a repeat offense (also in the
   Authorities tab, with caught cheats, enforcement heat, cameras and operators).
 - Log/ticker: catches red; missing-person reports red; rumors yellow; banned people turned away go to the log.
+- Sounds: a three-tone alarm on a catch; three punches timed to the beating; one muffled shot and a thud.
+
+## Measured (headless, `npm run targets` and the tutorial economy run)
+- Test Floor, 300 days, seed 1 (two guards, six cameras, an operator in the Security office, an enforcer in the
+  Back room): 11 cheats among 1,955 guests, 3 caught (banned), the house lost $1,735 to cheats (median $126 each)
+  and recovered $405. Lucky guests' return 0.97, unlucky 0.52 (small samples; jackpots dominate).
+- Cheat estimate, sampled every 20 s once a guest has wagered $50: cheats median 75% (p90 86%); honest winners
+  median 0.4%, 1 in 100 above 27%; honest losers never above 2%.
+- Tutorial (no security at all), a year, seeds 1-3: 10-13 cheats cost $1.5K-2.3K of a $5K-7K slot win.
+- Big Floor steady state: 2.2 ms/tick at 5,000 guests, same as M4.
+
+Flags in `npm run targets`: no cheats at all, no cheat ever caught, cheats who got away mostly lost money.
 
 ## Save
 Schema 7 (migration from 6): people gain `luck`, `cheat` (drawn from a hash of their id at the type's share),

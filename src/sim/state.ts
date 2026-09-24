@@ -2,8 +2,10 @@
 import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
+import type { SlotDesign } from "../data/designer";
+import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export interface MapState {
   w: number;
@@ -56,6 +58,8 @@ export interface PlacedObject {
   crook?: number;
   /** (M10) Nightclubs: the track playing (data/music.ts CLUB_TRACKS; missing = the first). */
   track?: number;
+  /** (M8) Slots: the design it plays (a stock design id or one of `GameState.designs`); missing = its kind's own. */
+  design?: string;
 }
 
 /**
@@ -174,7 +178,13 @@ export interface GuestData {
     spent: number;
     /** When they'll try for a meal or a show again after finding it full (or unaffordable). */
     eatAt: number;
+    /** (M8) Ticks of play credited (or, on a dull machine, taken away) for how exciting their machines were. */
+    thrill?: number;
   };
+  /** (M8) Ticks a free spins feature adds to their next round, the slot design they last played, features this session. */
+  extra?: number;
+  game?: string;
+  sf?: number;
   /** Current thought and when it was had; recent thought ids, newest last. */
   thought: string;
   thoughtTick: number;
@@ -495,6 +505,31 @@ export interface GameState {
   research: ResearchState;
   /** (M10) The game you're playing yourself, or null (docs/spec/play.md). */
   yours: YourPlay | null;
+  /** (M8) The player's slot designs used in this casino (docs/spec/designer.md), and the next design number. */
+  designs: Record<string, DesignRec>;
+  nextDesign: number;
+  /** (M8) Numbers per slot design on this floor, stock designs included. */
+  dstats: Record<string, DesignStats>;
+}
+
+/** Numbers of one slot design on this floor (docs/spec/designer.md §11). */
+export interface DesignStats {
+  /** Lifetime: wagered, paid, rounds, sessions, play ticks, machine-days (one machine for a day = 1), features, jackpots. */
+  coinIn: number; paidOut: number; rounds: number; sessions: number; playTicks: number; machDays: number; feats: number; jps: number;
+  /** Recent win and machine-days (both fade 3% a day), for the performance index. */
+  rWin: number; rDays: number;
+  /** Day first placed (-1 never), and guests' remarks by thought id. */
+  born: number;
+  said: Record<string, number>;
+}
+/**
+ * (M8) A slot design in this casino: the design, when its certification finishes (0 never submitted; a tick in
+ * the future while the lab has it; a past tick once certified), and 1 while it runs uncertified (rigging).
+ */
+export interface DesignRec {
+  d: SlotDesign;
+  cert: number;
+  rigged: number;
 }
 
 export type YourFam = "slot" | "vpoker" | "blackjack" | "roulette" | "craps" | "baccarat" | "keno";
@@ -507,8 +542,8 @@ export interface YourPlay {
   out: number;
   last: { wagered: number; won: number; seq: number; big: string };
   total: { wagered: number; won: number };
-  /** Slots: reel symbols. Video poker: the hand, held positions, cards out. Blackjack: hands, dealer, hand in play. */
-  reels?: number[]; cards?: number[]; held?: number[]; used?: number[];
+  /** Slots: the last spin with everything it showed (M8). Video poker: the hand, held positions, cards out. Blackjack: hands, dealer, hand in play. */
+  spin?: Outcome; cards?: number[]; held?: number[]; used?: number[];
   hands?: { cards: number[]; bet: number; done: number }[]; dealer?: number[]; cur?: number;
   /** Roulette: the pocket (37 = 00) and bets. Craps: point, line bets [pass, don't pass], odds, dice. */
   pocket?: number; bets?: Record<string, number>;

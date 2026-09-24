@@ -1,4 +1,4 @@
-// Themes (FOUNDATIONS §5, docs/spec/themes.md). Twelve visible theme categories, the hidden pairings between
+// Themes (FOUNDATIONS §5, docs/spec/themes.md). Thirteen visible theme categories (Lucky Dragon since M8), the hidden pairings between
 // them, and where things suit. Decor items (data/objects.ts) belong to a theme or to General; every item carries
 // hidden tags the player never sees. Guests only ever say generic things about theming.
 
@@ -15,6 +15,7 @@ export const THEMES = {
   goldrush: "Gold Rush",
   tiki: "Tropical Tiki",
   pirate: "Pirate Cove",
+  dragon: "Lucky Dragon",
 } as const;
 export type ThemeId = keyof typeof THEMES;
 export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
@@ -25,8 +26,9 @@ export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
  */
 const PAIRS: [ThemeId, ThemeId, number][] = [
   ["rome", "riviera", 0.5], ["rome", "egypt", 0.4], ["deco", "ratpack", 0.5], ["tiki", "pirate", 0.5],
-  ["tiki", "atomic", 0.4], ["rock", "atomic", 0.4],
+  ["tiki", "atomic", 0.4], ["rock", "atomic", 0.4], ["dragon", "luxe", 0.4], ["dragon", "deco", 0.3],
   ["egypt", "medieval", -0.5], ["rock", "luxe", -0.5], ["goldrush", "riviera", -0.4], ["medieval", "atomic", -0.5],
+  ["dragon", "goldrush", -0.4], ["dragon", "medieval", -0.4],
 ];
 export const SYNERGY: number[][] = THEME_IDS.map((a) => THEME_IDS.map((b) => {
   const p = PAIRS.find(([x, y]) => (x === a && y === b) || (x === b && y === a));

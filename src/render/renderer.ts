@@ -4,17 +4,18 @@
 import { DOOR_STATE, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { CHANNEL_DEFS, type Channel } from "../data/fields";
-import { ANIMS, BOARD_CELLS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS, WHEEL_AT } from "../data/art";
+import { ANIMS, BOARD_CELLS, CAB_REELS, LIGHTS, PEOPLE, SIT_DROP, SLOT_REELS, WHEEL_AT, topperHeight, type CabShape } from "../data/art";
+import { LIGHT_COLORS } from "../data/designer";
 import { CRAPS_OUTCOMES, TABLE_GAMES } from "../data/tables";
 import { ENF } from "../data/cheats";
 import { SCENARIOS } from "../data/scenarios";
-import { dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
+import { designById, dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
 const ART = 16; // art pixels per tile
-/** The cabinet a machine draws with: its slot model, or the video poker cabinet (M7). */
-const cabinet = (kind: string) => OBJECTS[kind]?.slot ?? (OBJECTS[kind]?.game === "vpoker" ? "vpoker" : undefined);
+/** (M8) A design's cabinet look key (render/atlas.ts): cabinet type, body color, light color, topper. */
+const lookOf = (d: { cab: { type: string; body: number; topper: string }; show: { light: number } }) => `${d.cab.type}.${d.cab.body}.${d.show.light}.${d.cab.topper}`;
 const CHUNK = 16; // tiles per chunk side
 const REACH = 4; // tiles a change can affect around it (light pools, tall sprites)
 const FACING = ["front", "left", "back", "right"] as const;
@@ -51,7 +52,11 @@ export interface DrawStats { agentsDrawn: number; chunksRedrawn: number }
 interface Spr { key: string; x: number; y: number; sort: number; anim?: string }
 
 export class Renderer {
-  readonly atlas: Atlas;
+  atlas: Atlas;
+  /** Designed cabinet looks compiled into the atlas (M8), and extra ones asked for (build menu pictures). */
+  private looks = new Set<string>();
+  private wantLooks = new Set<string>();
+  private looksAt = -1;
   private ctx: CanvasRenderingContext2D;
   // Two chunk caches: terrain + shading only (Close/Default, objects live) and with objects baked (Wide/Overview).
   private chunks = new Map<number, HTMLCanvasElement>();
@@ -69,9 +74,37 @@ export class Renderer {
     this.atlas = buildAtlas();
   }
 
+  /** The cabinet a machine draws with: a design's look, the original slot models, or the video poker cabinet. */
+  private cabinet(o: { kind: string; design?: string }): string | undefined {
+    const def = OBJECTS[o.kind];
+    if (def?.slot && o.design && this.game) {
+      const d = designById(this.game.state, o.design);
+      if (d) return `L${lookOf(d)}`;
+    }
+    return def?.slot ?? (def?.game === "vpoker" ? "vpoker" : undefined);
+  }
+
+  /** (M8) Compiles any designed cabinet look the floor needs that the atlas doesn't have yet. */
+  private ensureLooks(force = false) {
+    const g = this.game;
+    if (!g) return;
+    if (!force && g.state.tick === this.looksAt) return;
+    this.looksAt = g.state.tick;
+    const need = new Set(this.wantLooks);
+    for (const o of g.state.objects) if (o.design && OBJECTS[o.kind]?.slot) { const d = designById(g.state, o.design); if (d) need.add(lookOf(d)); }
+    let missing = false;
+    for (const l of need) if (!this.looks.has(l)) { missing = true; break; }
+    if (!missing) return;
+    for (const l of this.looks) need.add(l);
+    this.looks = need;
+    this.atlas = buildAtlas([...need].sort());
+    this.chunks.clear(); this.farChunks.clear(); this.thumbs.clear();
+  }
+
   setGame(g: Game) {
     this.unsub?.();
     this.game = g;
+    this.looksAt = -1;
     this.chunks.clear();
     this.dirty.clear();
     this.farChunks.clear();
@@ -318,7 +351,7 @@ export class Renderer {
       // A chair seen from behind sits in front of whoever is on it.
       else if (st.kind === "chair") out.push({ key: `obj:chair:${CHAIR[st.f]}`, x: st.x * ART, y: st.y * ART, sort: st.y + (st.f === 2 ? 0.05 : -0.05) });
     }
-    const cab = cabinet(o.kind);
+    const cab = this.cabinet(o);
     if (def.art === "zone") {
       out.push(...this.zoneSprites(o));
     } else if (def.cat === "table" && A.has(`obj:tbl_${o.kind}_${o.rot & 3}`)) {
@@ -329,8 +362,8 @@ export class Renderer {
         out.push({ key: "obj:wheel", x: (o.x + ex) * ART + 2, y: (o.y + ey) * ART + 1, sort: o.y + oh - 0.09, anim: "wheel" });
       }
     } else if (cab) {
-      const key = `slot:${cab}:${facing}`, f = A.get(key)!;
-      out.push({ key, x: o.x * ART, y: (o.y + 1) * ART - f.h, sort: o.y + 0.99, anim: "slot" });
+      const key = `slot:${cab}:${facing}`, f = A.get(key) ?? A.get("slot:cherry:front")!;
+      out.push({ key: A.has(key) ? key : "slot:cherry:front", x: o.x * ART, y: (o.y + oh) * ART - f.h, sort: o.y + oh - 0.01, anim: "slot" });
     } else if (def.art === "tiled") {
       const n = Math.max(ow, oh), alongX = ow >= oh;
       for (let i = 0; i < n; i++) {
@@ -418,10 +451,15 @@ export class Renderer {
 
   private thumbs = new Map<string, { url: string; w: number; h: number }>();
   /** A build-menu picture of an object (front view), as a data URL with its size in art pixels. */
-  thumbnail(kind: string): { url: string; w: number; h: number } {
-    let t = this.thumbs.get(kind);
+  thumbnail(kind: string, design?: string): { url: string; w: number; h: number } {
+    const tk = design ? `${kind}@${design}` : kind;
+    let t = this.thumbs.get(tk);
     if (t) return t;
-    const sprites = this.objectSprites({ id: 0, kind, x: 0, y: 0, rot: 0 } as PlacedObject).filter((s) => s.key !== "obj:stool" && !s.key.startsWith("obj:chair") && s.key !== "obj:dance");
+    if (design && this.game) {
+      const d = designById(this.game.state, design);
+      if (d && !this.looks.has(lookOf(d))) { this.wantLooks.add(lookOf(d)); this.ensureLooks(true); }
+    }
+    const sprites = this.objectSprites({ id: 0, kind, x: 0, y: 0, rot: 0, design } as PlacedObject).filter((s) => s.key !== "obj:stool" && !s.key.startsWith("obj:chair") && s.key !== "obj:dance");
     const F = this.atlas.frames;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const s of sprites) {
@@ -436,7 +474,7 @@ export class Renderer {
       g.drawImage(this.atlas.canvas, f.x - PAD, f.y - PAD, f.w + 2 * PAD, f.h + 2 * PAD, s.x - PAD - x0, s.y - PAD - y0, f.w + 2 * PAD, f.h + 2 * PAD);
     }
     t = { url: c.toDataURL(), w: c.width, h: c.height };
-    this.thumbs.set(kind, t);
+    this.thumbs.set(tk, t);
     return t;
   }
 
@@ -444,6 +482,7 @@ export class Renderer {
   draw(cam: Camera, vw: number, vh: number, dpr: number, alpha: number, opt: DrawOptions = {}) {
     const g = this.game;
     if (!g) return;
+    this.ensureLooks();
     const { canvas, ctx } = this;
     const now = performance.now();
     const bw = Math.round(vw * dpr), bh = Math.round(vh * dpr);
@@ -531,7 +570,9 @@ export class Renderer {
           items.push({ y: sp.sort, draw: () => blit(k2, px, py) });
           continue;
         }
-        if (!cabinet(o.kind) || sp.key === "obj:stool") { items.push({ y: sp.sort, draw: () => blit(key, px, py) }); continue; }
+        const cabK = this.cabinet(o);
+        if (!cabK || sp.key === "obj:stool") { items.push({ y: sp.sort, draw: () => blit(key, px, py) }); continue; }
+        const dsg = cabK.startsWith("L") ? designById(s, o.design!) : undefined;
         const facing = FACING[o.rot & 3], f = F.get(sp.key)!;
         const player = playing.get(o.id);
         items.push({
@@ -546,19 +587,29 @@ export class Renderer {
             }
             // Spinning reels, visible from the front only; they stop left to right.
             if (facing === "front" && player && player.timer > 0) {
-              const strip = F.get(`reel:${cabinet(o.kind)}`)!, R = SLOT_REELS;
-              for (let k = 0; k < 3; k++) {
+              const strip = F.get(`reel:${cabK}`)!;
+              const R = dsg ? { ...CAB_REELS[dsg.cab.type as CabShape], y: CAB_REELS[dsg.cab.type as CabShape].y + topperHeight(dsg.cab.topper, dsg.cab.type === "giant") } : SLOT_REELS;
+              for (let k = 0; k < 3 && strip; k++) {
                 if (player.timer <= k * 2) continue;
                 const off = Math.floor(now / 45 + k * 5 + o.id) % 12;
                 ctx.drawImage(atlas.canvas, strip.x, strip.y + off, R.w, R.h, Math.round(px + R.x[k] * scale), Math.round(py + R.y * scale), R.w * scale, R.h * scale);
               }
+            }
+            // A free spins feature (M8): the cabinet pulses in its light color and the topper strobes.
+            if (dsg && o.last.tick >= 0 && o.last.win === 3 && age < 200) {
+              ctx.globalCompositeOperation = "lighter";
+              ctx.globalAlpha = (Math.floor(now / 110) & 1) ? 0.45 : 0.15;
+              ctx.fillStyle = LIGHT_COLORS[dsg.show.light]?.c[0] ?? "#ffd23f";
+              ctx.fillRect(px + 2 * scale, py, (f.w - 4) * scale, f.h * scale);
+              ctx.globalAlpha = 1;
+              ctx.globalCompositeOperation = "source-over";
             }
             // Wins light the topper; a jackpot floods the cabinet with cycling color.
             if (o.last.tick >= 0 && o.last.win === 2 && age < 160) {
               ctx.globalCompositeOperation = "lighter";
               ctx.globalAlpha = (Math.floor(now / 90) & 1) ? 0.5 : 0.22;
               ctx.fillStyle = ["#ffd23f", "#ff4fa0", "#3ff2ff"][Math.floor(now / 180) % 3];
-              ctx.fillRect(px + 2 * scale, py, 12 * scale, f.h * scale);
+              ctx.fillRect(px + 2 * scale, py, (f.w - 4) * scale, f.h * scale);
               ctx.globalAlpha = 1;
               ctx.globalCompositeOperation = "source-over";
             } else if (o.last.tick >= 0 && o.last.win === 1 && age < 30 && (Math.floor(now / 120) & 1)) {

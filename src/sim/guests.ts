@@ -32,6 +32,8 @@ import { THEFT } from "../data/staff";
 import { greed, steal } from "./crew";
 import { comeBack, useComp } from "./bank";
 import { whaleLeft } from "./whales";
+import { compiledOf, slotInfo, statsOf } from "./design";
+import { judged } from "./design/appeal";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -428,7 +430,8 @@ export function visitScore(a: Agent): VisitScore {
   const gd = a.g!, type = GUEST_TYPES[gd.type];
   // Money gone on play, meals, shows, cover and doors, against time spent playing or having fun (M6).
   const lost = gd.mem.wagered - gd.mem.won + gd.mem.spent;
-  const playSec = (gd.mem.playTicks + gd.mem.fun) / TICKS_PER_SECOND;
+  // M8: time on thrilling machines counts for more, on dull ones for less (never below half the time played).
+  const playSec = (gd.mem.playTicks + gd.mem.fun + Math.max(-0.5 * gd.mem.playTicks, gd.mem.thrill ?? 0)) / TICKS_PER_SECOND;
   // A trip with (almost) nothing done was wasted, whatever the money did.
   const value = playSec < 30 ? 0 : lost <= 0 ? 1 : Math.min(1, playSec / lost / type.secPerDollar);
   const feel = gd.mem.rounds ? Math.min(1, 0.2 + (1.6 * gd.mem.feel) / gd.mem.rounds + 0.3 * Math.min(1, gd.mem.bigWin)) : 0.3;
@@ -710,16 +713,33 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   // A whale (M9) plays only their game.
   if (gd.vip) return isTable(o.kind) && def.game === g.state.whale.game && tableOpen(g, o) && canSit(g, gd, o) ? 3 : 0;
   if (isTable(o.kind)) return tableOpen(g, o) && canSit(g, gd, o) ? tableAppeal(g, gd, o) : 0;
-  const m = machineModel(o, gd);
+  const inf = def.slot ? slotInfo(g.state, o) : undefined;
+  const m = inf ? inf.c.model : machineModel(g.state, o, gd);
   if (!m) return 0;
   const mult = stakeMult(g, o);
-  if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * mult)) return 0;
+  if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * (m.minCredits ?? 1) * mult)) return 0;
   if (def.game) return (type.games[def.game] ?? 0) + type.rules * rulesScore(def.game, o.rules) * 0.5;
-  return type.games[m.id] ?? 0;
+  return slotAppeal(g, gd.type, o, inf);
+}
+
+/**
+ * (M8) A slot design's appeal to a type (docs/spec/designer.md §5), and how it sits in its room: a design whose theme
+ * matches the room's (or pairs well with it) pleases guests who care about theming; a clash puts them off.
+ */
+export function slotAppeal(g: Game, type: string, o: import("./state").PlacedObject, info = slotInfo(g.state, o)): number {
+  if (!info) return 0;
+  let v = info.ap.get(type);
+  if (v === undefined) info.ap.set(type, (v = judged(info.c, type).appeal));
+  const th = g.fields.themes;
+  if (th.active) {
+    const dom = th.dom[o.y * g.state.map.w + o.x];
+    if (dom >= 0) v += GUEST_TYPES[type].theming * info.th[dom];
+  }
+  return v;
 }
 
 /** The cheapest games (quarter slots and video poker) are where comp-seekers sit. */
-const cheapGame = (o: import("./state").PlacedObject) => !isTable(o.kind) && minRoundOf(o) <= 0.25 * WAGERS_PER_ROUND + 1e-9;
+const cheapGame = (g: Game, o: import("./state").PlacedObject) => !isTable(o.kind) && minRoundOf(g.state, o) <= 0.25 * WAGERS_PER_ROUND + 1e-9;
 
 /**
  * Free, working machines a guest would consider: ones in view, or ones a regular knows the way to. Searched in
@@ -787,7 +807,8 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
     let score = c.appeal * 2 + fit * 0.8 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
     if (liked && (c.appeal < 0.9 || fit < 0)) continue;
     // Hot machine belief: one they just saw pay out.
-    const isHot = c.seen && o.last.win === 2 && tick - o.last.tick < HOT_SECONDS * TICKS_PER_SECOND;
+    // M8: a machine seen in a free spins feature looks hot too.
+    const isHot = c.seen && (o.last.win === 2 || o.last.win === 3) && tick - o.last.tick < HOT_SECONDS * TICKS_PER_SECOND;
     if (isHot) score += 1.2;
     // Sit next to the group, or at least within sight of them.
     if (mates.length) {
@@ -800,7 +821,7 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
       score += near;
     }
     // Comp-seekers nurse the cheapest machine while drinks are free.
-    if (cheap) score += cheapGame(o) ? 1.5 : -0.5;
+    if (cheap) score += cheapGame(g, o) ? 1.5 : -0.5;
     // Rules-aware guests (M7) remark on a table's rules when they see bad ones.
     if (c.seen && type.rules && OBJECTS[o.kind].game && rulesScore(OBJECTS[o.kind].game!, o.rules) <= -0.5) badRules = true;
     if (score > bestScore) { bestScore = score; best = c.o; far = c.seen && d > 6; hot = isHot; }
@@ -1099,6 +1120,34 @@ function noteSession(g: Game, a: Agent) {
   const secs = (g.state.tick - gd.mem.sitAt) / TICKS_PER_SECOND;
   const score = secs * (gd.mood / 100);
   if (secs >= 30 && gd.mood >= 55 && score > gd.mem.favScore) { gd.mem.favScore = score; gd.mem.favSeat = a.y * g.state.map.w + a.x; }
+  const o = g.objById.get(a.target);
+  if (o && OBJECTS[o.kind].slot) slotRemark(g, a, o, secs);
+}
+
+/** Reasons a guest gives for a design (appeal.ts) → what they say, naming it (docs/spec/designer.md §5). */
+const REMARKS: Record<string, string> = {
+  "Loved the bonus": "slotBonus", "Everything about it fits": "slotLove", "That top prize!": "slotTop", "Never saw the bonus": "slotNoBonus",
+  "The bonus pays nothing": "slotWeak", "It ate my money fast": "slotAte", "Too wild for me": "slotWild", "Too tame": "slotTame",
+  "Too loud and flashy": "slotLoud", "A bit dull to look at": "slotDull", "Too complicated": "slotComplex", "Stop celebrating when I lose": "slotLdw",
+  "No bonus to play for": "slotNoBonusAt",
+};
+/** After a slot session, sometimes a remark about the design: counted per design for its card. */
+function slotRemark(g: Game, a: Agent, o: import("./state").PlacedObject, secs: number) {
+  const gd = a.g!, c = compiledOf(g.state, o);
+  const saw = gd.sf ?? 0;
+  gd.sf = 0;
+  if (!c || secs < 30) return;
+  const r = rng(g.state, "guests");
+  if (!r.chance(0.35)) return;
+  // What this session showed them, then their type's standing reasons.
+  const reasons = judged(c, gd.type).reasons.filter((q) => (q === "Loved the bonus" ? saw > 0 : q === "Never saw the bonus" ? saw === 0 : true));
+  if (saw > 0 && !reasons.includes("Loved the bonus") && !reasons.includes("The bonus pays nothing")) reasons.unshift("Loved the bonus");
+  const id = REMARKS[reasons.length ? reasons[r.int(0, reasons.length - 1)] : ""];
+  if (!id) return;
+  think(g, a, id);
+  const st = statsOf(g.state, gd.game ?? "");
+  st.said[id] = (st.said[id] ?? 0) + 1;
+  st.sessions++;
 }
 
 /** Loss limit and win goal as they stand now: drink loosens both, chasing erodes the limit. */
@@ -1110,7 +1159,10 @@ export function limits(gd: GuestData): { loss: number; win: number } {
 function nextRound(g: Game, a: Agent): number {
   const o = g.objById.get(a.target)!, gd = a.g!;
   if (isTable(o.kind)) return 1;
-  return roundTicks(machineModel(o, gd)!, gd.pace * (compSeeking(g, gd) ? 0.7 : 1));
+  // A free spins feature last round (M8) holds the seat a little longer.
+  const extra = gd.extra ?? 0;
+  gd.extra = 0;
+  return roundTicks(machineModel(g.state, o, gd)!, gd.pace * (compSeeking(g, gd) ? 0.7 : 1)) + extra;
 }
 
 /** Between rounds: keep playing, or get up (quit rule, floor time, needs, money, a broken machine, the group). */
@@ -1124,7 +1176,7 @@ function quitReason(g: Game, a: Agent): string | null {
   if (o.broken) { think(g, a, "broken"); gd.annoy += 10; return "broken"; }
   // Tables (M7): the dealer left, or a poker game nobody else joins.
   if (!tableOpen(g, o)) { think(g, a, "noDealer"); return "closed"; }
-  if (minRoundOf(o) * stakeMult(g, o) > gd.wallet + 1e-9) return "money";
+  if (minRoundOf(g.state, o) * stakeMult(g, o) > gd.wallet + 1e-9) return "money";
   const def = OBJECTS[o.kind].game && TABLE_GAMES[OBJECTS[o.kind].game!];
   if (def && def.minPlayers > 1 && (seatHolders(g, o.id) ?? []).filter((id) => id > 0).length < def.minPlayers && rng(g.state, "guests").chance(0.25)) return "empty";
   const nt = net(gd);
@@ -1237,6 +1289,7 @@ function guestTick(g: Game, a: Agent) {
         if (!o || !isGame(o.kind) || o.broken || a.seat < 0) { release(g, a); a.act = "idle"; return; }
         o.st.sessions++;
         gd.mem.sitAt = g.state.tick;
+        gd.sf = 0;
         gd.favAt = 0;
         a.timer = nextRound(g, a);
       } else if (a.timer === -1) {

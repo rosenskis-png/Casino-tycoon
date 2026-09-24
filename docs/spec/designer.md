@@ -1,6 +1,6 @@
 # Slot designer (M8 plan)
 
-**Status: plan, waiting for the owner's green light** (questions in DECISIONS 2026-09-24 "M8 planned"). FOUNDATIONS §7.1; NORTH_STAR "The creative core". All numbers are starting values.
+**Status: M8 (part 1) built 2026-09-24; M8.5 and M8.6 to come.** Owner's answers and additions in DECISIONS. Code: `src/data/designer.ts` (vocabulary), `src/data/designs.ts` (stock), `src/data/slotTastes.ts` (hidden tastes, pairings), `src/sim/design/` (compile, grid, spin, appeal, lab, checks, index), `src/ui/slot/` (the machine), `src/ui/designer/` (designer, Slots tab), `src/platform/library.ts`. FOUNDATIONS §7.1; NORTH_STAR "The creative core". All numbers are starting values.
 
 ## The idea
 RollerCoaster Tycoon's coaster builder works because it has **physics** (a coaster can't climb a hill it lacks the speed for), **pieces** (drops, loops, helixes, each with a feel), a **test run** you watch, **three ratings** that are measurements rather than verdicts (Excitement, Intensity, Nausea), and a **park full of guests** who ride it or don't. The slot designer copies that shape:
@@ -116,6 +116,8 @@ The designer's Test tab, free and instant, re-run on every change.
   - **Drain**: how fast it takes money: bets lost per minute of play at its pace, (1 − payback) × spins per minute (2 → 1, 5 → 3, 8 → 5, 12 → 7, 20+ → 10). Most guests mind it, some don't.
 - **Panel verdict:** a few lines in guests' words ("Loved the free spins", "Too wild for me", "It ate my money fast"). By type only with research (Slot lab project, §11; it follows the player's club and guest breakdowns).
 - **Test run:** play it yourself on the real play screen with free lab credits (casino cash untouched), or autoplay 200 spins at speed and watch the credit line. This is RCT's empty test train.
+- **Force an outcome** (owner): buttons to make the next spin a loss, a near miss, a dressed-up loss, a small, big, mega or epic win, free spins, each jackpot level or the top award, however rare. The forced spin is drawn from the real distribution *within* that outcome, so it's exactly what a real one looks like.
+- **Live preview** (owner): the designer's top half is the machine itself, the same view as playing it; every change (theme, layout, colors, meters, lights) shows at once, and a spin can be taken any time.
 - The lab never says good or bad. The floor is the truth: the same design can rate 7 in the lab and die in a quiet high-limit room with its sound at 3.
 
 ## 5. How guests judge a design (hidden)
@@ -170,7 +172,8 @@ Like theme pairings (docs/spec/themes.md), each strong pairing adds to Excitemen
 - **Costs:** cabinet (slant $500, upright $400, stepper $450, tall $800, giant $3,000) + topper (sign $100, dome $150, figure $300, wheel $600) + $50 per feature; a bank's sign and controller $1,000. Upkeep ~0.6% of price a month. **Conversion kit:** switching a placed machine to another design of the same cabinet type, $100, instant.
 
 ## 9. Playing it yourself
-The M10 slot screen is replaced by one built from the design, meant to look and feel like a real video slot or a real 3-reel stepper:
+The M10 slot screen is replaced by one built from the design, meant to look and feel like a modern Vegas slot or a real 3-reel stepper (owner's reference screenshots: Dragon Link, Buffalo Gold, Megabucks Mega Vault):
+- A cabinet with a **top box** (the logo and the biggest meter), a **meter row** (Grand, Major, Minor, Mini), the **reel screen** with side badges ("20 LINES", "1024 WAYS") and messages ("THAT'S A WINNER", "BONUS REELS IN PLAY"), a **bar** with CREDIT, BET and WIN and a denomination badge, a **button deck**, LED edge light in the design's light color. Jackpots at or above $1,200 show a hand-pay notice ("JACKPOT — CALL ATTENDANT"), as real machines do.
 - Themed background and frame, the design's name as a lit logo, jackpot meters across the top (live for progressives, the bank's for linked).
 - Reels in the design's layout. **Symbols are emoji on styled tiles** (glossy gradient frames, gold for highs, themed card ranks or bars for lows): they look like real rendered slot symbols on an iPhone at no art cost. The floor stays pixel art.
 - Spinning strips with motion blur, staggered stops with a bounce, anticipation (longer spin, glowing frame, rising sound), winning lines or ways drawn and cycled, symbols pulsing.
@@ -220,3 +223,17 @@ Three chats and three releases (each playable; the docs carry context).
 
 **M8.6 · The market**
 - Novelty and ageing, boredom and favorites, variety, fans and draw; the yearly Slot Expo; rival releases (buy, study, copy); wishes; records and Evergreens; research projects; Test Floor with designs of every kind; `npm run targets` sanity flags per design; the balance and speed comparison against the last release.
+
+## As built in M8 (differences from the plan above)
+- **Layouts:** 3×1 classic, 3×3 5 lines, 5×3 20 lines, 5×4 40 lines, 243 / 1,024 / 4,096 ways. Multiplier wilds (×2/×3) in the base game only on 3-reel games; on 5- and 6-reel games they come with free spins ("Multiplier wilds").
+- **Free spins enhancers:** plain, all wins ×2 or ×3, random ×2–×5, multiplier wilds, extra wilds, expanding symbol. Sticky wilds and symbol upgrades moved to M8.5 (with collectors). Scatter pays always come with free spins (2× / 5× / 20× / 50× the bet for 3–6).
+- **Trigger spins are exclusive** of line wins (a trigger screen shows scatters only), which keeps P(any pay) exact for luck.
+- **Jackpots (M8):** fixed amounts × the bet, won by 3 + level jackpot symbols anywhere (classic: 3 on the line); a level's name takes the top of Mini/Minor/Major/Grand. At most 35% of payback.
+- **The original three machines** keep their old top prize as a jackpot at the same payback share, so they swing as before (SD ≈ 12, 12, 28 × bet). Their calibrated appeal is within ±0.15 of the old values (checked headless).
+- **Intensity** uses the swings a player feels: variance without jackpots (jackpots count toward the top prize instead). The par sheet's volatility index includes everything.
+- **Excitement buys hold:** each round on a design adds (0.06 × Excitement − 0.3) × the round's time to the visit's value time (never below half the time played).
+- **Stock designs:** Cherry Parade, Liberty Bell, Thunder Jackpot, Stampede Gold (Buffalo-style), Sphinx Treasures (Book/Cleopatra-style), Diamond Sevens (Double Diamond-style), Platinum Reserve ($5 slant-top), Lantern Fortune (Dragon Link-style giant with four meters). Stock games need only their own research.
+- **Commands apply at once in the designer** (`Game.flushCommands`), so it works while paused.
+- **Floor:** designs place as `slot_slant`, `slot_upright`, `slot_stepper`, `slot_tall`, `slot_giant` (2×2, one seat) with `o.design`; the original three kinds keep their sprites and prices. A designed slot themes its tile weakly (0.8) and its energy comes from lights, sound and cabinet.
+- **Research:** Video reels, Ways to win, Free spins, Showpiece cabinets (tall, giant), Fast-track certification; information: Slot lab panels. Lucky Dragon joined the Luxury themes project (its decor pieces wait for M8.6).
+- **Not yet:** bank signs, hunters, onlookers at bonuses (M8.5); novelty, trends, rivals, fans, records and Evergreens (M8.6).

@@ -37,10 +37,11 @@ import { calendarSystem, newCalendar } from "./calendar";
 import { newResearch, researchSystem } from "./research";
 import { viceSystem } from "./vice";
 import { yoursSystem } from "./yours";
+import { designSystem } from "./design";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem, yoursSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem, yoursSystem, designSystem,
 ];
 
 export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
@@ -76,6 +77,8 @@ export class Game {
   seatTiles = new Map<number, number[]>();
   /** Cheapest round on any placed game (Infinity when there are none). */
   minRound = Infinity;
+  /** (M8) The id the last `designSave` stored the design under (the designer reads it back). */
+  lastDesign = "";
   readonly rooms = new RoomIndex();
   /**
    * Door rules (M6): restricted doors (tiles), and one path cache per set of them a person can pass. With no
@@ -112,10 +115,11 @@ export class Game {
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
-      cal: newCalendar(), ads: [], research: newResearch(def), yours: null,
+      cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {},
     };
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);
+      if (o.design) obj.design = o.design;
       if (o.bar && obj.bar) Object.assign(obj.bar, o.bar);
       state.objects.push(obj);
     }
@@ -199,7 +203,7 @@ export class Game {
         let list = this.slotSectors.get(key);
         if (!list) this.slotSectors.set(key, (list = []));
         list.push(o);
-        this.minRound = Math.min(this.minRound, minRoundOf(o));
+        this.minRound = Math.min(this.minRound, minRoundOf(this.state, o));
         if (def.cat === "table") this.tables.push(o);
         for (const st of objSeats(o)) if (st.kind !== "dealer") this.gameSeats++;
       }
@@ -260,8 +264,8 @@ export class Game {
     if (this.commandLog.length > 200) this.commandLog.shift();
   }
 
-  /** One fixed simulation step. */
-  step() {
+  /** Applies queued commands now, without advancing time (menus that act while the game is paused, M8). */
+  flushCommands() {
     const q = this.queue;
     this.queue = [];
     for (const cmd of q) {
@@ -269,6 +273,11 @@ export class Game {
       if (!error) this.handlers.get(cmd.type)!.apply(this, cmd);
       this.record(cmd, error);
     }
+  }
+
+  /** One fixed simulation step. */
+  step() {
+    this.flushCommands();
     const s = this.state;
     for (const sys of this.systems) sys.tick?.(this);
     s.tick++;

@@ -4,7 +4,6 @@
 import { OBJECTS } from "../data/objects";
 import { T } from "../data/terrain";
 import { CHANNELS } from "../data/fields";
-import { SLOT_MODELS, expectedReturn } from "../data/games";
 import { STAFF_ROLES } from "../data/staff";
 import { ENF, ENF_ACTIONS, LUCK_SHIFT } from "../data/cheats";
 import { luckConvert, luckRedraw, luckVoid } from "./cheats";
@@ -17,6 +16,7 @@ import { GUEST_TYPES } from "../data/guests";
 import { TICKS_PER_DAY } from "./clock";
 import { Game } from "./game";
 import { yoursMathChecks, yoursPlayChecks } from "./yourschecks";
+import { designChecks } from "./design/checks";
 import { rng } from "./rng";
 import { loadState, serialize } from "./save";
 import { objCells, objSeats, seatCount, sizeOk, dims } from "./geometry";
@@ -196,21 +196,8 @@ export function checkInvariants(g: Game): string[] {
 /** Exact math: every paytable's expected return equals its declared target; probabilities are sane. */
 export function mathChecks(): string[] {
   const p: string[] = [];
-  for (const m of Object.values(SLOT_MODELS)) {
-    const rtp = expectedReturn(m);
-    if (Math.abs(rtp - m.rtp) > 1e-12) p.push(`${m.id}: paytable returns ${rtp}, declared ${m.rtp}`);
-    const total = m.pays.reduce((a, q) => a + q.p, 0);
-    if (total <= 0 || total >= 1) p.push(`${m.id}: hit frequency ${total} out of (0, 1)`);
-    if (m.pays.some((q) => q.p <= 0 || q.x <= 0)) p.push(`${m.id}: non-positive entry`);
-  }
-  for (const o of Object.values(OBJECTS)) if (o.slot && !SLOT_MODELS[o.slot]) p.push(`${o.id}: unknown slot model ${o.slot}`);
-  // Luck (docs/spec/cheats.md): the redraw and void chances are real probabilities and shift payback by exactly ±LUCK_SHIFT.
-  for (const m of Object.values(SLOT_MODELS)) {
-    const h = m.pays.reduce((a, q) => a + q.p, 0), up = luckRedraw(m), down = luckVoid(m);
-    if (!(up > 0 && up <= 1 && down > 0 && down <= 1)) p.push(`${m.id}: luck chances out of range`);
-    if (Math.abs(m.rtp + (1 - h) * up * m.rtp - (m.rtp + LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: lucky payback off`);
-    if (Math.abs(m.rtp * (1 - down) - (m.rtp - LUCK_SHIFT)) > 1e-12) p.push(`${m.id}: unlucky payback off`);
-  }
+  // Slot designs (M8): the stock machines and a fixed set of fuzzed designs (docs/spec/designer.md §3).
+  p.push(...designChecks());
   p.push(...tableMathChecks());
   return p;
 }

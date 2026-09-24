@@ -113,6 +113,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 - **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
 - Drawn a row shorter in bright tees and caps.
 
+M8 Test Floor (designed machines of every cabinet type; guests judge slots by design): visit length 5.8 / 6.8 / 5.0 / 5.3 / 6.1 / 5.1 / 4.9 min, playing 2.5 / 3.1 / 1.0 / 0.6 / 2.2 / 0.8 / 0.9, loss per visit $42 / $28 / $36 / $10 / $40 / $5 / $32, visit score 0.67 / 0.63 / 0.59 / 0.64 / 0.61 / 0.62 / 0.64; reputation after 300 days 68 / 64 / 60 / 63 / 61 / 59 / 57. No sanity flags.
+
 M9.6 Test Floor (vice and drugs on Moderate, a hotel elevator; 342 guests came by it): visit length 5.5 / 6.5 / 4.7 / 4.8 / 8.4 / 5.2 / 4.1 min, playing 2.2 / 2.8 / 0.9 / 0.9 / 3.5 / 0.8 / 1.0, visit score 0.63 / 0.62 / 0.58 / 0.57 / 0.60 / 0.66 / 0.68; reputation after 300 days 68 / 64 / 58 / 58 / 58 / 59 / 59. 65 escort pitches (19 left with one), 7 hookups, 37 drug uses. No sanity flags.
 
 M9.5 Test Floor (a sportsbook, Families and Conventioneers join, events all year): visit length 5.6 / 6.2 / 4.9 / 5.0 / 8.8 / 5.6 / 4.9 min (Locals / Retirees / Tourists / Party / High rollers / Families / Conventioneers), playing 2.3 / 3.0 / 0.9 / 0.7 / 4.3 / 1.1 / 0.9, loss per visit $44 / $27 / $46 / $25 / $245 / $30 / $34, visit score 0.63 / 0.62 / 0.55 / 0.61 / 0.61 / 0.60 / 0.58; reputation after 300 days 66 / 63 / 57 / 52 / 62 / 55 / 55. Only the old noisy flag ("cheats who got away mostly lost money").

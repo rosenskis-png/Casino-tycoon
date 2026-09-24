@@ -41,7 +41,7 @@ Designing games. The player designs their own slot machines: how much they pay b
 
 Shaping the space. The player builds and tears down walls to make rooms, develops the grounds outside, buys neighboring land where a scenario allows it, and dresses everything with decoration and theming. A room with a clear identity, done with taste, should feel better to guests than the sum of its parts.
 
-The game never tells the player whether a creation is good. Guests show them.
+The game never tells the player whether a creation is good. Guests show them. Like RollerCoaster Tycoon's ride ratings, a designed game can be measured before it opens: exact math, and how a test panel of the scenario's own guests felt about it. The floor is still the verdict.
 
 ==================================================================
 THE HIDDEN PSYCHOLOGY LAYER

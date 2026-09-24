@@ -219,6 +219,32 @@ export const OBJECTS: Record<string, ObjectDef> = {
     emits: [{ channel: "NRG", strength: 3, radius: 4 }], sprite: "slot_thunder", art: "facing", seats: FRONT, slot: "thunder",
     desc: "Loud, rare, huge wins. A jackpot here can dent your cash.",
   },
+  // (M8) Cabinets for designed slots (docs/spec/designer.md §2, §8): the design sets the look, sound, price and math.
+  slot_slant: {
+    id: "slot_slant", name: "Slant-top slot", cat: "game", w: 1, h: 1, cost: 500, upkeep: 3, blocks: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1, radius: 2 }], sprite: "slot_slant", art: "facing", seats: FRONT, slot: "diamond",
+    desc: "A low, seated cabinet. Guests can see over it.",
+  },
+  slot_upright: {
+    id: "slot_upright", name: "Upright slot", cat: "game", w: 1, h: 1, cost: 400, upkeep: 2, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "slot_upright", art: "facing", seats: FRONT, slot: "cherry",
+    desc: "The standard video cabinet.",
+  },
+  slot_stepper: {
+    id: "slot_stepper", name: "Stepper slot", cat: "game", w: 1, h: 1, cost: 450, upkeep: 3, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 1, radius: 2 }], sprite: "slot_stepper", art: "facing", seats: FRONT, slot: "liberty",
+    desc: "Mechanical reels behind glass.",
+  },
+  slot_tall: {
+    id: "slot_tall", name: "Tall slot", cat: "game", w: 1, h: 1, cost: 800, upkeep: 5, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 2, radius: 3 }], sprite: "slot_tall", art: "facing", seats: FRONT, slot: "stampede",
+    desc: "A curved portrait screen, seen from farther away.",
+  },
+  slot_giant: {
+    id: "slot_giant", name: "Giant slot", cat: "game", w: 2, h: 2, cost: 3000, upkeep: 18, blocks: true, opaque: true, place: "indoor",
+    emits: [{ channel: "NRG", strength: 3.5, radius: 5 }], sprite: "slot_giant", art: "whole", seats: [{ dx: 0, dy: 2, kind: "stool" }], slot: "stampede",
+    desc: "A 2×2 attraction, seen and heard across the floor.",
+  },
   bar: {
     id: "bar", name: "Bar", cat: "amenity", w: 3, h: 2, cost: 2000, upkeep: 50, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 2, radius: 4 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "counter", art: "zone",

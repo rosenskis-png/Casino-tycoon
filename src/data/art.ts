@@ -274,6 +274,87 @@ export const SLOT_COLORS: Record<string, Record<string, string>> = {
   thunder: { A: "#ac90ff", E: "#7a58d8", B: "#5a36b8", D: "#2a1a62", J: "#4fe8ff", I: "#e8fdff", o: "#246a7a", F: "#ffb81a" },
 };
 
+// ---------------------------------------------------------------------------------------------------------
+// (M8) Designed slot cabinets (docs/spec/designer.md §8): a body per cabinet type and a topper, recolored per design
+// (A top face, E lit edge, B body, D shade from its body color; J, I, o, F from its light color). Rows are the left
+// half, mirrored. Compiled per look into the atlas (render/atlas.ts), so frames still blit cached pixels.
+const UPRIGHT_BODY = [
+  "....DDDD", "..AAAAAA", "..EBBBBB", "..Eyyyyy", "..Eyppyp", "..EyFFyF", "..Eyppyp", "..Eyyyyy", "..E88888", "..EBRRBq",
+  "..DDDDDD", "..EBBBBB", "..EBBJJJ", "..EBBJII", "..EBBJJJ", "..EBBBBB", "..KKKKKK",
+];
+const STEPPER_BODY = [
+  "....DDDD", "..AAAAAA", "..E88888", "..E8wwBw", "..E8RRBR", "..E8wwBw", "..E88888", "..EBqRBq", "..DDDDDD", "..EBBBBB",
+  "..EBJJJJ", "..EBJIFI", "..EBJJJJ", "..EBBBBB", "..KKKKKK",
+];
+const SLANT_BODY = [
+  "....AAAA", "...AYYYY", "..AYyppy", "..AYyFFy", "..AYyppy", "..EB8888", "..EBqRRB", "..DDDDDD", "..EBBBBB", "..EBBJJJ",
+  "..EBBBBB", "..KKKKKK",
+];
+const TALL_BODY = [
+  "....DDDD", "..AAAAAA", "..EBBBBB", "..EYYYYY", "..EyYYYY", "..EyJIJI", "..EyYYYY", "..Eyppyp", "..EyFFyF", "..Eyppyp",
+  "..EyFFyF", "..Eyppyp", "..EYYYYY", "..E88888", "..EBRRBq", "..DDDDDD", "..EBBBBB", "..EBBJJJ", "..EBBJII", "..EBBJJJ",
+  "..KKKKKK",
+];
+const GIANT_BODY = [
+  "........DDDDDDDD", "....AAAAAAAAAAAA", "...EBBBBBBBBBBBB", "...EYYYYYYYYYYYY", "...EYyyyyyyyyyyy", "...EYyJIJIJIJIJI",
+  "...EYyyyyyyyyyyy", "...EYyppppyyyypp", "...EYyppppyyyypp", "...EYyFFFFyyyyFF", "...EYyFFFFyyyyFF", "...EYyppppyyyypp",
+  "...EYyppppyyyypp", "...EYyyyyyyyyyyy", "...EYYYYYYYYYYYY", "...E888888888888", "...EBBRRRBBBqqqB", "...DDDDDDDDDDDDD",
+  "...EBBBBBBBBBBBB", "...EBBBJJJJJJJJJ", "...EBBBJIIIIFFII", "...EBBBJJJJJJJJJ", "...EBBBBBBBBBBBB", "...KKKKKKKKKKKKK",
+];
+/** Toppers (left halves), stacked on top of the body. */
+const TOPPER_FRONT: Record<string, string[]> = {
+  none: [],
+  sign: ["....JJJJ", "...JIoIo", "...JIIFF"],
+  dome: ["......oI", ".....oII", ".....JJJ"],
+  figure: [".......J", "......JI", "....JJIF", ".....JIJ", "....J..J"],
+};
+const TOPPER_SIDE: Record<string, string[]> = {
+  none: [],
+  sign: [".....JJJJJ......", ".....IoIoJ......", ".....JJJJJ......"],
+  dome: [".......oI.......", "......oIIo......", "......JJJJ......"],
+  figure: ["........J.......", ".......JIJ......", "......JIFIJ.....", ".......JIJ......", "......J...J....."],
+};
+/** Doubles a sprite's pixels (the giant's topper). */
+const dbl = (rows: string[]) => rows.flatMap((r) => { const w = [...r].map((c) => c + c).join(""); return [w, w]; });
+const pad = (rows: string[], w: number) => rows.map((r) => r.padEnd(w, "."));
+/** Back and side views from a body's height: a plain back with vents, and a profile. */
+function backOf(front: string[]): string[] {
+  return front.map((r, i) => r.replace(/[yYpFwR8qJI]/g, (c) => (c === "8" ? "D" : i % 3 === 1 ? "D" : "B")));
+}
+function sideOf(h: number, w = 16): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < h; i++) {
+    const top = i === 0, base = i === h - 1, face = i > 1 && i < h * 0.55;
+    const mid = w === 32 ? 20 : 9;
+    const rowW = w;
+    let r = "";
+    if (top) r = ".".repeat(w === 32 ? 8 : 4) + "A".repeat(mid) ;
+    else if (base) r = ".".repeat(w === 32 ? 8 : 4) + "K".repeat(mid);
+    else r = ".".repeat(w === 32 ? (face ? 6 : 8) : face ? 2 : 4) + (face ? "yyE" : "E") + "B".repeat(mid - (face ? 2 : 1) - (w === 32 && face ? 0 : 0)) + "D";
+    out.push(r.slice(0, rowW).padEnd(rowW, "."));
+  }
+  return out;
+}
+export type CabShape = "slant" | "upright" | "stepper" | "tall" | "giant";
+const BODIES: Record<CabShape, string[]> = { slant: SLANT_BODY, upright: UPRIGHT_BODY, stepper: STEPPER_BODY, tall: TALL_BODY, giant: GIANT_BODY };
+/** A designed cabinet's rows for a facing (front, back, side = facing left): body plus topper. */
+export function cabinetRows(cab: CabShape, topper: string, face: "front" | "back" | "side"): string[] {
+  const giant = cab === "giant", W = giant ? 32 : 16;
+  const body = mir(BODIES[cab], { E: "D" });
+  const top = giant ? dbl(mir(TOPPER_FRONT[topper] ?? [])) : mir(TOPPER_FRONT[topper] ?? []);
+  if (face === "front") return pad([...top, ...body], W);
+  if (face === "back") return pad([...top, ...backOf(body)], W);
+  const sideTop = giant ? dbl(TOPPER_SIDE[topper] ?? []) : TOPPER_SIDE[topper] ?? [];
+  return pad([...sideTop, ...sideOf(body.length, W)], W);
+}
+/** Where the reel windows sit on a designed cabinet's front (below its topper), for the spinning animation. */
+export const CAB_REELS: Record<CabShape, { x: number[]; y: number; w: number; h: number }> = {
+  upright: { x: [4, 7, 10], y: 4, w: 2, h: 3 }, stepper: { x: [4, 7, 10], y: 3, w: 2, h: 3 }, slant: { x: [4, 6, 9], y: 2, w: 2, h: 3 },
+  tall: { x: [4, 7, 10], y: 7, w: 2, h: 5 }, giant: { x: [6, 14, 22], y: 7, w: 4, h: 6 },
+};
+/** Topper heights, to place the reel windows. */
+export const topperHeight = (topper: string, giant: boolean) => (TOPPER_FRONT[topper]?.length ?? 0) * (giant ? 2 : 1);
+
 // Bar counter pieces. Front: back bar with bottles, a bartender in the middle piece, walnut panels, brass rails.
 const BAR_BOTTLES = ["...V......q.....", "...V...R..q..F..", "..VVV..R.qqq.F..", "..VpV.RRRqpq.FF.", "..VVV.RRRqqq.FF."];
 const BAR_TOP = ["5555555555555555", "3333333333333333", "1111111111111111", "1111111111111111", "5555555555555555", "4444444444444444"];

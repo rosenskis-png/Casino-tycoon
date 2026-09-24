@@ -8,6 +8,8 @@ import type { Game } from "./game";
 import { dims, objSize } from "./geometry";
 import { tierOf } from "./amenities";
 import { ThemeField } from "./themes";
+import { designById } from "./design/lookup";
+import { energyOf } from "./design/appeal";
 
 /** Room purposes that give off a quality throughout the room (docs/spec/construction.md): sources on a grid. */
 const ROOM_EMITS: Record<string, { ch: Channel; s: number; r: number }[]> = {
@@ -50,6 +52,9 @@ export class FieldEngine {
       const def = OBJECTS[o.kind], { w: ow, h: oh } = objSize(o);
       const cx = o.x + (ow - 1) / 2, cy = o.y + (oh - 1) / 2;
       if (!def.sized) {
+        // M8: a slot's energy comes from its design's lights, sound and cabinet (the original machines keep theirs).
+        const d = def.slot && o.design ? designById(s, o.design) : undefined;
+        if (d) { const e = energyOf(d); this.sources.push({ ch: "NRG", cx, cy, s: e.strength, r: e.radius }); continue; }
         for (const e of def.emits) this.sources.push({ ch: e.channel, cx, cy, s: e.strength, r: e.radius });
         continue;
       }

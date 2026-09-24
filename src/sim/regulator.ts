@@ -13,6 +13,10 @@ import { hitReputation } from "./pool";
 import { close, leaveFloor, patrol, spawnVisitor, LADDER } from "./incidents";
 import { GAMING } from "./bank";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
+import { machinesOf, minRtpOf } from "./design";
+
+/** (M8) Uncertified slot designs: chance an inspection finds them, the base fine, and the standing lost. */
+const RIG = { find: 0.7, fine: 2000, standing: 15 };
 
 export const newRegulator = (): RegulatorState => ({ next: -1, here: -1, suspendAt: -1e9 });
 
@@ -94,6 +98,21 @@ function audit(g: Game) {
   if (win > 0 && shrink > REG.weakShare * win) {
     delta -= REG.weakControls;
     found.push("weak controls (money going missing)");
+  }
+  // M8: the inspector tests machines. Designs running uncertified are found and seized (docs/spec/designer.md §10).
+  for (const [id, rec] of Object.entries(s.designs)) {
+    if (!rec.rigged) continue;
+    const ms = machinesOf(s, id);
+    if (!ms.length || !r.chance(RIG.find)) continue;
+    const sev = Math.max(0, (minRtpOf(s) - rec.d.rtp) * 10) + Math.max(0, rec.d.show.near - 1);
+    const fine = Math.round(RIG.fine * (1 + 4 * sev));
+    post(g, "fines", -fine);
+    delta -= RIG.standing * (1 + sev);
+    s.objects = s.objects.filter((o) => !ms.includes(o));
+    g.rebuildOccupancy();
+    g.tilesChanged(ms.map((o) => o.y * s.map.w + o.x));
+    rec.rigged = 0;
+    found.push(`${ms.length} uncertified ${rec.d.name} machine${ms.length === 1 ? "" : "s"}${sev > 0 ? " (rigged)" : ""}, seized, and a fine of ${fmtMoney(fine)}`);
   }
   if (found.length) news(g, "bad", `The gaming inspector found ${found.join(", ")}.`);
   else { delta += REG.clean; news(g, "good", "The gaming inspector found nothing wrong."); }

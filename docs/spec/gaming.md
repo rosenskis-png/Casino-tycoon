@@ -1,4 +1,6 @@
-# Slots (M2)
+# Slots (M2; designs since M8)
+
+Since M8 every slot plays a design, compiled to exact math (docs/spec/designer.md). The table below is the original three machines, now stock designs.
 
 `src/data/games.ts` (models), `src/sim/gaming.ts` (rounds). Video poker, table games and draw games (M7) are in docs/spec/tables.md; the slot designer arrives in M8.
 

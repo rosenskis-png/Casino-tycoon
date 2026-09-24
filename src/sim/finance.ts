@@ -31,14 +31,14 @@ export function post(g: Game, cat: string, amount: number) {
 export function monthlyCosts(g: Game): { wages: number; upkeep: number } {
   let wages = 0, upkeep = 0;
   for (const a of g.state.agents) if (STAFF_ROLES[a.role]) wages += wageFor(g, a.role);
-  for (const o of g.state.objects) upkeep += priceOf(o).upkeep;
+  for (const o of g.state.objects) upkeep += priceOf(o, g.state).upkeep;
   return { wages, upkeep };
 }
 
 /** What everything placed would sell for, plus land (which keeps what was paid for it). */
 export function assetsOf(g: Game): number {
   let v = 0;
-  for (const o of g.state.objects) v += priceOf(o).cost / 2;
+  for (const o of g.state.objects) v += priceOf(o, g.state).cost / 2;
   for (const p of SCENARIOS[g.state.scenario]?.parcels ?? []) if (g.state.parcels.includes(p.id)) v += p.price;
   return v;
 }

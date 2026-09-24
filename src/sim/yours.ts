@@ -3,7 +3,7 @@
 // room), with ordinary luck. Every draw is a command on the "yours" stream; stakes come from casino cash and
 // winnings go back to it on their own ledger line, outside the object's stats, the gaming tax and the regulator.
 import { OBJECTS } from "../data/objects";
-import { SLOT_MODELS } from "../data/games";
+import { levelName } from "../data/designer";
 import { BAC_BETS, KENO_PAYS, KENO_SPOTS, ODDS_X, RED, bacX, bjDecks, oddsAllowed, pockets, ruleOf, type Rules } from "../data/tables";
 import type { CommandTable } from "./commands";
 import type { Game } from "./game";
@@ -11,10 +11,12 @@ import type { System } from "./registry";
 import type { PlacedObject, YourPlay, YourFam } from "./state";
 import { rng, type Rng } from "./rng";
 import { post } from "./finance";
-import { betOf, drawPay, limitsOf } from "./gaming";
+import { betOf, limitsOf } from "./gaming";
 import { limitsNow, tableOpen } from "./tables";
 import { stakeMult } from "./amenities";
 import { fmtMoney, news } from "./news";
+import { compiledOf } from "./design";
+import { spinFull } from "./design/spin";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -155,19 +157,6 @@ const validSpot = (s: string, rules: Rules | undefined) =>
   ["red", "black", "odd", "even", "low", "high", "d1", "d2", "d3", "c1", "c2", "c3"].includes(s) ||
   (/^n\d{1,2}$/.test(s) && Number(s.slice(1)) <= 36) || (s === "n00" && pockets(rules) === 38);
 
-// ---- Slots: reel symbols that show what was paid (symbol k+1 for the k-th pay line; 0 is blank).
-function reelsFor(r: Rng, pays: { x: number }[], x: number): number[] {
-  const n = pays.length + 1, k = pays.findIndex((q) => q.x === x);
-  if (k >= 0) return x < 1 ? [k + 1, k + 1, (k + 1 + r.int(1, n - 1)) % n] : [k + 1, k + 1, k + 1];
-  // A loss: never three alike, never the dressed-up pair.
-  const ldw = pays.findIndex((q) => q.x < 1);
-  for (;;) {
-    const s = [r.int(0, n - 1), r.int(0, n - 1), r.int(0, n - 1)];
-    if (s[0] === s[1] && (s[1] === s[2] || s[0] === ldw + 1)) continue;
-    return s;
-  }
-}
-
 function inLimits(g: Game, o: PlacedObject, amount: number): string | null {
   const [min, max] = limitsNow(g, o);
   if (amount < min - 1e-9) return `Table minimum is ${fmtMoney(min)}`;
@@ -182,8 +171,8 @@ function stakeOf(g: Game, y: YourPlay, o: PlacedObject, c: { act: string; bet?: 
   const bad = (v: unknown) => typeof v !== "number" || !isFinite(v) || v < 0;
   switch (`${y.fam}:${c.act}`) {
     case "slot:spin": {
-      const m = SLOT_MODELS[OBJECTS[o.kind].slot!];
-      if (bad(c.bet) || c.bet! < 1 || c.bet! > m.maxCredits || c.bet! % 1) return `Bet 1 to ${m.maxCredits} credits`;
+      const m = compiledOf(g.state, o)!.model, lo = m.minCredits ?? 1;
+      if (bad(c.bet) || c.bet! < lo || c.bet! > m.maxCredits || c.bet! % 1) return `Bet ${lo} to ${m.maxCredits} credits`;
       return betOf(m, c.bet!) * mult;
     }
     case "vpoker:deal": {
@@ -306,9 +295,11 @@ const commands: CommandTable<"yours"> = {
       if (stake) { post(g, "yours", -stake); y.out += stake; }
       switch (y.fam) {
         case "slot": {
-          const m = SLOT_MODELS[OBJECTS[o.kind].slot!], x = drawPay(m, r);
-          y.reels = reelsFor(r, m.pays, x);
-          pay(g, y, stake, x * stake, x >= m.jackpotX ? `a jackpot on ${m.name}` : undefined);
+          // The design's real math, played out with everything it shows (docs/spec/designer.md §9).
+          const cd = compiledOf(s, o)!, out = spinFull(cd, r);
+          y.spin = out;
+          const big = out.kind === "jackpot" ? `the ${levelName(cd.pJ.length, out.level, cd.lay.win === "classic").toLowerCase()} on ${cd.d.name}` : out.x >= 500 ? `a huge win on ${cd.d.name}` : undefined;
+          pay(g, y, stake, out.x * stake, big);
           break;
         }
         case "vpoker": {

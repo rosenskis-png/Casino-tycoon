@@ -3,8 +3,19 @@
 // shades. Frames then blit cached pixels; nothing is painted pixel by pixel per frame.
 import {
   ACCESSORIES, EXTRA_SPRITES, HAIR, OBJECT_SPRITES, OUTFITS, PALETTE, PEOPLE, PERSON_FIXED, POSES, REEL_STRIP,
-  SLOT_COLORS, SLOT_ROWS, TILES, type SpriteDef,
+  SLOT_COLORS, SLOT_ROWS, TILES, cabinetRows, recolor, type CabShape, type SpriteDef,
 } from "../data/art";
+import { BODY_COLORS, LIGHT_COLORS } from "../data/designer";
+
+/**
+ * (M8) A designed cabinet's look: "cabinet.body.light.topper" (docs/spec/designer.md §8). Each look in use is
+ * compiled into the atlas as slot:L<look>:<facing> (and ~1 with the lamps flipped) plus its reel strip.
+ */
+export const lookPal = (look: string): Record<string, string> => {
+  const [, body, light] = look.split(".");
+  const b = BODY_COLORS[Number(body)]?.ramp ?? BODY_COLORS[2].ramp, l = LIGHT_COLORS[Number(light)]?.c ?? LIGHT_COLORS[0].c;
+  return { A: b[0], E: b[1], B: b[2], D: b[3], J: l[0], I: l[1], o: l[2], F: l[0] };
+};
 
 /** Sprite rect without padding. Every sprite has 1px of padding around it (outline room). */
 export interface Frame { x: number; y: number; w: number; h: number }
@@ -69,7 +80,7 @@ function composePerson(set: string, sex: number, v: number, pose: string): strin
   return rows;
 }
 
-export function buildAtlas(): Atlas {
+export function buildAtlas(looks: string[] = []): Atlas {
   const items: Pending[] = [];
   const add = (key: string, def: SpriteDef, pal: Record<string, string>, flip = false) =>
     items.push({ key, rows: def.rows, pal, flip, outline: flip ? flipSides(sides(def.outline)) : sides(def.outline) });
@@ -99,6 +110,20 @@ export function buildAtlas(): Atlas {
       } else add(`slot:${model}:${face}${suf}`, def, base(def, pal));
     }
     add(`reel:${model}`, { rows: [...REEL_STRIP, ...REEL_STRIP], outline: false }, base({ rows: [] }, pal));
+  }
+  for (const look of looks) {
+    const [cab, , , topper] = look.split("."), pal = lookPal(look);
+    for (const face of ["front", "back", "side"] as const) {
+      const rows = cabinetRows(cab as CabShape, topper, face);
+      for (const [suf, r] of [["", rows], ["~1", recolor(rows, { I: "o", o: "I" })]] as const) {
+        const def: SpriteDef = { rows: r };
+        if (face === "side") {
+          add(`slot:L${look}:left${suf}`, def, base(def, pal));
+          add(`slot:L${look}:right${suf}`, def, base(def, pal), true);
+        } else add(`slot:L${look}:${face}${suf}`, def, base(def, pal));
+      }
+    }
+    add(`reel:L${look}`, { rows: [...REEL_STRIP, ...REEL_STRIP].map((r) => (cab === "giant" ? r + r : r)), outline: false }, base({ rows: [] }, pal));
   }
   const lookColor: Record<string, string[][]> = {};
   for (const [set, L] of Object.entries(PEOPLE)) {

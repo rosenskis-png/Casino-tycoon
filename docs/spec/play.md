@@ -24,6 +24,9 @@ You play the object's real model, paytable, rules and limits (×5 in a high-limi
 - **Keno:** pick 4, 6 or 8 of 80; 20 balls; the guests' paytable.
 - In blackjack and video poker, your decisions count. Perfect play does better than an average guest, as a sharp guest does. An owner-set rule that gives the player an edge is accepted (see DECISIONS).
 
+## Slots since M8
+Slots play on the design's own machine (docs/spec/designer.md §9): top box, meters, reels in its layout, anticipation, win tiers, free spins, jackpots with hand pays, help screens. A slot seat no longer keeps `reels`; it keeps the last `spin` (schema 15).
+
 ## Look and feel (hotfix, 2026-09-24)
 Animation is UI only: the sim result is the same, and it shows when the animation ends.
 - **Slots:** a cabinet with marquee lamps that chase while spinning and flash on a win; three reel windows with blurred strips that stop left to right with a bounce, showing the symbols above and below; a payline; winning symbols and the paytable row pulse.

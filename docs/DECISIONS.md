@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M8 (owner's answers)
+- Owner said "green light" and accepted every default and all five proposals: panel-measured ratings (NORTH_STAR's creative-core line amended), three parts (M8, M8.5, M8.6), emoji symbols on styled tiles, certification ($1,500, 7 days; uncertified = rigging), and market churn.
+- **Owner additions:**
+  - **Test runs can force any outcome**: free spins, each win tier, each jackpot level, the top award, a near miss, a dressed-up loss, including ones nearly impossible in normal play. A forced outcome is drawn from the real distribution within that outcome, so it looks exactly like the real thing.
+  - **The designer shows a live play screen**: every change appears at once in the same machine view the player plays.
+  - **Playing it should feel like a modern Vegas slot**, with fake money. Reference screenshots (Dragon Link, Buffalo Gold, Megabucks Mega Vault) set the look: a top box with the logo and the big meter, a row of jackpot meters, the reel screen with side badges (lines or ways), a credit / bet / win bar with a denomination badge, a button deck, jackpot hand-pay notices, cabinets with LED edge light.
+
 ## 2026-09-24 · M8 planned: the slot designer in three parts (readiness defaults for the owner)
 - Owner: M8 should be a long, complex build: the creative core, as deep and rewarding as RCT's coaster builder, able to make games that play like Buffalo, Lightning Link or Dragon Link, with a rating that rewards good and creative design and punishes poor choices, and never goes stale. Plan in docs/spec/designer.md; parts in ROADMAP.
 - **Flagged, NORTH_STAR conflict:** NORTH_STAR says "The game never tells the player whether a creation is good. Guests show them." The owner asked for a rating. Proposed resolution: RCT-style **Excitement / Intensity / Drain**, where Excitement is measured from a test panel of the scenario's own guests (the floor's hidden guest model, run without a room), and Intensity and Drain are plain math. Never labelled good or bad; the floor stays the truth. NORTH_STAR is unchanged until the owner confirms.

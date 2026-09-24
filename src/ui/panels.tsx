@@ -3,6 +3,7 @@ import { Fragment, useState } from "react";
 import { OBJECTS, OBJECT_CATS } from "../data/objects";
 import { BUILD_COST, DOOR_RULES, DOOR_STATE, MAX_DOOR_FEE, T } from "../data/terrain";
 import { ROOM_HELP, ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
+import { THEMES, THEME_IDS, type ThemeId } from "../data/themes";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
 import { STAFF_ROLES } from "../data/staff";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
@@ -15,7 +16,7 @@ import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
-  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase,
+  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale,
   type Agent, type Ledger, type HouseRules,
 } from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
@@ -30,7 +31,9 @@ export type Selection = { kind: "tile"; tile: number } | { kind: "agent"; id: nu
 const TERRAIN_NAME: Record<number, string> = { [T.VOID]: "Unowned land", [T.FLOOR]: "Floor", [T.WALL]: "Wall", [T.DOOR]: "Door", [T.WATER]: "Water", [T.SIDEWALK]: "Sidewalk" };
 const FACING = ["down", "left", "up", "right"];
 
-export function BuildPanel({ tool, setTool, rot, setRot, thumb }: { tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string) => { url: string; w: number; h: number } }) {
+export function BuildPanel({ host, tool, setTool, rot, setRot, thumb }: { host: Host; tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string) => { url: string; w: number; h: number } }) {
+  const [theme, setTheme] = useState<ThemeId | "general">("general");
+  const g = host.game, land = landForSale(g);
   const b = (t: Tool, label: string, sub?: string, img?: { url: string; w: number; h: number }) => (
     <button key={t} className={`btn ${tool === t ? "on" : ""}`} onClick={() => setTool(tool === t ? "inspect" : t)}>
       {img && <img className="thumb" src={img.url} width={img.w * 2} height={img.h * 2} alt="" />}{label}{sub && <small>{sub}</small>}
@@ -47,10 +50,29 @@ export function BuildPanel({ tool, setTool, rot, setRot, thumb }: { tool: Tool; 
       </div>
       {OBJECT_CATS.map((c) => (
         <Fragment key={c.id}>
-          <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}</p>
-          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id).map((o) => b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
+          <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}
+            {c.id === "decor" && (
+              <select value={theme} onChange={(e) => setTheme(e.target.value as ThemeId | "general")} style={{ marginLeft: 8 }}>
+                <option value="general">General</option>
+                {THEME_IDS.map((t) => <option key={t} value={t}>{THEMES[t]}</option>)}
+              </select>
+            )}
+          </p>
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
         </Fragment>
       ))}
+      {land.length > 0 && (
+        <>
+          <p className="muted" style={{ margin: "10px 0 6px" }}>Land</p>
+          <div className="grid">
+            {land.map((p) => (
+              <button key={p.id} className="btn" disabled={p.owned || p.price > g.state.cash} onClick={() => g.dispatch({ type: "buyParcel", id: p.id })}>
+                {p.name}<small>{p.owned ? "yours" : `${money(p.price)} · ${p.tiles} tiles`}</small>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {tool.startsWith("place:") && <p className="muted" style={{ marginTop: 8 }}>{OBJECTS[tool.slice(6)]?.desc}{OBJECTS[tool.slice(6)]?.sized && (() => {
         const z = OBJECTS[tool.slice(6)].sized!;
         return ` Drag to size it: ${z.min[0]}–${z.max[0]} wide, ${z.min[1]}–${z.max[1]} deep (the front is the side it faces). Tap for ${OBJECTS[tool.slice(6)].w}×${OBJECTS[tool.slice(6)].h}.`;
@@ -608,7 +630,16 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
         </>
       )}
       {!room && !obj && s.map.terrain[i] === T.DOOR && <DoorCard g={g} tile={i} />}
-      {!room && !obj && s.map.terrain[i] !== T.DOOR && <p className="muted">{TERRAIN_NAME[s.map.terrain[i]]}{s.map.fixed[i] ? " (part of the building)" : ""}</p>}
+      {!room && !obj && s.map.terrain[i] !== T.DOOR && <p className="muted">{TERRAIN_NAME[s.map.terrain[i]]}{s.map.fixed[i] && s.map.terrain[i] !== T.VOID ? " (part of the building)" : ""}</p>}
+      {!room && !obj && s.map.terrain[i] === T.VOID && (() => {
+        const p = landForSale(g).find((q) => !q.owned && q.at(i));
+        return p ? (
+          <div className="row">
+            <span>{p.name} is for sale: {p.tiles} tiles.</span>
+            <button className="btn" disabled={p.price > s.cash} onClick={() => g.dispatch({ type: "buyParcel", id: p.id })}>Buy <small>{money(p.price)}</small></button>
+          </div>
+        ) : null;
+      })()}
       {host.debug && <HiddenValues g={g} tile={i} />}
     </div>
   );
@@ -688,8 +719,10 @@ function RoomEditor({ host, tile, name, purpose }: { host: Host; tile: number; n
 }
 
 function HiddenValues({ g, tile }: { g: Game; tile: number }) {
+  const th = g.fields.themes, tq = th.active ? th.tileQuality(tile) : null, room = g.rooms.roomOf[tile];
   return (
     <div className="kv" style={{ marginTop: 8 }}>
+      <b>THM</b><span className="num">{tq ? `${th.at(tile).toFixed(2)} (${tq.dom >= 0 ? THEMES[THEME_IDS[tq.dom]] : "none"}; room ${room >= 0 && th.rooms[room] ? th.rooms[room].coh.toFixed(2) : "–"})` : "none"}</span>
       {CHANNELS.map((c) => <Fragment key={c}><b>{c}</b><span className="num">{g.fields.get(c, tile).toFixed(2)}</span></Fragment>)}
       <b>Dirt</b><span className="num">{g.state.dirt[tile]}</span>
     </div>

@@ -35,8 +35,8 @@ const SYSTEMS: System[] = [
   doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
 ];
 
-export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club";
-const emptyAmenities = (): Record<Serves, PlacedObject[]> => ({ thirst: [], bladder: [], cage: [], atm: [], hunger: [], show: [], club: [] });
+export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
+const emptyAmenities = (): Record<Serves, PlacedObject[]> => ({ thirst: [], bladder: [], cage: [], atm: [], hunger: [], show: [], club: [], pool: [], garden: [] });
 
 export interface CommandRecord { tick: number; cmd: Command; error: string | null }
 
@@ -98,7 +98,7 @@ export class Game {
       thoughts: [{}],
       incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES }, auth: newAuthorities(), enf: newEnforcement(),
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
-      outcome: "",
+      outcome: "", parcels: [],
     };
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);

@@ -2,13 +2,14 @@
 // seats (access tiles) may lie outside the footprint on the floor around it. sim/geometry.ts rotates both.
 import type { Emission } from "./fields";
 import type { RoomPurpose } from "./rooms";
+import type { ThemeId, ThemeTags } from "./themes";
 
 /**
  * stool/stand: a guest sits or stands there, visible; hidden: inside (restroom stalls); chair: a table or show
  * seat (drawn as a chair facing `f`); dance: a spot on a dance floor. `f` is a facing in the rotation-0 frame
  * (0 down, 1 left, 2 up, 3 right).
  */
-export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hidden" | "chair" | "dance"; f?: number }
+export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hidden" | "chair" | "dance" | "lounger" | "swim" | "bench"; f?: number }
 
 /**
  * Amenities as places (FOUNDATIONS §8, docs/spec/construction.md): dragged to a size, with the layout, seats,
@@ -16,7 +17,7 @@ export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hi
  * frame (row 0 is the back).
  */
 export interface SizedDef {
-  layout: "bar" | "restroom" | "cage" | "restaurant" | "show" | "club";
+  layout: "bar" | "restroom" | "cage" | "restaurant" | "show" | "club" | "pool" | "garden";
   min: [number, number];
   max: [number, number];
   /** Build cost: base + per tile of area. */
@@ -35,7 +36,7 @@ export interface SizedDef {
 export interface ObjectDef {
   id: string;
   name: string;
-  cat: "game" | "amenity" | "decor" | "security";
+  cat: "game" | "amenity" | "outdoor" | "decor" | "security";
   w: number;
   h: number;
   cost: number;
@@ -59,7 +60,9 @@ export interface ObjectDef {
   /** Sized amenities (M6): w and h above are the default size. */
   sized?: SizedDef;
   /** What using it does for a guest. */
-  serves?: "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club";
+  serves?: "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
+  /** Hidden theming tags (docs/spec/themes.md); `theme` is also the item's visible category. */
+  tags?: ThemeTags;
   /** Seconds a visit takes at 1×. */
   use?: [number, number];
   /** Guest-facing price per use, in real-looking dollars (the default for a player-set price). */
@@ -68,6 +71,69 @@ export interface ObjectDef {
   priceRange?: [number, number];
   desc: string;
 }
+
+
+/**
+ * Themed decor (M6.5, docs/spec/themes.md): four pieces per theme, each theming the area around it and giving off
+ * its own prestige or energy. Tags are hidden; `desc` is what the player reads.
+ */
+type DecorRow = [id: string, theme: ThemeId, name: string, cost: number, prs: number, nrg: number, tags: Omit<ThemeTags, "theme">, desc: string];
+const DECOR_ROWS: DecorRow[] = [
+  ["rome_column", "rome", "Marble Column", 600, 2.5, 0, { suitsPlace: ["highlimit", "show"] }, "A fluted column. Nothing holds it up but ambition."],
+  ["rome_bust", "rome", "Emperor Bust", 450, 2, 0, { suitsPlace: ["highlimit", "indoor"] }, "Some emperor or other, on a plinth."],
+  ["rome_urn", "rome", "Laurel Urn", 250, 1.5, 0, { suitsTheme: { riviera: 0.5 }, suitsPlace: ["outdoor", "restaurant"] }, "A stone urn with a laurel bush."],
+  ["rome_standard", "rome", "Legion Standard", 350, 1.5, 0.5, { suitsPlace: ["floor"] }, "An eagle on a pole, gold and crimson."],
+  ["egypt_obelisk", "egypt", "Obelisk", 700, 2.5, 0, { suitsPlace: ["outdoor", "highlimit"] }, "A slim stone obelisk, carved all over."],
+  ["egypt_pharaoh", "egypt", "Pharaoh Head", 600, 2, 0, { suitsPlace: ["show", "floor"] }, "A giant striped headdress and a stern stare."],
+  ["egypt_papyrus", "egypt", "Papyrus Planter", 250, 1, 0, { suitsPlace: ["water"], clashesPlace: ["club"] }, "Reeds in a painted jar."],
+  ["egypt_cat", "egypt", "Cat Statue", 350, 1.5, 0, { suitsPlace: ["indoor"] }, "A sleek black cat with a gold earring."],
+  ["med_armor", "medieval", "Suit of Armor", 550, 1.5, 0, { suitsPlace: ["indoor", "highlimit"], clashesPlace: ["outdoor", "club"] }, "Empty, probably."],
+  ["med_banner", "medieval", "Heraldic Banner", 250, 1, 0, { suitsPlace: ["bar", "restaurant"] }, "A lion rampant on crimson and gold."],
+  ["med_brazier", "medieval", "Iron Brazier", 300, 1, 1, { suitsPlace: ["bar", "outdoor"], clashesPlace: ["water"] }, "Flames in an iron basket. Very safe."],
+  ["med_shield", "medieval", "Shield and Swords", 400, 1.5, 0, { suitsPlace: ["indoor"] }, "Crossed swords behind a painted shield."],
+  ["rock_guitar", "rock", "Giant Guitar", 700, 0.5, 3, { suitsPlace: ["club", "bar"], clashesPlace: ["restaurant", "highlimit"] }, "A red electric guitar the size of a man."],
+  ["rock_amps", "rock", "Amp Stack", 450, 0, 4, { suitsPlace: ["club"], clashesPlace: ["restaurant"] }, "Turned up to eleven. Plays itself."],
+  ["rock_jukebox", "rock", "Jukebox", 600, 1, 2.5, { suitsTheme: { ratpack: 0.4, atomic: 0.3 }, suitsPlace: ["bar"] }, "Chrome, bubbles and a hundred singles."],
+  ["rock_record", "rock", "Gold Record Stand", 350, 1, 1, { suitsPlace: ["floor", "bar"] }, "A framed gold record, signed by somebody."],
+  ["deco_lamp", "deco", "Gilded Torchère", 450, 2.5, 0, { suitsTheme: { ratpack: 0.4 }, suitsPlace: ["highlimit", "bar"] }, "A tall gold lamp throwing light at the ceiling."],
+  ["deco_statue", "deco", "Deco Statue", 800, 3, 0, { suitsPlace: ["highlimit", "show"] }, "A gilded dancer, mid-leap, on black marble."],
+  ["deco_screen", "deco", "Sunburst Screen", 550, 2.5, 0, { suitsPlace: ["indoor", "restaurant"], clashesPlace: ["outdoor"] }, "Black lacquer and a gold sunburst."],
+  ["deco_urn", "deco", "Lacquer Urn", 400, 2, 0, { suitsPlace: ["indoor"] }, "Black and gold, with palm fronds."],
+  ["luxe_sculpture", "luxe", "Chrome Sculpture", 900, 3, 0, { suitsPlace: ["highlimit"], clashesPlace: ["club", "smoking"] }, "A polished loop that means something to someone."],
+  ["luxe_orchid", "luxe", "Orchid Cube", 350, 2, 0, { suitsPlace: ["restaurant", "highlimit"] }, "One white orchid in a glass cube."],
+  ["luxe_glass", "luxe", "Glass Panel", 500, 2, 0, { suitsPlace: ["indoor"], clashesPlace: ["outdoor", "club"] }, "Frosted glass with a thin steel frame."],
+  ["luxe_lamp", "luxe", "Arc Lamp", 450, 2, 0, { suitsPlace: ["bar", "restaurant"] }, "A long steel arc ending in a white globe."],
+  ["riv_cypress", "riviera", "Cypress Tree", 400, 2, 0, { suitsTheme: { rome: 0.4 }, suitsPlace: ["outdoor", "water"] }, "Tall, dark and Mediterranean."],
+  ["riv_lemon", "riviera", "Lemon Tree", 350, 2, 0, { suitsPlace: ["outdoor", "restaurant"] }, "A potted lemon tree heavy with fruit."],
+  ["riv_amphora", "riviera", "Amphora", 300, 1.5, 0, { suitsTheme: { rome: 0.5 }, suitsPlace: ["water", "restaurant"] }, "A terracotta amphora, artfully chipped."],
+  ["riv_parasol", "riviera", "Striped Parasol", 250, 1.5, 0.5, { suitsTheme: { tiki: 0.3 }, suitsPlace: ["outdoor", "water"], clashesPlace: ["indoor"] }, "Blue and white stripes over a café table."],
+  ["rat_mic", "ratpack", "Crooner's Mic", 300, 1.5, 1, { suitsPlace: ["show", "bar"] }, "A chrome microphone waiting for somebody smooth."],
+  ["rat_lamp", "ratpack", "Cocktail Lamp", 250, 1.5, 0, { suitsPlace: ["bar"] }, "A red shade on a walnut table. Low light."],
+  ["rat_chair", "ratpack", "Velvet Lounge Chair", 450, 2, 0, { suitsTheme: { deco: 0.3 }, suitsPlace: ["bar", "highlimit"] }, "Deep red velvet. Pure 1962."],
+  ["rat_marquee", "ratpack", "Marquee Sign", 600, 1.5, 2.5, { suitsTheme: { atomic: 0.3 }, suitsPlace: ["show", "floor"] }, "Chaser bulbs around a name you'd know."],
+  ["atom_rocket", "atomic", "Rocket", 700, 1, 2.5, { suitsPlace: ["floor", "outdoor"] }, "Silver fins and a tail of neon flame."],
+  ["atom_star", "atomic", "Starburst Sign", 500, 1, 3.5, { suitsPlace: ["club", "floor"], clashesPlace: ["highlimit"] }, "A spiky neon star on a pole."],
+  ["atom_atom", "atomic", "Atom Sculpture", 450, 1.5, 1, { suitsPlace: ["floor"] }, "Chrome orbits around a glowing nucleus."],
+  ["atom_lava", "atomic", "Lava Lamp", 200, 0.5, 1.5, { suitsPlace: ["bar", "club"] }, "Blobs rising and falling, forever."],
+  ["gold_cart", "goldrush", "Mine Cart", 450, 1, 1, { suitsPlace: ["floor", "outdoor"] }, "Brimming with fool's gold."],
+  ["gold_barrel", "goldrush", "Whiskey Barrel", 250, 0.5, 0.5, { suitsPlace: ["bar"], clashesPlace: ["highlimit"] }, "Oak, iron hoops and a tap."],
+  ["gold_cactus", "goldrush", "Saguaro Cactus", 300, 1, 0, { suitsPlace: ["outdoor"], clashesPlace: ["water"] }, "Arms up, like it just hit a jackpot."],
+  ["gold_wanted", "goldrush", "Wanted Poster", 200, 0.5, 0.5, { suitsPlace: ["bar", "floor"] }, "Dead or alive. Mostly alive."],
+  ["tiki_idol", "tiki", "Tiki Idol", 500, 1.5, 1, { suitsTheme: { pirate: 0.3 }, suitsPlace: ["water", "outdoor", "bar"] }, "A carved grinning god. Probably friendly."],
+  ["tiki_torch", "tiki", "Tiki Torch", 200, 1, 1.5, { suitsPlace: ["outdoor", "water"], clashesPlace: ["highlimit"] }, "A bamboo torch with a real flame."],
+  ["tiki_bamboo", "tiki", "Bamboo Screen", 300, 1, 0, { suitsPlace: ["bar", "outdoor"] }, "Lashed bamboo, for a little privacy."],
+  ["tiki_drum", "tiki", "Carved Drum", 350, 1, 2, { suitsPlace: ["club", "bar"] }, "A painted log drum. Somebody always plays it."],
+  ["pirate_wheel", "pirate", "Ship's Wheel", 400, 1.5, 0.5, { suitsPlace: ["water", "bar"] }, "Hard a-port, toward the slots."],
+  ["pirate_chest", "pirate", "Treasure Chest", 550, 2, 0.5, { suitsTheme: { goldrush: 0.3 }, suitsPlace: ["highlimit", "floor"] }, "Overflowing with gold. Bolted to the floor."],
+  ["pirate_anchor", "pirate", "Anchor", 350, 1, 0, { suitsPlace: ["water", "outdoor"] }, "A barnacled iron anchor on a coil of rope."],
+  ["pirate_cannon", "pirate", "Cannon", 450, 1, 1, { suitsPlace: ["outdoor", "floor"], clashesPlace: ["restaurant"] }, "Loaded with confetti, reportedly."],
+];
+
+const THEMED_DECOR: Record<string, ObjectDef> = Object.fromEntries(DECOR_ROWS.map(([id, theme, name, cost, prs, nrg, tags, desc]) => [id, {
+  id, name, cat: "decor", w: 1, h: 1, cost, upkeep: Math.max(1, Math.round(cost / 200)), blocks: true, place: "any",
+  emits: [...(prs ? [{ channel: "PRS" as const, strength: prs, radius: 3 }] : []), ...(nrg ? [{ channel: "NRG" as const, strength: nrg, radius: 4 }] : [])],
+  sprite: id, art: "whole", seats: [], tags: { theme, ...tags }, desc,
+} satisfies ObjectDef]));
 
 const FRONT: SeatDef[] = [{ dx: 0, dy: 1, kind: "stool" }];
 
@@ -138,11 +204,13 @@ export const OBJECTS: Record<string, ObjectDef> = {
   plant: {
     id: "plant", name: "Potted Palm", cat: "decor", w: 1, h: 1, cost: 150, upkeep: 1, blocks: true, place: "any",
     emits: [{ channel: "PRS", strength: 2, radius: 3 }, { channel: "CLN", strength: 1, radius: 2 }], sprite: "plant", art: "whole", seats: [],
+    tags: { suitsTheme: { tiki: 1, riviera: 0.8, pirate: 0.5 }, clashesTheme: { medieval: 0.5, luxe: 0.3 }, suitsPlace: ["outdoor", "water"] },
     desc: "Raises prestige nearby.",
   },
   neon: {
     id: "neon", name: "Neon Sign", cat: "decor", w: 1, h: 1, cost: 300, upkeep: 2, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 6, radius: 6 }], sprite: "neon", art: "whole", seats: [],
+    tags: { suitsTheme: { atomic: 1, rock: 0.8, ratpack: 0.5 }, clashesTheme: { rome: 0.6, egypt: 0.6, medieval: 0.8, luxe: 0.4 }, suitsPlace: ["club", "bar"], clashesPlace: ["restaurant", "highlimit"] },
     desc: "Loud light. Energy for some, a headache for others.",
   },
   sign: {
@@ -153,8 +221,43 @@ export const OBJECTS: Record<string, ObjectDef> = {
   fountain: {
     id: "fountain", name: "Fountain", cat: "decor", w: 2, h: 2, cost: 1500, upkeep: 5, blocks: true, place: "any",
     emits: [{ channel: "PRS", strength: 5, radius: 6 }, { channel: "NRG", strength: 2, radius: 4 }], sprite: "fountain", art: "whole", seats: [],
+    tags: { suitsTheme: { pirate: 1, tiki: 1, riviera: 0.8, rome: 0.6 }, clashesTheme: { egypt: 0.8 }, suitsPlace: ["outdoor", "water"] },
     desc: "A showpiece. Prestige for the whole area.",
   },
+  // Outdoors (M6.5): always hot and sunny pool weather. Sized like the indoor amenities.
+  pool: {
+    id: "pool", name: "Pool", cat: "outdoor", w: 6, h: 5, cost: 7000, upkeep: 90, blocks: true, place: "outdoor",
+    emits: [{ channel: "NRG", strength: 3, radius: 5 }, { channel: "PRS", strength: 3, radius: 5 }], sprite: "pool", art: "zone",
+    seats: [], serves: "pool", use: [60, 120], price: 0, priceRange: [0, 20],
+    sized: { layout: "pool", min: [4, 3], max: [14, 10], cost: [2500, 150], upkeep: [45, 1.5, 0], tiers: ["Pool", "Pool deck", "Lagoon"], tierAt: [20, 50], staffEvery: 0 },
+    tags: { suitsTheme: { tiki: 1, riviera: 1, pirate: 0.6, atomic: 0.4 }, clashesTheme: { medieval: 0.6, egypt: 0.4 } },
+    desc: "Loungers along the back and water to swim in. Pool weather, always. Party crowds and tourists come for it.",
+  },
+  garden: {
+    id: "garden", name: "Garden", cat: "outdoor", w: 5, h: 4, cost: 2600, upkeep: 25, blocks: true, place: "outdoor",
+    emits: [{ channel: "PRS", strength: 2, radius: 4 }, { channel: "PRV", strength: 2, radius: 3 }, { channel: "CLN", strength: 1, radius: 3 }], sprite: "hedge", art: "zone",
+    seats: [], serves: "garden", use: [30, 60],
+    sized: { layout: "garden", min: [4, 3], max: [12, 10], cost: [1000, 80], upkeep: [10, 1, 0], tiers: ["Garden", "Formal garden"], tierAt: [10], staffEvery: 0 },
+    tags: { suitsTheme: { riviera: 1, rome: 0.6, medieval: 0.4 }, clashesTheme: { atomic: 0.4, rock: 0.4 } },
+    desc: "Hedges, flower beds and benches. A quiet sit for tired feet.",
+  },
+  patiobar: {
+    id: "patiobar", name: "Patio Bar", cat: "outdoor", w: 3, h: 3, cost: 2600, upkeep: 50, blocks: true, place: "outdoor",
+    emits: [{ channel: "NRG", strength: 2, radius: 4 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "counter", art: "zone",
+    seats: [], serves: "thirst", use: [8, 15], price: 7,
+    sized: { layout: "bar", min: [3, 2], max: [12, 6], cost: [800, 200], upkeep: [26, 4, 12], tiers: ["Patio bar", "Beach bar", "Grand patio"], tierAt: [8, 16], staffEvery: 4, purpose: "bar" },
+    tags: { suitsTheme: { tiki: 0.8, riviera: 0.6, pirate: 0.4 } },
+    desc: "A bar out in the sun, with shaded tables. Its servers work the grounds.",
+  },
+  patiorestaurant: {
+    id: "patiorestaurant", name: "Patio Restaurant", cat: "outdoor", w: 4, h: 4, cost: 3900, upkeep: 60, blocks: true, place: "outdoor",
+    emits: [{ channel: "PRS", strength: 1.5, radius: 4 }, { channel: "PRV", strength: 1, radius: 3 }], sprite: "kitchen", art: "zone",
+    seats: [], serves: "hunger", use: [40, 80], price: 18, priceRange: [0.5, 3],
+    sized: { layout: "restaurant", min: [3, 3], max: [12, 10], cost: [1500, 150], upkeep: [30, 1.5, 12], tiers: ["Snack shack", "Terrace", "Terrace grill"], tierAt: [8, 20], staffEvery: 4, purpose: "restaurant" },
+    tags: { suitsTheme: { riviera: 0.8, tiki: 0.6 } },
+    desc: "A grill and shaded tables outside. Fed guests stay longer.",
+  },
+  ...THEMED_DECOR,
   camera: {
     id: "camera", name: "Camera", cat: "security", w: 1, h: 1, cost: 400, upkeep: 3, blocks: false, place: "indoor",
     emits: [{ channel: "SRVH", strength: 3, radius: 6 }], sprite: "camera", art: "whole", seats: [],
@@ -170,6 +273,7 @@ export const OBJECTS: Record<string, ObjectDef> = {
 export const OBJECT_CATS: { id: ObjectDef["cat"]; label: string }[] = [
   { id: "game", label: "Slots" },
   { id: "amenity", label: "Amenities" },
+  { id: "outdoor", label: "Outdoors" },
   { id: "decor", label: "Decoration" },
   { id: "security", label: "Security" },
 ];

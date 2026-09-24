@@ -108,6 +108,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 | Visit score | 0.58 | 0.57 | 0.50 | 0.53 | layout, `secPerDollar`, visit score weights in `visitScore` (fun time counts, amenity spending too), incidents seen, being policed |
 | Came for meal / show / club | 16/5/3% | 18/18/0% | 12/23/9% | 1/3/39% | `comeFor`, amenity tiers |
 
+M6.5 Test Floor (themed rooms and a front yard with a pool): visit length 5.4 / 5.7 / 4.7 / 4.7 min, playing 2.0 / 2.0 / 0.6 / 0.7, visit score 0.58 / 0.59 / 0.53 / 0.54, came for the pool 3 / 4 / 10 / 7%; reputation after 300 days 63 / 62 / 56 / 54. No sanity flags.
+
 Party guests drink less than in M4 (1 drink, peak 0.23; M4: 2, 0.44): many now come for the club, which has no bar of its own, so servers and bars see less of them. That's a layout symptom on this floor, not a logic error.
 
 Drunk tails (drinkers, scratch diagnostic): 30% of party drinkers reach 0.5+, 6–9% 0.8+, 1–3% 1.0+; Locals and Tourists 7–19% reach 0.5+. Incidents per 100 guests and warnings/ejections are in the same report (docs/spec/incidents.md). Party numbers rest on ~30 groups per run and swing a lot between seeds; incidents cost Tourists and Party guests 0.1–0.4 min of play on this floor (measured with incidents switched off), the designed cost of an unruly floor.

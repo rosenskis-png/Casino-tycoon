@@ -12,7 +12,7 @@ export { UNREACHED } from "./paths";
 export { MAX_RADIUS } from "./fields";
 export { idx } from "./map";
 export { objSeats, objSize, objCells, objStaff, objFootprint, covers, dims, priceOf, sizeTier, seatCount, type Placed } from "./geometry";
-export { placement } from "./build";
+export { placement, landForSale } from "./build";
 export { showPhase, tierOf, tierName, priceFor, purposeAt } from "./amenities";
 export type { Gate } from "./state";
 export { LEDGER_LABELS, monthlyCosts, worth } from "./finance";

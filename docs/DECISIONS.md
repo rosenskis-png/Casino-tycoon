@@ -2,6 +2,18 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M6.5 built (Claude's calls; see docs/spec/themes.md, docs/spec/construction.md)
+- Theme math and numbers are starting values checked against sanity only: strength 3 / radius 4 per piece, walls cut 60%, clashing pairs count 2.5× (a clash has to hurt more than a good pair helps), unrelated themes muddle at 0.8, curated bonus 0.3, per-type `theming` 0.3 / 0.5 / 1.0 / 0.6.
+- **General items only count toward a theme where that theme is already present** from themed pieces, so a palm alone never "themes" a room; it can only reinforce one (the curated bonus).
+- Pieces are all 1×1 in M6.5 (48 new sprites); bigger showpieces can come later.
+- Outdoors: pool (people come for it), garden (a rest for sore feet), patio bar and restaurant (the indoor ones, outside). No weather.
+- Land: Free Play Lot grows to 80 wide with two lots for sale; land keeps its price in worth. The tutorial has none.
+- Test Floor: themed rooms and a front yard (pool, patio bar and restaurant, garden, tiki torches), plus a side door from the yard into the club so pool-goers can reach a restroom.
+- Big Floor unchanged (~2.3 ms/tick; nothing themed there, so themes cost nothing).
+
+## 2026-09-24 · Green light for M6.5: themes, outdoors, land parcels (see docs/spec/themes.md, docs/spec/construction.md)
+- Owner said "green light for m6.5", built in the same chat as M6.
+
 ## 2026-09-24 · M6 built (Claude's calls; see docs/spec/construction.md)
 - Numbers are starting values checked only against sanity flags: amenity costs and upkeep (a default bar, restroom and cage cost and run exactly as before), tier thresholds, meal $18 (house cost $6), show every 100 s for 45 s, cover $10, `comeFor` shares, smokers' shares and urge (~4½ min), the high-limit ×5, the 90 s let-out.
 - **Amenities draw extra arrivals, and those extras are the people who came for them:** each kind adds `comeFor` × (1 + 0.25 × tier) to a type's arrival rate, and an arriving group's reason is drawn at the same odds. People who came for something head roughly toward it and search a little longer; mazes still defeat them.

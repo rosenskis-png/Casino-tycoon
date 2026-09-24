@@ -161,6 +161,11 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // 8 → 9 (M6.5): land parcels (none bought yet). Themes, the pool and the garden need nothing saved.
+  8: (s) => {
+    s.parcels = [];
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

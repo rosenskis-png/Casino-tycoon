@@ -25,10 +25,11 @@ import { goalSystem } from "./goals";
 import { drinkSystem } from "./drinks";
 import { poolSystem, seedPool } from "./pool";
 import { streetSystem } from "./street";
+import { incidentSystem, newAuthorities, DEFAULT_RULES } from "./incidents";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem,
+  movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem,
 ];
 
 export interface CommandRecord { tick: number; cmd: Command; error: string | null }
@@ -83,10 +84,15 @@ export class Game {
       pool: [], peds: [],
       finance: { month: { start: def.startCash }, history: [], total: { start: def.startCash } },
       thoughts: [{}],
+      incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES }, auth: newAuthorities(),
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "",
     };
-    for (const o of def.objects) state.objects.push(newObject(state.nextId++, o.kind, o.x, o.y, o.rot));
+    for (const o of def.objects) {
+      const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot);
+      if (o.bar && obj.bar) Object.assign(obj.bar, o.bar);
+      state.objects.push(obj);
+    }
     seedPool(state, def);
     const g = new Game(state);
     for (const [role, k] of Object.entries(def.staff)) for (let i = 0; i < k; i++) hireStaff(g, role);

@@ -9,7 +9,7 @@ import { fmtMoney, news } from "./news";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", bar: "Bar sales", build: "Construction", sales: "Sold objects",
-  wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs",
+  wages: "Wages", upkeep: "Upkeep", drinks: "Drink costs", fines: "Fines", medical: "Paramedics",
 };
 const HISTORY_MONTHS = 24;
 
@@ -24,7 +24,7 @@ export function post(g: Game, cat: string, amount: number) {
 
 export function monthlyCosts(g: Game): { wages: number; upkeep: number } {
   let wages = 0, upkeep = 0;
-  for (const a of g.state.agents) if (a.role !== "guest") wages += STAFF_ROLES[a.role].wage;
+  for (const a of g.state.agents) wages += STAFF_ROLES[a.role]?.wage ?? 0;
   for (const o of g.state.objects) upkeep += OBJECTS[o.kind].upkeep;
   return { wages, upkeep };
 }

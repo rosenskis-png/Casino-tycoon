@@ -16,6 +16,7 @@ import { MAX_PEDS } from "./street";
 import { TRAY } from "./staff";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
 import { spawnGroup, groupSize } from "./guests";
+import { INCIDENTS } from "../data/incidents";
 
 export function checkInvariants(g: Game): string[] {
   const p: string[] = [];
@@ -71,7 +72,7 @@ export function checkInvariants(g: Game): string[] {
     if (!g.walkable(a.y * w + a.x)) p.push(`agent ${a.id} on unwalkable tile ${a.x},${a.y}`);
     if (Math.abs(a.nx - a.x) + Math.abs(a.ny - a.y) > 1) p.push(`agent ${a.id} jumping`);
     if (a.t < 0 || a.t >= a.steps) p.push(`agent ${a.id} bad progress`);
-    if (a.role !== "guest" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
+    if (a.role !== "guest" && a.role !== "officer" && a.role !== "medic" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
     if (a.role === "server" && (a.tray?.length ?? 0) > TRAY) p.push(`server ${a.id} carrying ${a.tray!.length} drinks`);
     if (a.role === "guest") {
       const gd = a.g;
@@ -114,6 +115,21 @@ export function checkInvariants(g: Game): string[] {
     }
   }
   for (const [id, grp] of groups) if (grp.n > 8 || grp.leads > 1) p.push(`group ${id}: ${grp.n} members, ${grp.leads} leaders`);
+  // Incidents: known kinds on the map; nobody passed out or fighting outside one; standings in range.
+  const inIncident = new Map<number, string>();
+  for (const inc of s.incidents) {
+    if (!INCIDENTS[inc.kind]) p.push(`incident ${inc.id} unknown kind ${inc.kind}`);
+    if (inc.tile < 0 || inc.tile >= n) p.push(`incident ${inc.id} off the map`);
+    inIncident.set(inc.actor, inc.kind);
+    if (inc.other >= 0) inIncident.set(inc.other, inc.kind);
+  }
+  for (const a of s.agents) {
+    if (a.act === "out" && inIncident.get(a.id) !== "passout") p.push(`guest ${a.id} passed out with no incident`);
+    if (a.act === "fight" && inIncident.get(a.id) !== "fight") p.push(`guest ${a.id} fighting with no incident`);
+    if (a.g && (a.g.unans < 0 || a.g.warned < 0 || a.g.buzz < 0 || a.g.buzz > 20)) p.push(`guest ${a.id} incident fields out of range`);
+  }
+  for (const [k, v] of Object.entries(s.rules)) if (!(Number.isInteger(v) && v >= 0 && v <= 3)) p.push(`house rule ${k} = ${v}`);
+  for (const [k, v] of [["police", s.auth.police.standing], ["regulator", s.auth.regulator.standing]] as const) if (!(v >= 0 && v <= 100)) p.push(`${k} standing ${v}`);
   // The pool: money never negative; anyone marked here is on the floor or on the sidewalk.
   if (s.peds.length > MAX_PEDS) p.push(`${s.peds.length} pedestrians (cap ${MAX_PEDS})`);
   for (const q of s.peds) if (q.pid >= 0) { if (pids.has(q.pid)) p.push(`person ${q.pid} both inside and on the sidewalk`); pids.add(q.pid); }
@@ -199,6 +215,7 @@ function fiddle(g: Game) {
   else if (roll < 0.75) g.dispatch({ type: "place", kind: r.pick(Object.keys(OBJECTS)), x, y, rot: r.int(0, 3) });
   else if (roll < 0.85) { if (g.state.objects.length) g.dispatch({ type: "remove", id: r.pick(g.state.objects).id }); }
   else if (roll < 0.93) g.dispatch({ type: "hire", role: r.pick(Object.keys(STAFF_ROLES)) });
+  else if (roll < 0.945) g.dispatch({ type: "setRule", cat: r.pick(["intox", "disorder", "misconduct"] as const), level: r.int(0, 3) });
   else if (roll < 0.96) {
     const bars = g.amenities.thirst, servers = g.state.agents.filter((a) => a.role === "server");
     if (bars.length) {
@@ -208,7 +225,7 @@ function fiddle(g: Game) {
     }
   }
   else {
-    const staff = g.state.agents.filter((a) => a.role !== "guest");
+    const staff = g.state.agents.filter((a) => STAFF_ROLES[a.role]);
     if (staff.length) g.dispatch({ type: "fire", id: r.pick(staff).id });
   }
 }

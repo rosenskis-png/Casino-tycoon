@@ -368,7 +368,26 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
   toolbox: S([".mm.", "RRRR", "rrrr"]),
   spark: S(["..q..", "q.q.q", ".qwq.", "q.q.q", "..q.."], undefined, false),
   "spark~1": S([".q.q.", "..q..", "qqwqq", "..q..", ".q.q."], undefined, false),
-  // Flushed faces (drawn over the head; alpha so every skin tone reddens). Keys by facing.
+  // Security's radio, worn at the hip.
+  radio: S([".n", "mm", "mM", "mm"]),
+  // Incidents (M4): marks over a head, a sick face, a scuffle cloud, and vomit on the floor.
+  "inc:loud": S(["..qq", "..q9", "..q.", ".qq.", "qqq.", "qq.."]),
+  "inc:loud~1": S(["...qq", "...q9", "...q.", "..qq.", ".qqq.", ".qq.."]),
+  "inc:angry": S(["O.O", "O.O", "O.O", "...", "O.O"]),
+  "inc:sob": S(["........", "........", "........", "........", "........", ".V....V.", ".v....v."], { V: "#9ad8f2cc", v: "#3a8fc4aa" }, false),
+  "inc:sick": S(["........", "........", "........", ".gggggg.", ".gggggg.", ".gggggg."], { g: "#58a85a66" }, false),
+  "inc:heart": S(["x.x", "xxx", ".x."]),
+  "inc:cheer": S(["x...q", "..z..", "q...x", ".x.z."], undefined, false),
+  "inc:cheer~1": S(["..q..", "z...x", "..x..", "q...z"], undefined, false),
+  "inc:zzz": S(["NNN", "..N", ".N.", "NNN"]),
+  "inc:fight": S(["..n..q..n...", ".nNn.nn.nNn.", "nNNNnNNnNNNn", ".nnNNnnNNnn."], { n: "#b5afa0aa", N: "#e8e2d4cc" }, false),
+  "inc:fight~1": S([".n...n..q.n.", "nNn.nNNn.nNn", ".nNNNnnNNNn.", "..nnn..nnn.."], { n: "#b5afa0aa", N: "#e8e2d4cc" }, false),
+  vomit: S([
+    "................", "................", "................", "................", ".....aa.........",
+    "...aaAAaa..a....", "..aAAAAAAa.aA...", "..aAAAbAAAa.a...", "...aAAAAAAa.....", "....aaAAaa..aa..",
+    "......aa....aA..", "..............a.", "................", "................", "................",
+    "................",
+  ], { a: "#8a9a3aaa", A: "#b8c04acc", b: "#d8d070dd" }, false),
   "flush1:down": S(["........", "........", "........", "........", "........", ".r....r."], { r: "#ff2a4a66" }, false),
   "flush2:down": S(["........", "........", "........", "........", ".r....r.", ".rrRRrr.", "..rrrr.."], { r: "#ff2a4a70", R: "#ff2a4aaa" }, false),
   "flush1:side": S(["........", "........", "........", "........", "........", "....r..."], { r: "#ff2a4a66" }, false),
@@ -383,6 +402,9 @@ export const ANIMS: Record<string, { ms: number; seq?: number[] }> = {
   counter: { ms: 700 },
   slot: { ms: 450 },
   mop: { ms: 220 },
+  "inc:loud": { ms: 250 },
+  "inc:cheer": { ms: 200 },
+  "inc:fight": { ms: 120 },
   spark: { ms: 90 },
 };
 
@@ -574,6 +596,18 @@ export const PEOPLE: Record<string, LookSet> = {
   tech: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#2e3440"], bottom: ["#2e3440"], accent: ["#f08c1e"], hat: ["#f08c1e"],
     styles: [[{ o: "techvest", h: "cap" }], [{ o: "techvest", h: "cap" }]],
+  },
+  guard: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#e8e4dc"], bottom: ["#141418"], accent: ["#141418"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "crop" }], [{ o: "blazer", h: "bun" }]],
+  },
+  officer: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#2a3a6a"], bottom: ["#1e2438"], accent: ["#2a3a6a"], hat: ["#1e2438"],
+    styles: [[{ o: "longsleeve", h: "cap", x: ["belt"] }], [{ o: "longsleeve", h: "cap", x: ["belt"] }]],
+  },
+  medic: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#eef0ec"], bottom: ["#eef0ec"], accent: ["#c0283c"], hat: ["#c0283c"],
+    styles: [[{ o: "coverall", h: "crop", x: ["belt"] }], [{ o: "coverall", h: "bun", x: ["belt"] }]],
   },
   server: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#f6f1e6"], bottom: ["#141418"], accent: ["#1c1820"], hat: ["#141418"],

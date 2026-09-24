@@ -7,7 +7,7 @@ import { SCENARIOS } from "../data/scenarios";
 import { DOOR_STATE, T } from "../data/terrain";
 import type { Game } from "./game";
 import type { System } from "./registry";
-import type { Agent, Ped } from "./state";
+import { isClosed, type Agent, type Ped } from "./state";
 import { rng } from "./rng";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
 import { SIGHT, canSee } from "./wayfinding";
@@ -105,7 +105,8 @@ function turnAway(g: Game, pid: number) {
 
 function enter(g: Game, type: string, pid: number, n: number, k: number): boolean {
   const at = entranceTile(g, k);
-  if (at < 0) return false;
+  // Closed by the police: nobody gets in.
+  if (at < 0 || isClosed(g.state)) return false;
   const p = pid >= 0 ? person(g, pid) ?? null : null;
   if (p) p.here = 1;
   spawnGroup(g, type, at, p, n);

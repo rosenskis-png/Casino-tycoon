@@ -11,7 +11,7 @@ import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
 import { TICKS_PER_SECOND } from "./clock";
 import { faceTile } from "./wayfinding";
-import { acceptChance, barPolicy, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
+import { acceptChance, barPolicy, cutoff, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
 import { OBJECTS } from "../data/objects";
 
 declare module "./commands" {
@@ -45,7 +45,7 @@ export function hireStaff(g: Game, role: string): Agent | null {
   const x = at % w, y = (at - x) / w;
   const a: Agent = {
     // Drink servers move briskly.
-    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: role === "server" ? r.int(6, 7) : r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
+    id: s.nextId++, role: role as Agent["role"], x, y, nx: x, ny: y, t: 0, steps: role === "server" || role === "guard" ? r.int(6, 7) : r.int(9, 11), dest: at, look: r.int(0, 1 << 20),
     act: "idle", next: "idle", target: -1, seat: -1, timer: 0, hidden: 0,
   };
   if (role === "server") { const b = leastServedBar(g); if (b >= 0) a.bar = b; }
@@ -147,11 +147,11 @@ function nextCustomer(g: Game, a: Agent, bar: PlacedObject): Agent | null {
   const from = a.tray?.length ? a.y * w + a.x : faceTile(g, bar);
   const fx = from % w, fy = Math.floor(from / w);
   const room = pol.area >= 0 ? g.rooms.roomOf[pol.area] : -2;
-  const taken = ordered(g);
+  const taken = ordered(g), cut = cutoff(g);
   let best: Agent | null = null, bs = SERVER_REACH;
   for (const b of g.state.agents) {
     const gd = b.g;
-    if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
+    if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight") continue;
     if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
     const s = Math.abs(b.x - fx) + Math.abs(b.y - fy) + (isWalking(b) ? 6 : 0);
     if (s < bs) { bs = s; best = b; }
@@ -210,12 +210,12 @@ function serverTick(g: Game, a: Agent) {
     a.target = -1;
     // "Cocktails?": everyone within reach at this stop gets asked, until the tray is full.
     if (bar) {
-      const pol = barPolicy(bar), tick = g.state.tick, taken = ordered(g), w = g.state.map.w;
+      const pol = barPolicy(bar), tick = g.state.tick, taken = ordered(g), w = g.state.map.w, cut = cutoff(g);
       const room = pol.area >= 0 ? g.rooms.roomOf[pol.area] : -2;
       for (const b of g.state.agents) {
         if (a.tray!.length >= TRAY) break;
         const gd = b.g;
-        if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id)) continue;
+        if (!gd || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight") continue;
         if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > OFFER_REACH) continue;
         if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
         const comped = rollComp(g, gd, pol);
@@ -282,14 +282,14 @@ const commands: CommandTable<"hire" | "fire"> = {
   hire: {
     validate(g, c) {
       if (!STAFF_ROLES[c.role]) return "Unknown job";
-      if (g.state.agents.filter((a) => a.role !== "guest").length >= MAX_STAFF) return "That's enough staff";
+      if (g.state.agents.filter(isStaff).length >= MAX_STAFF) return "That's enough staff";
       if (!g.state.map.entrances.some((e) => g.walkable(e))) return "The entrance is blocked";
       return null;
     },
     apply(g, c) { if (hireStaff(g, c.role)) g.bus.emit({ type: "sound", id: "place" }); },
   },
   fire: {
-    validate: (g, c) => (g.state.agents.some((a) => a.id === c.id && a.role !== "guest") ? null : "Not on staff"),
+    validate: (g, c) => (g.state.agents.some((a) => a.id === c.id && isStaff(a)) ? null : "Not on staff"),
     apply(g, c) { g.state.agents = g.state.agents.filter((a) => a.id !== c.id); },
   },
 };
@@ -308,10 +308,12 @@ export const staffSystem: System = {
     }
   },
   tick(g) {
-    for (const a of g.state.agents) if (a.role !== "guest") staffTick(g, a);
+    // Guards and visitors (police, paramedics) are run by the incident system (sim/incidents.ts).
+    for (const a of g.state.agents) if (a.role === "janitor" || a.role === "tech" || a.role === "server") staffTick(g, a);
   },
 };
 
 /** Monthly wage bill by role, for the Staff tab. */
 export const wageOf = (role: string) => STAFF_ROLES[role]?.wage ?? 0;
-export const isStaff = (a: Agent) => a.role !== "guest";
+/** On the payroll (not a guest, and not a visiting officer or paramedic). */
+export const isStaff = (a: Agent) => a.role in STAFF_ROLES;

@@ -2,6 +2,7 @@
 // takes one a server offers. A guest holds one drink at a time and sips it over a minute or two (sim/guests.ts),
 // so intoxication climbs gradually; servers raise it mostly by offering often (more chances to say yes).
 import { GUEST_TYPES } from "../data/guests";
+import { CUTOFF } from "../data/incidents";
 import { OBJECTS } from "../data/objects";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
@@ -34,6 +35,9 @@ export const NEXT_AT = 0.25;
 export const handsFull = (gd: GuestData) => gd.drink > NEXT_AT;
 
 export const barPolicy = (o: PlacedObject | undefined): BarPolicy => o?.bar ?? DEFAULT_BAR;
+
+/** Intoxication above which bars and servers stop serving, from the house rule on drunkenness (docs/spec/incidents.md). */
+export const cutoff = (g: Game) => CUTOFF[g.state.rules.intox] ?? Infinity;
 
 /** Comp-seekers nurse cheap machines, but only while some bar comps drinks. */
 export function compSeeking(g: Game, gd: GuestData): boolean {
@@ -75,6 +79,7 @@ export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean): nu
 export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: "bar" | "server", comped: boolean): boolean {
   const gd = a.g!, pol = barPolicy(o), r = rng(g.state, "drinks");
   if (handsFull(gd)) return false;
+  if (gd.intox >= cutoff(g)) { if (r.chance(0.5)) think(g, a, "cutOff"); return false; }
   const price = comped ? 0 : priceAt(pol, gd);
   if (price > gd.wallet) return false;
   // The last sips of the old one go down in one.

@@ -96,7 +96,7 @@ function claim(g: Game, a: Agent, objId: number, seat: number) {
   a.seat = seat;
 }
 
-function release(g: Game, a: Agent) {
+export function release(g: Game, a: Agent) {
   if (a.seat >= 0) {
     const s = book(g).get(a.target);
     if (s && s[a.seat] === a.id) s[a.seat] = 0;
@@ -139,7 +139,7 @@ function refreshGroups(g: Game): Map<number, GroupInfo> {
 }
 
 /** Other members of a's group still on the floor. */
-function companions(g: Game, a: Agent): Agent[] {
+export function companions(g: Game, a: Agent): Agent[] {
   const gi = groups(g).get(a.g!.group);
   return gi ? gi.members.filter((m) => m !== a && !gone(g).has(m.id)) : [];
 }
@@ -278,11 +278,12 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     mem: {
       arrived: s.tick, playTicks: 0, moodSum: 0, moodN: 0, unmet: 0, drinks: 0, bigWin: 0, wagered: 0, won: 0, cashed: 0,
       feel: 0, rounds: 0, served: 0, comped: 0, early: 0, startIntend: intend, peak: 0, atmYes: 0, exitHops: 0, barAt: 0,
-      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0,
+      offerAt: 0, sitAt: 0, favSeat: -1, favScore: 0, ejected: 0,
     },
     // First-timers sightsee before settling; regulars less, the better they know the place.
     browse: 0, frus: 0, liked: [], favAt: 0,
-    thought: "", thoughtTick: -1, recent: [], nextThink: s.tick + r.int(5, 20) * TICKS_PER_SECOND, annoy: 0, why: "", wait: -1,
+    thought: "", thoughtTick: -1, recent: [], nextThink: s.tick + r.int(5, 20) * TICKS_PER_SECOND, annoy: 0, buzz: 0, why: "", wait: -1,
+    warned: 0, unans: 0, called: 0, incAt: 0,
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
@@ -340,12 +341,13 @@ export function visitScore(a: Agent): VisitScore {
   const feel = gd.mem.rounds ? Math.min(1, 0.2 + (1.6 * gd.mem.feel) / gd.mem.rounds + 0.3 * Math.min(1, gd.mem.bigWin)) : 0.3;
   const mood = (gd.mem.moodN ? gd.mem.moodSum / gd.mem.moodN : gd.mood) / 100;
   const needs = Math.max(0, 1 - gd.mem.unmet / 3);
-  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs));
+  // Thrown out by security: whatever else happened, the visit ended badly.
+  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.mem.ejected ? 0.4 : 1);
   return { score, value, feel, needs, mood };
 }
 
-/** The guest walks out: their visit becomes the person's memory, or word of mouth. */
-function depart(g: Game, a: Agent) {
+/** The guest walks out (or is carried out): their visit becomes the person's memory, or word of mouth. */
+export function depart(g: Game, a: Agent) {
   const gd = a.g!, s = g.state;
   release(g, a);
   const vs = visitScore(a);
@@ -361,6 +363,7 @@ function depart(g: Game, a: Agent) {
     type: "departed", guestType: gd.type, pid: gd.pid, lead: gd.lead, minutes: (s.tick - gd.mem.arrived) / TICKS_PER_MIN, play: gd.mem.playTicks / TICKS_PER_MIN,
     budget: gd.bankroll, lost: gd.mem.wagered - gd.mem.won, intend: gd.mem.startIntend, peak: gd.mem.peak,
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
+    warned: gd.warned, ejected: gd.mem.ejected,
   });
   walkAway(g, a);
   gone(g).add(a.id);
@@ -395,6 +398,14 @@ function standBy(g: Game, a: Agent) {
   if (near >= 0 && near !== a.y * g.state.map.w + a.x) return go(a, near, "wait");
   a.act = "wait";
   a.timer = r.int(5, 10) * TICKS_PER_SECOND;
+}
+
+/** Heads for the exit now (thrown out, escorted, the casino closing): no waiting for the group. */
+export function sendHome(g: Game, a: Agent, why: string) {
+  a.g!.why = why;
+  a.act = "idle";
+  a.timer = 0;
+  startLeaving(g, a, why);
 }
 
 function startLeaving(g: Game, a: Agent, why: string) {
@@ -865,6 +876,10 @@ function headInside(g: Game, a: Agent): boolean {
 function guestTick(g: Game, a: Agent) {
   const gd = a.g!;
   switch (a.act) {
+    case "out":
+    case "fight":
+      // Passed out or in a fight: the incident system decides when it's over (sim/incidents.ts).
+      return;
     case "arrive":
       if (headInside(g, a)) return;
       decide(g, a);
@@ -942,6 +957,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   n.hunger = Math.min(100, n.hunger + rate.hunger);
   n.fatigue = Math.min(100, n.fatigue + rate.fatigue * (walking ? 1.3 : 0.8));
   gd.annoy = Math.max(0, Math.min(30, gd.annoy - 0.5 + (gd.wait >= 0 ? 0.3 : 0)));
+  gd.buzz = Math.max(0, Math.min(20, gd.buzz - 0.5));
   gd.know += (1 - gd.know) * LEARN * (walking ? 3 : 1);
   if (gd.browse > 0) gd.browse--;
   // The drink in hand: sipped over the type's drinking time, easing thirst and adding intoxication as it goes.
@@ -974,7 +990,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   let needs = 0;
   for (const v of [n.bladder, n.thirst, n.hunger, n.fatigue]) if (v > 60) needs += (v - 60) / 3;
   const drink = gd.intox > 0.05 && gd.intox < 0.6 ? 4 : gd.intox > 0.9 ? -4 : 0;
-  let target = 62 + env + luck - needs - gd.annoy + drink;
+  let target = 62 + env + luck - needs - gd.annoy + gd.buzz + drink;
   // Company: mood pulls toward the group's.
   const gi = groups(g).get(gd.group);
   if (gi && gi.members.length > 1) {

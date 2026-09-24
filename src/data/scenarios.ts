@@ -38,7 +38,8 @@ export interface ScenarioDef {
    * regulars on day one (they know the floor as it is at the start).
    */
   market: Record<string, { size: number; regulars: number }>;
-  objects: { kind: string; x: number; y: number; rot: number }[];
+  /** Starting objects; a bar may start with its own drink policy (price multiplier, comped share, strength). */
+  objects: { kind: string; x: number; y: number; rot: number; bar?: { price?: number; comp?: number; strength?: number } }[];
   staff: Record<string, number>;
   /** Guests who come on purpose: weight per guest type (multiplies the type's own base). */
   population: Record<string, number>;
@@ -104,7 +105,8 @@ function bigFloor(): ScenarioDef {
 /**
  * Test Floor: a realistic, fully equipped casino on the tutorial lot for headless reports (`npm run targets`):
  * slot banks with seats on the aisles in view of the door, a quiet back room, bars, restrooms, a cage and an ATM
- * near the door, decor, scattered signs, and staff including drink servers. Measure guest behavior here, never
+ * near the door, decor (planters included), scattered signs, a strong-drinks bar, and staff including drink servers
+ * and security guards. Measure guest behavior here, never
  * on a bare or deliberately flawed floor (docs/spec/guests.md §Targets).
  */
 function testFloor(): ScenarioDef {
@@ -117,8 +119,9 @@ function testFloor(): ScenarioDef {
   // A quiet back room of quarter machines.
   objects.push(...row("slot_cherry", 39, 8, 8));
   objects.push(
-    { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0 },
-    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 },
+    // The back-corner bar pours strong drinks, a quarter of them free: the rowdy end of the floor.
+    { kind: "bar", x: 9, y: 14, rot: 0 }, { kind: "bar", x: 19, y: 14, rot: 0 }, { kind: "bar", x: 40, y: 27, rot: 0, bar: { strength: 1.4, comp: 0.25 } },
+    { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 },
     { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
     { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 47, y: 29, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
@@ -127,7 +130,7 @@ function testFloor(): ScenarioDef {
   );
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 3, tech: 2, server: 8 },
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 3, tech: 2, server: 8, guard: 2 },
     footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
     market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 } },
     population: { local: 1, retiree: 1, tourist: 1, party: 1 }, rep: {}, arrivals: 0.3, maxGuests: 400, goals: null,

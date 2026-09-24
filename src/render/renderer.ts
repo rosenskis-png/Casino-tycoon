@@ -339,7 +339,7 @@ export class Renderer {
     if (lod <= 2) {
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         const d = s.dirt[y * w + x];
-        if (d) blit(d >= 3 ? "obj:spill" : "obj:litter", ox + x * tp, oy + y * tp);
+        if (d) blit(d >= 10 ? "obj:vomit" : d >= 3 ? "obj:spill" : "obj:litter", ox + x * tp, oy + y * tp);
       }
     }
 
@@ -397,6 +397,15 @@ export class Renderer {
       }
     }
 
+    // Incidents in progress, by the guests in them (docs/spec/incidents.md): marks over heads, poses, the scuffle cloud.
+    const incBy = new Map<number, string>(), incStarter = new Set<number>();
+    for (const inc of s.incidents) {
+      if (inc.kind === "escort") continue;
+      incBy.set(inc.actor, inc.kind);
+      incStarter.add(inc.actor);
+      if (inc.other >= 0) incBy.set(inc.other, inc.kind === "recruit" || inc.kind === "flirt" ? "" : inc.kind);
+    }
+    const anim = (key: string) => this.frameKey(key, key.slice(4), now, 0);
     // People. set = look set (guest type or staff role), fx/fy = tile position, dir/step = pose frame.
     const WALK = [1, 0, 2, 0];
     const HAND: Record<string, [number, number]> = { down: [6, 8], up: [-1, 8], side: [5, 8], left: [0, 8] };
@@ -412,6 +421,23 @@ export class Renderer {
         items.push({ y: fy, draw: () => { ctx.fillStyle = color; ctx.fillRect(Math.round(sx - d / 2), Math.round(sy - d), Math.ceil(d), Math.ceil(d)); } });
         return;
       }
+      if (pose === "lie") {
+        // Passed out: the standing figure laid on its side, head to the left.
+        const f = F.get(`p:${set}:${sex}:${v}:down0`);
+        items.push({
+          y: fy + 0.02,
+          draw: () => {
+            if (!f) return;
+            ctx.save();
+            ctx.translate(Math.round(sx), Math.round(sy + 2 * scale));
+            ctx.rotate(-Math.PI / 2);
+            ctx.drawImage(atlas.canvas, f.x - PAD, f.y - PAD, f.w + 2 * PAD, f.h + 2 * PAD, (-f.w / 2 - PAD) * scale, (-f.h / 2 - PAD) * scale, (f.w + 2 * PAD) * scale, (f.h + 2 * PAD) * scale);
+            ctx.restore();
+            if (lod < 2) blit("obj:inc:zzz", sx + 4 * scale, sy - (9 + (Math.floor(now / 500) & 1)) * scale);
+          },
+        });
+        return;
+      }
       const seated = pose === "s";
       const key = `p:${set}:${sex}:${v}:${dir}${pose}`;
       const px = sx - 4 * scale, py = sy + (5 - 15 + (seated ? SIT_DROP : 0)) * scale;
@@ -424,12 +450,29 @@ export class Renderer {
           const face = dir === "left" ? "left" : dir === "up" ? "" : dir === "down" ? "down" : "side";
           const intox = a.g?.intox ?? 0;
           if (face && intox >= 0.25) blit(`obj:flush${intox >= 0.5 ? 2 : 1}:${face}`, px, py);
+          const inc = incBy.get(a.id);
+          if (inc) {
+            const over = (k: string, dx: number, dy: number) => blit(anim(k), px + dx * scale, py - dy * scale);
+            if (inc === "loud") over("obj:inc:loud", 5, 6);
+            else if (inc === "argument" || inc === "yell") over("obj:inc:angry", 2.5, 7 + (Math.floor(now / 300) & 1));
+            else if (inc === "breakdown" && face) blit("obj:inc:sob", px, py + (Math.floor(now / 400) & 1) * scale);
+            else if (inc === "vomit") blit("obj:inc:sick", px, py);
+            else if (inc === "cheer" || inc === "round") over("obj:inc:cheer", 1.5, 7);
+            else if (inc === "flirt") over("obj:inc:heart", 2.5, 5 + (Math.floor(now / 350) & 1));
+            else if (inc === "recruit") over("obj:glass", 2.5, 5);
+            else if (inc === "fight") {
+              over("obj:inc:angry", 2.5, 7 + (Math.floor(now / 200 + a.id) & 1));
+              // Dust kicked up at their feet (drawn once, by the one who started it, between the two).
+              if (incStarter.has(a.id)) blit(anim("obj:inc:fight"), px + 2 * scale, py + 11 * scale);
+            }
+          }
           const [hx, hy] = HAND[dir];
           const at = (k: string, dx = 0, dy = 0) => blit(k, px + (hx + dx) * scale, py + (hy + dy) * scale);
           if (a.g && a.g.drink > 0) at(a.g.dStr > 0 ? "obj:glass" : "obj:soda", 0, 1);
           else if (a.role === "server") at(a.act === "serve" ? "obj:tray:full" : "obj:tray", dir === "left" ? -3 : dir === "up" ? -1 : 0, a.act === "serve" ? -6 : -4);
           else if (a.role === "janitor") at(a.act === "clean" && Math.floor(now / 220) & 1 ? "obj:mop~1" : "obj:mop", dir === "left" ? -2 : 1, -1);
           else if (a.role === "tech") at("obj:toolbox", 0, 3);
+          else if (a.role === "guard") at("obj:radio", dir === "left" ? -1 : 0, 1);
         },
       });
       if (a?.role === "tech" && a.act === "repair" && lod < 2) {
@@ -457,6 +500,9 @@ export class Renderer {
       else dir = a.nx > a.x ? "side" : a.nx < a.x ? "left" : a.ny < a.y ? "up" : "down";
       if (seated && a.act !== "cage") pose = "s";
       else pose = String(moving ? WALK[Math.min(1, Math.floor(2 * p)) + 2 * ((a.x + a.y) & 1)] : 0);
+      if (a.act === "out") pose = "lie";
+      // Fighting: squared up and shoving back and forth.
+      if (a.act === "fight") { fx += 0.12 * Math.sin(now / 70 + a.id); pose = String(1 + (Math.floor(now / 140 + a.id) & 1)); }
       person(a, set, sex, a.look, fx, fy, dir, pose);
     }
     // Pedestrians on the sidewalk.

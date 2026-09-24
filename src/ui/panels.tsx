@@ -9,10 +9,12 @@ import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
 import { SLOT_MODELS, WAGERS_PER_ROUND, expectedReturn } from "../data/games";
+import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, modelOf, covers, LEDGER_LABELS, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
-  type Agent, type Ledger,
+  incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER,
+  type Agent, type Ledger, type HouseRules,
 } from "../sim";
 import { isMuted, setMuted } from "../platform/audio";
 import type { Host } from "./host";
@@ -71,9 +73,13 @@ function roleDoing(g: Game, a: Agent): string {
     case "offer": return "Taking an order";
     case "fetch": return `Picking up ${a.tray?.length ?? 0} drinks`;
     case "serve": return "Serving a drink";
+    case "out": return "Passed out";
+    case "fight": return "In a fight!";
+    case "respond": return "Dealing with trouble";
+    case "treat": return "Treating a guest";
     case "wait": return "Waiting for the others";
     case "walk":
-      if (a.next === "leave") return "Heading home";
+      if (a.next === "leave") return a.role === "guest" ? "Heading home" : "Leaving";
       if (a.next === "clean") return "Off to sweep up";
       if (a.next === "repair") return `On the way to fix ${name}`;
       if (a.next === "play") return `Walking to ${name}`;
@@ -84,8 +90,11 @@ function roleDoing(g: Game, a: Agent): string {
       if (a.next === "fetch") return "Off to the bar";
       if (a.next === "serve") return "Bringing a drink";
       if (a.next === "wait") return "Waiting for the others";
+      if (a.next === "respond") return "Heading to trouble";
+      if (a.next === "treat") return "Rushing to a guest";
       return "Walking";
     case "wander": {
+      if (a.role === "officer") return "Inspecting the floor";
       if (a.role !== "guest") return "Patrolling";
       if (a.g!.trapped) return "Trapped inside";
       return SEEKING[a.g!.seek] ?? "Looking around";
@@ -103,7 +112,7 @@ const moodFace = (m: number) => (m > 75 ? "😀" : m > 55 ? "🙂" : m > 40 ? "�
 
 export function StaffPanel({ host }: { host: Host }) {
   const g = host.game;
-  const staff = g.state.agents.filter((a) => a.role !== "guest");
+  const staff = g.state.agents.filter(isStaff);
   return (
     <>
       <div className="grid">
@@ -281,6 +290,52 @@ export function GoalsPanel({ host }: { host: Host }) {
   );
 }
 
+const RULE_CATS = ["intox", "disorder", "misconduct"] as const;
+
+/** Standing with the police and the regulator, the house rules, and what's been happening (docs/spec/incidents.md). */
+export function AuthoritiesPanel({ host }: { host: Host }) {
+  const g = host.game, s = g.state, p = s.auth.police;
+  const rates = incidentRates(g);
+  const closed = s.auth.closedUntil > s.tick;
+  const guards = s.agents.filter((a) => a.role === "guard").length;
+  const list = Object.entries(rates).filter(([k, n]) => INCIDENTS[k] && !INCIDENTS[k].hidden && n >= 0.5).sort((a, b) => b[1] - a[1]);
+  const cut = CUTOFF[s.rules.intox];
+  const per = (k: string) => Math.round(rates[k] ?? 0);
+  return (
+    <>
+      {closed && <p className="lv-urgent">Closed by the police until {formatDate(Math.floor(s.auth.closedUntil / TICKS_PER_DAY))}.</p>}
+      <div className="bar"><span>Police</span><div><i style={{ width: `${Math.round(p.standing)}%` }} /></div><span className="num">{Math.round(p.standing)}</span></div>
+      <p className="muted" style={{ margin: "2px 0 8px" }}>{LADDER_NAMES[p.stage]} · {p.calls} police call{p.calls === 1 ? "" : "s"} so far. Trouble, unanswered reports and paramedics cost standing; it recovers slowly. At 0 the license is revoked.</p>
+      <div className="bar"><span>Regulator</span><div><i style={{ width: `${Math.round(s.auth.regulator.standing)}%` }} /></div><span className="num">{Math.round(s.auth.regulator.standing)}</span></div>
+      <p className="muted" style={{ margin: "2px 0 8px" }}>The gaming regulator watches the games themselves. No concerns.</p>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>House rules: how strictly security steps in ({guards} guard{guards === 1 ? "" : "s"} on staff)</p>
+      <div className="kv">
+        {RULE_CATS.map((c) => (
+          <Fragment key={c}>
+            <b>{INCIDENT_CATS[c].name}</b>
+            <span>
+              <select value={s.rules[c]} onChange={(e) => g.dispatch({ type: "setRule", cat: c as keyof HouseRules, level: Number(e.target.value) })}>
+                {RULE_LEVELS.map((l, k) => <option key={l} value={k}>{l}</option>)}
+              </select>
+            </span>
+          </Fragment>
+        ))}
+      </div>
+      {RULE_LEVELS.map((l, k) => <p key={l} className="muted" style={{ margin: "4px 0" }}><b>{l}:</b> {RULE_HELP[k]}</p>)}
+      <p className="muted" style={{ margin: "4px 0" }}>{cut === Infinity ? "Bars and servers serve anyone." : `Bars and servers cut off anyone ${cut >= 0.8 ? "wasted" : "drunk"}.`} A guest whose reports go unanswered {CALL_AFTER} times calls the police.</p>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Incidents (a day, over the last two)</p>
+      <div className="kv">
+        <b>Reports</b><span className="num">{per("_reports")} · {per("_calls")} police calls</span>
+        <b>Thrown out</b><span className="num">{per("_ejected")}</span>
+      </div>
+      {list.length === 0 && <p className="muted">All quiet.</p>}
+      {list.map(([k, n]) => (
+        <div className={`thought ${INCIDENTS[k].mood < 0 ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{INCIDENTS[k].name}</span></div>
+      ))}
+    </>
+  );
+}
+
 export function Placeholder({ when }: { when: string }) {
   return <p className="muted">Arrives in {when}.</p>;
 }
@@ -305,6 +360,15 @@ export function LogSheet({ game, onClose }: { game: Game; onClose: () => void })
 
 function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: () => void }) {
   const g = host.game;
+  if (a.role === "officer" || a.role === "medic") {
+    return (
+      <div className="sheet">
+        <h3>{a.role === "officer" ? "Police officer" : "Paramedic"}<button className="x" onClick={onClose}>✕</button></h3>
+        <p>{roleDoing(g, a)}</p>
+        <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : "Here for a guest who passed out."}</p>
+      </div>
+    );
+  }
   if (a.role !== "guest") {
     return (
       <div className="sheet">
@@ -323,6 +387,8 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       <p>{roleDoing(g, a)}</p>
       <p className="muted">Here {days < 1 ? "since today" : `for ${days} day${days === 1 ? "" : "s"}`}.</p>
       {companionsText(g, a) && <p className="muted">{companionsText(g, a)}</p>}
+      {incidentOf(g, a.id) && !INCIDENTS[incidentOf(g, a.id)!.kind].hidden && <p className="lv-warn">{INCIDENTS[incidentOf(g, a.id)!.kind].name}</p>}
+      {(gd.warned > 0 || gd.unans > 0) && <p className="muted">{gd.warned > 0 ? `Warned by security${gd.warned > 1 ? ` ${gd.warned} times` : ""}. ` : ""}{gd.unans > 0 ? `${gd.unans} of their reports went unanswered${gd.called ? "; they called the police" : ""}.` : ""}</p>}
       {[...gd.recent].reverse().map((t, k) => THOUGHTS[t] && (
         <p key={k} className={`quote ${THOUGHTS[t].bad ? "bad" : ""}`}>“{wording(t, gd.type, gd.name)}”</p>
       ))}

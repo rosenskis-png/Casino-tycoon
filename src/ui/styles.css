@@ -12,7 +12,7 @@ html,body,#root{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 .speeds button.on{background:linear-gradient(var(--felt2),var(--felt));color:#fff}
 .ticker{flex:none;display:flex;align-items:center;height:30px;background:#000;border-bottom:1px solid var(--brass2);padding-left:10px}
 .ticker .msg{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lv-info{color:var(--gold)}.lv-good{color:var(--green)}.lv-urgent{color:var(--red)}.lv-bad{color:var(--red)}
+.lv-info{color:var(--gold)}.lv-warn{color:#ffb52e}.lv-good{color:var(--green)}.lv-urgent{color:var(--red)}.lv-bad{color:var(--red)}
 .ticker .log{height:30px;padding:0 12px;color:var(--cream2);font-size:13px;border-left:1px solid #2a1a12}
 .world{position:relative;flex:1;min-height:0}
 .world canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}

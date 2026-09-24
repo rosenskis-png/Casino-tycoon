@@ -13,6 +13,7 @@ g.dispatch({ type: "place", kind: "slot_thunder", x: 14, y: 20, rot: 1 });
 g.dispatch({ type: "hire", role: "tech" });
 g.dispatch({ type: "hire", role: "server" });
 g.dispatch({ type: "place", kind: "atm", x: 34, y: 28, rot: 0 });
+if (sim.SCHEMA_VERSION >= 6) { g.dispatch({ type: "hire", role: "guard" }); g.dispatch({ type: "setRule", cat: "disorder", level: 3 }); }
 for (let t = 0; t < 2; t++) g.step();
 const bar = g.state.objects.find((o) => o.kind === "bar");
 if (bar) g.dispatch({ type: "setBar", id: bar.id, price: 1.5, comp: 0.25, strength: 1.4 });

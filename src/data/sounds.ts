@@ -26,5 +26,10 @@ export const SOUNDS: Record<string, SoundRecipe> = {
   ],
   broken: [{ wave: "sawtooth", f0: 300, f1: 120, dur: 0.25, gain: 0.08 }],
   fixed: [{ wave: "triangle", f0: 660, f1: 990, dur: 0.1, gain: 0.1 }],
+  // Incidents (M4).
+  fight: [{ wave: "noise", f0: 700, dur: 0.08, gain: 0.25 }, { wave: "noise", f0: 500, at: 0.14, dur: 0.07, gain: 0.22 }, { wave: "square", f0: 180, f1: 120, at: 0.05, dur: 0.1, gain: 0.06 }],
+  cheer: [{ wave: "noise", f0: 3000, dur: 0.45, gain: 0.1 }, { wave: "triangle", f0: 660, f1: 990, dur: 0.18, gain: 0.08 }],
+  retch: [{ wave: "sawtooth", f0: 160, f1: 90, dur: 0.22, gain: 0.07 }, { wave: "noise", f0: 400, at: 0.12, dur: 0.15, gain: 0.12 }],
+  thud: [{ wave: "sine", f0: 110, f1: 45, dur: 0.18, gain: 0.3 }],
   urgent: [{ wave: "square", f0: 660, dur: 0.1, gain: 0.08 }, { wave: "square", f0: 660, at: 0.16, dur: 0.1, gain: 0.08 }],
 };

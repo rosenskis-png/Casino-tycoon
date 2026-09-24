@@ -2,6 +2,32 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M7 built (Claude's calls; see docs/spec/tables.md)
+- All numbers are starting values checked only against sanity flags: costs, wages (dealer $100, pit boss $140), round lengths, limit presets, tastes per type, `tableStake`, skill shares and costs, counter shares and gains, the pit boss and dealer catch rates, the counter-tagging rate, High rollers' data.
+- **Every game is unit-risk wagers in the slot paytable shape**, so luck, cheating, the suspicion tools and the books work unchanged. Blackjack draws loss / push / win / natural with the win chance solved for the exact edge (no doubles or splits drawn); craps odds are separate wagers placed only when a point is set.
+- **Shared outcomes are real:** one roulette number, craps decision, baccarat coup or keno draw per hand for the whole table; each player's result follows from their own bet. Luck there turns a loss into the bet's win (or a win into a loss) at chances that keep the ±20-point shift exact.
+- **Poker and bingo are pools:** the house earns exactly the rake (10%, capped at $10 a pot) or hold (30%); skill decides who wins at poker, cards bought at bingo. No luck and no cheating there.
+- **Dealers are hired staff** who walk to an open dealer spot; craps needs two, keno and bingo one each (a writer, a caller). Tables with no dealer are closed and say so on their card.
+- **Guests bet more per hand at tables** (stake × `tableStake`), which makes the minimum the lever for who sits: Retirees rarely reach a $5 table and play keno and bingo instead.
+- **Rules-aware guests** (Locals 0.6, High rollers 1) add half their weight × the table's rules score to its appeal and may say "Six to five blackjack? No thanks." Counters never sit at 6:5 and prefer fewer decks.
+- **High rollers** come at a fifth of their rate to a casino without tables and 1.5× with tables in a high-limit room; they're a recurring pool (Test Floor 25, Free Play 40, none in the tutorial).
+- **Table cheats pace their bets to their take** (take / 40 per hand): at a table's maximum, one hand could overshoot a whole take.
+- Test Floor: a table pit on the main floor, poker, keno and four video poker machines by the door, a bingo hall in the quiet back room, baccarat in the high-limit room (its Thunder row shortened to four, the Liberty row to six), nine dealers and a pit boss, and three more restrooms (busier floor: Party and High roller guests were leaving for restrooms).
+- **Fixed:** the pit boss stood at the door all day in the first build (a tile search started from inside the table); counters were never tagged.
+- Tutorial books identical to M6.5; Big Floor steady state unchanged.
+- **Flagged for the owner:** a cheat on a high-limit baccarat table still wins faster than one at a slot, and the Test Floor's cheats cost about $2–7K over 300 days depending on the seed (M6.5: ~$1–3K). Pit bosses and dealers are the lever; tuning is M11.
+
+## 2026-09-24 · Green light for M7: games catalog and table rules (see docs/spec/tables.md)
+- Owner said "green light" and accepted every readiness default, with one change: **no M7.5**, the whole catalog ships in M7.
+- Catalog: blackjack, roulette, craps, baccarat, video poker, poker room (rake), keno and bingo. The sportsbook waits for the M9 event calendar.
+- Tables draw each bet from its exact odds, like slots; the cards, wheel and dice shown are that real result. No deck simulation.
+- Blackjack skill: guests make realistic mistakes, so the edge depends on who sits; card counters are a hidden trait and read like lucky or cheating guests.
+- Tables are social: several seats share one round, a table opens only with a dealer (paid staff), craps draws onlookers and watching counts as fun.
+- Limits per table: the minimum decides who can sit, the maximum caps exposure; a high-limit room multiplies both by 5.
+- Locals and a new High rollers type notice rule changes; Tourists and Party guests don't.
+- Game tastes per type are Claude's call, checked against sanity flags.
+- **Dealer collusion moves to M9** with hidden staff honesty (resolves the M5/M9 conflict). Table cheating by guests is in M7.
+
 ## 2026-09-24 · M6.5 built (Claude's calls; see docs/spec/themes.md, docs/spec/construction.md)
 - Theme math and numbers are starting values checked against sanity only: strength 3 / radius 4 per piece, walls cut 60%, clashing pairs count 2.5× (a clash has to hurt more than a good pair helps), unrelated themes muddle at 0.8, curated bonus 0.3, per-type `theming` 0.3 / 0.5 / 1.0 / 0.6.
 - **General items only count toward a theme where that theme is already present** from themed pieces, so a palm alone never "themes" a room; it can only reinforce one (the curated bonus).

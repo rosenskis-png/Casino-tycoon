@@ -3,7 +3,6 @@ import { SCENARIOS } from "../data/scenarios";
 import { GUEST_TYPES } from "../data/guests";
 import { DOOR_STATE, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
-import { SLOT_MODELS, WAGERS_PER_ROUND } from "../data/games";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, dateOfDay } from "./clock";
 import { EventBus } from "./events";
 import { SCHEMA_VERSION, type GameState, type PlacedObject } from "./state";
@@ -20,7 +19,8 @@ import { movementSystem } from "./agents";
 import { newsSystem, news } from "./news";
 import { buildSystem, newObject } from "./build";
 import { financeSystem } from "./finance";
-import { gamingSystem } from "./gaming";
+import { gamingSystem, minRoundOf } from "./gaming";
+import { tableSystem } from "./tables";
 import { guestSystem } from "./guests";
 import { staffSystem, hireStaff } from "./staff";
 import { goalSystem } from "./goals";
@@ -32,7 +32,7 @@ import { cheatSystem, newEnforcement } from "./cheats";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem,
 ];
 
 export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
@@ -52,8 +52,12 @@ export class Game {
   /** Object id whose seat is on this tile. */
   seatAt = new Int32Array(0);
   objById = new Map<number, PlacedObject>();
-  /** Slot machines by 16×16 sector (key sy * 4096 + sx), for nearby searches. */
+  /** Game objects (slots, video poker, tables) by 16×16 sector (key sy * 4096 + sx), for nearby searches. */
   slotSectors = new Map<number, PlacedObject[]>();
+  /** Tables and draw games (M7): everything dealt by a dealer. */
+  tables: PlacedObject[] = [];
+  /** Guest seats at games (machines and tables), for the floor-size factor on arrivals. */
+  gameSeats = 0;
   /** Amenities by what they serve. Cages also serve withdrawals ("atm"). */
   amenities: Record<Serves, PlacedObject[]> = emptyAmenities();
   /** Objects that block sight, per tile (walls and closed doors are checked from terrain). */
@@ -62,7 +66,7 @@ export class Game {
   signs: PlacedObject[] = [];
   /** Seat tile indices per object. */
   seatTiles = new Map<number, number[]>();
-  /** Cheapest one-credit round on any placed slot model (Infinity when there are none). */
+  /** Cheapest round on any placed game (Infinity when there are none). */
   minRound = Infinity;
   readonly rooms = new RoomIndex();
   /**
@@ -171,19 +175,22 @@ export class Game {
     this.seatTiles.clear();
     this.amenities = emptyAmenities();
     this.minRound = Infinity;
+    this.tables = [];
+    this.gameSeats = 0;
     for (const o of this.state.objects) {
       const def = OBJECTS[o.kind];
       this.objById.set(o.id, o);
       if (def.serves) this.amenities[def.serves].push(o);
       if (def.serves === "cage") this.amenities.atm.push(o);
       if (def.guide) this.signs.push(o);
-      if (def.slot) {
+      if (def.slot || def.game) {
         const key = (o.y >> 4) * 4096 + (o.x >> 4);
         let list = this.slotSectors.get(key);
         if (!list) this.slotSectors.set(key, (list = []));
         list.push(o);
-        const m = SLOT_MODELS[def.slot];
-        this.minRound = Math.min(this.minRound, m.denom * WAGERS_PER_ROUND);
+        this.minRound = Math.min(this.minRound, minRoundOf(o));
+        if (def.cat === "table") this.tables.push(o);
+        for (const st of objSeats(o)) if (st.kind !== "dealer") this.gameSeats++;
       }
       for (const p of objCells(o)) {
         if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;

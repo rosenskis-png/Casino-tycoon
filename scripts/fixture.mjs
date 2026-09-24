@@ -32,6 +32,15 @@ if (sim.SCHEMA_VERSION >= 9) {
   g.dispatch({ type: "place", kind: "tiki_torch", x: 40, y: 34, rot: 0 });
   g.dispatch({ type: "place", kind: "garden", x: 34, y: 33, rot: 0, w: 4, h: 3 });
 }
+if (sim.SCHEMA_VERSION >= 10) {
+  // M7: blackjack and craps with dealers and a pit boss; house rules on the blackjack table.
+  g.dispatch({ type: "place", kind: "blackjack", x: 30, y: 12, rot: 0 });
+  g.dispatch({ type: "place", kind: "craps", x: 12, y: 6, rot: 0 });
+  for (const role of ["dealer", "dealer", "dealer", "pitboss"]) g.dispatch({ type: "hire", role });
+  for (let t = 0; t < 2; t++) g.step();
+  const bj = g.state.objects.find((o) => o.kind === "blackjack");
+  if (bj) g.dispatch({ type: "setTable", id: bj.id, rules: [1, 0, 1], lim: 3 });
+}
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
 writeFileSync(file, sim.serialize(g));
 console.log(`wrote ${file} (${g.state.agents.length} agents, ${g.state.objects.length} objects)`);

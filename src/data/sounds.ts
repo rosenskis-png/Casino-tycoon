@@ -28,6 +28,8 @@ export const SOUNDS: Record<string, SoundRecipe> = {
   fixed: [{ wave: "triangle", f0: 660, f1: 990, dur: 0.1, gain: 0.1 }],
   // Incidents (M4).
   fight: [{ wave: "noise", f0: 700, dur: 0.08, gain: 0.25 }, { wave: "noise", f0: 500, at: 0.14, dur: 0.07, gain: 0.22 }, { wave: "square", f0: 180, f1: 120, at: 0.05, dur: 0.1, gain: 0.06 }],
+  dice: [{ wave: "noise", f0: 2600, dur: 0.05, gain: 0.12 }, { wave: "noise", f0: 2200, at: 0.08, dur: 0.05, gain: 0.1 }, { wave: "noise", f0: 1800, at: 0.15, dur: 0.06, gain: 0.08 }],
+  wheel: [{ wave: "square", f0: 2400, dur: 0.02, gain: 0.04 }, { wave: "square", f0: 2400, at: 0.1, dur: 0.02, gain: 0.04 }, { wave: "square", f0: 2400, at: 0.22, dur: 0.02, gain: 0.04 }, { wave: "square", f0: 2400, at: 0.38, dur: 0.02, gain: 0.04 }, { wave: "triangle", f0: 1200, at: 0.5, dur: 0.06, gain: 0.05 }],
   cheer: [{ wave: "noise", f0: 3000, dur: 0.45, gain: 0.1 }, { wave: "triangle", f0: 660, f1: 990, dur: 0.18, gain: 0.08 }],
   retch: [{ wave: "sawtooth", f0: 160, f1: 90, dur: 0.22, gain: 0.07 }, { wave: "noise", f0: 400, at: 0.12, dur: 0.15, gain: 0.12 }],
   thud: [{ wave: "sine", f0: 110, f1: 45, dur: 0.18, gain: 0.3 }],

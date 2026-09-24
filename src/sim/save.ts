@@ -166,6 +166,12 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.parcels = [];
     return s;
   },
+  // 9 → 10 (M7): games catalog and table rules. Guests on the floor get typical skill and don't count cards;
+  // no tables existed, so no table state.
+  9: (s) => {
+    for (const a of s.agents) if (a.role === "guest" && a.g) Object.assign(a.g, { skill: 1, counter: 0 });
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

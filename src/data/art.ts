@@ -181,6 +181,7 @@ export const REEL_STRIP = ["pp", "FF", "pp", "RR", "pp", "qq", "pp", "kk", "pp",
 export const SLOT_COLORS: Record<string, Record<string, string>> = {
   cherry: { A: "#f08aaa", E: "#d8527e", B: "#b8325e", D: "#6e1a36", J: "#ff7ab4", I: "#fff0f6", o: "#9a3862", F: "#e5303d" },
   liberty: { A: "#8cc0f0", E: "#4f8fd0", B: "#2f6fb0", D: "#173a63", J: "#ffc94a", I: "#fff6d8", o: "#8a6a24", F: "#c88a1a" },
+  vpoker: { A: "#9ad0b0", E: "#3f8a64", B: "#236b48", D: "#123a26", J: "#f6f1e6", I: "#fff4c8", o: "#8a6424", F: "#e5303d" },
   thunder: { A: "#ac90ff", E: "#7a58d8", B: "#5a36b8", D: "#2a1a62", J: "#4fe8ff", I: "#e8fdff", o: "#246a7a", F: "#ffb81a" },
 };
 
@@ -724,8 +725,138 @@ export const ZONE_SPRITES: Record<string, SpriteDef> = {
   "door:fee": S(["..........999...", ".........97779..", ".........97979..", ".........97779..", "..........999..."]),
 };
 
+
+// ---------------------------------------------------------------------------------------------------------
+// Tables (M7, docs/spec/tables.md): generated per kind and rotation from a few rules, since a table is a big
+// flat felt top whose details (the dealer's chip rack, betting spots, the roulette wheel) move with rotation.
+// Low: a felt top in a walnut rail, and a 3 px front lip. Keys `tbl_<kind>_<rot>`.
+
+type Grid = string[][];
+const TABLE_SIZE: Record<string, [number, number]> = { blackjack: [3, 1], roulette: [4, 1], craps: [5, 2], baccarat: [4, 2], poker: [4, 2] };
+const DEALER_SIDE = ["t", "r", "b", "l"] as const;
+function tableRows(kind: string, rot: number): string[] {
+  const [bw, bh] = TABLE_SIZE[kind], W = (rot & 1 ? bh : bw) * 16, H = (rot & 1 ? bw : bh) * 16;
+  const g: Grid = Array.from({ length: H + 3 }, () => Array(W).fill("."));
+  const oval = kind === "poker";
+  const felt = kind === "baccarat" ? ["u", "U"] : ["f", "F"];
+  // Inside the table's outline, and how far from its edge (px).
+  const depth = (x: number, y: number): number => {
+    if (oval) {
+      const nx = (x + 0.5 - W / 2) / (W / 2 - 0.5), ny = (y + 0.5 - H / 2) / (H / 2 - 0.5), d = Math.sqrt(nx * nx + ny * ny);
+      return d > 1 ? -1 : Math.floor((1 - d) * Math.min(W, H) / 2);
+    }
+    if (x < 0 || y < 0 || x >= W || y >= H) return -1;
+    const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+    if (dx + dy < 3 && dx < 3 && dy < 3) return dx + dy < 2 ? -1 : 0;
+    return Math.min(dx, dy);
+  };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const d = depth(x, y);
+    if (d < 0) continue;
+    const top = y < H / 2, left = x < W / 2;
+    if (d < (oval ? 3 : 2)) g[y][x] = oval ? (top ? "3" : "2") : d === 0 ? (top || left ? "5" : "3") : "4";
+    else if (d === (oval ? 3 : 2)) g[y][x] = felt[0];
+    else g[y][x] = felt[1];
+  }
+  // The front lip: the rail's side face.
+  for (let x = 0; x < W; x++) for (let k = 0; k < 3; k++) {
+    let yy = H - 1;
+    while (yy >= 0 && g[yy][x] === ".") yy--;
+    if (yy >= 0 && yy >= H - 4) g[yy + 1 + k][x] = ["3", "2", "1"][k];
+  }
+  const put = (x: number, y: number, ch: string) => { if (y >= 0 && y < H && x >= 0 && x < W && g[y][x] !== ".") g[y][x] = ch; };
+  const side = DEALER_SIDE[rot & 3], horiz = side === "t" || side === "b";
+  // The dealer's chip rack, centered along their side.
+  const rack = ["R", "q", "V", "w", "R", "q", "x", "V", "q", "R"];
+  const L = horiz ? W : H, len = Math.min(rack.length, L - 12), start = Math.floor((L - len) / 2);
+  for (let k = 0; k < len; k++) for (let d = 0; d < 2; d++) {
+    const along = start + k, inset = (oval ? 4 : 3) + d, ch = d ? { R: "r", q: "8", V: "v", w: "P", x: "R" }[rack[k]] ?? "k" : rack[k];
+    if (side === "t") put(along, inset, ch); else if (side === "b") put(along, H - 1 - inset, ch);
+    else if (side === "l") put(inset, along, ch); else put(W - 1 - inset, along, ch);
+  }
+  // Betting spots on the players' side, one per tile.
+  if (kind !== "craps") {
+    const n = horiz ? W / 16 : H / 16;
+    for (let t = 0; t < n; t++) {
+      if (kind === "roulette" && t === (rot === 0 || rot === 1 ? 0 : n - 1)) continue;
+      const c = t * 16 + 8, inset = oval ? 6 : 5;
+      const ring = kind === "baccarat" ? "8" : "P";
+      for (const [a, b] of [[-1, 0], [0, 0], [-2, 1], [1, 1], [-2, 2], [1, 2], [-1, 3], [0, 3]]) {
+        if (side === "t") put(c + a, H - 1 - inset - b, ring); else if (side === "b") put(c + a, inset + b, ring);
+        else if (side === "l") put(W - 1 - inset - b, c + a, ring); else put(inset + b, c + a, ring);
+      }
+    }
+  }
+  if (kind === "craps") {
+    // The pass line (a cream loop) and the box in the middle.
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const d = depth(x, y);
+      if (d === 6) put(x, y, "p");
+    }
+    const cx = W >> 1, cy = H >> 1, hw = horiz ? 6 : 3, hh = horiz ? 3 : 6;
+    for (let y = cy - hh; y <= cy + hh; y++) for (let x = cx - hw; x <= cx + hw; x++) if (Math.abs(x - cx) === hw || Math.abs(y - cy) === hh) put(x, y, "P");
+  }
+  if (kind === "roulette") {
+    // The layout's grid of numbers, and the wheel at one end.
+    const endT = rot === 0 || rot === 1 ? 0 : (horiz ? W : H) / 16 - 1;
+    for (let y = 4; y < H - 4; y++) for (let x = 4; x < W - 4; x++) {
+      const t = Math.floor((horiz ? x : y) / 16);
+      if (t === endT) continue;
+      if ((horiz ? x : y) % 4 === 0 || (horiz ? y : x) % 4 === 0) put(x, y, "P");
+      else if (((x >> 2) + (y >> 2)) % 2) put(x, y, "r");
+    }
+  }
+  return g.map((r) => r.join(""));
+}
+/** The roulette wheel (13 px), drawn over the table's end; frames turn the pockets. */
+function wheelRows(frame: number): string[] {
+  return Array.from({ length: 13 }, (_, y) => Array.from({ length: 13 }, (_, x) => {
+    const dx = x - 6, dy = y - 6, r = Math.sqrt(dx * dx + dy * dy);
+    if (r > 6.4) return ".";
+    if (r > 5.2) return "4";
+    if (r > 3.2) return (Math.floor(((Math.atan2(dy, dx) / Math.PI + 1) * 9) + frame) % 2) ? "R" : "k";
+    if (r > 1.2) return "8";
+    return "9";
+  }).join(""));
+}
+export const WHEEL_AT: Record<number, "l" | "t" | "r" | "b"> = { 0: "l", 1: "t", 2: "r", 3: "b" };
+
+// Keno and bingo boards: tall lit boards with a cell per number; `BOARD_CELLS` places the lit numbers.
+export const BOARD_CELLS: Record<string, { cols: number; rows: number; x0: number; y0: number; dx: number; dy: number }> = {
+  keno: { cols: 10, rows: 8, x0: 3, y0: 8, dx: 6, dy: 2 },
+  bingo: { cols: 15, rows: 5, x0: 3, y0: 8, dx: 6, dy: 3 },
+};
+function boardRows(kind: "keno" | "bingo", face: "front" | "back" | "side"): string[] {
+  const n = kind === "keno" ? 4 : 6, c = BOARD_CELLS[kind], title = kind === "keno" ? "x" : "q";
+  if (face === "side") {
+    const H = n * 16 + 14;
+    return Array.from({ length: H }, (_, y) => (y < 2 ? "......8888......" : y >= H - 3 ? "......3..3......" : y < H - 5 ? "......YyyM......" : "......8888......"));
+  }
+  const W = n * 16, H = 30;
+  return Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => {
+    const edge = x < 1 || x >= W - 1;
+    if (y >= H - 2) return (x < 4 || x >= W - 4) && x > 1 && x < W - 2 ? "3" : ".";
+    if (y < 2 || y >= H - 4 || edge) return y === 0 && !edge ? "9" : "8";
+    if (face === "back") return (x + y) % 5 ? "3" : "2";
+    if (y < 6) return (x + y) % 3 === 0 ? title : "y";
+    const cx = x - c.x0, cy = y - c.y0;
+    if (cx >= 0 && cy >= 0 && cx % c.dx < 3 && cy % c.dy === 0 && cx / c.dx < c.cols && cy / c.dy < c.rows) return "Y";
+    return "y";
+  }).join(""));
+}
+
+const TABLE_SPRITES: Record<string, SpriteDef> = {};
+for (const kind of Object.keys(TABLE_SIZE)) for (let rot = 0; rot < 4; rot++) TABLE_SPRITES[`tbl_${kind}_${rot}`] = S(tableRows(kind, rot), undefined, true);
+for (let k = 0; k < 3; k++) TABLE_SPRITES[k ? `wheel~${k}` : "wheel"] = S(wheelRows(k), undefined, false);
+for (const kind of ["keno", "bingo"] as const) {
+  TABLE_SPRITES[`${kind}:front`] = S(boardRows(kind, "front"));
+  TABLE_SPRITES[`${kind}:back`] = S(boardRows(kind, "back"));
+  TABLE_SPRITES[`${kind}:side`] = S(boardRows(kind, "side"));
+}
+
 export const OBJECT_SPRITES: Record<string, SpriteDef> = {
   ...ZONE_SPRITES,
+  ...TABLE_SPRITES,
   ...DECOR_SPRITES,
   camera: S(CAMERA, { L: "#ff3040" }),
   dumpster: S(DUMPSTER, DUMPSTER_PAL),
@@ -773,6 +904,18 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
     "................",
   ], { a: "#b8862a88", A: "#e0b04a88" }, false),
   broken: S(["...q...", "..qkq..", "..qkq..", ".qqkqq.", ".qqqqq.", "qqqkqqq", "qqqqqqq"]),
+  // Tables (M7): cards (face up, red or black, and face down), chips, dice.
+  "card:r": S(["www", "wRw", "www", "wwP"]),
+  "card:k": S(["www", "wkw", "www", "wwP"]),
+  cardback: S(["RRR", "RrR", "RRR", "rrr"]),
+  chips: S(["qqq", "888", "RRR", "rrr"]),
+  chip: S(["qq", "88"]),
+  "die1": S(["wwwww", "wwwww", "wwkww", "wwwww", "wwwww"]),
+  "die2": S(["wwwww", "wkwww", "wwwww", "wwwkw", "wwwww"]),
+  "die3": S(["wwwww", "wkwww", "wwkww", "wwwkw", "wwwww"]),
+  "die4": S(["wwwww", "wkwkw", "wwwww", "wkwkw", "wwwww"]),
+  "die5": S(["wwwww", "wkwkw", "wwkww", "wkwkw", "wwwww"]),
+  "die6": S(["wwwww", "wkwkw", "wkwkw", "wkwkw", "wwwww"]),
   // People props: drawn at the hand. Shadow under every standing figure.
   shadow: S([".zzzzzz.", "zzzzzzzz", ".zzzzzz."], { z: A_SHADOW }, false),
   glass: S(["VVV", "q9q", "qqq"]),
@@ -818,6 +961,7 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
 /** Animation timing (real time, so fast-forward doesn't strobe decor). `seq` lists frame numbers per step. */
 export const ANIMS: Record<string, { ms: number; seq?: number[] }> = {
   plant: { ms: 900 },
+  wheel: { ms: 70 },
   neon: { ms: 70, seq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0] },
   fountain: { ms: 160 },
   counter: { ms: 700 },
@@ -1024,6 +1168,23 @@ export const PEOPLE: Record<string, LookSet> = {
       [{ o: "blazer", h: "quiff" }, { o: "tee", h: "short" }, { o: "blazer", h: "short" }, { o: "longsleeve", h: "quiff" }],
       [{ o: "dress", h: "long" }, { o: "dress", h: "bun" }, { o: "dress", h: "bob" }, { o: "dress", h: "long" }],
     ],
+  },
+  highroller: {
+    variants: 12, skin: SKINS, hair: HAIRS, shoes: ["#101014", "#3a1a12", "#c8a040"],
+    top: ["#141418", "#1c2238", "#4a1422", "#2a2a30", "#e8e4dc"],
+    bottom: ["#141418", "#1c2238", "#26262e"], accent: ["#c99a3e", "#e8e4dc", "#6e1624"], hat: ["#141418"],
+    styles: [
+      [{ o: "blazer", h: "short" }, { o: "blazer", h: "crop", x: ["glasses"] }, { o: "blazer", h: "bald" }],
+      [{ o: "dress", h: "bun" }, { o: "dress", h: "long" }, { o: "blazer", h: "bob" }],
+    ],
+  },
+  dealer: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#7a1a2c"], bottom: ["#141418"], accent: ["#f6f1e6"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "crop", x: ["bowtie"] }], [{ o: "blazer", h: "bun", x: ["bowtie"] }]],
+  },
+  pitboss: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#1c1c22"], bottom: ["#1c1c22"], accent: ["#e8e4dc"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "short" }], [{ o: "blazer", h: "bob" }]],
   },
   janitor: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#5f7a8c"], bottom: ["#5f7a8c"], accent: ["#e8e0cc"], hat: ["#34485a"],

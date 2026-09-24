@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export interface MapState {
   w: number;
@@ -42,7 +42,18 @@ export interface PlacedObject {
   built: number;
   /** Bars only: the drink policy for this bar and the servers who work it. */
   bar?: BarPolicy;
+  /** (M7) Tables, video poker and draw games: rule option per rule and limit preset (data/tables.ts); the last round. */
+  rules?: number[];
+  lim?: number;
+  tbl?: TableRound;
 }
+
+/**
+ * A table's round (docs/spec/tables.md): the tick the next is dealt, and what the last one showed: its tick, the
+ * shared outcome of its last hand (roulette pocket, craps outcome index, baccarat coup, the 20 keno balls, poker
+ * or bingo winner's seat), and per seat 0 no play, 1 lost, 2 won.
+ */
+export interface TableRound { next: number; at: number; out: number[]; seats: number[] }
 
 /** Player-set drink policy per bar (docs/spec/guests.md §Drinks). */
 export interface BarPolicy {
@@ -202,6 +213,9 @@ export interface GuestData {
   gaveUp: number;
   /** 1 while no walkable route to any exit exists. */
   trapped: number;
+  /** (M7) Hidden: skill at games with choices (0 poor, 1 typical, 2 sharp) and 1 for a card counter. */
+  skill: number;
+  counter: number;
 }
 
 /**
@@ -276,13 +290,15 @@ export type Activity =
   // M6: eating, at a show (seated, waiting or watching), dancing, having a smoke.
   | "dine" | "show" | "dance" | "smoke"
   // M6.5: at the pool (swimming or on a lounger), sitting in a garden.
-  | "swim" | "rest";
+  | "swim" | "rest"
+  // M7: a dealer at their table; a guest watching a craps table.
+  | "deal" | "look";
 
 /** A person on the map: guests and staff share one movement model on distance fields. */
 export interface Agent {
   id: number;
   /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
-  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer";
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;

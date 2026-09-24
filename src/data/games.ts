@@ -22,6 +22,12 @@ export interface SlotModel {
   ldwFeel?: number;
   /** Reel symbols shown on the cabinet. */
   look: "cherry" | "bell" | "bolt";
+  /**
+   * (M7) Shared-outcome games (roulette, craps, baccarat, keno): one outcome per hand for the whole table, so luck
+   * turns a loss into this bet's win (`win`, its payout multiple) instead of drawing again (docs/spec/tables.md).
+   */
+  shared?: boolean;
+  win?: number;
 }
 
 /** Wagers resolved per visible round: the main money-scale knob (docs/spec/clock.md). */

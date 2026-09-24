@@ -4,7 +4,7 @@ Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.t
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.
-- **M3 roster:** Locals, Retirees, Tourists, Party groups (all men, all women or mixed). Waiting for the milestone that builds what they want: Families (M9), date-night Couples, Conventioneers (M9), High rollers (M7/M9), Whales (M9). Advantage players are a hidden tag in M7. Couples are a group size, not a type.
+- **M3 roster:** Locals, Retirees, Tourists, Party groups (all men, all women or mixed). **M7 adds High rollers** (docs/spec/tables.md): a recurring type with a small pool, $2,000 budgets, sharp and rules-aware, who come mostly for tables (`tableDraw`). Still waiting for the milestone that builds what they want: Families (M9), date-night Couples, Conventioneers (M9), Whales (M9). Card counters are a hidden tag (M7). Couples are a group size, not a type.
 - **The pool** (`state.pool`): each scenario's finite market of real people per recurring type (`market` in scenario data: size, and the share who are already regulars on day one). A person carries name, looks, type, savings, monthly income, spending money, floor knowledge and last visit, visit count, disposition (0–100), chasing level, next planned visit, ban and mark flags, and hidden luck and cheat tags for life with times caught (M5, docs/spec/cheats.md). Returning people are the same person; the disappeared are removed from the pool.
 - **One-off types** (Tourists, Party groups) are generated fresh. A Tourist leader joins the pool with a 5% chance when leaving.
 - **Reputation**: for recurring types, the average disposition of their people in the pool (moves only when someone visits). For one-off types, word of mouth: 2% of the way toward each departing guest's visit score.
@@ -108,6 +108,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 | Visit score | 0.58 | 0.57 | 0.50 | 0.53 | layout, `secPerDollar`, visit score weights in `visitScore` (fun time counts, amenity spending too), incidents seen, being policed |
 | Came for meal / show / club | 16/5/3% | 18/18/0% | 12/23/9% | 1/3/39% | `comeFor`, amenity tiers |
 
+M7 Test Floor (a table pit, poker, keno, video poker, a bingo hall, baccarat in the high-limit room, three more restrooms; High rollers join): visit length 5.1 / 6.9 / 4.7 / 5.0 / 10.2 min (Locals / Retirees / Tourists / Party / High rollers), playing 2.1 / 2.9 / 0.9 / 0.7 / 4.1, loss per visit $40 / $29 / $58 / $46 / $340, visit score 0.62 / 0.63 / 0.56 / 0.60 / 0.61; reputation after 300 days 67 / 65 / 55 / 60 / 61. Where they play is in docs/spec/tables.md. No sanity flags on seed 1 (seed 3 shows the old noisy "cheats who got away mostly lost money", seen on M6.5 too).
+
 M6.5 Test Floor (themed rooms and a front yard with a pool): visit length 5.4 / 5.7 / 4.7 / 4.7 min, playing 2.0 / 2.0 / 0.6 / 0.7, visit score 0.58 / 0.59 / 0.53 / 0.54, came for the pool 3 / 4 / 10 / 7%; reputation after 300 days 63 / 62 / 56 / 54. No sanity flags.
 
 Party guests drink less than in M4 (1 drink, peak 0.23; M4: 2, 0.44): many now come for the club, which has no bar of its own, so servers and bars see less of them. That's a layout symptom on this floor, not a logic error.
@@ -121,7 +123,7 @@ Design intent (M3 starting targets): visit 6 / 8 / 4 / 5 min; loss $55 / $35 / $
 - **Test floors must be realistic.** Measure on the Test Floor scenario (at least one of every object, signs, servers), never on the tutorial or an empty lot, or wayfinding failures swamp everything else.
 
 ## Save
-Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
+Schema 10 (M7): guests gain `skill` and `counter` (docs/spec/tables.md). Schema 8 (M6): see docs/spec/construction.md. Schema 7 (M5): docs/spec/cheats.md. Schema 6 (M4): see docs/spec/incidents.md.
 
 Schema 5 (migration from 4): drink policy moves from the casino to each bar; guests gain a drink in hand, browsing time, frustration (replacing the fail count), liked machines and favorite-spot tracking; people gain favorite spots; servers gain a bar and start a fresh round.
 

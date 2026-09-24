@@ -24,7 +24,7 @@ frame; this is what was built. Numbers are starting values, tuned headless.
 - **Cheat**: each person is a cheat with their type's `cheat` share (1%; Retirees 0.5%). Kept for life by pool
   people. A cheat who leads a group brings a **crew**: each companion cheats too with chance 0.5.
 
-## Cheating (slots only; tables and dealer collusion arrive in M7)
+## Cheating (slots; tables from M7; dealer collusion in M9)
 - A cheat arrives with a **take**: the most they mean to walk out with, log-normal median $400 (σ 0.5, $150–$2,500).
 - They play honestly between **spells**. After 20–60 s of honest play at a machine, a spell starts and lasts
   30–90 s. During a spell they bet the machine's maximum and half their wagers are rigged wins paying 4× the bet;
@@ -128,3 +128,9 @@ Schema 7 (migration from 6): people gain `luck`, `cheat` (drawn from a hash of t
 `person.ban` 1 = banned (2 is never used: the disappeared are removed); state gains `enf` (policy, heat, jobs,
 rumors, missing-person reports due; counts per day under `_caught`, `_enf`, `_banned`). Enforcers gain `bag`.
 New roles: `operator`, `enforcer`. New activities: `held`, `enforce`, `carry`, `watch`. New RNG stream: `cheats`.
+
+## Tables (M7, docs/spec/tables.md)
+- Cheats cheat at every house game, not at poker or bingo (they'd be taking other guests' money). At a table, a spell's bets are paced to the take (up to take / 40 per hand).
+- A cheat at a table is caught more often: +1.2%/s per pit boss in view (8 tiles, line of sight) and +0.2%/s while the table's dealer is at work, on top of guards, watched cameras and chance.
+- Luck works at every game: shared-outcome games turn a losing hand into the bet's win (or a win into a loss) at chances that keep the ±20-point shift exact (`sharedPay`, checked by `npm run headless`).
+- Card counters (hidden, for life) are not cheats. A pit boss watching one at blackjack tags them with 1%/s: they're marked and the ticker says so. Warning or banning them is the player's call, with the usual consequences for acting on someone who broke no rule.

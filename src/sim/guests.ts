@@ -15,14 +15,16 @@ import { rng, type Rng } from "./rng";
 import { logNormal, normal, pickIndex, pickKey, range, skewed } from "./dist";
 import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
 import { SIGHT, canSee, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
-import { betOf, modelOf, roundTicks } from "./gaming";
+import { betOf, isGame, isTable, machineModel, minRoundOf, roundTicks } from "./gaming";
+import { canSit, tableAppeal, tableOpen, limitsNow, tableWant } from "./tables";
+import { TABLE_GAMES, rulesScore } from "../data/tables";
 import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRINK_UNIT, INTOX_CAP } from "./drinks";
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
-import { tagGuest, guestName } from "./cheats";
+import { tagGuest, guestName, hash01 } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
-import { objSeats, seatCount } from "./geometry";
+import { covers, objSeats, objSize, seatCount } from "./geometry";
 import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult } from "./amenities";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
@@ -96,7 +98,14 @@ function book(g: Game): Map<number, number[]> {
 
 function rebuildBook(g: Game): Map<number, number[]> {
   const b = new Map<number, number[]>();
-  for (const o of g.state.objects) { const n = seatCount(o); if (n) b.set(o.id, new Array(n).fill(0)); }
+  for (const o of g.state.objects) {
+    const n = seatCount(o);
+    if (!n) continue;
+    // Dealer spots (M7) are never a guest's: marked taken.
+    const seats = new Array(n).fill(0);
+    if (OBJECTS[o.kind].game) objSeats(o).forEach((st, k) => { if (st.kind === "dealer") seats[k] = -1; });
+    b.set(o.id, seats);
+  }
   for (const a of g.state.agents) {
     if (a.role !== "guest" || a.seat < 0) continue;
     const s = b.get(a.target);
@@ -106,6 +115,9 @@ function rebuildBook(g: Game): Map<number, number[]> {
   books.set(g, b);
   return b;
 }
+
+/** Who holds each seat of an object (guest agent ids; 0 free, -1 a dealer's spot). */
+export const seatHolders = (g: Game, objId: number): number[] | undefined => book(g).get(objId);
 
 function freeSeat(g: Game, objId: number): number {
   const s = book(g).get(objId);
@@ -336,7 +348,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
     memDate: person ? person.last : lead ? lead.memDate : -1,
-    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0,
+    door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0,
   };
   const a: Agent = {
     id: s.nextId++, role: "guest", x, y, nx: x, ny: y, t: 0, steps: r.int(10, 14), dest: at,
@@ -345,6 +357,11 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   };
   gd.group = leader ? leader.id : a.id;
   tagGuest(g, gd, person, lead);
+  // Skill and card counting (M7): a pool person's for life (from their id); a one-off's drawn on its own stream.
+  const u = person ? hash01(person.id, 5) : rng(s, "tables").next();
+  gd.skill = u < type.skill[0] ? 0 : u < type.skill[0] + type.skill[1] ? 1 : 2;
+  gd.counter = (person ? hash01(person.id, 6) : rng(s, "tables").next()) < type.counters ? 1 : 0;
+  if (gd.counter) gd.skill = 2;
   gd.browse = Math.round(type.browse * range(r, [0.5, 1.5]) * (1 - gd.know) * (gd.memDate >= 0 ? 0.3 : 1));
   // Smokers (M6), drawn on their own stream so adding them left every other draw where it was.
   const rs = rng(s, "smokers");
@@ -426,7 +443,7 @@ export function depart(g: Game, a: Agent, vanished = false) {
     budget: gd.bankroll, lost: gd.mem.wagered - gd.mem.won, intend: gd.mem.startIntend, peak: gd.mem.peak,
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score: vs.score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
-    fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker,
+    fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker, skill: gd.skill, counter: gd.counter, marked: gd.mark & 1,
   });
   if (!vanished) walkAway(g, a);
   gone(g).add(a.id);
@@ -652,6 +669,25 @@ const HOT_SECONDS = 30;
 interface Candidate { o: number; appeal: number; d: number; seen: boolean }
 
 /**
+ * How much a guest wants to play at this game object, 0 or less for "not for me": the type's taste for the slot
+ * model or the table game, and whether they can afford it (high-limit machines, M6: only for guests whose usual
+ * stake covers the minimum). Tables (M7): open, within their limits, and the rules if they notice them.
+ */
+function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./state").PlacedObject): number {
+  const def = OBJECTS[o.kind];
+  if (isTable(o.kind)) return tableOpen(g, o) && canSit(g, gd, o) ? tableAppeal(g, gd, o) : 0;
+  const m = machineModel(o, gd);
+  if (!m) return 0;
+  const mult = stakeMult(g, o);
+  if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * mult)) return 0;
+  if (def.game) return (type.games[def.game] ?? 0) + type.rules * rulesScore(def.game, o.rules) * 0.5;
+  return type.games[m.id] ?? 0;
+}
+
+/** The cheapest games (quarter slots and video poker) are where comp-seekers sit. */
+const cheapGame = (o: import("./state").PlacedObject) => !isTable(o.kind) && minRoundOf(o) <= 0.25 * WAGERS_PER_ROUND + 1e-9;
+
+/**
  * Free, working machines a guest would consider: ones in view, or ones a regular knows the way to. Searched in
  * rings of 16×16 sectors outward from the guest, keeping the MAX_CANDIDATES nearest.
  */
@@ -670,12 +706,8 @@ function candidates(g: Game, a: Agent, type: GuestTypeDef, maxLooks = MAX_LOOKS)
       for (const o of list) {
         if (--scan < 0) return out;
         if (o.broken) continue;
-        const m = modelOf(o.kind)!;
-        const appeal = type.games[m.id] ?? 0;
-        // High-limit machines (M6): only for guests whose usual stake covers the minimum.
-        if (appeal <= 0.05) continue;
-        const mult = stakeMult(g, o);
-        if (betOf(m, 1) * mult * WAGERS_PER_ROUND > gd.wallet || (mult > 1 && gd.stake < m.denom * mult) || freeSeat(g, o.id) < 0) continue;
+        const appeal = gameAppeal(g, type, gd, o);
+        if (appeal <= 0.05 || freeSeat(g, o.id) < 0) continue;
         const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
         // Keep the nearest few, sorted by distance (ties by id, so the order is deterministic).
         if (out.length >= MAX_CANDIDATES && d >= out[out.length - 1].d) continue;
@@ -709,7 +741,7 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
   const w = g.state.map.w, gd = a.g!, tick = g.state.tick;
   const mates = groupSeats(g, a);
   const cheap = compSeeking(g, gd);
-  let best = -1, bestScore = -Infinity, far = false, hot = false;
+  let best = -1, bestScore = -Infinity, far = false, hot = false, badRules = false;
   for (const c of found ?? candidates(g, a, type)) {
     if (liked && !c.seen) continue;
     const t = seatTile(g, c.o, 0);
@@ -734,11 +766,17 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
       score += near;
     }
     // Comp-seekers nurse the cheapest machine while drinks are free.
-    if (cheap) score += modelOf(o.kind)!.denom <= 0.25 ? 1.5 : -0.5;
+    if (cheap) score += cheapGame(o) ? 1.5 : -0.5;
+    // Rules-aware guests (M7) remark on a table's rules when they see bad ones.
+    if (c.seen && type.rules && OBJECTS[o.kind].game && rulesScore(OBJECTS[o.kind].game!, o.rules) <= -0.5) badRules = true;
     if (score > bestScore) { bestScore = score; best = c.o; far = c.seen && d > 6; hot = isHot; }
   }
+  if (badRules && r.chance(0.15)) think(g, a, "badRules");
   if (best < 0) return false;
+  const bo = g.objById.get(best)!, bg = OBJECTS[bo.kind].game;
   if (hot && r.chance(0.5)) think(g, a, "hot");
+  else if (bg && type.rules && rulesScore(bg, bo.rules) >= 0.5 && r.chance(0.2)) think(g, a, "goodRules");
+  else if (bg && isTable(bo.kind) && !TABLE_GAMES[bg].pool && tableWant(gd) > limitsNow(g, bo)[1] * 1.5 && r.chance(0.3)) think(g, a, "lowLimits");
   else if (far && r.chance(0.15)) think(g, a, "ooh");
   claim(g, a, best, freeSeat(g, best));
   go(a, seatTile(g, best, a.seat), "play");
@@ -962,6 +1000,8 @@ function decide(g: Game, a: Agent) {
     if (r.chance(0.2) && chooseMachine(g, a, type, r, true, seen)) { think(g, a, "ooh"); return; }
     return wander(g, a, r);
   }
+  // A craps table in full swing draws a crowd (M7): some stop to watch.
+  if (watchTable(g, a, r)) return;
   if (chooseMachine(g, a, type, r)) { gd.frus = Math.max(0, gd.frus - 3); return; }
   // Regulars check their favorite spots one by one.
   if (goToFavorite(g, a)) return;
@@ -970,6 +1010,35 @@ function decide(g: Game, a: Agent) {
   if (gd.frus >= 4 && gd.frus - 1.5 < 4) think(g, a, "cantFind");
   if (gd.frus >= 4) gd.annoy += 1;
   wander(g, a, r);
+}
+
+/** Seconds onlookers watch a craps table; players it takes to draw them; chance a passer-by stops to look. */
+const LOOK_SECS: [number, number] = [20, 40];
+const LOOK_PLAYERS = 3;
+const LOOK_CHANCE = 0.3;
+
+/** A guest who sees a busy craps table nearby may stop at its rail to watch (docs/spec/tables.md §Onlookers). */
+function watchTable(g: Game, a: Agent, r: Rng): boolean {
+  const gd = a.g!;
+  if (gd.mem.fun > 0 && r.chance(0.5)) return false;
+  const w = g.state.map.w, here = a.y * w + a.x;
+  for (const o of g.tables) {
+    const fam = OBJECTS[o.kind].game!;
+    if (!TABLE_GAMES[fam].onlookers || Math.abs(o.x - a.x) + Math.abs(o.y - a.y) > SIGHT) continue;
+    const n = (seatHolders(g, o.id) ?? []).filter((id) => id > 0).length;
+    if (n < LOOK_PLAYERS || !canSee(g, here, o.y * w + o.x) || !r.chance(LOOK_CHANCE)) continue;
+    // A spot at the rail: a free tile just beyond the players.
+    const { w: ow, h: oh } = objSize(o);
+    for (let k = 0; k < 8; k++) {
+      const x = o.x - 2 + r.int(0, ow + 3), y = o.y - 2 + r.int(0, oh + 3), t = y * w + x;
+      if (x < 0 || y < 0 || x >= w || y >= g.state.map.h) continue;
+      if (covers(o, x, y) || !g.walkable(t) || g.seatAt[t] || !g.pathsFor(a).reachable(here, t)) continue;
+      go(a, t, "look");
+      a.target = o.id;
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Walk to the next of a regular's favorite spots that they haven't checked yet this round. */
@@ -998,17 +1067,27 @@ export function limits(gd: GuestData): { loss: number; win: number } {
   return { loss: gd.lossLimit * (1 + 1.5 * gd.intox) * (1 + 2 * gd.chase), win: gd.winGoal * (1 + gd.intox) * (1 + gd.chase) };
 }
 
+/** Ticks until the next round: a machine's spin at the player's pace; at a table, 1 (waiting for the deal). */
+function nextRound(g: Game, a: Agent): number {
+  const o = g.objById.get(a.target)!, gd = a.g!;
+  if (isTable(o.kind)) return 1;
+  return roundTicks(machineModel(o, gd)!, gd.pace * (compSeeking(g, gd) ? 0.7 : 1));
+}
+
 /** Between rounds: keep playing, or get up (quit rule, floor time, needs, money, a broken machine, the group). */
 function quitReason(g: Game, a: Agent): string | null {
   const gd = a.g!, n = gd.needs;
   const o = g.objById.get(a.target);
-  const m = o && modelOf(o.kind);
-  if (!o || !m) return "gone";
+  if (!o || !isGame(o.kind)) return "gone";
   if (gd.why) return "leaving";
   // A cheat up by their take stops while they're ahead.
   if (gd.take && gd.mem.won - gd.mem.wagered >= gd.take) { gd.take = 0; gd.spell = 0; return "done"; }
   if (o.broken) { think(g, a, "broken"); gd.annoy += 10; return "broken"; }
-  if (betOf(m, 1) * stakeMult(g, o) * WAGERS_PER_ROUND > gd.wallet) return "money";
+  // Tables (M7): the dealer left, or a poker game nobody else joins.
+  if (!tableOpen(g, o)) { think(g, a, "noDealer"); return "closed"; }
+  if (minRoundOf(o) * stakeMult(g, o) > gd.wallet + 1e-9) return "money";
+  const def = OBJECTS[o.kind].game && TABLE_GAMES[OBJECTS[o.kind].game!];
+  if (def && def.minPlayers > 1 && (seatHolders(g, o.id) ?? []).filter((id) => id > 0).length < def.minPlayers && rng(g.state, "guests").chance(0.25)) return "empty";
   const nt = net(gd);
   // A cheat still after their take ignores the usual quit rules.
   const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
@@ -1110,12 +1189,12 @@ function guestTick(g: Game, a: Agent) {
     case "play": {
       if (a.timer === 0) {
         // Just sat down: start the session and the first round.
-        const o = g.objById.get(a.target), m = o && modelOf(o.kind);
-        if (!o || !m || o.broken || a.seat < 0) { release(g, a); a.act = "idle"; return; }
+        const o = g.objById.get(a.target);
+        if (!o || !isGame(o.kind) || o.broken || a.seat < 0) { release(g, a); a.act = "idle"; return; }
         o.st.sessions++;
         gd.mem.sitAt = g.state.tick;
         gd.favAt = 0;
-        a.timer = roundTicks(m, gd.pace * (compSeeking(g, gd) ? 0.7 : 1));
+        a.timer = nextRound(g, a);
       } else if (a.timer === -1) {
         const why = quitReason(g, a);
         if (why) {
@@ -1126,7 +1205,7 @@ function guestTick(g: Game, a: Agent) {
           if (why === "done" || why === "time") wantToLeave(g, a, why);
           return;
         }
-        a.timer = roundTicks(modelOf(g.objById.get(a.target)!.kind)!, gd.pace * (compSeeking(g, gd) ? 0.7 : 1));
+        a.timer = nextRound(g, a);
       }
       return;
     }
@@ -1262,6 +1341,20 @@ function guestTick(g: Game, a: Agent) {
       if (r.chance(0.4)) think(g, a, "garden");
       return doneWith(g, a, r);
     }
+    case "look": {
+      // Watching a craps table (M7): fun time; the table's wins lift them (sim/tables.ts). Some want in after.
+      const o = g.objById.get(a.target);
+      if (!o || gd.why) { a.target = -1; a.act = "idle"; return; }
+      const r = rng(g.state, "guests");
+      if (a.timer === 0) { a.timer = r.int(LOOK_SECS[0], LOOK_SECS[1]) * TICKS_PER_SECOND; if (r.chance(0.3)) think(g, a, "watching"); return; }
+      gd.mem.fun++;
+      if (--a.timer > 0) return;
+      a.act = "idle";
+      a.target = -1;
+      const k = freeSeat(g, o.id);
+      if (k >= 0 && gameAppeal(g, GUEST_TYPES[gd.type], gd, o) > 0.05 && r.chance(0.4)) { claim(g, a, o.id, k); go(a, seatTile(g, o.id, k), "play"); }
+      return;
+    }
     case "smoke": {
       // A cigarette, where they stand (a smoking room, or out on the lot); butts end up on the floor outside.
       if (a.timer === 0) { a.timer = SMOKE_SECS * TICKS_PER_SECOND; return; }
@@ -1381,9 +1474,7 @@ export function guestCount(g: Game): number {
 
 /** Floor-size factor on new arrivals: a bigger floor draws more people. */
 export function capacity(g: Game): number {
-  let seats = 0;
-  for (const o of g.state.objects) if (modelOf(o.kind)) seats++;
-  return Math.min(2.5, (seats + 6) / 50);
+  return Math.min(2.5, (g.gameSeats + 6) / 50);
 }
 
 /** Room left under the scenario's guest cap, 0-1. */

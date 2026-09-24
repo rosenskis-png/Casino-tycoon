@@ -4,6 +4,12 @@
 export interface ThoughtDef { text: string; alt?: string[]; voice?: Record<string, string[]>; bad?: boolean }
 
 export const THOUGHTS: Record<string, ThoughtDef> = {
+  // Tables (M7, docs/spec/tables.md). Only rules-aware types remark on rules.
+  badRules: { text: "Those table rules are a rip-off.", alt: ["Six to five blackjack? No thanks.", "The rules here are terrible."], bad: true },
+  goodRules: { text: "Good rules at this table.", alt: ["Now that's a fair game.", "Single zero. Nice."] },
+  lowLimits: { text: "The limits here are too low.", alt: ["I can't bet what I want here."], bad: true },
+  noDealer: { text: "No dealer at this table?", alt: ["The dealer just walked off."], bad: true },
+  watching: { text: "This craps table is on fire!", alt: ["Look at that crowd!", "Come on, seven!"] },
   nrgHi: { text: "Too loud to think in here.", alt: ["All this noise is giving me a headache."], voice: { retiree: ["Goodness, it's loud in here.", "I can't hear myself think."] }, bad: true },
   nrgLo: { text: "This place needs more buzz.", alt: ["Kind of dead in here."], voice: { party: ["This place is a morgue!", "Where's the party at?"] }, bad: true },
   crwHi: { text: "Way too crowded in here.", alt: ["I can barely move in here."], voice: { retiree: ["Too many people for my liking."] }, bad: true },

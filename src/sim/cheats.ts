@@ -7,13 +7,14 @@
 import { GUEST_TYPES, FIRST_NAMES, type GuestTypeDef } from "../data/guests";
 import { OBJECTS } from "../data/objects";
 import {
-  BEAT_GROUP_ANNOY, BEAT_GROUP_CALL, BEAT_GROUP_POLICE, CAMS_PER_OPERATOR, CATCH_BASE, CATCH_CAMERA, CATCH_GUARD,
+  BEAT_GROUP_ANNOY, BEAT_GROUP_CALL, BEAT_GROUP_POLICE, CAMS_PER_OPERATOR, CATCH_BASE, CATCH_CAMERA, CATCH_DEALER, CATCH_GUARD, CATCH_PIT, COUNT_SPOT, PIT_SIGHT,
   CHEAT_HIT, CHEAT_X, CREW, ENF, ENF_ACTIONS, ESTIMATE_CAP, SUSPECT_Z, GUARD_SIGHT, HEAT_DECAY, HEAT_SCALE, HONEST_SECS, INNOCENT_VANISH_POLICE,
   LUCK_SHARE, LUCK_SHIFT, MARKED, MISSING_POLICE, MISSING_SECS, RUMOR_DAYS, SPELL_SECS, TAKE, WITNESS_POLICE, WITNESS_REACH,
   WITNESS_REPORTS, type EnfAction,
 } from "../data/cheats";
 import type { SlotModel } from "../data/games";
 import type { RoomPurpose } from "../data/rooms";
+import { TABLE_GAMES } from "../data/tables";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
@@ -121,6 +122,22 @@ export function wagerPay(g: Game, gd: GuestData, m: SlotModel, draw: (m: SlotMod
   return x;
 }
 
+/**
+ * One wager at a shared-outcome game (roulette, craps, baccarat, keno), where the table's outcome is fixed: a
+ * cheat's rigged win; a lucky player's losing hand turned into their bet's win with chance LUCK_SHIFT / ((1 −
+ * hits) × win), or an unlucky player's win turned into a loss with chance LUCK_SHIFT / rtp. Both shift payback by
+ * exactly LUCK_SHIFT, as at a machine.
+ */
+export function sharedPay(g: Game, gd: GuestData, m: SlotModel, x: number): number {
+  if (gd.spell <= 0 && !gd.luck) return x;
+  const rc = rng(g.state, "cheats");
+  if (gd.spell > 0 && rc.chance(CHEAT_HIT)) return -CHEAT_X;
+  if (gd.luck > 0 && x === 0 && rc.chance(luckConvert(m))) return m.win!;
+  if (gd.luck < 0 && x > 0 && rc.chance(luckVoid(m))) return 0;
+  return x;
+}
+export const luckConvert = (m: SlotModel) => LUCK_SHIFT / ((1 - payStats(m).h) * m.win!);
+
 // ---------------------------------------------------------------------------------------------------------
 // Runtime lookups.
 
@@ -196,13 +213,46 @@ function cheatBeat(g: Game, a: Agent, guards: Agent[], camShare: number) {
     const here = a.y * w + a.x;
     let h = CATCH_BASE + CATCH_CAMERA * g.fields.get("SRVH", here) * camShare;
     for (const q of guards) if (Math.abs(q.x - a.x) + Math.abs(q.y - a.y) <= GUARD_SIGHT && canSee(g, here, q.y * w + q.x)) h += CATCH_GUARD;
+    // At a table (M7): pit bosses in view, and the table's own dealer.
+    const o = g.objById.get(a.target);
+    if (o && OBJECTS[o.kind].cat === "table") {
+      h += CATCH_PIT * pitBossesWatching(g, a) + (s.agents.some((q) => q.role === "dealer" && q.act === "deal" && q.target === o.id) ? CATCH_DEALER : 0);
+    }
     if (gd.mark & 1) h *= MARKED;
     if (r.chance(h)) return caught(g, a);
     if (--gd.spell === 0) gd.spellAt = s.tick + r.int(HONEST_SECS[0], HONEST_SECS[1]) * SEC;
     return;
   }
   if (!seated || !gd.take || gd.warned || gd.caught || gd.why || s.tick < gd.spellAt) return;
+  // Poker and bingo pay out of other players' money, not the house's: cheats don't bother there.
+  const o = g.objById.get(a.target), fam = o && OBJECTS[o.kind].game;
+  if (fam && TABLE_GAMES[fam].pool) return;
   gd.spell = r.int(SPELL_SECS[0], SPELL_SECS[1]);
+}
+
+/** Pit bosses on the floor with this guest in view (within PIT_SIGHT tiles). */
+export function pitBossesWatching(g: Game, a: Agent): number {
+  const w = g.state.map.w, here = a.y * w + a.x;
+  let n = 0;
+  for (const q of g.state.agents) {
+    if (q.role !== "pitboss" || Math.abs(q.x - a.x) + Math.abs(q.y - a.y) > PIT_SIGHT) continue;
+    if (canSee(g, here, q.y * w + q.x)) n++;
+  }
+  return n;
+}
+
+/** A card counter at blackjack in a pit boss's view may get noticed: marked, and the player told. */
+function counterBeat(g: Game, a: Agent) {
+  const gd = a.g!;
+  if (gd.mark & 1 || a.act !== "play" || a.seat < 0) return;
+  const o = g.objById.get(a.target);
+  if (!o || OBJECTS[o.kind].game !== "blackjack") return;
+  const n = pitBossesWatching(g, a);
+  if (!n || !rng(g.state, "cheats").chance(1 - Math.pow(1 - COUNT_SPOT, n))) return;
+  gd.mark |= 1;
+  const p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
+  if (p) p.mark |= 1;
+  news(g, "warn", `Your pit boss thinks ${guestName(gd.name)} is counting cards at ${OBJECTS[o.kind].name}. Marked.`);
 }
 
 /** Caught in the act: certain, on the ticker, the winnings recovered, and the house treatment follows. */
@@ -639,8 +689,13 @@ export const cheatSystem: System = {
   beat(g) {
     const s = g.state;
     let guards: Agent[] | null = null, share = -1;
+    let pits = -1;
     for (const a of s.agents) {
       const gd = a.g;
+      if (gd?.counter) {
+        if (pits < 0) pits = s.agents.some((q) => q.role === "pitboss") ? 1 : 0;
+        if (pits) counterBeat(g, a);
+      }
       if (!gd?.cheat || (!gd.spell && !gd.take)) continue;
       guards ??= s.agents.filter((q) => q.role === "guard" && q.act !== "enforce");
       if (share < 0) share = coverage(g).share;

@@ -10,7 +10,7 @@ Newest first. One entry per decision: date, what, why.
 - **Policies tab** now holds insurance, the tax and skim, and comps; loans stay in Finance. Research stays a placeholder until M9.5.
 - **Whales** stay 20–30 real minutes (2–3× a high roller; weeks on the calendar) and a host shows them the floor, so they find their game.
 - Unpaid winnings under $100 cost 2 regulator points and go to the log only; bigger ones are urgent.
-- Test Floor, 300 days: staff morale averages ~44 at market pay, one crooked dealer caught, three whales (the house won $10K, lost $30K, won $500), five inspections, regulator 100, no sanity flags. Tutorial books unchanged apart from the 5% tax. Big Floor timing unchanged against m7 on this machine.
+- Test Floor, 300 days: staff morale averages ~44 at market pay, one crooked dealer caught, three whales (the house won $10K, lost $30K, won $500), five inspections, regulator 100, no sanity flags. Tutorial year-end cash $3.9K (m7 on the same seed: $5.0K; the 5% tax is ~$250 of that, the rest is seed noise from reshuffled staff draws). Big Floor timing unchanged against m7 on this machine.
 - **Flagged for the owner:** a whale can cost the house several months of profit in one visit (by design: FOUNDATIONS §17); insurance doesn't cover it, table limits do.
 
 ## 2026-09-24 · Green light for M9: staff, money and risk, whales (see docs/spec/staff.md, docs/spec/money.md)

@@ -72,7 +72,7 @@ Type outfits and silhouettes (cheats and chasers never distinguishable), flushed
 - Room purposes with effects: high-limit (5× stakes, prestige, privacy), smoking (smoke through walls; smokers with an urge), bar/restaurant/show/club rooms raise their amenity's tier.
 - Why guests come: a meal, a show or the club, drawing extra arrivals; fun time counts in the visit score.
 - Door, amenity and room cards; drag-to-size building; new art pieces. Test Floor east wing. Save schema 8 (migration from 7).
-## M6.5 · Themes, outdoors, land parcels ☐
+## M6.5 · Themes, outdoors, land parcels ◐  (see docs/spec/themes.md, docs/spec/construction.md)
 ## M7 · Games catalog and table rules ☐
 ## M8 · Slot designer ☐
 ## M9 · Staff depth, policies, marketing, comps, whales, events, research tree ☐

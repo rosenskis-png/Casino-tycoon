@@ -2,6 +2,9 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · Green light for M6.5: themes, outdoors, land parcels (see docs/spec/themes.md, docs/spec/construction.md)
+- Owner said "green light for m6.5", built in the same chat as M6.
+
 ## 2026-09-24 · M6 built (Claude's calls; see docs/spec/construction.md)
 - Numbers are starting values checked only against sanity flags: amenity costs and upkeep (a default bar, restroom and cage cost and run exactly as before), tier thresholds, meal $18 (house cost $6), show every 100 s for 45 s, cover $10, `comeFor` shares, smokers' shares and urge (~4½ min), the high-limit ×5, the 90 s let-out.
 - **Amenities draw extra arrivals, and those extras are the people who came for them:** each kind adds `comeFor` × (1 + 0.25 × tier) to a type's arrival rate, and an arriving group's reason is drawn at the same odds. People who came for something head roughly toward it and search a little longer; mazes still defeat them.

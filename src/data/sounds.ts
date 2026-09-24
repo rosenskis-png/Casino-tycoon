@@ -8,6 +8,8 @@ export interface Voice {
   at?: number;
   dur: number;
   gain: number;
+  /** (M10) Attack in seconds (default: instant). */
+  a?: number;
 }
 export type SoundRecipe = Voice[];
 
@@ -43,4 +45,36 @@ export const SOUNDS: Record<string, SoundRecipe> = {
   ],
   shot: [{ wave: "noise", f0: 2400, at: 0.6, dur: 0.05, gain: 0.35 }, { wave: "sine", f0: 160, f1: 50, at: 0.6, dur: 0.12, gain: 0.25 }, { wave: "sine", f0: 110, f1: 45, at: 0.95, dur: 0.18, gain: 0.3 }],
   urgent: [{ wave: "square", f0: 660, dur: 0.1, gain: 0.08 }, { wave: "square", f0: 660, at: 0.16, dur: 0.1, gain: 0.08 }],
+  // M10: the floor and your own games.
+  reeltick: [{ wave: "square", f0: 1900, dur: 0.012, gain: 0.03 }],
+  reelstop: [{ wave: "noise", f0: 1400, dur: 0.03, gain: 0.12 }, { wave: "triangle", f0: 240, f1: 160, dur: 0.05, gain: 0.12 }],
+  reels: [
+    { wave: "noise", f0: 1400, dur: 0.03, gain: 0.1 }, { wave: "noise", f0: 1400, at: 0.14, dur: 0.03, gain: 0.1 }, { wave: "noise", f0: 1400, at: 0.28, dur: 0.03, gain: 0.1 },
+  ],
+  chime: [{ wave: "sine", f0: 1568, dur: 0.25, gain: 0.05 }, { wave: "sine", f0: 2093, at: 0.09, dur: 0.3, gain: 0.04 }],
+  card: [{ wave: "noise", f0: 5000, dur: 0.035, gain: 0.14, a: 0.01 }],
+  cards: [{ wave: "noise", f0: 5000, dur: 0.035, gain: 0.1, a: 0.01 }, { wave: "noise", f0: 5000, at: 0.12, dur: 0.035, gain: 0.1, a: 0.01 }, { wave: "noise", f0: 5000, at: 0.24, dur: 0.035, gain: 0.1, a: 0.01 }],
+  chips: [{ wave: "triangle", f0: 3200, dur: 0.02, gain: 0.06 }, { wave: "triangle", f0: 2900, at: 0.04, dur: 0.02, gain: 0.05 }, { wave: "triangle", f0: 3400, at: 0.07, dur: 0.025, gain: 0.05 }],
+  ball: [{ wave: "sine", f0: 880, f1: 700, dur: 0.12, gain: 0.08 }, { wave: "noise", f0: 1200, dur: 0.05, gain: 0.05 }],
+  spin: Array.from({ length: 14 }, (_, k) => ({ wave: "square" as const, f0: 2600, at: 0.04 * k * (1 + k * 0.12), dur: 0.015, gain: 0.03 })),
+  glass: [{ wave: "sine", f0: 2637, dur: 0.18, gain: 0.04 }, { wave: "sine", f0: 3951, dur: 0.12, gain: 0.02 }],
+  applause: [{ wave: "noise", f0: 3500, dur: 1.4, gain: 0.12, a: 0.3 }, { wave: "noise", f0: 2200, at: 0.2, dur: 1.1, gain: 0.08, a: 0.2 }],
+  roar: [{ wave: "noise", f0: 1500, dur: 0.9, gain: 0.14, a: 0.15 }, { wave: "sawtooth", f0: 220, f1: 330, dur: 0.4, gain: 0.03, a: 0.1 }],
+  lose: [{ wave: "triangle", f0: 330, f1: 262, dur: 0.18, gain: 0.06 }],
+  bigwin: [
+    { wave: "square", f0: 523, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 659, at: 0.08, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 784, at: 0.16, dur: 0.08, gain: 0.07 },
+    { wave: "square", f0: 1047, at: 0.24, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 784, at: 0.32, dur: 0.08, gain: 0.07 }, { wave: "square", f0: 1047, at: 0.4, dur: 0.5, gain: 0.08 },
+    { wave: "triangle", f0: 262, at: 0.4, dur: 0.5, gain: 0.1 }, { wave: "noise", f0: 7000, at: 0.4, dur: 0.6, gain: 0.05 },
+  ],
 };
+
+/** Mixer category per sound (docs/spec/audio.md); anything unlisted is "games". */
+export type SoundCat = "music" | "ui" | "games" | "floor" | "crowd";
+export const SOUND_CAT: Record<string, SoundCat> = {
+  click: "ui", build: "ui", place: "ui", demolish: "ui", deny: "ui", news: "ui", urgent: "ui", broken: "floor", fixed: "floor",
+  fight: "crowd", cheer: "crowd", retch: "crowd", thud: "crowd", caught: "crowd", punch: "crowd", shot: "crowd", applause: "crowd", roar: "crowd",
+  glass: "floor", chime: "floor",
+};
+export const SOUND_CATS: { id: SoundCat; name: string }[] = [
+  { id: "music", name: "Music" }, { id: "games", name: "Games" }, { id: "floor", name: "Floor" }, { id: "crowd", name: "Crowd" }, { id: "ui", name: "Interface" },
+];

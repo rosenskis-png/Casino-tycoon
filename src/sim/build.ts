@@ -14,6 +14,7 @@ import { post } from "./finance";
 import { crewAmenity } from "./crew";
 import { locked, projectFor } from "./research";
 import { RESEARCH } from "../data/research";
+import { CLUB_TRACKS } from "../data/music";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -26,6 +27,8 @@ declare module "./commands" {
     setPrice: { id: number; price: number };
     /** Buy a land parcel the scenario offers (M6.5). */
     buyParcel: { id: string };
+    /** (M10) The track a nightclub plays (data/music.ts CLUB_TRACKS). */
+    setTrack: { id: number; track: number };
   }
 }
 
@@ -107,7 +110,7 @@ export function parcelTiles(g: Game, id: string): number[] {
   return out;
 }
 
-const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPrice" | "buyParcel"> = {
+const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPrice" | "buyParcel" | "setTrack"> = {
   build: {
     validate(g, c) {
       const ok = c.tiles.filter((i) => buildable(g, c.what, i));
@@ -195,6 +198,14 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
       return c.price >= range[0] && c.price <= range[1] ? null : "Price out of range";
     },
     apply(g, c) { g.objById.get(c.id)!.price = Math.round(c.price * 100) / 100; },
+  },
+  setTrack: {
+    validate(g, c) {
+      const o = g.objById.get(c.id);
+      if (!o || OBJECTS[o.kind].serves !== "club") return "Only a nightclub plays music";
+      return c.track >= 0 && c.track < CLUB_TRACKS.length && c.track % 1 === 0 ? null : "No such track";
+    },
+    apply(g, c) { g.objById.get(c.id)!.track = c.track; },
   },
   buyParcel: {
     validate(g, c) {

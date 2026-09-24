@@ -3,7 +3,7 @@ import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
 import type { EnfAction } from "../data/cheats";
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export interface MapState {
   w: number;
@@ -54,6 +54,8 @@ export interface PlacedObject {
   tbl?: TableRound;
   /** (M9) Bars and cages: 1 while crewed by a crooked bartender or teller (docs/spec/staff.md). */
   crook?: number;
+  /** (M10) Nightclubs: the track playing (data/music.ts CLUB_TRACKS; missing = the first). */
+  track?: number;
 }
 
 /**
@@ -491,6 +493,29 @@ export interface GameState {
   cal: { year: number; events: CalEvent[] };
   ads: { id: string; until: number }[];
   research: ResearchState;
+  /** (M10) The game you're playing yourself, or null (docs/spec/play.md). */
+  yours: YourPlay | null;
+}
+
+export type YourFam = "slot" | "vpoker" | "blackjack" | "roulette" | "craps" | "baccarat" | "keno";
+/**
+ * You at one of your own games: the phase (betting, or acting on a hand), money out on the hand, the last result
+ * (`seq` counts hands; `big` names a jackpot) and the session's totals, then what each game shows.
+ */
+export interface YourPlay {
+  obj: number; fam: YourFam; phase: "bet" | "act";
+  out: number;
+  last: { wagered: number; won: number; seq: number; big: string };
+  total: { wagered: number; won: number };
+  /** Slots: reel symbols. Video poker: the hand, held positions, cards out. Blackjack: hands, dealer, hand in play. */
+  reels?: number[]; cards?: number[]; held?: number[]; used?: number[];
+  hands?: { cards: number[]; bet: number; done: number }[]; dealer?: number[]; cur?: number;
+  /** Roulette: the pocket (37 = 00) and bets. Craps: point, line bets [pass, don't pass], odds, dice. */
+  pocket?: number; bets?: Record<string, number>;
+  point?: number; line?: [number, number]; odds?: number; dice?: [number, number];
+  /** Baccarat: the hands. Keno: your picks and the balls drawn. */
+  bac?: { p: number[]; b: number[] };
+  picks?: number[]; drawn?: number[];
 }
 
 /** A scheduled event: when it runs (ticks), its length in days, and 1 once announced, 2 once started. */

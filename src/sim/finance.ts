@@ -15,7 +15,7 @@ export const LEDGER_LABELS: Record<string, string> = {
   food: "Food sales", foodCost: "Food costs", shows: "Show tickets", cover: "Cover charges", doors: "Door fees", poolFees: "Pool entry", land: "Land",
   tax: "Gaming tax", interest: "Loan interest", loanFees: "Loan fees", borrowed: "Borrowed", repaid: "Repaid", insurance: "Insurance claims",
   premium: "Insurance premium", comps: "Comps", shrink_bar: "Shrinkage: bar", shrink_cage: "Shrinkage: cage", shrink_tables: "Shrinkage: tables",
-  shrink_machines: "Shrinkage: machines",
+  shrink_machines: "Shrinkage: machines", yours: "Owner's play",
 };
 const HISTORY_MONTHS = 24;
 

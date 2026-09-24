@@ -33,3 +33,5 @@ export { locked, projectFor, researched, available as projectAvailable, toolTier
 export { runningEvents, adFees } from "./calendar";
 export { suspicion, coverage, purposeTiles, type Suspicion } from "./cheats";
 export { OBJECTS } from "../data/objects";
+export { cantPlay, yourFam, yourMoves, bjTotal, rankOf, vpHand, vpX, VP_HANDS, bacTotal, rouletteX } from "./yours";
+export type { YourPlay, YourFam } from "./state";

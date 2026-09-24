@@ -102,18 +102,11 @@ Whale bankrolls are sized to game money (a variance crisis means several months 
 - Vice and Drugs house rules. Escorts work the floor (more the laxer the rule), pitch guests and may leave with one, up in the elevator for a room fee; hookups in quiet spots; drug use (high: bigger bets, no tiredness; overdoses). Guests react by type; police and reports as for other incidents.
 - Staff caught stealing are replaced automatically (owner). Save schema 13 (migration from 12).
 
-## M10 · Audio, play-the-games-yourself ☐
-Planned 2026-09-24; defaults in DECISIONS wait for the green light. Will be specced in docs/spec/audio.md and docs/spec/play.md.
-- **Mixer:** master, music, interface, games, floor and crowd volumes, plus mute, kept on the device (not in saves).
-- **Sound on the floor:** sounds get quieter with distance from the view and zoom, and pan left or right; a cap on voices and repeats so a busy floor doesn't clip.
-- **Ambient floor:** a continuous murmur, chimes and chip clatter built from the NRG and crowd in view. It thins out when zoomed out and goes quiet when paused.
-- **Game and place sounds:** reels and stops, dealt cards, chips, the roulette ball, keno and bingo calls, sportsbook roars, bar glassware, the club's bass, show applause, doors. A longer jackpot fanfare. Richer recipes (attack, filter, note sequences), still data.
-- **Music, generated from data** (a small sequencer: chord progressions, bass, drums and lead patterns as recipes; no audio files):
-  - A title screen (continue, new game with scenario, sound settings) with a main theme. Today the game opens straight onto the floor.
-  - Each nightclub gets a pick of tracks on its card (4–5 styles), playing from the dance floor. It fades with distance and zoom, and plays only while the club is open.
-  - The show lounge plays music during shows.
-- **Play it yourself:** a Play button on machine and table cards opens a full-screen game with that object's real model, paytable, rules and limits (×5 in high-limit rooms). Covers slots, video poker (hold and draw), blackjack (hit, stand, double, one split), roulette (full board), craps (pass, don't pass, odds, field), baccarat (real third-card rules) and keno. Poker, bingo and the sportsbook are excluded. You get the same rules and odds as a guest, with ordinary luck and no rigging either way. You play with casino cash, while the casino keeps running and the ticker stays up. Speed and management controls are hidden, and playing isn't available while paused.
-- All draws go through commands on a new `yours` RNG stream. A hand in progress is saved. Save schema 14 (migration from 13).
-- Cut order if it runs long: craps, then baccarat, then the show lounge's music, then the ambient floor's detail layer.
+## M10 · Audio, music, play-the-games-yourself ☑  (see docs/spec/audio.md, docs/spec/play.md)
+- A mixer (master, music, games, floor, crowd, interface, mute) kept on the device. Floor sounds fade with distance and zoom and pan left or right, with a voice cap.
+- An ambient murmur follows the crowd in view. Rounds in view make their sounds, plus chimes, glassware and show applause. New game sounds and a bigger win fanfare.
+- Generated music from data through a small sequencer: a title screen with the main theme, five nightclub tracks (picked per club, heard from the dance floor), and show-lounge music during shows.
+- Play it yourself: slots, video poker, blackjack, roulette, craps, baccarat and keno, full screen, with the object's real rules, paytables and limits, casino cash on an "Owner's play" line, and a guest's odds (checked exactly). No poker, bingo or sportsbook; no vibration.
+- Save schema 14 (migration from 13): a hand in progress, a club's track.
 ## M8 · Slot designer ☐  (moved after M10 on 2026-09-24; readiness notes in DECISIONS)
 ## M11 · Scenarios, tutorial, balance ☐

@@ -532,7 +532,7 @@ Information is a resource: the player starts with symptoms only.
 5. **Cheats, suspicion, enforcement, luck tags.**
 6. **Construction and outdoor space, land parcels, theming.**
 7. **Games catalog and table rules.**
-8. **Slot designer.**
+8. **Slot designer.** (Built after 10, before 11: see DECISIONS 2026-09-24.)
 9. **Staff depth, policies, marketing, comps, whales, events, research tree.**
 10. **Audio, playing the games yourself.**
 11. **Scenarios, then balance through playtesting.**

@@ -108,7 +108,7 @@ Whale bankrolls are sized to game money (a variance crisis means several months 
 - Generated music from data through a small sequencer: a title screen with the main theme, five nightclub tracks (picked per club, heard from the dance floor), and show-lounge music during shows.
 - Play it yourself: slots, video poker, blackjack, roulette, craps, baccarat and keno, full screen, with the object's real rules, paytables and limits, casino cash on an "Owner's play" line, and a guest's odds (checked exactly). No poker, bingo or sportsbook; no vibration.
 - Save schema 14 (migration from 13): a hand in progress, a club's track.
-## M8 · Slot designer: the designer and the base game ☐  (plan: docs/spec/designer.md; waiting for the green light)
+## M8 · Slot designer: the designer and the base game ☑  (see docs/spec/designer.md)
 Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot machines, in three parts (one chat and release each).
 - A design's eight sections: concept (name, theme, symbols), reels (3×1 classic to 6×4 ways; wilds, stacks), money (denomination, bets), math (payback, hit rate, volatility, with a budget bar showing where every point of payback goes), features, jackpots, show (lights, sound, signature call, small-win celebration, near misses, anticipation, roll-up, speed), cabinet (slant, upright, stepper, tall, giant 2×2; colors; toppers).
 - Exact math: a closed-form payback budget, base games solved exactly, features exact by construction and drawn step by step, events the play screen shows as drawn. Free spins with every enhancer; fixed jackpots.

@@ -1,5 +1,5 @@
-// Stock slot designs (docs/spec/designer.md): the three original machines re-expressed as designs, and three
-// classics of the genre. The player can open any of them in the designer and save a copy.
+// Stock slot designs (docs/spec/designer.md): the three original machines re-expressed as designs (each keeps its
+// old top prize as a jackpot, at the same share of its payback, so it swings as it did), and classics of the genre. The player can open any of them in the designer and save a copy.
 import type { SlotDesign } from "./designer";
 
 const show = (o: Partial<SlotDesign["show"]>): SlotDesign["show"] =>
@@ -8,17 +8,17 @@ const show = (o: Partial<SlotDesign["show"]>): SlotDesign["show"] =>
 export const STOCK_DESIGNS: Record<string, SlotDesign> = {
   cherry: {
     id: "cherry", name: "Cherry Parade", theme: "classic", set: 1, layout: "l20", denom: 0.25, minBet: 1, maxBet: 4,
-    rtp: 0.88, hit: 0.42, vol: 0.25, wild: "plain", stacks: false, fs: null, jackpots: [],
+    rtp: 0.88, hit: 0.42, vol: 0.25, wild: "plain", stacks: false, fs: null, jackpots: [{ x: 1000, every: 7700 }],
     show: show({ lights: 3, light: 3, sound: 2, ldw: 1, speed: 2 }), cab: { type: "upright", body: 1, topper: "sign" },
   },
   liberty: {
     id: "liberty", name: "Liberty Bell", theme: "classic", set: 0, layout: "c3", denom: 1, minBet: 1, maxBet: 2,
-    rtp: 0.92, hit: 0.2, vol: 0.35, wild: "plain", stacks: false, fs: null, jackpots: [],
+    rtp: 0.92, hit: 0.2, vol: 0.35, wild: "plain", stacks: false, fs: null, jackpots: [{ x: 800, every: 5000 }],
     show: show({ lights: 1, light: 0, sound: 1, speed: 0, rollup: 0 }), cab: { type: "stepper", body: 6, topper: "none" },
   },
   thunder: {
     id: "thunder", name: "Thunder Jackpot", theme: "rome", set: 1, layout: "c3", denom: 1, minBet: 1, maxBet: 3,
-    rtp: 0.89, hit: 0.08, vol: 0.7, wild: "x3", stacks: false, fs: null, jackpots: [],
+    rtp: 0.89, hit: 0.08, vol: 0.7, wild: "x3", stacks: false, fs: null, jackpots: [{ x: 2500, every: 8300 }],
     show: show({ lights: 3, light: 2, sound: 3, call: "call_rome", rollup: 2, speed: 1 }), cab: { type: "upright", body: 7, topper: "dome" },
   },
   stampede: {

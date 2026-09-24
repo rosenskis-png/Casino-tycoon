@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-24 · M8 built: the designer and the base game (Claude's calls; see docs/spec/designer.md "As built")
+- Everything in the M8 part of the plan, plus the owner's additions: forced outcomes in the lab (any win tier, free spins, every jackpot, the top award, near misses, dressed-up losses), a live machine preview while designing, and a play screen modeled on the reference screenshots (top box, meters, side badges, credit/bet/win bar, button deck, hand pays).
+- **The original three machines keep their old top prize as a jackpot** (same payback share), so they swing as before; guests' appeal for them is calibrated within ±0.15 of the old per-type values (the plan said ±0.1: two type/machine pairs land at 0.12–0.13 with starting tastes).
+- **Intensity is felt swing** (jackpots excluded; they count as the top prize), so a penny game with a rare big jackpot still reads as gentle.
+- Two more stock games so every cabinet has one: Platinum Reserve ($5 slant-top) and Lantern Fortune (a Dragon Link-style giant with four meters). Lucky Dragon is a slot theme now and a decor theme in the Luxury project; its four decor pieces are M8.6 art.
+- Designer commands apply immediately (works while paused).
+- Test Floor, 300 days: no sanity flags; numbers close to M9.6 (docs/spec/guests.md). Tutorial year-end cash moved with the new draws (seed luck), reputation unchanged. Big Floor steady state ~3.2 ms/tick against m10's ~3.0 on the same machine (+5%, the per-machine design lookups).
+- Save schema 15 (migration from 14).
+
 ## 2026-09-24 · Green light for M8 (owner's answers)
 - Owner said "green light" and accepted every default and all five proposals: panel-measured ratings (NORTH_STAR's creative-core line amended), three parts (M8, M8.5, M8.6), emoji symbols on styled tiles, certification ($1,500, 7 days; uncertified = rigging), and market churn.
 - **Owner additions:**

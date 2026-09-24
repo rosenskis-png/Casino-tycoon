@@ -61,7 +61,8 @@ export function feelOf(c: Compiled): Feel {
     hit: c.h, win: PJ + (1 - PJ) * (c.q + (1 - c.q) * winP), ldw: (1 - PJ) * (1 - c.q) * ldwP * (CELEBRATE[d.show.ldw]?.feel ?? 0.3) / 0.3,
     feat: featP, featAvg, featCv: featAvg > 0 ? Math.min(3, fsSd / featAvg) : 0, tension,
     top: Math.max(c.top / (lay.win === "classic" ? 1 : lay.units), c.base.e.reduce((a, q) => Math.max(a, q.x), 0), ...c.jx),
-    intensity: intensityOf(Math.sqrt(Math.max(0, c.v))), drain: drainOf((1 - d.rtp) * perMin),
+    // Intensity is the swing a player feels: jackpots are rare dreams (the top prize), not swings.
+    intensity: intensityOf(Math.sqrt(Math.max(0, c.vFelt))), drain: drainOf((1 - d.rtp) * perMin),
     spectacle: Math.min(10, d.show.lights * 1.2 + d.show.sound * 1.2 + CAB_SPEC[d.cab.type] + TOPPER_SPEC[d.cab.topper] + celebrate + (d.show.antic && featP > 0 ? 0.3 : 0)),
     complexity: Math.min(10, LAYOUT_CX[d.layout] + (d.wild === "x2" || d.wild === "x3" ? 0.5 : 0) + (d.stacks ? 0.3 : 0) + (d.fs && c.q > 0 ? 1.5 + ENH_CX[d.fs.enh] + (d.fs.retrigger ? 0.3 : 0) : 0) + 0.4 * c.pJ.length),
     near: c.near, classic: Math.min(1, (d.layout === "c3" ? 1 : d.layout === "r33" ? 0.5 : 0) + (d.cab.type === "stepper" ? 0.3 : 0)),

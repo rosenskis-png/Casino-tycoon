@@ -1,6 +1,6 @@
 # Slot designer (M8 plan)
 
-**Status: green light 2026-09-24; M8 (part 1) in progress.** Owner's answers and additions in DECISIONS. FOUNDATIONS §7.1; NORTH_STAR "The creative core". All numbers are starting values.
+**Status: M8 (part 1) built 2026-09-24; M8.5 and M8.6 to come.** Owner's answers and additions in DECISIONS. Code: `src/data/designer.ts` (vocabulary), `src/data/designs.ts` (stock), `src/data/slotTastes.ts` (hidden tastes, pairings), `src/sim/design/` (compile, grid, spin, appeal, lab, checks, index), `src/ui/slot/` (the machine), `src/ui/designer/` (designer, Slots tab), `src/platform/library.ts`. FOUNDATIONS §7.1; NORTH_STAR "The creative core". All numbers are starting values.
 
 ## The idea
 RollerCoaster Tycoon's coaster builder works because it has **physics** (a coaster can't climb a hill it lacks the speed for), **pieces** (drops, loops, helixes, each with a feel), a **test run** you watch, **three ratings** that are measurements rather than verdicts (Excitement, Intensity, Nausea), and a **park full of guests** who ride it or don't. The slot designer copies that shape:
@@ -223,3 +223,17 @@ Three chats and three releases (each playable; the docs carry context).
 
 **M8.6 · The market**
 - Novelty and ageing, boredom and favorites, variety, fans and draw; the yearly Slot Expo; rival releases (buy, study, copy); wishes; records and Evergreens; research projects; Test Floor with designs of every kind; `npm run targets` sanity flags per design; the balance and speed comparison against the last release.
+
+## As built in M8 (differences from the plan above)
+- **Layouts:** 3×1 classic, 3×3 5 lines, 5×3 20 lines, 5×4 40 lines, 243 / 1,024 / 4,096 ways. Multiplier wilds (×2/×3) in the base game only on 3-reel games; on 5- and 6-reel games they come with free spins ("Multiplier wilds").
+- **Free spins enhancers:** plain, all wins ×2 or ×3, random ×2–×5, multiplier wilds, extra wilds, expanding symbol. Sticky wilds and symbol upgrades moved to M8.5 (with collectors). Scatter pays always come with free spins (2× / 5× / 20× / 50× the bet for 3–6).
+- **Trigger spins are exclusive** of line wins (a trigger screen shows scatters only), which keeps P(any pay) exact for luck.
+- **Jackpots (M8):** fixed amounts × the bet, won by 3 + level jackpot symbols anywhere (classic: 3 on the line); a level's name takes the top of Mini/Minor/Major/Grand. At most 35% of payback.
+- **The original three machines** keep their old top prize as a jackpot at the same payback share, so they swing as before (SD ≈ 12, 12, 28 × bet). Their calibrated appeal is within ±0.15 of the old values (checked headless).
+- **Intensity** uses the swings a player feels: variance without jackpots (jackpots count toward the top prize instead). The par sheet's volatility index includes everything.
+- **Excitement buys hold:** each round on a design adds (0.06 × Excitement − 0.3) × the round's time to the visit's value time (never below half the time played).
+- **Stock designs:** Cherry Parade, Liberty Bell, Thunder Jackpot, Stampede Gold (Buffalo-style), Sphinx Treasures (Book/Cleopatra-style), Diamond Sevens (Double Diamond-style), Platinum Reserve ($5 slant-top), Lantern Fortune (Dragon Link-style giant with four meters). Stock games need only their own research.
+- **Commands apply at once in the designer** (`Game.flushCommands`), so it works while paused.
+- **Floor:** designs place as `slot_slant`, `slot_upright`, `slot_stepper`, `slot_tall`, `slot_giant` (2×2, one seat) with `o.design`; the original three kinds keep their sprites and prices. A designed slot themes its tile weakly (0.8) and its energy comes from lights, sound and cabinet.
+- **Research:** Video reels, Ways to win, Free spins, Showpiece cabinets (tall, giant), Fast-track certification; information: Slot lab panels. Lucky Dragon joined the Luxury themes project (its decor pieces wait for M8.6).
+- **Not yet:** bank signs, hunters, onlookers at bonuses (M8.5); novelty, trends, rivals, fans, records and Evergreens (M8.6).

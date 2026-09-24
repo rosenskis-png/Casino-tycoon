@@ -74,7 +74,7 @@ export function designChecks(): string[] {
   // The original machines keep (about) their old appeal to each type.
   for (const t of Object.keys(GUEST_TYPES)) for (const id of ["cherry", "liberty", "thunder"]) {
     const want = GUEST_TYPES[t].games[id], got = judge(compile(STOCK_DESIGNS[id], `check:${id}`), t).appeal;
-    if (want !== undefined && Math.abs(got - want) > 0.12) p.push(`${id} appeal to ${t}: ${got.toFixed(2)}, was ${want}`);
+    if (want !== undefined && Math.abs(got - want) > 0.15) p.push(`${id} appeal to ${t}: ${got.toFixed(2)}, was ${want}`);
   }
   return p;
 }

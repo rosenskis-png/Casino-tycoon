@@ -49,9 +49,10 @@ export interface Compiled {
   /** Average pay of one free spins feature, trigger scatters included (× bet), and its expected spins. */
   fsAvg: number;
   fsSpins: number;
-  /** Per-spin variance (× bet²) and chance of any pay. */
+  /** Per-spin variance (× bet²) and chance of any pay; the variance without jackpots (the swings a player feels). */
   v: number;
   h: number;
+  vFelt: number;
   /** Near misses: share of losing spins shown as one; the design's natural share. */
   near: number;
   natural: number;
@@ -427,6 +428,7 @@ function build(d: SlotDesign, id: string): Compiled {
   const ev = pJ.reduce((a, p, i) => a + p * jx[i], 0) + qa * fsAvg + (1 - PJ) * (1 - q) * base.ev;
   const e2 = pJ.reduce((a, p, i) => a + p * jx[i] * jx[i], 0) + qa * fsX2 + (1 - PJ) * (1 - q) * base.e2;
   const h = 1 - (1 - PJ) * (1 - q) * (1 - base.hit);
+  const mNJ = (q * fsAvg + (1 - q) * base.ev), vFelt = q * fsX2 + (1 - q) * base.e2 - mNJ * mNJ;
   const budget: Budget = {
     jackpots: J, scatter: qa * ES + qa * EK * retrig * ES,
     fs: qa * EK * (1 - retrig) * EY,
@@ -438,7 +440,7 @@ function build(d: SlotDesign, id: string): Compiled {
   const cab = CABINETS[d.cab.type];
   const c: Compiled = {
     d, lay, pt, top, base, fsL, pJ, jx, q, split, spins, scat, retrig, mult, budget, hit, hitRange, notes, fsAvg, fsSpins: EK,
-    v: e2 - T * T, h, near, natural,
+    v: e2 - T * T, h, vFelt, near, natural,
     model: {
       id, name: d.name, denom: d.denom, minCredits: d.minBet, maxCredits: d.maxBet, spin: SPEEDS[d.show.speed]?.spin ?? 3, rtp: T,
       pays: [], jackpotX: 100, breakChance: d.cab.type === "stepper" ? 1 / 450 : d.cab.type === "giant" ? 1 / 400 : 1 / 600,

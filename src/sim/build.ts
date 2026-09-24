@@ -9,7 +9,7 @@ import type { System } from "./registry";
 import type { PlacedObject } from "./state";
 import { objCells, objFootprint, objSeats, priceOf, sizeOk, type Placed } from "./geometry";
 import { clearDoor } from "./doors";
-import { idx, inBounds } from "./map";
+import { besideSidewalk, idx, inBounds, recomputeOutdoor } from "./map";
 import { post } from "./finance";
 import { crewAmenity } from "./crew";
 import { locked, projectFor } from "./research";
@@ -18,7 +18,8 @@ import { CLUB_TRACKS } from "../data/music";
 
 declare module "./commands" {
   interface CommandTypes {
-    build: { what: "wall" | "door" | "demolish"; tiles: number[] };
+    /** entrance: a new way in from the sidewalk, on lot ground beside it. */
+    build: { what: "wall" | "door" | "demolish" | "entrance"; tiles: number[] };
     /** w × h: a sized amenity's front width and depth (its own frame); omitted for fixed-size objects. */
     place: { kind: string; x: number; y: number; rot: number; w?: number; h?: number };
     remove: { id: number };
@@ -32,14 +33,25 @@ declare module "./commands" {
   }
 }
 
-function buildable(g: Game, what: "wall" | "door" | "demolish", i: number): boolean {
+type Build = "wall" | "door" | "demolish" | "entrance";
+
+function buildable(g: Game, what: Build, i: number): boolean {
   const m = g.state.map;
-  if (i < 0 || i >= m.terrain.length || m.fixed[i]) return false;
+  if (i < 0 || i >= m.terrain.length) return false;
   const t = m.terrain[i];
-  if (what === "wall") return t === T.FLOOR && !g.occ[i] && !g.objAt[i] && !g.seatAt[i] && !m.entrances.includes(i);
+  // Every wall and door is the player's to change, the building's shell included (saves from before kept it fixed).
+  if (m.fixed[i] && t !== T.WALL && t !== T.DOOR) return false;
+  const clear = !g.occ[i] && !g.objAt[i] && !g.seatAt[i] && !m.entrances.includes(i);
+  if (what === "wall") return t === T.FLOOR && clear;
+  if (what === "entrance") return t === T.FLOOR && !!m.outdoor[i] && clear && besideSidewalk(m, i);
   if (what === "door") return t === T.WALL;
   return t === T.WALL || t === T.DOOR;
 }
+
+const REFUSED: Record<Build, string> = {
+  wall: "Can't build a wall there", door: "Doors go in walls", demolish: "Nothing to demolish there",
+  entrance: "Entrances go on your land beside the sidewalk",
+};
 
 /** A placement as a Placed (size only for sized amenities). */
 export function placed(kind: string, x: number, y: number, rot: number, w?: number, h?: number): Placed {
@@ -114,19 +126,22 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
   build: {
     validate(g, c) {
       const ok = c.tiles.filter((i) => buildable(g, c.what, i));
-      if (!ok.length) return c.what === "door" ? "Doors go in walls you built" : c.what === "wall" ? "Can't build a wall there" : "Nothing to demolish there";
+      if (!ok.length) return REFUSED[c.what] ?? "Can't build that";
       if (ok.length * BUILD_COST[c.what] > g.state.cash) return "Not enough cash";
       return null;
     },
     apply(g, c) {
       const m = g.state.map;
       const tiles = [...new Set(c.tiles)].filter((i) => buildable(g, c.what, i));
-      for (const i of tiles) {
+      if (c.what === "entrance") m.entrances.push(...tiles);
+      else for (const i of tiles) {
         if (m.terrain[i] === T.DOOR) clearDoor(g.state, i);
         m.terrain[i] = c.what === "wall" ? T.WALL : c.what === "door" ? T.DOOR : T.FLOOR;
+        m.fixed[i] = 0;
       }
       post(g, "build", -tiles.length * BUILD_COST[c.what]);
-      g.tilesChanged(tiles);
+      // Walls that close in lot ground make it indoors; a gap to the lot makes a room outdoors.
+      g.tilesChanged(c.what === "entrance" ? tiles : [...tiles, ...recomputeOutdoor(m)]);
       g.bus.emit({ type: "sound", id: c.what === "demolish" ? "demolish" : "build" });
     },
   },

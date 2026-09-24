@@ -2,6 +2,7 @@
 // listeners, and draws a frame with sub-tick interpolation. Faster speeds run more ticks, never bigger ones.
 import { TICKS_PER_SECOND, type Game, type Speed } from "../sim";
 import { Renderer, type DrawOptions } from "../render/renderer";
+import { T } from "../data/terrain";
 import { Camera } from "../render/camera";
 
 const MAX_TICKS_PER_FRAME = 40;
@@ -34,8 +35,16 @@ export class Host {
   setGame(g: Game) {
     this.game = g;
     this.renderer.setGame(g);
-    this.camera.cx = g.state.map.w / 2;
-    this.camera.cy = g.state.map.h / 2 + 4;
+    // Start over the building and its way in (the lot can be far bigger than the screen).
+    const m = g.state.map;
+    let x0 = m.w, y0 = m.h, x1 = 0, y1 = 0;
+    for (let i = 0; i < m.terrain.length; i++) if (m.terrain[i] === T.FLOOR && (!m.outdoor[i] || m.entrances.includes(i))) {
+      const x = i % m.w, y = (i - x) / m.w;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    const none = x0 > x1;
+    this.camera.cx = none ? m.w / 2 : (x0 + x1 + 1) / 2;
+    this.camera.cy = (none ? m.h / 2 : (y0 + y1 + 1) / 2) + 4;
     this.acc = 0;
     for (const l of this.gameListeners) l(g);
     this.notify();

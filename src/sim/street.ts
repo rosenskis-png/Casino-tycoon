@@ -36,7 +36,11 @@ function street(g: Game): Street {
 
 function buildStreet(g: Game): Street {
   const sc = SCENARIOS[g.state.scenario], w = g.state.map.w;
-  const walks: Walk[] = sc.sidewalks.map(({ from: [x0, y0], to: [x1, y1] }) => ({
+  const m = g.state.map, on = ([x, y]: [number, number]) => x >= 0 && y >= 0 && x < m.w && y < m.h && m.terrain[y * m.w + x] === T.SIDEWALK;
+  // Only sidewalks on this map: a save from before a scenario's lot grew keeps the street it was built with.
+  let lines = sc.sidewalks.filter((sw) => on(sw.from) && on(sw.to));
+  if (!lines.length) lines = sidewalkRows(g);
+  const walks: Walk[] = lines.map(({ from: [x0, y0], to: [x1, y1] }) => ({
     x0, y0, dx: Math.sign(x1 - x0), dy: Math.sign(y1 - y0), len: Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)),
   }));
   const gates: Gate[] = [];
@@ -52,6 +56,18 @@ function buildStreet(g: Game): Street {
     if (best) gates.push(best);
   });
   return { walks, gates };
+}
+
+/** Horizontal runs of sidewalk on the map, as sidewalk lines. */
+function sidewalkRows(g: Game): { from: [number, number]; to: [number, number] }[] {
+  const m = g.state.map, out: { from: [number, number]; to: [number, number] }[] = [];
+  for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+    if (m.terrain[y * m.w + x] !== T.SIDEWALK || (x > 0 && m.terrain[y * m.w + x - 1] === T.SIDEWALK)) continue;
+    let e = x;
+    while (e + 1 < m.w && m.terrain[y * m.w + e + 1] === T.SIDEWALK) e++;
+    if (e - x >= 8) out.push({ from: [x, y], to: [e, y] });
+  }
+  return out;
 }
 
 /**

@@ -55,6 +55,7 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb }: { host: 
         {b("wall", "Wall", `${money(BUILD_COST.wall)}/tile`)}
         {b("door", "Door", money(BUILD_COST.door))}
         {b("demolish", "Demolish", `${money(BUILD_COST.demolish)}/tile`)}
+        {b("entrance", "Entrance", `${money(BUILD_COST.entrance)} · by the sidewalk`)}
         {b("remove", "Sell object")}
         <button className="btn" onClick={() => setRot((rot + 1) & 3)}>Rotate<small>faces {FACING[rot & 3]}</small></button>
       </div>
@@ -988,7 +989,7 @@ function AmenityCard({ g, id }: { g: Game; id: number }) {
 function DoorCard({ g, tile }: { g: Game; tile: number }) {
   const m = g.state.map, rule = m.door[tile], gate = m.gates.find((q) => q.i === tile);
   const def = DOOR_RULES.find((r) => r.id === rule) ?? DOOR_RULES[0];
-  if (m.fixed[tile] || m.entrances.includes(tile)) return <p className="muted">{def.name}. Part of the building: this door stays as it is.</p>;
+  if (m.entrances.includes(tile)) return <p className="muted">{def.name}. Part of the building: this door stays as it is.</p>;
   const set = (r: number, arg?: string, fee?: number) => {
     const d = DOOR_RULES.find((x) => x.id === r)!;
     const a = d.arg === "type" ? (arg && GUEST_TYPES[arg] ? arg : Object.keys(GUEST_TYPES)[0]) : d.arg === "role" ? (arg && STAFF_ROLES[arg] ? arg : Object.keys(STAFF_ROLES)[0]) : undefined;

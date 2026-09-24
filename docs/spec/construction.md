@@ -4,8 +4,19 @@ FOUNDATIONS §3 (space), §5 (theming), §8 (amenities as places). NORTH_STAR "A
 space", "Dark levers". Owner decisions 2026-09-24 (DECISIONS.md). M6.5 adds themes, outdoor amenities and land
 parcels (below; themes in docs/spec/themes.md).
 
+## Walls, extensions and entrances (hotfix, 2026-09-24)
+- Every wall and door is the player's: the building's shell and the scenario's doors can be demolished, and doors
+  go in any wall. Saves from before still mark the shell `fixed`; walls and doors ignore that flag.
+- **Indoors is derived:** floor the open air can't reach. After every wall, door or demolish, a flood from unowned
+  land, the sidewalk and the map edge runs through everything but walls and doors (`recomputeOutdoor` in
+  `src/sim/map.ts`); what it reaches is outdoors. Walling in lot ground makes an extension (indoors, carpet); a hole
+  from a room to the lot makes that room outdoors until it's closed again. Doors count as closed.
+- **Entrance** (Build, $500 a tile): a new way in from the street on owned outdoor ground beside the sidewalk.
+  Passers-by glance in there and regulars may use it. Entrances can't be removed. They draw as a paved apron.
+- The hotel elevator, water, the sidewalk and unowned land stay fixed.
+
 ## Doors (`setDoor`)
-Tap a door the player built to open its card. Scenario doors and entrances can't be changed.
+Tap a door to open its card. Entrances (street and elevator) can't be changed.
 
 | Rule | Who passes |
 |---|---|
@@ -161,7 +172,8 @@ and go only on outdoor ground.
   show a faint gold border and a For Sale sign.
 - **Buy** from Build → Land, or by tapping the land: its unowned tiles become owned outdoor ground (buildable,
   not fixed); "Land" in the books. Land counts toward worth at what was paid.
-- Free Play Lot now has two: East lot (12×40, $12K) and Far east lot (12×40, $9K). Free Play saves from
-  before M6.5 have a smaller map, so the lots aren't offered there.
+- Free Play Lot has two: East lot (12×108, $12K) and Far east lot (12×108, $9K). Since the hotfix of 2026-09-24
+  the Free Play map is 184×112 with 156×108 of owned lot (about 8× the old one) around the same building. Saves
+  from before keep their own map and street; lots that don't fit a save's map aren't offered.
 - Saves: schema 9 adds `parcels` (ids bought).
 - **Deferred to M9:** Families (they bring minors and underage incidents) and the hotel elevator, with vice.

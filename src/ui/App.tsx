@@ -228,8 +228,9 @@ const noopSub = () => () => {};
 
 function toolHint(t: Tool): string {
   if (t === "wall") return "Drag to draw a wall · two fingers to move";
-  if (t === "door") return "Tap a wall you built to add a door";
+  if (t === "door") return "Tap a wall to add a door";
   if (t === "demolish") return "Drag over walls or doors to remove them";
+  if (t === "entrance") return "Tap your land beside the sidewalk to open a way in";
   if (t === "remove") return "Tap an object to sell it (half price back)";
   return "Tap to place · drag to position · Rotate in the Build tab";
 }

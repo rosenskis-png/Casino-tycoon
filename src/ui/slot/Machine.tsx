@@ -152,8 +152,9 @@ export function Machine(p: MachineProps) {
       t = showWins(out.grid, out.x, bet, t);
     } else if (out.kind === "jackpot") {
       const n = c.pJ.length, name = levelName(n, out.level, classic), won = out.x * bet;
+      const jpCells = classic ? [0, 1, 2].map((r) => r * 8 + 1) : cellsOf(out.grid, JACKPOT);
       at(t, () => {
-        setView((v) => ({ ...v, msg: `${name}!`, banner: { kind: "jp", title: `${name}${classic ? "" : " JACKPOT"}`, sub: fmt(won), big: true }, shower: v.shower + 1 }));
+        setView((v) => ({ ...v, msg: `${name}!`, wins: [{ s: JACKPOT, k: jpCells.length, pay: out.x, cells: jpCells }], banner: { kind: "jp", title: `${name}${classic ? "" : " JACKPOT"}`, sub: fmt(won), big: true }, shower: v.shower + 1 }));
         play("jackpot");
       });
       t = rollup(0, won, 2.2, t + 300) + 800;

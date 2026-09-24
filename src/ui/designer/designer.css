@@ -2,6 +2,7 @@
 .dz{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 0%,#2a1440,#0a0612 70%);color:var(--cream,#f4ead2)}
 .dz-head{flex:none;display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,.45);border-bottom:2px solid var(--brass2,#8a6424)}
 .dz-head>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.dz-head .btn{flex:none;padding:6px 12px;min-height:0}
 .dz-head b{color:var(--gold,#f2d27a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .dz-head small{font-size:11px;color:var(--cream2,#cdbf9e)}
 .dz-preview{flex:none;height:44%;min-height:220px;overflow:hidden;display:flex;justify-content:center;padding-top:6px;transition:height .25s}

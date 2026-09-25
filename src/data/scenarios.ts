@@ -8,6 +8,8 @@ export interface Goals {
   worth: number;
   /** Reputation to reach with one guest type (or every type when `type` is omitted). */
   rep: { type?: string; min: number };
+  /** (M11.2) Reputation to reach with each of these types too (the tutorial: tourists and families). */
+  reps?: { types: string[]; min: number };
   /** Deadline: end of this month (0-11) of this year (from 1). */
   by: { year: number; month: number };
 }
@@ -74,6 +76,12 @@ export interface ScenarioDef {
   research?: string[] | "build";
   /** Named rooms with a purpose, by any tile inside them. */
   rooms?: { x: number; y: number; name: string; purpose: RoomPurpose }[];
+  /** (M11.2) No new games may be built (the tutorial): the ones on the floor at the start are all there is. */
+  noGames?: boolean;
+  /** (M11.2) The floor as the last owner left it: tiles of litter and of vomit, scattered over the indoor floor. */
+  mess?: { litter: number; vomit: number };
+  /** (M11.2) House rules to start with (the rest default). */
+  rules?: Partial<Record<"intox" | "disorder" | "misconduct" | "vice" | "drugs", number>>;
   /** Not offered in the New game list (engine test maps). */
   hidden?: boolean;
 }
@@ -98,6 +106,11 @@ function movedLot(dx: number, dy: number) {
 }
 
 const row = (kind: string, x0: number, y: number, n: number, rot = 0) => Array.from({ length: n }, (_, k) => ({ kind, x: x0 + k, y, rot }));
+/** (M11.2) A tutorial bank: two rows of n facing each other across a two-tile aisle of seats (rows y and y + 3), the gentle classics mixed. */
+const tutorialBank = (x0: number, y: number, n: number): ScenarioDef["objects"] => [0, 3].flatMap((dy) =>
+  Array.from({ length: n }, (_, k) => (k + dy) % 3 === 0
+    ? { kind: "slot_stepper", design: "bells", x: x0 + k, y: y + dy, rot: dy ? 2 : 0 }
+    : { kind: "slot_upright", design: "cherries", x: x0 + k, y: y + dy, rot: dy ? 2 : 0 }));
 
 /** Largest-scale test floor (~20× the tutorial lot): banks of slots with bars, restrooms and cages, for the perf test. */
 function bigFloor(): ScenarioDef {
@@ -243,25 +256,40 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
   horseshoe: {
     id: "horseshoe",
     name: "The Lucky Horseshoe",
-    blurb: "A small locals casino that has seen better days. Win the neighborhood back.",
+    blurb: "A run-down locals' joint: sticky floors, tired decor, free drinks and fights. You can't add a single machine. Make the ones you have pay by turning it into a place tourists and families want to visit.",
     ...LOT,
-    startCash: 8_000,
+    // (M11.2, owner) The tutorial: a floor packed with machines and no way to add games. Everything else is
+    // the last owner's mess: litter and vomit, broken theming, a free-pour bar, drunk regulars who fight, and
+    // house rules that ignore it all. Fix the symptoms and draw a new crowd.
+    startCash: 20_000,
+    noGames: true,
     objects: [
-      ...row("slot_liberty", 12, 11, 5), ...row("slot_liberty", 12, 14, 5, 2),
-      ...row("slot_cherry", 20, 11, 4), ...row("slot_cherry", 20, 14, 4, 2),
+      // Two long banks on the main floor, a short one below, and a quiet pair in the back room (68 machines).
+      ...tutorialBank(11, 7, 10), ...tutorialBank(23, 7, 10), ...tutorialBank(11, 14, 10), ...tutorialBank(39, 7, 4),
       { kind: "cage", x: 24, y: 25, rot: 0 },
-      { kind: "restroom", x: 8, y: 5, rot: 0 },
+      { kind: "restroom", x: 8, y: 5, rot: 0 }, { kind: "restroom", x: 46, y: 28, rot: 0 },
+      // The regulars' bar: every drink free and strong.
+      { kind: "bar", x: 12, y: 22, rot: 0, bar: { comp: 1, strength: 1.4 } },
       { kind: "plant", x: 7, y: 30, rot: 0 },
+      // The last owner's theming.
+      { kind: "junk_cutout", x: 34, y: 6, rot: 0 }, { kind: "junk_neon", x: 7, y: 16, rot: 0 }, { kind: "junk_cutout", x: 21, y: 21, rot: 0 },
+      { kind: "junk_neon", x: 34, y: 20, rot: 0 }, { kind: "junk_cutout", x: 40, y: 21, rot: 0 }, { kind: "junk_neon", x: 47, y: 6, rot: 0 },
+      { kind: "junk_cutout", x: 47, y: 14, rot: 0 }, { kind: "junk_neon", x: 17, y: 28, rot: 0 }, { kind: "junk_cutout", x: 38, y: 28, rot: 0 },
     ],
-    staff: { janitor: 1 },
+    mess: { litter: 70, vomit: 8 },
+    rules: { intox: 0, disorder: 0 },
+    staff: { tech: 1 },
     footfall: 0.15,
-    street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3 },
-    market: { local: { size: 70, regulars: 0.2 }, retiree: { size: 45, regulars: 0.2 } },
-    population: { local: 1, retiree: 1, tourist: 0.3, party: 0.2 },
-    rep: { local: 40, retiree: 50, tourist: 45, party: 45 },
-    arrivals: 0.12,
+    street: { tourist: 1, party: 0.6, local: 0.4, retiree: 0.3, family: 0.8 },
+    market: { local: { size: 90, regulars: 0.5 }, retiree: { size: 45, regulars: 0.2 } },
+    population: { local: 1, retiree: 0.6, tourist: 1, family: 1, party: 0.2 },
+    rep: { local: 55, retiree: 45, tourist: 35, family: 30, party: 45 },
+    arrivals: 0.16,
     maxGuests: 300,
-    goals: { worth: 30_000, rep: { type: "local", min: 60 }, by: { year: 1, month: 11 } },
+    // Starting themes: Ancient worlds suit tourists and families (Egypt and Medieval clash, though); Old Vegas
+    // mostly doesn't. The restaurant is ready to build; the show lounge takes research.
+    research: ["th_ancient", "th_vegas", "restaurant"],
+    goals: { worth: 36_000, rep: { type: "tourist", min: 55 }, reps: { types: ["family"], min: 50 }, by: { year: 2, month: 11 } },
     tools: 2, tax: 0.05,
   },
   sandbox: {
@@ -276,8 +304,8 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     sidewalks: [{ from: [0, 110], to: [183, 110] }],
     // Two neighboring lots for sale to the east (M6.5).
     parcels: [
-      { id: "east", name: "East lot", rects: [{ x: 158, y: 2, w: 12, h: 108 }], price: 12_000 },
-      { id: "fareast", name: "Far east lot", rects: [{ x: 170, y: 2, w: 12, h: 108 }], price: 9_000 },
+      { id: "east", name: "East lot", rects: [{ x: 158, y: 2, w: 12, h: 108 }], price: 6_000 },
+      { id: "fareast", name: "Far east lot", rects: [{ x: 170, y: 2, w: 12, h: 108 }], price: 4_500 },
     ],
     startCash: 50_000,
     objects: [],
@@ -288,7 +316,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1, family: 1, conventioneer: 1 },
     rep: {},
     arrivals: 0.45,
-    maxGuests: 400,
+    maxGuests: 1500,
     goals: null,
     tools: 4, tax: 0.08, whales: true, research: "build", bribe: 0.6,
   },

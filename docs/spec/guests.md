@@ -30,7 +30,8 @@ Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.t
 - One type per group, a leader (their id is the group id; a pool person leads). Group size from the type's weights (≤ 8). Members share the leader's floor knowledge.
 - Members prefer a machine within 2 tiles of a member who's playing (+1.2), or at least in sight of one (+0.4).
 - Mood eases toward 80% own target + 20% group average.
-- **Waiting:** a broke or bored guest (the leader too) waits near the leader instead of leaving ("Are you done yet?"); a member who quits by their own rule also waits. **The group leaves when the leader quits (a quit rule met, or their time is up), or when half the group has been waiting 2 minutes.** Urgent reasons (restroom, miserable, starving, exhausted) leave alone.
+- **Waiting:** a broke or bored guest (the leader too) waits near the leader instead of leaving ("Are you done yet?"); a member who quits by their own rule also waits. **The group leaves when everyone is ready, or when half the group has been waiting 2 minutes;** M11.2: a leader who quits or runs out of time waits too (it used to take everyone home mid-game, and groups ended most visits). Urgent reasons (restroom, miserable, starving, exhausted) leave alone, and a leader leaving for one takes the group.
+- (M11.2) Someone looking for a restroom they can't find searches 6 steps longer than for anything else before giving up and going home.
 
 ## Intentions
 Gamble, drink (a per-type share come in for a drink first: Locals 12%, Retirees 8%, Tourists 15%, Party 50%), or pass by (the sidewalk). A drink-first guest who sees a machine they really like may convert: "Just one quick spin".
@@ -122,6 +123,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 - One-off groups of 3–5: one or two adults, the rest children. Adults gamble lightly (cheap slots, bingo), rarely drink, and come for the pool, meals and shows; they mind drunks, fights and mess (they report), and smoke as everyone does.
 - **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
 - Drawn a row shorter in bright tees and caps.
+
+M11.2 Test Floor (build prices halved, groups wait for each other, luck ±10, longer restroom search; seeds 1 / 2 / 3, 300 days): visit length 6.2–6.3 / 7.6–7.9 / 5.4–5.7 / 5.9–6.4 / 8.6–9.9 / 5.5–5.6 / 4.7–6.3 min (Locals / Retirees / Tourists / Party / High rollers / Families / Conventioneers), playing 2.7–2.9 / 3.1–3.3 / 1.1–1.2 / 0.8–0.9 / 3.4–4.0 / 1.1–1.5 / 0.9–1.6, loss per visit $35–40 / $23–24 / $72–84 / $29–44 / $100–157 / $16–24 / $21–47, visit score 0.70–0.72 / 0.67–0.69 / 0.61–0.62 / 0.63–0.64 / 0.64–0.65 / 0.65–0.72 / 0.64–0.73; reputation after 300 days 71–72 / 66–68 / 60–63 / 62–65 / 57–63 / 58–65 / 56–61. Party leaders still leave for a restroom 14–23% of the time (the restrooms are in corners). No sanity flags beyond the old noisy one.
 
 M8.5 Test Floor (five bonus games replace eight old machines, a linked bank with a sign; wider ratings, recalibrated slot appeal, hunters): visit length 5.9 / 7.2 / 4.7 / 5.6 / 8.1 / 5.5 / 5.1 min, playing 2.3 / 3.4 / 1.1 / 1.0 / 3.3 / 1.2 / 1.7, loss per visit $39 / $31 / $50 / $38 / $286 / $24 / $53, visit score 0.66 / 0.65 / 0.59 / 0.62 / 0.59 / 0.63 / 0.62; reputation after 300 days 70 / 65 / 57 / 60 / 59 / 56 / 57. No sanity flags.
 

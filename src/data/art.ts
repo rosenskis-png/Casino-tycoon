@@ -465,6 +465,57 @@ const SIGN = [
 ];
 const SIGN_PAL = { L: "#2f7a52", G: "#1e5a3c", g: "#123a26" };
 
+// (M11.2) The tutorial's broken theming: a faded plywood cowboy cutout, missing a chunk of shoulder, and a dead
+// neon sign with its tubes cracked and dangling. Muted on purpose: nothing about them is lit.
+const CUTOUT = [
+  "....44444444....",
+  "....45555554....",
+  "..444444444444..",
+  ".....pPPPPp.....",
+  ".....p2PP2p.....",
+  ".....pPPPPp.....",
+  "......pPPp......",
+  "...rrrrrrrr.....",
+  "..rrRrrrrrr1....",
+  "..rr.rrrrrr.rr..",
+  "..PP.rrrrrr.PP..",
+  ".....rr55rr.....",
+  ".....33..33.....",
+  ".....33..33.....",
+  ".....33..33.....",
+  "....444..444....",
+  ".......21.......",
+  ".......21.......",
+  ".......21.......",
+  "......2211......",
+  "....22211111....",
+];
+const CUTOUT_PAL = { 4: "#5a4436", 5: "#6e5646", p: "#9c8c78", P: "#a89880", r: "#6a4046", R: "#7a5058", 3: "#4a3a34" };
+const DEADNEON = [
+  "..KKKKKKKKKKKK..",
+  "..KxxxxxxxxxxK..",
+  "..KxKZZZZZZK.K..",
+  "..KxKKKKKzzK....",
+  "..KxKKKKzzKK..x.",
+  "..KxKKKzzKKK..x.",
+  "..K.KKKzzKKKxK..",
+  "..K.KKzzKKKKxK..",
+  "..KxKK.zKKKKxK..",
+  "..KxxxxxxxxxxK..",
+  "..KKKKKKKKKKKK..",
+  ".......87.......",
+  ".......87.......",
+  ".......87.......",
+  ".......87.......",
+  ".......87.......",
+  ".......87.......",
+  ".......87.......",
+  ".......87.......",
+  "......9876......",
+  "....99888777....",
+];
+const DEADNEON_PAL = { K: "#221019", x: "#5a3e4a", z: "#3e4a52", Z: "#3a4048" };
+
 // (M11) Litter bin (16×14): a walnut urn with a brass lid and band, a dark slot to drop things in.
 const BIN = mir([
   "......98", "....9888", "...98888", "..877777", "...yyyyy", "..766666",
@@ -1087,6 +1138,7 @@ export const OBJECT_SPRITES: Record<string, SpriteDef> = {
   ...DECOR_SPRITES,
   camera: S(CAMERA, { L: "#ff3040" }),
   dumpster: S(DUMPSTER, DUMPSTER_PAL),
+  junk_cutout: S(CUTOUT, CUTOUT_PAL), junk_neon: S(DEADNEON, DEADNEON_PAL),
   plant: S(PALM), "plant~1": S(shift(PALM, 1, 0, 6)),
   neon: S(NEON, NEON_PAL), "neon~1": S(recolor(NEON, { x: "H" }, 0, 10), NEON_PAL),
   sign: S(SIGN, SIGN_PAL),

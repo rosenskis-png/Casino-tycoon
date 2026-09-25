@@ -14,7 +14,8 @@
     "headless": "node scripts/headless.mjs",
     "fixture": "node scripts/fixture.mjs",
     "targets": "node scripts/targets.mjs",
-    "economy": "node scripts/economy.mjs"
+    "economy": "node scripts/economy.mjs",
+    "dark": "node scripts/dark.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",

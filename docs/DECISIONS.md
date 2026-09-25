@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · M11.2: the tutorial rebuilt (owner's vision) and the final balance pass
+- **Owner's tutorial vision (built):** "this is all the slots you're gonna get, so if you want to win you need to maximize those slots." The Lucky Horseshoe starts with 68 machines (was 18) and **no new games can be built**; a run-down locals' joint to turn into a place for tourists and families: litter and vomit everywhere, **broken theming** (cutouts and dead neon that spoil theming around them; throw them out before theming), drunk regulars who fight, a bar pouring free strong drinks, house rules ignoring drunkenness and disorder, no janitor. Starting themes: Ancient worlds (good for tourists and families, though Egypt and Medieval clash) and Old Vegas (mostly not); the restaurant is unlocked, shows take research. Goal: worth $36K, Tourists 55 and Families 50 by the end of Year 2. docs/spec/economy.md.
+- **Supersedes** the M11.1 direction "spamming slots must still be able to win the tutorial": with no new games, it can't. Spamming still can't win any later scenario.
+- **Claude's calls:** machines can be **moved** ($50, from their card; any fixed-size object), since they can't be replaced; the tutorial's machines are two new stock games with small jackpots (Lucky Cherries, Silver Bells: 150× every 2,500 spins), the owner's "smaller jackpots"; a second reputation bar in goals (`reps`); nine junk pieces, 70 litter, 8 vomit; $20K cash. Old tutorial saves pick up the new rules and goals.
+- **Money scale (Claude's calls; the M11.1 part 2 numbers pass, done here):** build prices halved everywhere (objects, decor, cabinets, dealers, walls, land, research, certification); running costs unchanged. Machines pay back in about 10–16 months on the busy Test Floor (was 24–48), less on a fuller floor. Free Play guest cap 1,500 (was 400, which stopped growth at ~100 machines). A scripted Free Play build reaches two full halls (~224 machines, restaurant, shows, tables) by month 10 and nets ~$5.5K a month by month 24 (was ~$2K and stuck): a strong casino in about 2 years.
+- **Guests:** a group's leader who is done or out of time now waits for the others (groups ended most visits); luck is ±10 points (was ±20: lucky players at 108% leaked money); a guest who can't find a restroom searches longer before going home. Test Floor visits 0.3–0.9 min longer, losses per visit up (tourists ~$81, party ~$44); no sanity flags.
+- **Not done, flagged:** no running cost that grows with size (sublinear draw already shrinks a big floor's margin; revisit if Free Play piles up cash). Party groups still leave for the restroom 14–23% of the time on the Test Floor (its restrooms are in corners; a layout symptom).
+- `npm run economy` is now the tutorial strategies report (idle, janitor, good; several seeds); `npm run dark` is the new dark-lever report (docs/spec/money.md).
+
 ## 2026-09-25 · M11.1 part 1 built: the functions (owner's caveats; Claude's calls)
 - **Green light** for M11.1 (owner). Two chats: this one changes functions, the next tunes numbers.
 - **One correct casino per crowd, not one room per crowd (owner):** a casino of differently themed rooms for each crowd should read as disjointed, and crowds next door annoy each other unless far enough apart. Built as: theming reaches 7 tiles and loses 35% per wall (was 4 and 60%), so clashing neighbors muddle each other; crowd noise per room carries to rooms within 10 tiles; the casino's draw for a crowd averages its fit over every seat, so a split floor suits each crowd less.
@@ -428,4 +437,4 @@ Replaces the same-day "time and population" decision, which kept time of day.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- Nothing pending.
+- M11.2's scenario ladder (early, core, challenge scenarios as real maps with goals) is still unbuilt: part of v0.8, or after it?

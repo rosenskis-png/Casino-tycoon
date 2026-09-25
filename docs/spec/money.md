@@ -44,5 +44,13 @@
 - Meal and show comps make their next meal or ticket free (the food still costs the house). The come-back offer is given as a regular leaves: $10 of free play (a ledger line), their next visit comes about 40% sooner, and disposition +2.
 - A comped guest gets a lift (buzz × their type's taste for comps) and may say so.
 
+## Dark levers, measured (M11.2)
+`npm run dark` plays the Test Floor for a year clean and with every dark lever pulled (a 30% tax skim, free
+strong drinks at every bar, every house rule on Ignore). Seeds 1 and 2: the dark floor's slots took about 20% more
+in theory on one seed (drunk guests bet bigger and stay) and 10% less on the other; free drinks cost about $11K a
+year in bar sales; the skim hid only $0–$1.3K of an 8% tax; fines came to $2.4K–$3.4K. One seed ended ahead by
+about $7K, the other lost police standing down to 1 (inspections) and lost the license. A gamble, as intended: dark
+levers can pay, and can end the casino.
+
 ## Save
 Schema 11: state gains `bank` (loans, tax dodged, insurance, comps policy, counters), `reg` (the regulator's schedule and findings), `whale`; guests gain `vip` and `comp`.

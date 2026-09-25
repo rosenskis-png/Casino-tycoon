@@ -168,7 +168,7 @@ Like theme pairings (docs/spec/themes.md), each strong pairing adds to Excitemen
 - **Banks:** 4–8 machines of one linked design in a row form a bank; a sign above them shows the live Major and Grand. Placing a bank is a floor-building decision (a landmark, a crowd, a sight line).
 - **Onlookers** gather behind a machine in a big bonus, as at craps (M7). A topper wheel spin and a Grand are heard across the floor.
 - Lights and sound are NRG sources; giant and tall cabinets are seen from farther; slant-tops don't block sight lines.
-- **Costs:** cabinet (slant $500, upright $400, stepper $450, tall $800, giant $3,000) + topper (sign $100, dome $150, figure $300, wheel $600) + $50 per feature; a bank's sign and controller $1,000. Upkeep ~0.6% of price a month. **Conversion kit:** switching a placed machine to another design of the same cabinet type, $100, instant.
+- **Costs** (M11.2 halved, docs/spec/economy.md): cabinet (slant $250, upright $200, stepper $225, tall $400, giant $1,500) + topper (sign $50, dome $75, figure $150, wheel $300) + $25 per feature, $15 per jackpot level, $40 more per progressive; a bank's sign and controller $500. Upkeep ~1.2% of price a month (the same dollars as before). **Conversion kit:** switching a placed machine to another design of the same cabinet type, $50, instant.
 
 ## 9. Playing it yourself
 The M10 slot screen is replaced by one built from the design, meant to look and feel like a modern Vegas slot or a real 3-reel stepper (owner's reference screenshots: Dragon Link, Buffalo Gold, Megabucks Mega Vault):
@@ -183,7 +183,7 @@ The M10 slot screen is replaced by one built from the design, meant to look and 
 - Everything from M10 still holds: casino cash on the "Owner's play" line, same odds as a guest, one wager per spin.
 
 ## 10. Money, the law and the regulator
-- **Certification:** a new design, or a change to its math or features, goes to the lab for 7 days and $1,500 before it can be placed (research can halve both). Cosmetic changes (name, colors, lights, sound) are free and instant. The library keeps certified versions per scenario.
+- **Certification:** a new design, or a change to its math or features, goes to the lab for 7 days and $750 (M11.2; was $1,500) before it can be placed (research can halve both). Cosmetic changes (name, colors, lights, sound) are free and instant. The library keeps certified versions per scenario.
 - **Legal limits per scenario:** minimum payback (80% by default) and near misses no more often than the design's natural rate. A design outside them can't be certified.
 - **Uncertified (dark lever):** the player can place a design without certifying it, instantly, with any settings (payback down to 50%, near misses above chance). It works. The regulator's inspector (M9) now also tests machines on each visit. M11: only machines the inspector sees; the first find is a warning with 30 days to fix it, and a second find seizes them (removed, no refund) with a standing hit and a fine that grows with how rigged it was. Hiding them, or bribing the inspector where a scenario allows it, is the way to get away with it (docs/spec/money.md).
 - **Progressives in the books:** meters are liabilities (shown in Finance), seeds are posted when a meter resets, and a jackpot the casino can't cover uses the M9 credit rules. Jackpot insurance covers payouts above its line, as now.
@@ -196,7 +196,7 @@ The M10 slot screen is replaced by one built from the design, meant to look and 
 - **Research** adds (open scenarios start with the building ones, per M9.5; the tutorial with none): 5-reel video, Ways, Free spins, Hold & spin, Pick and wheel, Cascades and collectors, Progressives, Linked banks, Giant cabinets, Fast certification; information: Slot lab (panel verdict by type).
 
 ## 12. Architecture and saves
-- `src/data/designer/`: vocabulary as data (layouts and pay tiers, features and options, themes' symbol sets and calls, cabinets, pairings, per-type preferences). `src/data/designs.ts`: stock designs.
+- `src/data/designer/`: vocabulary as data (layouts and pay tiers, features and options, themes' symbol sets and calls, cabinets, pairings, per-type preferences). `src/data/designs.ts`: stock designs (M11.2 adds Lucky Cherries and Silver Bells: Cherry Parade and Liberty Bell with a 150× jackpot every 2,500 spins instead of 1,000× / 800×, for the tutorial).
 - `src/sim/design/`: the compiler (design → exact par sheet → `SlotModel` + draw function + feel vector), the lab (par sheet, session simulator on its own seeded generator, never a state stream), appeal and feel. Pure TypeScript, headless.
 - `src/ui/designer/`: the designer screens; they compile and test through pure functions and change the game only by commands (`design.save`, `design.certify`, `design.convert`).
 - Slot objects become one generic kind with `design: id` (stock designs are data, not saved). Compiled designs, feel vectors and per-type appeal are runtime caches, rebuilt on load. `payStats`' cache key becomes the design version.

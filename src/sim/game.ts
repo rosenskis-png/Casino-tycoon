@@ -2,6 +2,8 @@
 import { SCENARIOS } from "../data/scenarios";
 import { GUEST_TYPES } from "../data/guests";
 import { DOOR_STATE, T } from "../data/terrain";
+import { VOMIT } from "../data/incidents";
+import { rng } from "./rng";
 import { OBJECTS } from "../data/objects";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, dateOfDay } from "./clock";
 import { EventBus } from "./events";
@@ -116,7 +118,7 @@ export class Game {
       pool: [], peds: [],
       finance: { month: { start: def.startCash }, history: [], total: { start: def.startCash } },
       thoughts: [{}],
-      incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES }, auth: newAuthorities(), enf: newEnforcement(),
+      incidents: [], incidentDays: [{}], rules: { ...DEFAULT_RULES, ...def.rules }, auth: newAuthorities(), enf: newEnforcement(),
       visits: { today: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 }, yday: { arrived: 0, left: 0, satSum: 0, broke: 0, walkedPast: 0 } },
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
@@ -134,6 +136,7 @@ export class Game {
     const g = new Game(state);
     for (const o of state.objects) crewAmenity(g, o);
     for (const [role, k] of Object.entries(def.staff)) for (let i = 0; i < k; i++) hireStaff(g, role);
+    if (def.mess) scatterMess(g, def.mess);
     news(g, "info", `Welcome to ${def.name}.`);
     return g;
   }
@@ -304,4 +307,13 @@ export class Game {
   }
 
   get day() { return Math.floor(this.state.tick / TICKS_PER_DAY); }
+}
+
+/** (M11.2) The last owner's mess: litter and vomit on open indoor floor, on the `setup` stream. */
+function scatterMess(g: Game, mess: { litter: number; vomit: number }) {
+  const s = g.state, m = s.map, r = rng(s, "setup"), open: number[] = [];
+  for (let i = 0; i < m.terrain.length; i++) if (m.terrain[i] === T.FLOOR && !m.outdoor[i] && g.walkable(i) && !g.seatAt[i]) open.push(i);
+  const pick = () => { const k = r.int(0, open.length - 1); const i = open[k]; open[k] = open[open.length - 1]; open.pop(); return i; };
+  for (let k = 0; k < mess.vomit && open.length; k++) s.dirt[pick()] = VOMIT;
+  for (let k = 0; k < mess.litter && open.length; k++) s.dirt[pick()] = r.int(2, 5);
 }

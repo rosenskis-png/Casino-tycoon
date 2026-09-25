@@ -32,7 +32,7 @@
 Janitors, slot techs, guards and pit bosses can be kept to one room (the staff card; "Anywhere" by default). They look for work and patrol only there; guards still run to trouble anywhere. Drink servers keep their bar's service area (docs/spec/guests.md).
 
 ## Dealers come with the tables (M11, owner)
-- A table's price includes its dealers ($800 per dealer spot, added to each table's cost; craps has two) and there are no wages. Dealers aren't hired, paid or given a pay level (skill is their knack alone); the Staff tab lists them as "come with the tables".
+- A table's price includes its dealers ($400 per dealer spot (M11.2; was $800), added to each table's cost; craps has two) and there are no wages. Dealers aren't hired, paid or given a pay level (skill is their knack alone); the Staff tab lists them as "come with the tables".
 - The table system keeps one dealer per dealer spot: a new table's dealers start at their spots; selling a table lets its dealers go; a dealer caught stealing (or fired) is replaced. Checked as an invariant by `npm run check`.
 
 ## Spreading out (M11, owner)

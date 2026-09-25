@@ -4,7 +4,7 @@ import { OBJECTS } from "../data/objects";
 import { covers, objFootprint, objSeats, type Command } from "../sim";
 import type { Host } from "./host";
 
-export type Tool = "inspect" | "wall" | "door" | "demolish" | "entrance" | "remove" | `place:${string}`;
+export type Tool = "inspect" | "wall" | "door" | "demolish" | "entrance" | "remove" | `place:${string}` | `move:${number}`;
 
 export interface InputCallbacks {
   tool(): Tool;
@@ -66,12 +66,20 @@ export class WorldInput {
     else if (c.type === "place") {
       tiles = objFootprint(c).filter(onMap).map((p) => p.y * w + p.x);
       seatTiles = objSeats(c).filter(onMap).map((p) => p.y * w + p.x);
+    } else if (c.type === "move") {
+      const o = g.objById.get(c.id);
+      if (!o) { this.host.drawOptions.ghost = null; return; }
+      const p = { kind: o.kind, x: c.x, y: c.y, rot: c.rot };
+      tiles = objFootprint(p).filter(onMap).map((q) => q.y * w + q.x);
+      seatTiles = objSeats(p).filter(onMap).map((q) => q.y * w + q.x);
     }
     this.host.drawOptions.ghost = { tiles, seats: seatTiles, ok: g.check(c) === null };
   }
 
   private ghostFor(tool: Tool, a: ReturnType<WorldInput["tileAt"]>, b: ReturnType<WorldInput["tileAt"]>): Command | null {
     const w = this.host.game.state.map.w;
+    // (M11.2) Moving an object: its footprint follows the finger; the Rotate button turns it.
+    if (tool.startsWith("move:")) return { type: "move", id: Number(tool.slice(5)), x: b.x, y: b.y, rot: this.cb.rot() & 3 };
     if (tool.startsWith("place:")) {
       // M8: a slot design rides along as place:<cabinet kind>@<design>.
       const [kind, design] = tool.slice(6).split("@"), def = OBJECTS[kind], rot = this.cb.rot() & 3;

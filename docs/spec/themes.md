@@ -49,6 +49,12 @@ energy). Costs $200–$900; upkeep about 0.5% of cost a month.
 - **Score** guests read = 0.6 q + 0.6 × the room's coherence. Nothing themed anywhere: everything is 0 and no
   memory is used.
 
+**Broken theming (M11.2, the tutorial):** a piece tagged `junk` (Faded Cowboy Cutout, Dead Neon Sign; only a
+scenario places them, the player throws them out for free) spreads a junk field like a theme (strength 3,
+radius 7). Where nothing is themed, the tile's quality is −3·tanh(junk/3) (bad theming: guests who care about
+theming mind it, "badTheme" thoughts); where something is, 1.5 × junk comes off Q, so new decor near it barely
+registers until it's gone.
+
 Reference (a 4-piece cluster on an empty floor, score at its middle): one theme 1.9, a good pair (Tiki +
 Pirate) 1.7, two themed pieces with a palm and a fountain 1.8, a clashing pair (Egypt + Medieval) 0.3, four
 unrelated themes −0.6.

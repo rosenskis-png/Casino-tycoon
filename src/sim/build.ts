@@ -24,6 +24,8 @@ declare module "./commands" {
     /** w × h: a sized amenity's front width and depth (its own frame); omitted for fixed-size objects. */
     place: { kind: string; x: number; y: number; rot: number; w?: number; h?: number; design?: string };
     remove: { id: number };
+    /** (M11.2) Pick an object up and put it down elsewhere (fixed-size objects only), for a small fee. */
+    move: { id: number; x: number; y: number; rot: number };
     setRoom: { tile: number; name?: string; purpose?: RoomPurpose };
     /** A restaurant's price multiplier, a show's ticket or a club's cover charge. */
     setPrice: { id: number; price: number };
@@ -123,7 +125,25 @@ export function parcelTiles(g: Game, id: string): number[] {
   return out;
 }
 
-const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPrice" | "buyParcel" | "setTrack"> = {
+/** (M11.2) Anything guests gamble at: slots, video poker, tables, the draw games, the sportsbook. */
+export const isGameKind = (kind: string) => { const d = OBJECTS[kind]; return !!d && (d.cat === "game" || d.cat === "table" || !!d.slot || !!d.game); };
+
+/** (M11.2) What moving an object costs. */
+export const MOVE_COST = 50;
+
+/** Where a moved object would stand: checked with the object itself lifted off the floor. */
+function movedPlacement(g: Game, o: PlacedObject, x: number, y: number, rot: number) {
+  const p: Placed = o.design !== undefined ? { kind: o.kind, x, y, rot: rot & 3, design: o.design } : { kind: o.kind, x, y, rot: rot & 3 };
+  const all = g.state.objects;
+  g.state.objects = all.filter((q) => q !== o);
+  g.rebuildOccupancy();
+  const f = placement(g, p);
+  g.state.objects = all;
+  g.rebuildOccupancy();
+  return { p, f };
+}
+
+const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" | "setPrice" | "buyParcel" | "setTrack"> = {
   build: {
     validate(g, c) {
       const ok = c.tiles.filter((i) => buildable(g, c.what, i));
@@ -148,6 +168,9 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
   },
   place: {
     validate(g, c) {
+      if (OBJECTS[c.kind]?.scenarioOnly) return "Can't build that";
+      // (M11.2) The tutorial: the games you start with are all you get.
+      if (SCENARIOS[g.state.scenario]?.noGames && isGameKind(c.kind)) return "No new games here: make the most of the ones you have";
       // M9.5: some things need research first.
       if (locked(g.state, c.kind)) return `Needs research: ${RESEARCH[projectFor(c.kind)].name}`;
       // M8: a slot cabinet plays a design (certified, or run uncertified), placed as its own cabinet.
@@ -193,6 +216,34 @@ const commands: CommandTable<"build" | "place" | "remove" | "setRoom" | "setPric
       g.tilesChanged(tiles);
       g.bus.emit({ type: "objectRemoved", id: o.id, x: o.x, y: o.y });
       g.bus.emit({ type: "sound", id: "demolish" });
+    },
+  },
+  move: {
+    validate(g, c) {
+      const o = g.objById.get(c.id);
+      if (!o) return "Already gone";
+      if (OBJECTS[o.kind].sized) return "Rooms and counters can't be moved";
+      if (g.state.yours?.obj === o.id) return "Finish your own game first";
+      if (MOVE_COST > g.state.cash) return "Not enough cash";
+      if (o.x === c.x && o.y === c.y && (o.rot & 3) === (c.rot & 3)) return "Already there";
+      const { f } = movedPlacement(g, o, c.x, c.y, c.rot);
+      return typeof f === "string" ? f : null;
+    },
+    apply(g, c) {
+      const o = g.objById.get(c.id)!, w = g.state.map.w;
+      const old = [...objectTiles(o, w), ...objSeats(o).map((s) => s.y * w + s.x)];
+      const { f } = movedPlacement(g, o, c.x, c.y, c.rot) as { f: { tiles: number[]; seats: number[] } };
+      // A new id: anyone playing or walking to it treats it as gone, as when it's sold; its record comes along.
+      const id = g.state.nextId++;
+      const n: PlacedObject = { ...o, id, x: c.x, y: c.y, rot: c.rot & 3 };
+      delete n.tbl;
+      g.state.objects = g.state.objects.map((q) => (q === o ? n : q));
+      post(g, "build", -MOVE_COST);
+      g.rebuildOccupancy();
+      g.tilesChanged([...old, ...f.tiles, ...f.seats]);
+      g.bus.emit({ type: "objectRemoved", id: o.id, x: o.x, y: o.y });
+      g.bus.emit({ type: "objectPlaced", id, kind: n.kind, x: n.x, y: n.y });
+      g.bus.emit({ type: "sound", id: "place" });
     },
   },
   setRoom: {

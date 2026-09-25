@@ -505,16 +505,18 @@ const goneSets = new WeakMap<Game, Set<number>>();
 function gone(g: Game) { let s = goneSets.get(g); if (!s) goneSets.set(g, (s = new Set())); return s; }
 
 /**
- * Someone wants to go home. A group member who is broke or done waits for the others instead, unless it's
- * urgent; the leader going takes the whole group along.
+ * Someone wants to go home. A group member (the leader too) waits for the others instead, unless it's urgent;
+ * the leader leaving for an urgent reason takes the whole group along.
  */
 function wantToLeave(g: Game, a: Agent, why: string) {
   const gd = a.g!;
   const urgent = why === "restroom" || why === "unhappy" || why === "hungry" || why === "tired" || why === "group";
-  // Broke or bored: wait for the others (the leader too). Quitting (a quit rule, time up) is the leader's call.
-  const waits = why === "broke" || why === "nothing" || (!gd.lead && !urgent);
+  // Anything but urgent: wait for the others, the leader too (M11.2: a leader done or out of time used to take
+  // everyone home mid-game). The group goes once everyone is ready, or half have waited WAIT_LONG.
+  const waits = !urgent;
   const others = companions(g, a);
-  if (waits && others.length && others.some((m) => m.g!.wait < 0 && !m.g!.why)) {
+  // Children follow the adults: only an adult still playing is worth waiting for.
+  if (waits && others.length && others.some((m) => !m.g!.minor && m.g!.wait < 0 && !m.g!.why)) {
     if (gd.wait < 0) { gd.wait = g.state.tick; think(g, a, "waiting"); }
     return standBy(g, a);
   }
@@ -682,7 +684,7 @@ function seekNeed(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean {
   const gd = a.g!;
   if (gd.gaveUp & NEED_BIT[what]) return false;
   const cameFor = INTENT_NEED[gd.intent] === what;
-  if (gd.seek === what && gd.lost >= giveUpAfter(gd) + (cameFor ? 6 : 0)) {
+  if (gd.seek === what && gd.lost >= giveUpAfter(gd) + (cameFor ? 6 : 0) + (what === "bladder" ? 6 : 0)) {
     gd.gaveUp |= NEED_BIT[what];
     gd.seek = "";
     gd.lost = 0;
@@ -1668,15 +1670,18 @@ function thinkIfDue(g: Game, a: Agent, type: GuestTypeDef, r: Rng) {
   }
 }
 
-/** Once a second: groups whose leader left or quit, or where half the members have waited too long, go home. */
+/** Once a second: groups whose leader left, where everyone is ready, or where half have waited too long, go home. */
 function groupsBeat(g: Game) {
   const tick = g.state.tick;
   for (const gi of refreshGroups(g).values()) {
     if (gi.members.length < 2 && gi.leader) continue;
     const leaderGone = !gi.leader || !!gi.leader.g!.why;
-    let long = 0;
-    for (const m of gi.members) if (m.g!.wait >= 0 && tick - m.g!.wait >= WAIT_LONG * TICKS_PER_SECOND) long++;
-    if (!leaderGone && long * 2 < gi.members.length) continue;
+    let long = 0, ready = 0;
+    for (const m of gi.members) {
+      if (m.g!.wait >= 0 || m.g!.why || m.g!.minor) ready++;
+      if (m.g!.wait >= 0 && tick - m.g!.wait >= WAIT_LONG * TICKS_PER_SECOND) long++;
+    }
+    if (!leaderGone && long * 2 < gi.members.length && ready < gi.members.length) continue;
     for (const m of gi.members) if (!m.g!.why) { m.g!.why = "group"; m.g!.wait = -1; }
   }
 }

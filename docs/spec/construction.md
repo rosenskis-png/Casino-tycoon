@@ -25,7 +25,7 @@ Tap a door to open its card. Entrances (street and elevator) can't be changed.
 | Rule | Who passes |
 |---|---|
 | Open | everyone |
-| Staff only | all staff, police and paramedics, and guests being escorted |
+| Staff only | all staff, police and paramedics, and guests being escorted; never escorts (Batch A, owner: they use any door a guest could, and pay no fees) |
 | Locked | nobody |
 | Card holders | staff (as above) and returning guests (people who have visited before). With the player's club (M9.5 research) the door reads "Club members"; members are still returning guests. |
 | Dress code: *type* | staff (as above) and guests of one type. Types already look different; the card names the look ("Locals"). |

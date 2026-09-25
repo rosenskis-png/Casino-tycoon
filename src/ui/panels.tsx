@@ -492,8 +492,10 @@ export function ResearchPanel({ host }: { host: Host }) {
             {FUNDING.map((v) => <option key={v} value={v}>{v ? `${money(v)} a month` : "None"}</option>)}
           </select>
         </span>
-        <b>Project</b><span>{cur ? `${cur.name}: ${Math.floor(((r.points[cur.id] ?? 0) / cur.cost) * 100)}% of ${money(cur.cost)}` : r.funding ? "None picked: the money is being wasted" : "None"}</span>
+        <b>Project</b><span>{cur ? `${cur.name}: ${Math.floor(((r.points[cur.id] ?? 0) / cur.cost) * 100)}% of ${money(cur.cost)}` : r.funding ? "None picked: funding is paused until you pick one" : "None"}</span>
+        <b>Next</b><span>{r.queue.length ? r.queue.map((q) => RESEARCH[q]?.name ?? q).join(", ") : "Nothing queued"}</span>
       </div>
+      <p className="muted small">Tap a project to research it now, or to queue it behind the current one; tap again to take it off.</p>
       {cats.map((c) => {
         const list = Object.values(RESEARCH).filter((d) => d.cat === c);
         return (
@@ -504,7 +506,11 @@ export function ResearchPanel({ host }: { host: Host }) {
               return (
                 <div className="row" key={d.id} style={{ alignItems: "center" }}>
                   <span style={{ flex: 1 }}>{d.name}{done ? " ✅" : ""}<br /><small className="muted">{d.desc}{!done && !can && d.needs ? ` Needs ${d.needs.map((n) => RESEARCH[n].name).join(", ")}.` : ""}</small></span>
-                  {!done && <button className={`btn ${r.project === d.id ? "on" : ""}`} disabled={!can} onClick={() => g.dispatch({ type: "setProject", id: r.project === d.id ? "" : d.id })}>{r.project === d.id ? "Researching" : money(d.cost)}</button>}
+                  {!done && (() => {
+                    const now = r.project === d.id, k = r.queue.indexOf(d.id);
+                    const act = () => { play("click"); g.dispatch(now ? { type: "setProject", id: "" } : k >= 0 ? { type: "queueProject", id: d.id, add: false } : !r.project && can ? { type: "setProject", id: d.id } : { type: "queueProject", id: d.id, add: true }); };
+                    return <button className={`btn ${now || k >= 0 ? "on" : ""}`} onClick={act}>{now ? "Researching" : k >= 0 ? `Queued #${k + 1}` : money(d.cost)}<small>{now || k >= 0 ? "tap to stop" : r.project || !can ? "queue" : "research"}</small></button>;
+                  })()}
                 </div>
               );
             })}

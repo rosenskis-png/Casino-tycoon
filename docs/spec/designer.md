@@ -294,7 +294,8 @@ Kept in M8.6 because both need fans and novelty, which are that part's core. The
 
 ### Selling a design to a slot maker
 The rare jackpot of design: a game good enough that a maker buys it.
-- **Who can get an offer:** a design of origin `own` (not stock, rival, imported or a copy of one), on the floor at least 6 months, with Excitement ≥ 6, a (lifetime) performance index ≥ 1.2, at least 50 fans, and payback ≤ 97% (it has to make money, not just be loved at 99%).
+- **Batch A (owner) replaces the rules below:** fans decide. Your own certified design on the floor gets a chance of an offer from **20 fans** (checked daily: about 5% a month at 20, rising to about 45% a month at 49) and **one for sure at 50**. Excitement, performance, fans and hold only shape how good the offer is. The offer **pauses the game with a pop-up** (Accept, Decline, or Decide later) and **waits in the Slots tab until answered** (no 30-day lapse).
+- **Who could get an offer (M8.6):** a design of origin `own` (not stock, rival, imported or a copy of one), on the floor at least 6 months, with Excitement ≥ 6, a (lifetime) performance index ≥ 1.2, at least 50 fans, and payback ≤ 97% (it has to make money, not just be loved at 99%).
 - **Chance:** each month a qualifying design scores s from 0 to 1 (Excitement, performance index, fans, hold); an offer comes with chance 0.5% + 3% × s a month. Even the best design waits a year or so on average.
 - **The offer** (from one of M8.6's fictional makers, a letter with Accept / Decline, open 30 days), each term jittered around s:
   - **One-time cash:** 10–100× the design's cabinet price.

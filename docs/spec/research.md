@@ -4,11 +4,12 @@
 
 ## Funding and projects
 - **Monthly funding** (Research tab): $0, $250, $500, $1,000 or $2,000 a month, accrued like wages (a ledger line). Each dollar is a research point.
-- The player picks the **project**; points go into it until it's done (on the ticker), then into the next one they pick. With no project picked, funding is still spent but nothing progresses (the tab says so).
+- The player picks the **project**; points go into it until it's done (on the ticker), then into the next one in the **queue** (Batch A): tap a project to research it now, or to queue it behind the current one; tap again to take it off. A queued project whose prerequisites aren't done yet waits its turn.
+- (Batch A, owner) **No project, no spending:** funding only goes out while something is being researched.
 - Projects need their prerequisites. Each scenario lists what it starts with: the Lucky Horseshoe starts with none; Free Play, the Test Floor and the Big Floor start with every building project (games, amenities, themes, staff tools), not the information ones.
 
 ## The tree
-Costs halved in M11.2 (the money scale, docs/spec/economy.md).
+Costs halved in M11.2 (the money scale, docs/spec/economy.md), and **halved again in Batch A** (owner: too expensive and slow): the table lists the M11.2 costs; the game charges half (`COST_SCALE` in `src/data/research.ts`).
 
 | Category | Project | Cost | Needs | Unlocks |
 |---|---|---|---|---|

@@ -21,6 +21,7 @@ import { compSeeking } from "./drinks";
 import { payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
 import { earnComps, ensureCash, expectedExcess, stiff } from "./bank";
+import { engagement } from "./guests";
 
 /** Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
 const TICKER_JACKPOT = 1000;
@@ -42,12 +43,13 @@ export const limitsOf = (o: PlacedObject): [number, number] => {
  * Credits a guest bets per wager on this model: their usual stake, raised by drink, by winning (house money)
  * and by losing (chasing it back to even), then fitted to the machine. Comp-seekers bet the minimum.
  */
-export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1): number {
+export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1, eng = 1): number {
   // A cheat mid-spell bets the most the machine takes.
   if (gd.spell > 0) return m.maxCredits;
   const lo = m.minCredits ?? 1;
   if (compSeeking(g, gd)) return lo;
-  return Math.max(lo, Math.min(m.maxCredits, Math.round(wantBet(gd) / (m.denom * mult))));
+  // (M11.1) Engaged players bet more (by the square root of their engagement).
+  return Math.max(lo, Math.min(m.maxCredits, Math.round((wantBet(gd) * Math.sqrt(eng)) / (m.denom * mult))));
 }
 
 /** What a guest would like to bet per wager now: their stake, loosened by drink and swung by how it's going. */
@@ -171,7 +173,7 @@ function resolve(g: Game, a: Agent) {
   const r = rng(g.state, "gaming");
   // Bet what they'd like to, or less when that's all the wallet covers. A high-limit room multiplies the stakes.
   const mult = stakeMult(g, o);
-  const bet = betOf(m, Math.min(creditsFor(g, gd, m, mult), Math.floor(gd.wallet / (m.denom * mult * WAGERS_PER_ROUND) + 1e-9))) * mult;
+  const bet = betOf(m, Math.min(creditsFor(g, gd, m, mult, engagement(g, a)), Math.floor(gd.wallet / (m.denom * mult * WAGERS_PER_ROUND) + 1e-9))) * mult;
   if (bet * WAGERS_PER_ROUND > gd.wallet + 1e-9) return;
   // Luck and cheating bend what each wager pays (docs/spec/cheats.md); the suspicion tools compare against the math.
   // (M8.5) A designed slot's progressive meters and collector are live: each wager feeds them and can win them.

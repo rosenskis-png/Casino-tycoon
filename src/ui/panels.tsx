@@ -680,7 +680,7 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
         <p>{roleDoing(g, a)}</p>
         {(a.role === "officer" || a.role === "inspector") && bribeChance(g) > 0 && (
           a.paid ? <p className={a.paid === 1 ? "lv-good" : "lv-urgent"}>{a.paid === 1 ? "Took your money: they're looking the other way." : "Refused your bribe, and reported it."}</p> :
-          <p><button className="btn danger" disabled={g.state.cash < bribePrice(a) || a.act === "leave"} onClick={() => g.dispatch({ type: "bribe", id: a.id })}>Offer a bribe ({money(bribePrice(a))})</button>
+          <p><button className="btn danger" disabled={g.state.cash < bribePrice(g, a) || a.act === "leave"} onClick={() => g.dispatch({ type: "bribe", id: a.id })}>Offer a bribe ({money(bribePrice(g, a))})</button>
             <br /><small className="muted">Illegal. Some officials here take money; one who doesn't reports it (a fine and lost standing). Bribes can come out later.</small></p>
         )}
         <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : a.role === "medic" ? "Here for a guest who passed out." : a.role === "escort" ? "Working the floor. Your vice rule decides whether security shows them out." : "From the gaming regulator: they audit the books and the games, and report when they leave."}</p>

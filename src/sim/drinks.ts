@@ -92,8 +92,8 @@ export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: 
     post(g, "bar", price);
     // M9: a crooked server (or bartender) pockets the money now and then.
     const thief = via === "server" ? server : undefined, cr = rng(g.state, "crew"), w = g.state.map.w;
-    if (thief?.st?.crook && cr.chance(greed(thief, THEFT.server.p))) steal(g, "bar", price, thief.y * w + thief.x, "pocketing drink money", thief);
-    else if (via === "bar" && o?.crook && cr.chance(greed(null, THEFT.bartender.p))) steal(g, "bar", price, a.y * w + a.x, "pocketing drink money", null, o);
+    if (thief?.st?.crook && cr.chance(greed(g, thief, THEFT.server.p))) steal(g, "bar", price, thief.y * w + thief.x, "pocketing drink money", thief);
+    else if (via === "bar" && o?.crook && cr.chance(greed(g, null, THEFT.bartender.p))) steal(g, "bar", price, a.y * w + a.x, "pocketing drink money", null, o);
   }
   post(g, "drinks", -DRINK_COST);
   gd.drink = 1;

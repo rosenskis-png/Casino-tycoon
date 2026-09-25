@@ -32,6 +32,7 @@ g.bus.on((e) => {
 const totals = {};
 // M7: who plays what, sampled every 5 s: per type, seats taken at machines and at each table game.
 const at = {}, fams = new Set();
+const occ = { samples: 0, seats: 0, playing: 0, eng: {} };
 // M8.6: a new game of your own launches on day 30 (three of the tall Stampede cabinets converted), so word of mouth,
 // novelty and fans have something to do; its awareness is sampled monthly.
 let launched = "";
@@ -51,8 +52,12 @@ for (let d = 0; d < days; d++) {
   for (let t = 0; t < sim.TICKS_PER_DAY; t++) {
     g.step();
     if (t % 100) continue;
+    // M11.1: seat occupancy (guests playing ÷ game seats) and engagement, sampled with the rest.
+    occ.samples++; occ.seats += g.gameSeats;
     for (const a of g.state.agents) {
       if (a.role !== "guest" || a.act !== "play" || a.seat < 0) continue;
+      occ.playing++;
+      (occ.eng[a.g.type] ??= []).push(sim.engagement(g, a));
       const o = g.objById.get(a.target), def = o && sim.OBJECTS[o.kind];
       if (!def) continue;
       const k = def.cat === "table" ? def.game : def.game === "vpoker" ? "vpoker" : "slots";
@@ -142,6 +147,7 @@ for (const o of s.objects) {
   const h = (hold[def.game] ??= { in: 0, out: 0, n: 0, sessions: 0 });
   h.in += o.st.coinIn; h.out += o.st.paidOut; h.n++; h.sessions += o.st.sessions;
 }
+console.log(`seats: ${pct(occ.playing / Math.max(1, occ.seats))} of game seats in use on average; engagement median ${Object.entries(occ.eng).map(([t, xs]) => `${t} ${med(xs).toFixed(2)}`).join(", ")}; draw ${Object.keys(sim.SCENARIOS.testfloor.population).map((t) => `${t} ${sim.floorDraw(g, t).toFixed(2)}`).join(", ")}`);
 console.log(`games: ${Object.entries(hold).map(([k, h]) => `${k} ${h.sessions} sessions, hold ${h.in ? ((100 * (h.in - h.out)) / h.in).toFixed(1) : "–"}%`).join("; ")}`);
 console.log(`books: tables ${m("tables")}, poker rake ${m("poker")}, keno & bingo ${m("keno")}, slots ${m("slots")}`);
 const counters = all.filter((e) => e.counter);

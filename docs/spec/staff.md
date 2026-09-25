@@ -26,6 +26,8 @@
 - **Catching staff:** each theft has a chance to be seen: 2% (the count flags it) + 12% × skill per honest guard within 8 tiles in view + 15% × skill per honest pit boss in view (dealers) + 10% × the watched camera field there. A caught worker is fired on the spot and a replacement is hired automatically (same job, room and bar; M9.6, owner's call), the money is recovered, and the ticker says who caught whom. A caught bartender or teller is replaced.
 - **The monthly count** posts what went missing as shrinkage lines in the books (bar, cage, tables, machines) and a log line. That is the symptom: the player learns where money leaks, not who takes it.
 
+- **(M11.1) A big organization's problem (owner):** every theft chance × (staff − 8) / (40 − 8), clamped 0–1, counting every worker plus one per bar and cage crew. A family-sized casino has no theft; a big one has it at full strength.
+
 ## Patrol zones
 Janitors, slot techs, guards and pit bosses can be kept to one room (the staff card; "Anywhere" by default). They look for work and patrol only there; guards still run to trouble anywhere. Drink servers keep their bar's service area (docs/spec/guests.md).
 

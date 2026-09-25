@@ -9,7 +9,7 @@ import { OBJECTS } from "../data/objects";
 import {
   BEAT_GROUP_ANNOY, BEAT_GROUP_CALL, BEAT_GROUP_POLICE, CAMS_PER_OPERATOR, CATCH_BASE, CATCH_CAMERA, CATCH_DEALER, CATCH_GUARD, CATCH_PIT, COUNT_SPOT, PIT_SIGHT,
   CHEAT_HIT, CHEAT_X, CREW, ENF, ENF_ACTIONS, ESTIMATE_CAP, SUSPECT_Z, GUARD_SIGHT, HEAT_DECAY, HEAT_SCALE, HONEST_SECS, INNOCENT_VANISH_POLICE,
-  LUCK_SHARE, LUCK_SHIFT, MARKED, MISSING_POLICE, MISSING_SECS, RUMOR_DAYS, SPELL_SECS, TAKE, WITNESS_POLICE, WITNESS_REACH,
+  LUCK_SHARE, LUCK_SHIFT, TAKE_MIN, MARKED, MISSING_POLICE, MISSING_SECS, RUMOR_DAYS, SPELL_SECS, TAKE, WITNESS_POLICE, WITNESS_REACH,
   WITNESS_REPORTS, type EnfAction,
 } from "../data/cheats";
 import type { SlotModel } from "../data/games";
@@ -27,6 +27,7 @@ import { companions, depart, release, sendHome, think } from "./guests";
 import { person, hitReputation, removePerson } from "./pool";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
+import { scaled } from "./bank";
 import { fmtMoney, news } from "./news";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { honest, skillOf } from "./crew";
@@ -79,8 +80,9 @@ export function tagGuest(g: Game, gd: GuestData, p: Person | null, leader: Guest
     gd.cheat = r.chance(leader?.cheat ? CREW : type.cheat) ? 1 : 0;
   }
   if (gd.cheat) {
-    // Here for the money: they stay longer, and only their take ends the visit early.
-    gd.take = Math.round(logNormal(r, TAKE) / 10) * 10;
+    // Here for the money: they stay longer, and only their take ends the visit early. (M11.1) What they're after is
+    // sized to the casino: small change at a small one, serious money at a big one.
+    gd.take = Math.max(TAKE_MIN, scaled(g, logNormal(r, TAKE)));
     gd.floorTime = Math.round(gd.floorTime * 1.5);
     gd.spellAt = s.tick + r.int(HONEST_SECS[0], HONEST_SECS[1]) * SEC;
   }

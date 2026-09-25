@@ -52,5 +52,5 @@ export interface ThemeTags {
   clashesPlace?: Place[];
 }
 
-/** Radius a decor item themes, in tiles. */
-export const THEME_RADIUS = 4;
+/** Radius a decor item themes, in tiles. M11.1: 7 (was 4): theming carries into neighboring rooms, so a floor of clashing rooms reads as disjointed. */
+export const THEME_RADIUS = 7;

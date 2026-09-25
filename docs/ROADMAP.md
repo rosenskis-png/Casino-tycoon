@@ -131,8 +131,14 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 - Gentler authorities: faster recovery, one ladder step a week, the license lost only from the top. Uncertified machines found only by sight, warned first; bribes for inspectors and officers where a scenario allows. Save schema 18.
 - Cut (owner): design goals, royalty-excluding goals, the high-limit baccarat cheat flag.
 
-## M11.1 · General balance pass ☐
-Guest numbers become tuning goals (docs/spec/guests.md "design intent"); money scale, running costs, staff, cheats, authorities, research and marketing numbers; the Test Floor and the tutorial economy.
+## M11.1 · General balance pass ◐  (two chats, owner 2026-09-25; direction in DECISIONS)
+**Part 1, the functions ☑** (docs/spec/guests.md "Engagement and draw", themes.md, money.md "Sized to the casino", cheats.md, staff.md)
+- Engagement at a game (how well the spot suits the guest + how much they like the game) moves pace, stake, loss limit and time on the floor ("time flies"). Mood from surroundings gains a real upside (+25).
+- Draw: each crowd's arrivals follow how well the casino's seats suit it (weighted by the crowd's taste for each game); seats draw only sublinearly.
+- Hidden per-crowd theme tastes; theming carries further and through walls, so clashing rooms side by side read as disjointed (owner: one correct casino per crowd, not one room per crowd).
+- Crowd noise per room (drink, drugs, dancing) that carries into rooms nearby.
+- Fines, bribes and cheats' takes sized to the casino's monthly win; staff theft only in big organizations (owner).
+**Part 2, the numbers ☐** (next chat): guest numbers become tuning goals; money scale and machine payback (6–12 months), margins, running costs that grow with size; the tutorial (more machines and cash, smaller jackpots, goal to match, slot spam can win it); pace to a strong casino in about 2 years; lucky guests, groups ending visits, restroom exits, tourist and party losses; engagement and draw centers and strengths; a scripted dark-lever run; multi-seed measurement (jackpot variance swamps single runs).
 
 ## M11.2 · Scenario build and level redesign ☐
 The scenario ladder (FOUNDATIONS §20: early, core, challenge, free play; unlocks), the working titles as real maps with goals, and a tutorial that teaches symptom-reading through its setup.

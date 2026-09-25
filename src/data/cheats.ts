@@ -5,8 +5,9 @@ export const LUCK_SHARE = 0.03;
 export const LUCK_SHIFT = 0.2;
 /** A cheat who leads a group brings a crew: each companion cheats too with this chance. */
 export const CREW = 0.5;
-/** What a cheat means to walk out with (dollars). */
+/** What a cheat means to walk out with (dollars, at a casino winning $10K a month; M11.1 sizes it to the casino, never under TAKE_MIN). */
 export const TAKE = { median: 400, sigma: 0.5, min: 150, cap: 2500 };
+export const TAKE_MIN = 20;
 /** Seconds of honest play before a spell, and how long a spell lasts. */
 export const HONEST_SECS: [number, number] = [20, 60];
 export const SPELL_SECS: [number, number] = [30, 90];

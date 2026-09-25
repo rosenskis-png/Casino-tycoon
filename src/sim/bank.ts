@@ -6,6 +6,7 @@ import {
 } from "../data/money";
 import { GUEST_TYPES } from "../data/guests";
 import { SCENARIOS } from "../data/scenarios";
+import { SCALE } from "../data/psych";
 import type { SlotModel } from "../data/games";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
@@ -37,6 +38,23 @@ export const newBank = (): Bank => ({
 
 /** Ledger lines that make up the gaming win (taxed). */
 export const GAMING = ["slots", "tables", "poker", "keno", "sports"];
+
+/**
+ * (M11.1) The casino's scale: its average monthly gaming win over the last 3 closed months, or before any month
+ * has closed an estimate from its game seats. Threats and penalties are sized by it (`scaled`).
+ */
+export function monthlyWin(g: Game): number {
+  const hist = g.state.finance.history.slice(-3);
+  if (!hist.length) return SCALE.perSeat * g.gameSeats;
+  return Math.max(0, hist.reduce((a, h) => a + GAMING.reduce((b, k) => b + (h.l[k] ?? 0), 0), 0) / hist.length);
+}
+
+/** (M11.1) A dollar amount tuned for a casino winning SCALE.refMonth a month, sized to this one (clamped). */
+export function scaled(g: Game, amount: number): number {
+  const k = Math.max(SCALE.min, Math.min(SCALE.max, monthlyWin(g) / SCALE.refMonth));
+  const v = amount * k;
+  return v >= 100 ? Math.round(v / 10) * 10 : Math.max(1, Math.round(v));
+}
 
 export const debtOf = (g: Game) => g.state.bank.loan + g.state.bank.emergency;
 /** What the casino owns before debt: cash (if any) plus resale value and land. */

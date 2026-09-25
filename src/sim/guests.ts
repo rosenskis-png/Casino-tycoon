@@ -7,6 +7,8 @@ import { OBJECTS } from "../data/objects";
 import { T } from "../data/terrain";
 import { SCENARIOS } from "../data/scenarios";
 import { WAGERS_PER_ROUND } from "../data/games";
+import { THEME_IDS } from "../data/themes";
+import { DRAW, ENGAGE, ENV_MOOD, THEME_TASTE, TIME_FLIES } from "../data/psych";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
@@ -202,11 +204,16 @@ function localDirt(g: Game, i: number): number {
   return s;
 }
 
-function tasteAt(g: Game, t: Taste, i: number): number {
+function tasteAt(g: Game, t: Taste, i: number, layoutOnly = false): number {
+  // (M11.1) The layout alone (for the casino's draw): no crowd, traffic, litter or crowd noise.
+  if (layoutOnly && (t === "DIRT" || t === "CRW" || t === "TRF")) return NaN;
+  if (layoutOnly && t === "NRG") return g.fields.get("NRG", i);
   if (t === "DIRT") return localDirt(g, i);
   if (t === "THM") return g.fields.themes.at(i);
   // A coherent themed room reads as more prestigious (M6.5).
   if (t === "PRS") return g.fields.get("PRS", i) + 0.8 * Math.max(0, g.fields.themes.at(i));
+  // (M11.1) Noise: the objects' energy plus the noise the crowd is making in this room and the rooms around it.
+  if (t === "NRG") return g.fields.get("NRG", i) + g.fields.noiseAt(i);
   return g.fields.get(t, i);
 }
 
@@ -217,7 +224,7 @@ function prefScore(p: Pref, v: number): number {
   return d <= p.tol ? 0.3 * p.w : -p.w * Math.min(1.5, (d - p.tol) / p.tol);
 }
 
-export function fitAt(g: Game, type: GuestTypeDef, i: number, gd?: GuestData): Fit {
+export function fitAt(g: Game, type: GuestTypeDef, i: number, gd?: GuestData, layoutOnly = false): Fit {
   let score = 0;
   let worst: Fit["worst"] = null, best: Fit["best"] = null;
   // Smoke (M6): a penalty past tolerance only, so smoke-free air changes nothing; smokers barely mind it.
@@ -233,13 +240,16 @@ export function fitAt(g: Game, type: GuestTypeDef, i: number, gd?: GuestData): F
   // Theming (M6.5): weighted by how much the type cares; a muddle stings more than good theming pleases.
   const th = g.fields.themes.active ? g.fields.themes.at(i) : 0;
   if (th) {
-    const c = type.theming * (th > 0 ? 0.25 * th : 0.4 * th);
+    // (M11.1) A coherent spot pleases by how much they like its theme: one they dislike can put them off.
+    const d = th > 0 ? g.fields.themes.domAt(i) : -1, taste = d >= 0 ? type.themes[THEME_IDS[d]] ?? 0 : 0;
+    const c = type.theming * (th > 0 ? (0.25 + THEME_TASTE * taste) * th : 0.4 * th);
     score += c;
     if (c < 0 && (!worst || -c > worst.mag)) worst = { t: "THM", hi: false, mag: -c };
     else if (c >= 0.15 && type.theming >= 0.5) best = { t: "THM", mag: c };
   }
   for (const [t, p] of Object.entries(type.prefs) as [Taste, Pref][]) {
-    const v = tasteAt(g, t, i);
+    const v = tasteAt(g, t, i, layoutOnly);
+    if (Number.isNaN(v)) continue;
     const s = prefScore(p, v);
     score += s;
     if (s < 0 && (!worst || -s > worst.mag)) worst = { t, hi: v > p.ideal, mag: -s };
@@ -733,6 +743,24 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
 }
 
 /**
+ * (M11.1) Engagement at the game they're sitting at (docs/spec/guests.md "Engagement and draw"): how well the spot
+ * suits them and how much they like the game. Above 1 they play faster, bet more, stay longer and lose more before
+ * they stop; below 1, the reverse. Pure (recomputed where it's used), so nothing extra is saved.
+ */
+export function engagement(g: Game, a: Agent): number {
+  const c = engageParts(g, a);
+  return c ? Math.max(ENGAGE.min, Math.min(ENGAGE.max, 1 + ENGAGE.fit * (c.fit - ENGAGE.fitMid) + ENGAGE.game * (c.app - ENGAGE.gameMid))) : 1;
+}
+
+/** The two parts of engagement: how well the spot suits them and how much they like the game (reports read these). */
+export function engageParts(g: Game, a: Agent): { fit: number; app: number } | null {
+  const gd = a.g, o = gd && g.objById.get(a.target);
+  if (!gd || !o || gd.vip) return null;
+  const type = GUEST_TYPES[gd.type];
+  return { fit: fitAt(g, type, a.y * g.state.map.w + a.x, gd).score, app: gameAppeal(g, type, gd, o) };
+}
+
+/**
  * (M8.5) A big progressive meter pulls guests in (owner): each doubling of the biggest meter they could win, against
  * their own bet, adds the same, so every dollar counts for less; a bank sign showing it nearby carries it further.
  */
@@ -1219,9 +1247,9 @@ function slotRemark(g: Game, a: Agent, o: import("./state").PlacedObject, secs: 
   st.sessions++;
 }
 
-/** Loss limit and win goal as they stand now: drink loosens both, chasing erodes the limit. */
-export function limits(gd: GuestData): { loss: number; win: number } {
-  return { loss: gd.lossLimit * (1 + 1.5 * gd.intox) * (1 + 2 * gd.chase), win: gd.winGoal * (1 + gd.intox) * (1 + gd.chase) };
+/** Loss limit and win goal as they stand now: drink loosens both, chasing erodes the limit, engagement (M11.1) stretches the limit. */
+export function limits(gd: GuestData, eng = 1): { loss: number; win: number } {
+  return { loss: gd.lossLimit * eng * (1 + 1.5 * gd.intox) * (1 + 2 * gd.chase), win: gd.winGoal * (1 + gd.intox) * (1 + gd.chase) };
 }
 
 /** Ticks until the next round: a machine's spin at the player's pace; at a table, 1 (waiting for the deal). */
@@ -1231,7 +1259,11 @@ function nextRound(g: Game, a: Agent): number {
   // A free spins feature last round (M8) holds the seat a little longer.
   const extra = gd.extra ?? 0;
   gd.extra = 0;
-  return roundTicks(machineModel(g.state, o, gd)!, gd.pace * (compSeeking(g, gd) ? 0.7 : 1)) + extra;
+  // (M11.1) Engaged players play faster, and time flies: the round counts for less (or more) of their floor time.
+  const eng = engagement(g, a);
+  const ticks = roundTicks(machineModel(g.state, o, gd)!, gd.pace * Math.sqrt(eng) * (compSeeking(g, gd) ? 0.7 : 1)) + extra;
+  gd.floorTime += Math.round(ticks * (eng - 1) * TIME_FLIES);
+  return ticks;
 }
 
 /** Between rounds: keep playing, or get up (quit rule, floor time, needs, money, a broken machine, the group). */
@@ -1253,7 +1285,7 @@ function quitReason(g: Game, a: Agent): string | null {
   const nt = net(gd);
   // A cheat still after their take ignores the usual quit rules.
   const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
-  const lim = limits(gd);
+  const lim = limits(gd, rule === "lossLimit" ? engagement(g, a) : 1);
   if (rule === "winGoal" && nt >= lim.win) { think(g, a, "quitAhead"); return "done"; }
   if (rule === "lossLimit" && -nt >= lim.loss) { think(g, a, "myLimit"); return "done"; }
   const jackpot = o.last.win === 2 && o.last.tick === g.state.tick;
@@ -1298,7 +1330,7 @@ function finishUse(g: Game, a: Agent, r: Rng) {
     // M9: a crooked teller shorts the drawer now and then.
     if (def.serves === "cage" && o.crook) {
       const cr = rng(g.state, "crew");
-      if (cr.chance(greed(null, THEFT.teller.p))) steal(g, "cage", cr.int(THEFT.teller.amount[0], THEFT.teller.amount[1]), a.y * g.state.map.w + a.x, "shorting the cage drawer", null, o);
+      if (cr.chance(greed(g, null, THEFT.teller.p))) steal(g, "cage", cr.int(THEFT.teller.amount[0], THEFT.teller.amount[1]), a.y * g.state.map.w + a.x, "shorting the cage drawer", null, o);
     }
   }
   release(g, a);
@@ -1608,7 +1640,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   const span = walking ? 1 : MOOD_EVERY;
   if (!walking && (a.id + beatNo) % MOOD_EVERY !== 0) return thinkIfDue(g, a, type, r);
   const here = a.y * g.state.map.w + a.x;
-  const env = Math.max(-30, Math.min(12, fitAt(g, type, here, gd).score * 8));
+  const env = Math.max(ENV_MOOD[0], Math.min(ENV_MOOD[1], fitAt(g, type, here, gd).score * 8));
   const luck = Math.max(-15, Math.min(15, (net(gd) / staked(gd)) * 25));
   let needs = 0;
   for (const v of [n.bladder, n.thirst, n.hunger, n.fatigue]) if (v > 60) needs += (v - 60) / 3;
@@ -1662,9 +1694,46 @@ export function guestCount(g: Game): number {
   return n;
 }
 
-/** Floor-size factor on new arrivals: a bigger floor draws more people. */
+/** Floor-size factor on new arrivals: a bigger floor draws more people (M11.1: only sublinearly). */
 export function capacity(g: Game): number {
-  return Math.min(2.5, (g.gameSeats + 6) / 50);
+  return Math.min(DRAW.sizeCap, Math.pow((g.gameSeats + 6) / 50, DRAW.sizePow));
+}
+
+/**
+ * (M11.1) The casino's draw for a crowd: how well its game seats suit that type on average, by the layout alone
+ * (qualities and theming, not the crowd of the moment). A floor split between crowds suits each less well than
+ * one made for a crowd. Cached until the layout changes.
+ */
+export function floorDraw(g: Game, typeId: string): number {
+  const f = g.fields;
+  if (!f.drawCache) {
+    const seats: [number, PlacedObject][] = [];
+    for (const [id, tiles] of g.seatTiles) { const o = g.objById.get(id); if (o && isGame(o.kind)) for (const t of tiles) seats.push([t, o]); }
+    f.drawCache = {};
+    for (const [t, type] of Object.entries(GUEST_TYPES)) {
+      // Each seat counts by the crowd's standing taste for its game: a crowd judges a casino by where it would play.
+      let sum = 0, wsum = 0;
+      for (const [i, o] of seats) {
+        const wt = Math.max(0, seatWeight(g, t, o));
+        sum += wt * fitAt(g, type, i, undefined, true).score;
+        wsum += wt;
+      }
+      const avg = wsum ? sum / wsum : 0;
+      f.drawCache[t] = Math.max(DRAW.min, Math.min(DRAW.max, 1 + DRAW.fit * (avg - DRAW.fitMid)));
+    }
+  }
+  return f.drawCache[typeId] ?? 1;
+}
+
+/** (M11.1) A type's standing taste for the game at an object: its design's judged appeal, or the table game's. Static. */
+function seatWeight(g: Game, type: string, o: PlacedObject): number {
+  const def = OBJECTS[o.kind];
+  if (def.game) return GUEST_TYPES[type].games[def.game] ?? 0;
+  const info = slotInfo(g.state, o);
+  if (!info) return 0;
+  let v = info.ap.get(type);
+  if (v === undefined) info.ap.set(type, (v = judged(info.c, type).appeal));
+  return v;
 }
 
 /** Room left under the scenario's guest cap, 0-1. */

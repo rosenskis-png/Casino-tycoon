@@ -11,7 +11,7 @@ Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.t
 - **After a visit** a person's disposition moves halfway to the visit score. They plan to come back with chance `returns.share × clamp((score − 0.2) / 0.5, 0, 1.15)`, after a log-normal number of days (Locals median 7, 3–20; Retirees median 14, 7–30; returning Tourists median 150), stretched when the visit went badly. Someone left with under $20 in cash and savings stops coming.
 - **Paydays:** on the 1st and 15th, regulars due within 5 days may come today instead (Locals 60%, Retirees 30%).
 - **Money:** a regular's visit budget comes out of their spending money; ATM draws come out of savings (the hard cap). What's left in their wallet goes home. Each month spending money gains the monthly income, up to two months' worth.
-- **Arrivals:** regulars come when their planned day arrives (postponed a day or three if the floor is at the scenario cap). New and lapsed people come on purpose at the M2 arrival formula (scenario rate × type share × season × reputation factor × floor-size factor × room left); for one-off types that's 30% of the formula, the rest are passers-by who step in.
+- **Arrivals:** regulars come when their planned day arrives (postponed a day or three if the floor is at the scenario cap). New and lapsed people come on purpose at the M2 arrival formula (scenario rate × type share × season × reputation factor × floor-size factor × the casino's draw for the type (M11.1) × room left); for one-off types that's 30% of the formula, the rest are passers-by who step in.
 
 ## Chasing
 - A hidden per-person level 0–1, not a type. After each visit the floor's **easiness** is scored 0–1: a hard-to-find exit (hops spent looking), ATM trips, drinks pushed on them (served or comped), and a big win in the first fifth of the visit, a quarter each.
@@ -81,6 +81,16 @@ Servers are the main way drinks reach guests; bars serve whoever walks up.
 
 ## Notifications
 Jackpots are red ("bad" news level: red but queued normally). Only jackpots of $1,000+ or 500× the bet reach the ticker; the rest go to the log. The monthly "books closed" line is log-only too.
+
+## Engagement and draw (M11.1)
+`src/sim/guests.ts` (`engagement`, `floorDraw`, `capacity`), `src/sim/fields.ts` (crowd noise), numbers in `src/data/psych.ts`. Owner, 2026-09-25: layout, theming and attractions should draw the crowds you want, and the right place should get the most out of each game; spamming slots wins the tutorial and nothing after it.
+- **Engagement at a game** = 1 + 0.35 × (how well the spot suits them − 0.5) + 0.5 × (their appeal for this game − 0.9), clamped 0.6–1.6. "How well the spot suits them" is the same fit that moves mood (qualities, theming and theme taste, smoke). Pure: recomputed where it's used, never saved.
+- It moves money: pace and stake × √engagement; the loss limit × engagement; and **time flies**: each round (machine) or hand (table) adds (engagement − 1) × half its length to the visit's floor time (negative when bored). Whales are always 1.
+- Mood from surroundings now ranges −30 to **+25** (was +12): a place can please, not just avoid annoying.
+- **Draw:** new arrivals (on purpose and walk-ins) × `floorDraw(type)` = 1 + 0.5 × the casino's average fit for that crowd over its game seats, each seat weighted by the crowd's standing taste for its game, clamped 0.4–2. By the layout alone (qualities without the crowd of the moment, theming), cached until the layout changes. A floor split between crowds suits each less than one made for one crowd.
+- **Seats draw sublinearly:** the floor-size factor is ((seats + 6) / 50)^0.5, capped at 2.5 (was linear). Seats are capacity; when they run short guests search, get frustrated and leave.
+- **Crowd noise** (NRG guests hear, per room): each guest adds 0.3, plus 1.5 × intoxication above 0.2, 0.5 × high, 1 dancing; a room's level is 30 × the total ÷ its size (at least 20). Rooms within 10 tiles hear half of it, fading with distance (breadth-first through walls, `RoomIndex.near`). A retiree bingo room next to a busy club is loud; put distance between them.
+- Measured (Test Floor, day 40, seed 1): engagement median 0.94 locals, 0.67 retirees (a loud mixed floor), 1.14 tourists, 1.01 party, 0.74 high rollers; draw 0.86–1.0 for most crowds, retirees and high rollers lower. Tutorial: engagement about 1.1 for locals and retirees.
 
 ## Money scale (changed in M3)
 `WAGERS_PER_ROUND` is 4 (was 10): at 10, a $90 budget lasted under a minute of play, far from the agreed visit lengths and losses. Running costs were scaled down about 40% to match what a seat now earns (wages $70 / $110 / $90; slot upkeep $2–4; bar $50, cage $35, restroom $15). The tutorial with a tech and a bar ends year 1 at about $7K–$15K (M2: $12K–$17K), with ~60 guests on the floor (M2: ~33, because visits are longer).

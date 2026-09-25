@@ -39,8 +39,8 @@ energy). Costs $200–$900; upkeep about 0.5% of cost a month.
   weakens it ×0.5 (e.g. a Suit of Armor outdoors or in a club, a Glass Panel outside, a parasol indoors).
 
 ## The math (`src/sim/themes.ts`)
-- One field per theme from themed pieces (strength 3, radius 4, fading with distance, cut 60% per wall
-  crossed), a second for general items' suited themes, and a third for clashes.
+- One field per theme from themed pieces (strength 3, radius 7 (M11.1; was 4), fading with distance, cut 35% per
+  wall crossed (M11.1; was 60%)), a second for general items' suited themes, and a third for clashes.
 - At each tile: a theme's value = themed + (general, where themed > 0.2) − clash. The dominant theme's value
   `s`, plus each other theme's `pairing × min(its value, s)` (clashing pairs count 2.5×), plus a **curated
   bonus** 0.3 × min(general, themed) for the dominant theme, minus a **muddle** of 0.8 × each unrelated theme's
@@ -55,8 +55,16 @@ unrelated themes −0.6.
 
 ## Guests
 - Each type has a `theming` weight: Locals 0.3, Retirees 0.5, Tourists 1.0, Party 0.6.
-- The score adds theming × 0.25 × score to how much a spot suits them (theming × 0.4 × score when negative: a
-  muddle stings more than good theming pleases). It moves mood, where they browse and settle, and which
+- **(M11.1) Each type has hidden theme tastes** (−1..1, `themes` in data/guests.ts): Locals Gold Rush, Rat Pack,
+  Rock; Retirees Rat Pack, Deco, Riviera (dislike Atomic, Rock); Tourists Rome, Egypt, Pirate, Tiki; Party Atomic,
+  Rock, Tiki (dislike Rat Pack, Deco); High rollers Luxe, Deco, Dragon (dislike Pirate, Gold Rush, Tiki);
+  Conventioneers Luxe, Rome, Riviera; Families Pirate, Tiki, Medieval (dislike Rat Pack).
+- The score adds theming × (0.25 + 0.6 × taste for the spot's dominant theme) × score to how much a spot suits
+  them (theming × 0.4 × score when negative: a muddle stings more than good theming pleases). A well-done theme
+  a crowd dislikes puts them off: "I don't like the theming in this area".
+- **(M11.1) Spillover (owner):** themes reach 7 tiles (was 4) and lose 35% per wall (was 60%), so a room is felt
+  next door. Clashing rooms side by side muddle each other and lower both rooms' coherence: a casino of
+  differently themed rooms for each crowd reads as disjointed unless the rooms are far enough apart. It moves mood, where they browse and settle, and which
   machine they pick, like the other qualities.
 - A coherent room also reads as more prestigious: prestige + 0.8 × positive score.
 - Thoughts stay generic: "I love the theming in here" and "I don't like the theming in this area".

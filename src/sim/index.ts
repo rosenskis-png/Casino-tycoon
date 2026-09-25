@@ -17,7 +17,7 @@ export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult } from "./a
 export type { Gate } from "./state";
 export { LEDGER_LABELS, ledgerLabel, monthlyCosts, worth, meterDebt } from "./finance";
 export { goalStatus, describeGoals } from "./goals";
-export { thoughtRates, guestCount } from "./guests";
+export { thoughtRates, guestCount, engagement, engageParts, floorDraw, capacity } from "./guests";
 export { newcomerRates, poolSummary, person } from "./pool";
 export { pedSpot, curbAppeal } from "./street";
 export { DRINK_PRICE, STRENGTHS } from "./drinks";

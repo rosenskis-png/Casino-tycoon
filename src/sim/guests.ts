@@ -24,7 +24,7 @@ import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRI
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
 import { tagGuest, guestName, hash01 } from "./cheats";
-import { news } from "./news";
+import { fmtMoney, news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
 import { gradeOf, offers, pickIntent, priceFor, priceTolerance, purposeAt, servingCost, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
@@ -955,6 +955,7 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
  * with an escort on their arm stops picking thin edges and holding their limit.
  */
 export function savvyNow(gd: GuestData): number {
+  if (gd.tilt) return 0;
   return GUEST_TYPES[gd.type].savvy * Math.max(0, 1 - SAVVY_INTOX * gd.intox - SAVVY_HIGH * gd.high);
 }
 const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5;
@@ -1195,6 +1196,8 @@ function wantsAtm(g: Game, a: Agent, r: Rng): boolean {
   const gd = a.g!, type = GUEST_TYPES[gd.type];
   if (!gd.atm || gd.withdrawn >= gd.withdrawCap - 1 || !g.has("atm")) return false;
   if (gd.mem.atmYes === gd.trips + 1) return true;
+  // (M11.4) On tilt: back to the machine for more, every time, until it's gone.
+  if (gd.tilt) { gd.mem.atmYes = gd.trips + 1; return true; }
   const down = Math.max(0, Math.min(1, -net(gd) / staked(gd)));
   // (M11.3) Novices go back for more; the disciplined rarely do.
   let p = type.atm.again + (0.1 + 0.4 * (1 - savvyNow(gd))) * down + 0.5 * gd.intox + 0.6 * gd.chase + (gd.mood < 40 ? 0.1 : 0) - (net(gd) > 0 ? 0.3 : 0);
@@ -1376,7 +1379,7 @@ function decide(g: Game, a: Agent) {
     if (!gd.mem.rounds && gd.why !== "broke" && !gd.minor && tempted(g, a, type, r)) return;
     return standBy(g, a);
   }
-  if (g.state.tick - gd.mem.arrived >= gd.floorTime) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
+  if (g.state.tick - gd.mem.arrived >= gd.floorTime && !gd.tilt) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
   if (amenityFirst(g, a, r)) return;
   const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0 && gd.drink === 0 && gd.wallet >= DRINK_PRICE;
   // Came for a drink, but a machine they like catches their eye: "just one quick spin".
@@ -1587,6 +1590,21 @@ function quitReason(g: Game, a: Agent): string | null {
   // (M8.5) A hunter stops the moment the edge is gone (the meter hit, the collector paid).
   if (gd.hunter && OBJECTS[o.kind].slot && huntEdge(g.state, o) <= 0 && gd.mem.rounds > 0) { think(g, a, "slotHunted"); return "hunted"; }
   const nt = net(gd);
+  // (M11.4, owner) Tilt: drunk or high and deep in the hole, a disciplined player snaps. From then on they ignore
+  // their limit and the clock, and play until they're back to even or out of money.
+  const tt = GUEST_TYPES[gd.type].tilt ?? 0;
+  if (tt && !gd.tilt && !gd.vip && nt < 0 && gd.intox + gd.high > 0.1 && rng(g.state, "guests").chance(tt * (gd.intox + gd.high) * Math.min(1, -nt / staked(gd)))) {
+    gd.tilt = 1;
+    if (!gd.atm) gd.atm = 500;
+    think(g, a, "tilt");
+    news(g, "warn", `A high roller is on tilt, chasing ${fmtMoney(-nt)} back.`, { a: a.id });
+  }
+  if (gd.tilt) {
+    if (nt >= 0) { gd.tilt = 0; think(g, a, "backEven"); return "done"; }
+    if (minRoundOf(g.state, o) * stakeMult(g, o) > gd.wallet + 1e-9) return "money";
+    if (n.bladder >= 95) return "need";
+    return null;
+  }
   // A cheat still after their take ignores the usual quit rules.
   const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
   const lim = limits(gd, rule === "lossLimit" ? engagement(g, a) : 1);
@@ -1626,7 +1644,9 @@ function finishUse(g: Game, a: Agent, r: Rng) {
       gd.mem.cashed = 1;
     } else if (def.serves === "cage" || def.serves === "atm") {
       // A withdrawal: about their usual draw, never more than they have.
-      const want = Math.round(logNormal(r, { median: gd.atm || 40, sigma: 0.4, min: 20 }) / 10) * 10;
+      let want = Math.round(logNormal(r, { median: gd.atm || 40, sigma: 0.4, min: 20 }) / 10) * 10;
+      // (M11.4) On tilt: big draws, a quarter of what's left of their savings at a time.
+      if (gd.tilt) want = Math.max(want, Math.round((gd.withdrawCap - gd.withdrawn) / 40) * 10);
       const amt = Math.max(0, Math.min(gd.withdrawCap - gd.withdrawn, want));
       if (amt > 0) { gd.wallet += amt; gd.withdrawn += amt; gd.trips++; think(g, a, "atm"); }
       else gd.withdrawn = gd.withdrawCap;

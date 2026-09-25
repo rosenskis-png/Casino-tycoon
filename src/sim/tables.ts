@@ -19,7 +19,7 @@ import { rng, type Rng } from "./rng";
 import { TICKS_PER_SECOND } from "./clock";
 import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
-import { drawPay, isTable, limitsOf, settle, tableDefOf, wantBet, type Wager } from "./gaming";
+import { drawPay, isTable, limitsOf, settle, tableDefOf, tiltBet, wantBet, type Wager } from "./gaming";
 import { THEFT } from "../data/staff";
 import { greed, inZone, skillOf, steal } from "./crew";
 import { hash01, sharedPay, wagerPay } from "./cheats";
@@ -166,7 +166,7 @@ export function limitsNow(g: Game, o: PlacedObject): [number, number] {
 }
 
 /** What a guest would like to bet per hand at a table, before the limits. */
-export const tableWant = (gd: GuestData) => wantBet(gd) * GUEST_TYPES[gd.type].tableStake;
+export const tableWant = (gd: GuestData) => tiltBet(gd, wantBet(gd) * GUEST_TYPES[gd.type].tableStake);
 
 /**
  * Whether a guest will sit at this table: the wish to bet reaches half the minimum and the wallet covers a couple

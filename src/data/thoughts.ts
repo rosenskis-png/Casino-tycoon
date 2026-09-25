@@ -129,6 +129,8 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   steepFood: { text: "Pricey food for what it is.", bad: true },
   steepShow: { text: "Too much for a show ticket.", bad: true },
   steepGolf: { text: "Mini golf costs how much?", bad: true },
+  tilt: { text: "I just need one good hand to get it all back.", alt: ["Double it. It has to turn.", "I'm not leaving down. Not tonight."], bad: true },
+  backEven: { text: "Back to even. Never again.", alt: ["Phew. I'm done while I'm level."] },
   bargain: { text: "What a bargain!", alt: ["Can't believe how cheap that was.", "Worth way more than they charge."] },
   plainFood: { text: "Just a snack bar? I hoped for a real restaurant.", alt: ["I expected something finer to eat."], bad: true },
   tempted: { text: "Ooh, that one looks fun. Just a few spins.", alt: ["Might as well try my luck while I'm here.", "One little bet won't hurt."], voice: { family: ["You go ahead, I'll just play a few minutes."], party: ["Let's hit the slots!"] } },

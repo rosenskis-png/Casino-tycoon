@@ -49,7 +49,7 @@ export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1, eng =
   const lo = m.minCredits ?? 1;
   if (compSeeking(g, gd)) return lo;
   // (M11.1) Engaged players bet more (by the square root of their engagement).
-  return Math.max(lo, Math.min(m.maxCredits, Math.round((wantBet(gd) * Math.sqrt(eng) * show) / (m.denom * mult))));
+  return Math.max(lo, Math.min(m.maxCredits, Math.round(tiltBet(gd, wantBet(gd) * Math.sqrt(eng) * show) / (m.denom * mult))));
 }
 
 /** What a guest would like to bet per wager now: their stake, loosened by drink and swung by how it's going. */
@@ -60,6 +60,10 @@ export function wantBet(gd: GuestData): number {
   const swing = rel > 0 ? 1 + 0.8 * loose * Math.min(1, rel) : 1 + 0.5 * loose * Math.min(1, -rel) * (0.5 + gd.chase);
   // High (M9.6): up to 40% more.
   return gd.stake * (1 + 0.6 * gd.intox) * (1 + 0.4 * gd.high) * swing;
+}
+/** (M11.4) On tilt: doubling down, each bet sized to win back a quarter of what they're down (else `bet`). */
+export function tiltBet(gd: GuestData, bet: number): number {
+  return gd.tilt ? Math.max(bet, 0.25 * Math.max(0, gd.mem.wagered - gd.mem.won)) : bet;
 }
 
 /** Payout multiple for one wager: inverse-CDF lookup on the paytable (M8 designs: one spin played out). */

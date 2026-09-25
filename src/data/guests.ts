@@ -139,6 +139,11 @@ export interface GuestTypeDef {
    * swing their bets and send them back to the ATM. It's what makes the easy crowds thin and the hard-won ones rich.
    */
   savvy: number;
+  /**
+   * (M11.4, owner) How readily a heavy loss while drunk or high breaks them (0 = never): chance per round = tilt ×
+   * (intoxication + high) × how far down they are. On tilt they lose all discipline and chase back to even.
+   */
+  tilt?: number;
   /** (M11.2) What a show ticket is worth to them (dollars; mini golf, the pool and a club's cover at 30%, a meal at 80%). Pricier than this puts them off. */
   ticket: number;
   /** (M11.4) Taste for luxury, 0-1: how much more a fancy meal, drink or show is worth to them than a cheap one (data/grades.ts). */
@@ -167,7 +172,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     returns: { share: 0.85, days: { median: 7, sigma: 0.55, min: 3, cap: 20 } },
     group: [0.6, 0.35, 0.025, 0.025],
     budget: { median: 180, sigma: 0.6, min: 40, cap: 1200 },
-    minutes: { mean: 8, sd: 2.5, min: 1 },
+    minutes: { mean: 12, sd: 3.5, min: 1 },
     savings: { median: 5000, sigma: 1, min: 200 }, income: { median: 600, sigma: 0.5, min: 100 },
     tripCap: { median: 400, sigma: 0.6, min: 80, cap: 3000 },
     atm: { never: 0.35, draw: { median: 120, sigma: 0.5, min: 40 }, again: 0.35 },
@@ -194,7 +199,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     returns: { share: 0.7, days: { median: 14, sigma: 0.4, min: 7, cap: 30 } },
     group: [0.4, 0.55, 0.0125, 0.0125, 0.0125, 0.0125],
     budget: { median: 120, sigma: 0.3, min: 40, cap: 400 },
-    minutes: { mean: 11, sd: 3.5, min: 1 },
+    minutes: { mean: 14, sd: 4, min: 1 },
     savings: { median: 16000, sigma: 0.9, min: 1000 }, income: { median: 400, sigma: 0.4, min: 100 },
     tripCap: { median: 200, sigma: 0.4, min: 40, cap: 800 },
     atm: { never: 0.75, draw: { median: 80, sigma: 0.4, min: 40 }, again: 0.2 },
@@ -276,7 +281,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     group: [0.5, 0.4, 0.1],
     budget: { median: 4000, sigma: 0.6, min: 1000, cap: 40000 },
     minutes: { mean: 10, sd: 3, min: 2 },
-    savings: { median: 200000, sigma: 1, min: 20000 }, income: { median: 10000, sigma: 0.6, min: 2000 },
+    savings: { median: 25000, sigma: 0.8, min: 5000 }, income: { median: 10000, sigma: 0.6, min: 2000 },
     tripCap: { median: 10000, sigma: 0.7, min: 2000, cap: 100000 },
     atm: { never: 0.5, draw: { median: 1000, sigma: 0.5, min: 200 }, again: 0.3 },
     drinking: { sober: 0.3, mean: 0.3, sd: 0.1, cap: 1.2, overshoot: 0.05, first: 0.2, accept: 0.4, sip: 90 },
@@ -293,7 +298,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.005, 0.0125], pace: [0.9, 1.1], quit: { winGoal: 2, lossLimit: 3, broke: 0.5, jackpot: 0.5 }, winGoal: [0.5, 1.5], lossLimit: [0.5, 0.9], compSeek: 0 },
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.3, fatigue: 0.12 },
     secPerDollar: 1.5,
-    reasons: { gamble: 0.8, drink: 0.02, dine: 0.1, show: 0.08, club: 0, pool: 0, golf: 0, sights: 0 }, hooks: { drink: 0.3, buzz: 0.8, flash: 0.3, free: 1, social: 0.3 }, savvy: 0.85, ticket: 120, luxe: 1, drugs: 0.2, hotel: 0.6, smokers: 0.2, theming: 0.8,
+    reasons: { gamble: 0.8, drink: 0.02, dine: 0.1, show: 0.08, club: 0, pool: 0, golf: 0, sights: 0 }, hooks: { drink: 0.3, buzz: 0.8, flash: 0.3, free: 1, social: 0.3 }, savvy: 0.95, tilt: 0.35, ticket: 120, luxe: 1, drugs: 0.2, hotel: 0.6, smokers: 0.2, theming: 0.8,
     themes: { luxe: 0.9, deco: 0.8, dragon: 0.7, riviera: 0.3, ratpack: 0.2, goldrush: -0.5, pirate: -0.6, tiki: -0.4, rock: -0.3 },
   },
   // M9.5 (docs/spec/calendar.md): business visitors who come in waves with conventions.

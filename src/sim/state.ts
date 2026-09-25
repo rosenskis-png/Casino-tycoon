@@ -261,6 +261,8 @@ export interface GuestData {
   /** (M9.6) 0 never uses drugs, else uses this visit + 1; how high they are now (1 just used, fading to 0). */
   drugs: number;
   high: number;
+  /** (M11.4, owner) 1 once on tilt: drink or drugs and a heavy loss broke their discipline (docs/spec/guests.md "Tilt"). */
+  tilt?: number;
 }
 
 /**

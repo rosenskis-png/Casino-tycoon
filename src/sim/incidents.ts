@@ -22,9 +22,10 @@ import { cutoff, handsFull, serveDrink, DRINK_PRICE } from "./drinks";
 import { post } from "./finance";
 import { scaled } from "./bank";
 import { inZone, skillOf } from "./crew";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { deterOf } from "./cheats";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
+const news = newsFor("incidents");
 
 declare module "./commands" {
   interface CommandTypes {
@@ -237,7 +238,7 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
   if (x >= 1 && roll(0.02, "intox")) return void begin(g, grid, "passout", a, null);
   if (x >= 0.9 && roll(0.006, "intox")) return void begin(g, grid, "vomit", a, null);
   // Bursting, drunk, and no restroom to be had (none, can't find one, or stuck in a line): the nearest planter.
-  const noRestroom = !g.has("bladder") || (gd.gaveUp & 2) !== 0 || (gd.seek === "bladder" && gd.lost >= 3) || gd.thought === "restroomLine";
+  const noRestroom = !g.has("bladder") || (gd.gaveUp & 2) !== 0 || (gd.seek === "bladder" && gd.lost >= 3) || gd.seek === "line" || gd.thought === "restroomLine";
   if (gd.needs.bladder >= 85 && x >= 0.4 && noRestroom && plantNear(g, a, 4) && roll(0.03, "misconduct")) return void begin(g, grid, "urinate", a, null);
   if (x >= 0.5 && roll(0.004 * (x / 0.5), "intox")) return void begin(g, grid, "loud", a, null);
   if (x >= 0.6 && isWalking(a) && roll(0.02, "intox")) return void begin(g, grid, "stumble", a, null);

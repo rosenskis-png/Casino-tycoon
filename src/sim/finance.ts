@@ -4,12 +4,13 @@ import { STAFF_ROLES } from "../data/staff";
 import { MONTH_NAMES, TICKS_PER_BEAT, TICKS_PER_DAY, dateOfDay, daysInMonth } from "./clock";
 import type { Game } from "./game";
 import type { System } from "./registry";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { priceOf } from "./geometry";
 import { SCENARIOS } from "../data/scenarios";
 import { wageFor } from "./crew";
 import { liability } from "./design/meters";
 import { houseMeters } from "./design/market";
+const news = newsFor("money");
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", tables: "Table win", poker: "Poker rake", keno: "Keno & bingo", sports: "Sportsbook", marketing: "Marketing", research: "Research", rooms: "Hotel rooms", bar: "Bar (less drink costs)", build: "Construction", sales: "Sold objects",
@@ -22,6 +23,9 @@ export const LEDGER_LABELS: Record<string, string> = {
 const HISTORY_MONTHS = 24;
 
 /** Moves cash and records why. The only way cash changes. */
+/** (Batch A) What the Sandbox's cash is kept near. */
+export const UNLIMITED = 1_000_000_000;
+
 export function post(g: Game, cat: string, amount: number) {
   if (!amount) return;
   const f = g.state.finance;
@@ -69,6 +73,8 @@ export const financeSystem: System = {
     const { wages, upkeep } = monthlyCosts(g);
     post(g, "wages", -wages * share);
     post(g, "upkeep", -upkeep * share);
+    // (Batch A) The Sandbox: money never runs out.
+    if (SCENARIOS[g.state.scenario]?.unlimited && g.state.cash < UNLIMITED / 2) post(g, "start", UNLIMITED - g.state.cash);
   },
   month(g) {
     const f = g.state.finance;

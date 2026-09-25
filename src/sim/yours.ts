@@ -14,11 +14,12 @@ import { post } from "./finance";
 import { betOf, limitsOf } from "./gaming";
 import { limitsNow, tableOpen } from "./tables";
 import { stakeMult } from "./amenities";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { compiledOf } from "./design";
 import { spinFull, type Outcome } from "./design/spin";
 import { afterSpin, hasMeters, prepSpin, type MeterHost } from "./design/meters";
 import { designIdOf } from "./design/lookup";
+const news = newsFor("wins");
 
 declare module "./commands" {
   interface CommandTypes {

@@ -10,13 +10,14 @@ import type { System } from "./registry";
 import { isClosed, type Agent, type WhaleState } from "./state";
 import { rng } from "./rng";
 import { pickKey, range } from "./dist";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { guestName } from "./cheats";
 import { spawnGroup } from "./guests";
 import { limitsNow, tableOpen } from "./tables";
 import { purposeOf } from "./amenities";
 import { GAMING } from "./bank";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
+const news = newsFor("guests");
 
 export const newWhale = (): WhaleState => ({ next: -1, due: null, id: -1, game: "", bankroll: 0, name: 0, bet: 0 });
 

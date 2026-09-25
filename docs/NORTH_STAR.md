@@ -25,7 +25,7 @@ Skill lives in five places:
 
 2. Shaping the floor. Layout, rooms, theming, and placement change how people feel, how long they stay, how fast they play, where they walk, and whether they come back. This is the heart of the game.
 
-3. Plugging leaks. Cheats, dishonest staff, drunks, broken machines, and rarer larger threats all drain the house edge. Telling a cheat from a lucky honest guest, and deciding what to do about it, is a judgment with real consequences either way.
+3. Plugging leaks. Cheats, dishonest staff, drunks, broken machines, and rarer larger threats all drain the house edge. Telling a cheat from an honest guest on a hot streak, and deciding what to do about it, is a judgment with real consequences either way.
 
 4. Surviving variance. Profit is certain only over the long run. Jackpots, whales, and hot streaks can sink a casino in a bad stretch. Insurance, table limits, cash on hand, and credit are how the player gets through.
 
@@ -76,7 +76,7 @@ Guests are the center of the simulation and its main source of feedback. Each gu
 - Inhibition. Drinks and other substances change how guests bet, spend, withdraw cash, and behave. Some stay sober, some have a drink or two, and some go much further, on purpose or not.
 - Physical needs that pull them toward amenities or out the door.
 - A mood shaped by the space around them, their luck, their company, and how they are treated.
-- Hidden traits. A few guests are luckier or unluckier than the math suggests. A small number are cheats. None of this is visible, and a cheat looks exactly like anyone else.
+- Hidden traits. A small number of guests are cheats. Some honest guests simply run hot, as real variance allows. None of this is visible, and a cheat looks exactly like anyone else.
 - A voice. Guests think out loud, and their thoughts are the player's main diagnostic tool.
 
 Guests react to each other's behavior, not to who they are. A family is not driven away by young partiers existing, but by the noise, the fights, and the mess that can come with them. Most guests enjoy a little drama. Some want none, and some want a lot.
@@ -101,7 +101,7 @@ LEAKAGE, CHEATS, AND ENFORCEMENT
 
 Cheats are a regular part of running a casino, not a rare catastrophe. Over a scenario the player faces a meaningful number of them. Each one matters, and none should decide a scenario alone. Cheats play honestly part of the time to avoid notice, and when they cheat, they are after serious money.
 
-The player rarely knows for certain who is cheating. They suspect, based on who is winning, how long they play, and what their earned tools reveal, and lucky honest guests keep that suspicion genuinely uncertain. Research unlocks better ways to read guests, but short of catching someone in the act, no tool is ever certain.
+The player rarely knows for certain who is cheating. They suspect, based on who is winning, how long they play, and what their earned tools reveal, and honest guests on hot streaks keep that suspicion genuinely uncertain. Research unlocks better ways to read guests, but short of catching someone in the act, no tool is ever certain.
 
 Any guest can be marked as suspicious. Marked guests draw more attention from security and cameras, making a catch more likely, and the player can choose to be alerted when they leave or return.
 
@@ -143,7 +143,7 @@ MONEY, RISK, AND THE LAW
 
 The house edge is real and honest. Every game is mathematically consistent, and the casino earns what the math says it should over time.
 
-Variance is real too. Jackpots, hot tables, lucky guests, and big players can swing a stretch of time. Ordinary loans are available against the casino's worth, at meaningful interest. A casino that cannot pay what it owes can borrow in an emergency, but only at a steep price, and needing to is a public scandal. A casino that cannot pay even then is in serious trouble. Risk tools cost money on average, but they buy survival.
+Variance is real too. Jackpots, hot tables, hot streaks, and big players can swing a stretch of time. Ordinary loans are available against the casino's worth, at meaningful interest. A casino that cannot pay what it owes can borrow in an emergency, but only at a steep price, and needing to is a public scandal. A casino that cannot pay even then is in serious trouble. Risk tools cost money on average, but they buy survival.
 
 Leakage is the enemy of the edge. Some of it stays invisible until the player learns to look for it.
 

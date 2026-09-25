@@ -29,9 +29,10 @@ import { person, hitReputation, removePerson } from "./pool";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { scaled } from "./bank";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { honest, skillOf } from "./crew";
+const news = newsFor("security");
 
 declare module "./commands" {
   interface CommandTypes {
@@ -703,9 +704,9 @@ export function suspicion(g: Game, a: Agent): Suspicion {
   const { score: z, money: zm, luck: mu } = oddness(gd);
   const reading = !m.wagered ? "hasn't played yet" : zm > 4 ? "far above expectation" : zm > 2.5 ? "well above expectation" : zm > 1.2 ? "above expectation"
     : zm < -2.5 ? "well below expectation" : zm < -1.2 ? "below expectation" : "about as expected";
-  // Honest players: mostly the plain math, a few lucky or unlucky, and a broad tail (hot streaks, jackpots). Cheats: well
-  // above, or no different yet (they play honestly between spells).
-  const honest = 0.89 * normal(z) + 0.03 * normal(z - mu) + 0.03 * normal(z + mu) + (0.05 * t3(z / 2)) / 2;
+  // Honest players: mostly the plain math, any lucky or unlucky ones (none since Batch A), and a broad tail (hot
+  // streaks, jackpots). Cheats: well above, or no different yet (they play honestly between spells).
+  const honest = (0.95 - 2 * LUCK_SHARE) * normal(z) + LUCK_SHARE * (normal(z - mu) + normal(z + mu)) + (0.05 * t3(z / 2)) / 2;
   const cheat = 0.4 * honest + 0.6 * (t3((z - SUSPECT_Z) / 3) / 3);
   const prior = GUEST_TYPES[gd.type].cheat;
   // Noise that drifts every 30 seconds: no tool is certain.

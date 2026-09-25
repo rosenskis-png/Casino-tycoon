@@ -20,7 +20,7 @@ frame; this is what was built. Numbers are starting values, tuned headless.
 - **A ban covers the whole group.**
 
 ## Hidden tags
-- **Luck**: 3% of people are lucky and 3% unlucky (they cancel out). A lucky guest's payback on any machine is
+- **Luck (retired in Batch A, owner):** nobody is lucky or unlucky any more (`LUCK_SHARE` 0; plain variance makes honest winners). The mechanism below stays, exact and checked, but unused. It was: 3% of people are lucky and 3% unlucky (they cancel out). A lucky guest's payback on any machine is
   exactly +10 points (an 88% machine pays them 98%), an unlucky guest's −10 (M11.2; was ±20, and lucky players at
   108% played on for free and leaked money): a lucky guest's losing wager is drawn
   again with chance 0.2 / (payback × (1 − hit rate)); an unlucky guest's win is voided with chance 0.2 / payback
@@ -65,7 +65,7 @@ Free Play 4, test floors 4.
 3. **Wallet vs arrival bankroll**, plus ATM trips and draws.
 4. **Cheat estimate**: a probability. Built from how odd their play is, in standard deviations from the math:
    how often they win (rigged wins and luck both show there) plus half of how much (jackpots show there), against
-   a model of honest players (the math, 3% lucky, 3% unlucky, a broad tail for hot streaks) and cheats (well above, around 7 SDs,
+   a model of honest players (the math and a broad tail for hot streaks; 3% lucky and 3% unlucky until Batch A) and cheats (well above, around 7 SDs,
    or no different yet); the type's prior share; and a noisy factor that shifts every 30 seconds. Capped at 92%
    unless they were caught (then 100%). Lucky honest guests and hot streaks produce real false positives.
 

@@ -12,9 +12,10 @@ import { range } from "./dist";
 import { canSee } from "./wayfinding";
 import { post } from "./finance";
 import { ORG } from "../data/psych";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { coverage } from "./cheats";
 import { hireStaff } from "./staff";
+const news = newsFor("staff");
 
 declare module "./commands" {
   interface CommandTypes {

@@ -161,15 +161,14 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 ## Owner's playtest list after The Outfit (Batches A–E)  (owner 2026-09-25; see DECISIONS)
 Batches, not milestones: lettered, one chat each, in order. Each ends merged to `main`; release tags `bA`…`bE`.
 
-**Batch A · Flow and friction ☐** (small fixes, biggest annoyance per token)
+**Batch A · Flow and friction ☑** (small fixes, biggest annoyance per token; built 2026-09-25, schema 23, see DECISIONS)
 - Every scenario starts paused; building works while paused. Win and loss pause the game for a pop-up.
 - Every scenario opens with an in-world intro screen (as The Outfit's letter). Sandbox scenario: Outfit-sized, empty,
   unlimited money, everything unlocked, no goal.
 - Save confirmation. Fewer notices (big wins and jackpots rarer), with a checkbox per notice type.
 - Research: cheaper (so faster), a queue, and no funding spent while nothing is queued.
-- Remove the hidden lucky/unlucky trait (North Star conflict, see DECISIONS). Escorts never use staff-only doors.
-- Restroom lines: measure the waits on the Test Floor first (likely a choice/pathing bug, everyone to one block);
-  then capacity or bladder rate.
+- Remove the hidden lucky/unlucky trait (North Star edited). Escorts never use staff-only doors.
+- Restroom lines: measured; a complaint bug (guests re-complained at every decision), fixed, plus shorter stall visits.
 - Slot-maker offers: a chance from 20 fans, certain at 50; the offer pauses the game, sits in the Slots tab until answered.
 
 **Batch B · Games working right ☐**

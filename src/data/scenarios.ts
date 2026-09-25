@@ -81,7 +81,9 @@ export interface ScenarioDef {
   events?: string[];
   /** (M9.6) The hotel elevator: a floor tile against a wall (an entrance for hotel guests and escorts). */
   elevator?: [number, number];
-  research?: string[] | "build";
+  research?: string[] | "build" | "all";
+  /** (Batch A) Money never runs out (the Sandbox): cash is topped up, on the "start" line, whenever it runs low. */
+  unlimited?: boolean;
   /** Named rooms with a purpose, by any tile inside them. */
   rooms?: { x: number; y: number; name: string; purpose: RoomPurpose }[];
   /** (M11.2) No new games may be built (the tutorial): the ones on the floor at the start are all there is. */
@@ -438,6 +440,25 @@ const OUTFIT_LETTER = {
     + "We'll want our cut every month. Don't make us come down there.",
 };
 
+const HORSESHOE_LETTER = {
+  from: "— Dale Pruitt, the last owner",
+  text: "Keys are under the mat. I won't pretend it's in good shape: the carpet sticks, the decor's a mess, and the regulars drink free because I never had the heart to stop it. They fight about once a night. The police know us by name.\n\n"
+    + "The machines are the one thing I got right. Sixty-eight of them, and the gaming board won't license one more, so don't ask. What this place needs is a different crowd: the tourists walking past and the families from the motels down the road. They never come in. Make them want to.\n\n"
+    + "The bank wants the place worth something by the end of next year, or they take it back. Good luck. You'll need more than the horseshoe over the door.",
+};
+
+const FREEPLAY_LETTER = {
+  from: "— The agent who sold you the lot",
+  text: "Congratulations: an empty building, a big lot, a sidewalk full of people and two more lots next door if you ever outgrow it. No partners, no bank breathing down your neck, no deadline.\n\n"
+    + "Build whatever kind of casino you like. The crowds will tell you soon enough whether they like it too.",
+};
+
+const SANDBOX_LETTER = {
+  from: "— Nobody. It's all yours.",
+  text: "A huge empty lot, a bottomless bank account and every game, amenity and theme already unlocked. No goals, no deadline, no one to answer to.\n\n"
+    + "The game starts paused, and you can build while it's paused. Build the casino you've always wanted, then press play and watch it come to life.",
+};
+
 function outfit(): ScenarioDef {
   return {
     id: "outfit", name: "The Outfit",
@@ -504,6 +525,20 @@ function outfitBuilt(): ScenarioDef {
   };
 }
 
+/** (Batch A, owner) The Sandbox: The Outfit's lot, empty, with unlimited money and everything unlocked. No goals. */
+function creative(): ScenarioDef {
+  return {
+    ...outfit(), id: "creative", name: "Sandbox",
+    blurb: "A huge empty lot, unlimited money and everything unlocked. No goals: build anything.",
+    intro: SANDBOX_LETTER, startCash: 1_000_000_000, unlimited: true,
+    footfall: 0.5, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3, family: 0.4, conventioneer: 0.2, highroller: 0.3 },
+    market: { local: { size: 220, regulars: 0 }, retiree: { size: 140, regulars: 0 }, highroller: { size: 60, regulars: 0 } },
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1, family: 1, conventioneer: 1 },
+    rep: {}, arrivals: 0.45, maxGuests: 1500, goals: null, tools: 4, tax: 0.08, whales: true, research: "all", bribe: 0.6,
+    rules: undefined, police: undefined, policeCost: undefined, cheatRate: undefined, cheatTake: undefined, violence: undefined,
+  };
+}
+
 /** The crowd floors by crowd, for `npm run parity`. */
 export const CROWD_FLOORS: Record<string, string> = { local: "crowd_local", retiree: "crowd_retiree", tourist: "crowd_tourist", family: "crowd_family", party: "crowd_party", highroller: "crowd_highroller" };
 
@@ -547,6 +582,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     research: ["th_ancient", "th_vegas", "restaurant", "minigolf"],
     goals: { worth: 60_000, rep: { type: "tourist", min: 55 }, reps: { types: ["family"], min: 50 }, by: { year: 2, month: 11 } },
     tools: 2, tax: 0.05,
+    intro: HORSESHOE_LETTER,
   },
   sandbox: {
     id: "sandbox",
@@ -575,7 +611,9 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     maxGuests: 1500,
     goals: null,
     tools: 4, tax: 0.08, whales: true, research: "build", bribe: 0.6,
+    intro: FREEPLAY_LETTER,
   },
+  creative: creative(),
   bigfloor: bigFloor(),
   testfloor: testFloor(),
   crowd_local: localsFloor(), crowd_retiree: retireesFloor(), crowd_tourist: touristsFloor(),

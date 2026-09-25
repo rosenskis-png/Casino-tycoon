@@ -250,6 +250,12 @@ strategy (cameras, an operator and pit bosses in all of them). Tilt: 1 in ~120 v
   through the real build commands, reporting the goal bars month by month. The shipping bar is rule 6.
 - Save schema bump (new goal progress fields, the hold record) with a migration.
 
+## Batch A (owner, 2026-09-25): every scenario opens with a letter, starts paused, and pauses for its outcome
+- **Every playable scenario has an intro letter** (`intro`): The Lucky Horseshoe (the last owner, Dale Pruitt, handing over the keys), Free Play Lot (the agent who sold you the lot), Sandbox, The Outfit. Kept in the Goals tab.
+- **New games start paused**, and building works while paused (commands apply at once when the clock is stopped). A continued game resumes at 1×.
+- **Winning or losing pauses the game with a pop-up** (See goals / Keep playing). A maker's offer does too (docs/spec/designer.md).
+- **Sandbox** (`creative`): The Outfit's lot, empty; money never runs out (cash topped up on the "start" line; the top bar says Unlimited); every research project done; every crowd; no goals.
+
 ## Next rungs (not designed yet)
 - **Leaks:** The Pit (cheats and card counters at tables: ignoring winners bleeds the edge, banning every winner
   hits innocents and brings rumors).

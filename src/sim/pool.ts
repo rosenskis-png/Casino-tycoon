@@ -15,9 +15,10 @@ import { groupSize, guestCount, repFactor, room } from "./guests";
 import { reasonPull } from "./amenities";
 import { comeIn } from "./street";
 import { lifeTags, guestName } from "./cheats";
-import { news } from "./news";
+import { newsFor } from "./news";
 import { BEATEN_SCORE } from "../data/cheats";
 import { fanDraw, onFloor } from "./design/market";
+const news = newsFor("guests");
 
 /** How much one visit moves a person's disposition. */
 const SCORE_RATE = 0.5;

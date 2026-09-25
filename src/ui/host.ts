@@ -76,7 +76,7 @@ export class Host {
       if (n > MAX_TICKS_PER_FRAME) { n = MAX_TICKS_PER_FRAME; this.acc = n; }
       for (let k = 0; k < n; k++) g.step();
       this.acc -= n;
-    }
+    } else g.flushCommands(); // (Batch A, owner) Building works while paused.
     const t1 = performance.now();
     g.bus.flush();
     const rect = this.canvas.getBoundingClientRect();

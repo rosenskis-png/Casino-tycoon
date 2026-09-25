@@ -21,8 +21,9 @@ import { pruneOpinions } from "../opinions";
 import { designById, designIdOf, isStock } from "./lookup";
 import { researched } from "../research";
 import { post } from "../finance";
-import { fmtMoney, news } from "../news";
+import { fmtMoney, newsFor } from "../news";
 import { TICKS_PER_DAY } from "../clock";
+const news = newsFor("slots");
 
 declare module "../commands" {
   interface CommandTypes {

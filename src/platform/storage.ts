@@ -10,9 +10,10 @@ export const Store = {
     if (raw == null) return null;
     try { return JSON.parse(raw) as T; } catch { return null; }
   },
-  set(key: string, value: unknown): void {
+  /** True when it reached the device's storage (read back to be sure); false when only kept in memory. */
+  set(key: string, value: unknown): boolean {
     const raw = JSON.stringify(value);
-    try { window.localStorage.setItem(key, raw); } catch { mem.set(key, raw); }
+    try { window.localStorage.setItem(key, raw); return window.localStorage.getItem(key)?.length === raw.length; } catch { mem.set(key, raw); return false; }
   },
   del(key: string): void {
     try { window.localStorage.removeItem(key); } catch { /* blocked */ }

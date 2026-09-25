@@ -2,6 +2,29 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · Batch A built: flow and friction (owner: "green light for A")
+- **Start paused, build paused:** new games start paused (a continued one resumes at 1×); commands apply at once
+  while the clock is stopped, so building works paused. Autosave runs while paused too.
+- **Pop-ups that pause:** winning, losing and a slot maker's offer pause the game. Offers: Accept / Decline /
+  Decide later; they wait in the Slots tab until answered (the 30-day lapse is gone).
+- **Offers by fans (owner):** a chance from 20 fans (about 5% a month, rising to about 45% at 49), certain at 50.
+  The old gates (6 months, Excitement 6, index 1.2, payback ≤ 97%) now only shape how good the offer is.
+- **Intro letters for every scenario** (Horseshoe, Free Play, Sandbox; The Outfit had one).
+- **Sandbox** (`creative`): The Outfit's lot, empty, unlimited money (topped up on the "start" line), every research
+  project done, every crowd, no goals.
+- **Notices:** each system's notices carry a kind; the Game tab has a checkbox per kind (kept on the device;
+  hidden ones still go to the log; urgent ones always show). Jackpots reach the ticker from $10K or 1,000× (was $1K
+  or 500×).
+- **Save confirmation:** "✓ Saved (date)" under the Save button; storage failures say so (read back to be sure).
+- **Research:** costs halved again; a queue; no money spent while nothing is being researched.
+- **Luck retired (owner):** nobody is lucky or unlucky (`LUCK_SHARE` 0); North Star edited to "some honest guests
+  simply run hot". The exact mechanism stays in code, unused.
+- **Escorts** never use staff-only doors (they use any door a guest could, free).
+- **Restroom lines were a bug, not capacity** (Claude, measured): a guest whose known restrooms were full complained
+  at every decision. Now they look for another briefly, then wait by the nearest, grumbling once. Stall visits
+  4–7 s (was 5–9). Test Floor 60 days: 1,545 line thoughts → 41. Bars already retry on a timer (left alone).
+- Save schema 23 (research queue; luck cleared on guests and pool people).
+
 ## 2026-09-25 · Playtest list after The Outfit, grouped into Batches A–E (owner)
 - Owner played The Outfit (liked it) and sent a list of fixes and ideas. Grouped into five lettered **Batches**
   (owner: not "milestones"): A flow and friction, B games working right, C hands on the floor, D decor and niceness,

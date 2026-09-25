@@ -1,7 +1,9 @@
 // Cheats, suspicion and enforcement numbers (FOUNDATIONS §11, docs/spec/cheats.md). Starting values, tuned headless.
 
 /** Share of people who are lucky, and of people who are unlucky; the payback shift either way (M11.2: 0.1, was 0.2: lucky players at +20 points played on for free and leaked money). */
-export const LUCK_SHARE = 0.03;
+/** (Batch A, owner) No lucky or unlucky guests any more: plain variance makes honest winners. The luck mechanism
+ * stays (exact, checked) but nobody gets it. */
+export const LUCK_SHARE = 0;
 export const LUCK_SHIFT = 0.1;
 /** A cheat who leads a group brings a crew: each companion cheats too with this chance. */
 export const CREW = 0.5;

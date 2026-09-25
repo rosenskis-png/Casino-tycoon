@@ -52,6 +52,8 @@ const escorted = (a: Agent) => !a.g || a.g.held > 0 || a.g.esc > 0;
 function passes(a: Agent, q: GateInfo, w: number): boolean {
   const gd = a.g;
   if (q.rule === DOOR_STATE.ROLE) return a.role === q.arg || (!!gd && gd.held > 0);
+  // (Batch A, owner) Escorts aren't staff: any door a guest could use (they pay no fees), never staff-only ones.
+  if (a.role === "escort") return q.rule !== DOOR_STATE.LOCKED && q.rule !== DOOR_STATE.STAFF || a.y * w + a.x === q.i || a.ny * w + a.nx === q.i;
   if (escorted(a)) return q.rule !== DOOR_STATE.LOCKED;
   // Whoever is in the doorway (they paid on the way in) may step off it, whatever their wallet says now.
   if (a.y * w + a.x === q.i || a.ny * w + a.nx === q.i) return true;

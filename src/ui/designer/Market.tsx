@@ -73,10 +73,10 @@ export function DesignMarket({ g, id }: { g: Game; id: string }) {
 }
 
 /** The maker's letter, while an offer waits. */
-export function OfferLetter({ g }: { g: Game }) {
+export function OfferLetter({ g, onAnswer }: { g: Game; onAnswer?: () => void }) {
   const s = g.state, o = s.offer;
   if (!o) return null;
-  const d = designById(s, o.id), days = Math.max(0, Math.ceil((o.until - s.tick) / TICKS_PER_DAY));
+  const d = designById(s, o.id);
   return (
     <div className="mk-letter">
       <b>A letter from {o.maker}</b>
@@ -86,10 +86,10 @@ export function OfferLetter({ g }: { g: Game }) {
         <b>Your machines</b><span>you keep {Math.round(o.share * 100)}% of the house edge on your own {d?.name}; the rest is our fee</span>
         <b>Royalty</b><span>{(o.roy * 100).toFixed(1)}% of what it wins in other casinos, every month</span>
       </div>
-      <p className="muted small">After a sale its math is ours (you can still restyle it), its progressives go wide-area and we pay them. Nobody knows how many we'll sell. Open {days} more day{days === 1 ? "" : "s"}.</p>
+      <p className="muted small">After a sale its math is ours (you can still restyle it), its progressives go wide-area and we pay them. Nobody knows how many we'll sell. The offer stands until you answer.</p>
       <div className="row">
-        <button className="btn on" onClick={() => { play("click"); g.dispatch({ type: "saleAnswer", yes: true }); }}>Accept</button>
-        <button className="btn" onClick={() => { play("click"); g.dispatch({ type: "saleAnswer", yes: false }); }}>Decline</button>
+        <button className="btn on" onClick={() => { play("click"); g.dispatch({ type: "saleAnswer", yes: true }); g.flushCommands(); onAnswer?.(); }}>Accept</button>
+        <button className="btn" onClick={() => { play("click"); g.dispatch({ type: "saleAnswer", yes: false }); g.flushCommands(); onAnswer?.(); }}>Decline</button>
       </div>
     </div>
   );

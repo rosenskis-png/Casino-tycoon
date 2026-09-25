@@ -204,3 +204,6 @@ select,input[type=text]{font:inherit;font-size:16px;background:#120a07;color:var
 .letter-wrap .letter{max-width:480px;align-self:center}
 .letter-wrap .btn{align-self:center}
 .letter-wrap .btn.big{background:#2a1a12;margin-top:4px}
+/* (Batch A) Checkbox lists (notice switches). */
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 13px; }
+.checks label { display: flex; align-items: center; gap: 6px; }

@@ -9,8 +9,9 @@ import type { System } from "./registry";
 import type { CalEvent, GameState } from "./state";
 import { rng } from "./rng";
 import { post } from "./finance";
-import { news } from "./news";
+import { newsFor } from "./news";
 import { MONTH_NAMES, TICKS_PER_BEAT, TICKS_PER_DAY, dateOfDay, dayOfDate, daysInMonth } from "./clock";
+const news = newsFor("calendar");
 
 declare module "./commands" {
   interface CommandTypes {

@@ -266,6 +266,12 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.survey = {};
     return s;
   },
+  // 19 → 20 (M11.2, the owner's "why they come"): guests on the floor who came to gamble keep gambling on their
+  // list; nobody has looked around yet.
+  19: (s) => {
+    for (const a of s.agents) if (a.g) { a.g.sight = 0; if (a.g.intent === "gamble" || a.g.intent === "drink") a.g.todo |= 1 << 12; }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

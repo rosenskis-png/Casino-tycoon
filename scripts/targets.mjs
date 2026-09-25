@@ -160,7 +160,8 @@ const flags = [];
 for (const t of types) {
   const d = dep[t] ?? [];
   if (d.length < 20) { flags.push(`${t}: only ${d.length} visits`); continue; }
-  if (med(d.map((e) => e.play)) < 0.2) flags.push(`${t}: most guests barely play`);
+  // (M11.2) Only crowds that come to gamble should mostly play; the rest gamble when tempted.
+  if (sim.GUEST_TYPES[t].reasons.gamble >= 0.5 && med(d.map((e) => e.play)) < 0.2) flags.push(`${t}: most guests barely play`);
   if (share(d, (e) => e.why === "nothing") > 0.25) flags.push(`${t}: over a quarter give up finding a machine`);
   const drinkers = d.filter((e) => e.intend > 0);
   if (drinkers.length && share(drinkers, (e) => e.drinks > 0) < 0.3) flags.push(`${t}: under 30% of drinkers get a drink`);

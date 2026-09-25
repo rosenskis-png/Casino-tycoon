@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 
 export interface MapState {
   w: number;
@@ -97,9 +97,11 @@ export interface GuestData {
   /** 0 or 1, drawn from the group's makeup (party groups are all men, all women, or mixed). */
   sex: number;
   /** Why they came (M6 adds a meal, a show, the club): they head there first. */
-  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool" | "golf";
+  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool" | "golf" | "sights";
   /** (M11.2) The visit's to-do list: need bits (sim/guests.ts NEED_BIT) of the places they mean to go before leaving; TODO_EXT once they stayed on for it. */
   todo: number;
+  /** (M11.2) How much of the theming they liked while looking around (the sights). */
+  sight: number;
   /** 1 for a returning guest (a "card holder" at card doors until the M9 player's club). */
   card: number;
   /** Smokers (M6): 1, with the urge building 0-100 (satisfied in a smoking room or outdoors). */

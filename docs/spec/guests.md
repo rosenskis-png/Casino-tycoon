@@ -1,5 +1,36 @@
 # Guests (M3, revised; drinking retuned in M4)
 
+## Why they come (M11.2, owner: the challenge is getting people in the door)
+- **Reasons, not seats.** Each type has weighted reasons to come (`reasons`: gamble, drink, dine, show, club, pool,
+  mini golf, sights). Arrivals = the scenario's rate × type share × season × reputation × room × events and ads ×
+  **Σ reason weight × how well the casino offers it** (`offers` in `src/sim/amenities.ts`): the gambling floor
+  (seats sublinearly × how well the seats suit them × tables for table crowds), a bar (more with free drinks), each
+  kind of place (finer is better; its price against what it's worth to them), and the sights (the theming they like,
+  averaged over the open floor). Everything but the floor is × `REASON_K` = 3. A slots-only floor draws gamblers;
+  families need food, shows, golf, a pool or decor. The street walk-in uses the same pull (capped at 2).
+- **Why each came** is drawn in proportion to those same terms, and tops the visit's to-do list. Each adult also has
+  a chance at every other reason the casino offers (1.5 × its weight, at most 60%). **Gambling is on the list only
+  for those who came for it or drew it as an extra.** In a group that came for something else, each other adult may
+  peel off to the games instead (the type's urge × 0.6: dad plays while mom takes the kids to the show); children
+  stay with an adult who isn't gambling.
+- **Temptation:** anyone not planning to gamble, each decision, has a chance (0.15 × urge × mood × (1 + 2 × intox + high) ×
+  (1 + buzz/20)) of sitting at a game in view that appeals to them at least 0.4 ("Ooh, that one looks fun"). Leaving
+  the club drunk and happy, or a show buzzing, is when it happens. Urge: locals and high rollers 1, retirees 0.8,
+  tourists 0.6, party 0.5, conventioneers 0.5, families 0.45.
+- **Impulse:** a place they've seen this visit that their type likes may go on the list (0.08 × its weight a decision).
+- **Knowing the way:** anything on the list is somewhere they know how to get to.
+- **Sights:** eight legs of looking around, fun where the theming suits them; "What a place!" or "Not much to see here".
+- **Done:** a non-gambler with nothing left to do strolls a few legs past the games (one last chance), then goes home.
+- **Gamblers walk the aisles:** with nothing free in view they head for the nearest free game within 30 tiles (70% of
+  the time) instead of wandering; packed banks hide free seats otherwise.
+- **Winners are happy:** a visit that ends up scores at least 0.8 (unless hurt, thrown out or stiffed). A visit with no
+  gambling is judged by its fun (a show, golf, the sights).
+- **Tickets and worth** (`ticket` per type: high rollers $120, conventioneers $60, tourists $45, retirees $35,
+  families $30, party $25, locals $20; a meal 80%, golf, pool and cover 30%; +25% per tier): a price draws
+  1.5 × e^(−price/worth) as much as it would free. Show tickets now run to $100: a pricey show earns from those who
+  value it, a cheap one fills the house and the floor. Paying more than it's worth is "steep".
+
+
 Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.ts` (sidewalk and entrance), `drinks.ts` (drink policy and serving), `dist.ts` (distribution draws), with types in `src/data/guests.ts` and thoughts in `src/data/thoughts.ts`. Design agreed with the owner 2026-09-23 (history in DECISIONS.md); wayfinding is in `navigation.md`.
 
 ## Types and the population
@@ -138,6 +169,8 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 - One-off groups of 3–5: one or two adults, the rest children. Adults gamble lightly (cheap slots, bingo), rarely drink, and come for the pool, meals and shows; they mind drunks, fights and mess (they report), and smoke as everyone does.
 - **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
 - Drawn a row shorter in bright tees and caps.
+
+M11.2 "why they come" Test Floor (300 days, seed 1): guests seen 780 / 445 / 461 / 344 / 75 / 39 / 17 (Locals / Retirees / Tourists / Party / High rollers / Families / Conventioneers), playing 2.6 / 3.0 / 0.8 / 0.5 / 3.8 / 0.0 / 0.0 min (median; most non-gamblers never play, the tempted do), loss per visit $32 / $15 / $40 / $0 / $191 / $0 / $0 (median). No logic flags; conventioneers are few outside conventions.
 
 M11.2 Test Floor (build prices halved, groups wait for each other, luck ±10, longer restroom search; seeds 1 / 2 / 3, 300 days): visit length 6.2–6.3 / 7.6–7.9 / 5.4–5.7 / 5.9–6.4 / 8.6–9.9 / 5.5–5.6 / 4.7–6.3 min (Locals / Retirees / Tourists / Party / High rollers / Families / Conventioneers), playing 2.7–2.9 / 3.1–3.3 / 1.1–1.2 / 0.8–0.9 / 3.4–4.0 / 1.1–1.5 / 0.9–1.6, loss per visit $35–40 / $23–24 / $72–84 / $29–44 / $100–157 / $16–24 / $21–47, visit score 0.70–0.72 / 0.67–0.69 / 0.61–0.62 / 0.63–0.64 / 0.64–0.65 / 0.65–0.72 / 0.64–0.73; reputation after 300 days 71–72 / 66–68 / 60–63 / 62–65 / 57–63 / 58–65 / 56–61. Party leaders still leave for a restroom 14–23% of the time (the restrooms are in corners). No sanity flags beyond the old noisy one.
 

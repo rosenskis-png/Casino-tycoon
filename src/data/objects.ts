@@ -285,7 +285,7 @@ export const OBJECTS: Record<string, ObjectDef> = {
   showlounge: {
     id: "showlounge", name: "Show Lounge", cat: "amenity", w: 5, h: 5, cost: 3375, upkeep: 45, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 3, radius: 5 }, { channel: "PRS", strength: 2, radius: 4 }], sprite: "stage", art: "zone",
-    seats: [], serves: "show", use: [45, 45], price: 0, priceRange: [0, 40],
+    seats: [], serves: "show", use: [45, 45], price: 0, priceRange: [0, 100],
     sized: { layout: "show", min: [4, 4], max: [14, 12], cost: [1500, 75], upkeep: [25, 0.75, 0], tiers: ["Lounge", "Showroom", "Theater"], tierAt: [24, 60], staffEvery: 0, purpose: "show" },
     desc: "A stage and rows of seats. A show every so often, then the whole crowd gets up at once.",
   },

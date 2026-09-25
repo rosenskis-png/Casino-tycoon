@@ -48,14 +48,28 @@ for (const seed of seeds.split(",").map(Number)) {
   const g = sim.Game.create("horseshoe", seed);
   const out = [];
   let rejects = [];
+  let occ = { play: 0, seats: 0, here: 0, by: {} };
   for (let day = 0; day < +months * 30; day++) {
     for (const [d, f] of plan[strat]) if (d === day || (d === -1 && day % 10 === 5)) for (const c of f(g)) { const why = g.dispatch(c); if (why) rejects.push(`${c.type}${c.kind ? " " + c.kind : ""}: ${why}`); g.flushCommands(); }
-    for (let t = 0; t < sim.TICKS_PER_DAY; t++) g.step();
+    for (let t = 0; t < sim.TICKS_PER_DAY; t++) {
+      g.step();
+      if (t % 50) continue;
+      let play = 0, here = 0;
+      for (const a of g.state.agents) if (a.role === "guest" && !a.g.minor) {
+        here++;
+        const on = a.act === "play" && a.seat >= 0, k = (occ.by[a.g.type] ??= [0, 0]);
+        k[0]++;
+        if (on) { play++; k[1]++; }
+      }
+      occ.play += play; occ.seats += g.gameSeats; occ.here += here;
+    }
     g.bus.flush();
     if ((day + 1) % 180 === 0) {
       const H = g.state.finance.history.slice(-6); let net = 0, gam = 0;
       for (const h of H) for (const [k, v] of Object.entries(h.l)) { if (!["start", "build", "hire", "sales"].includes(k)) net += v / H.length; if (k === "slots") gam += v / H.length; }
-      out.push(`m${(day + 1) / 30}: cash ${Math.round(g.state.cash / 100) / 10}K worth ${Math.round(sim.worth(g) / 100) / 10}K net/mo ${Math.round(net)} slots/mo ${Math.round(gam)} guests ${g.state.agents.filter((a) => a.role === "guest").length} rep L${Math.round(g.state.rep.local)} T${Math.round(g.state.rep.tourist)} F${Math.round(g.state.rep.family)} R${Math.round(g.state.rep.retiree)} ${g.state.outcome}`);
+      const o = occ; occ = { play: 0, seats: 0, here: 0, by: {} };
+      const n = Math.max(1, o.seats / g.gameSeats), who = Object.entries(o.by).sort((a, b) => b[1][0] - a[1][0]).map(([t, [c, p]]) => `${t[0].toUpperCase()}${Math.round(c / n)}/${Math.round((100 * p) / Math.max(1, c))}%`).join(" ");
+      out.push(`m${(day + 1) / 30}: cash ${Math.round(g.state.cash / 100) / 10}K worth ${Math.round(sim.worth(g) / 100) / 10}K net/mo ${Math.round(net)} slots/mo ${Math.round(gam)} guests ${g.state.agents.filter((a) => a.role === "guest").length} seats used ${Math.round((100 * o.play) / Math.max(1, o.seats))}% adults playing ${Math.round((100 * o.play) / Math.max(1, o.here))}% [${who}] rep L${Math.round(g.state.rep.local)} T${Math.round(g.state.rep.tourist)} F${Math.round(g.state.rep.family)} R${Math.round(g.state.rep.retiree)} ${g.state.outcome}`);
     }
   }
   console.log(`${strat} seed ${seed}: ${out.join(" | ")}${rejects.length ? "\n  rejected: " + [...new Set(rejects)].join("; ") : ""}`);

@@ -2,6 +2,27 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · Playtest list after The Outfit, grouped into Batches A–E (owner)
+- Owner played The Outfit (liked it) and sent a list of fixes and ideas. Grouped into five lettered **Batches**
+  (owner: not "milestones"): A flow and friction, B games working right, C hands on the floor, D decor and niceness,
+  E emoji slot themes. ROADMAP.md holds the list.
+- **North Star conflict, flagged:** removing lucky/unlucky guests contradicts NORTH_STAR ("a few guests are luckier or
+  unluckier than the math suggests"; "lucky honest guests keep that suspicion genuinely uncertain"). Claude's view:
+  plain variance already makes honest winners, and at ±10 points the trait is invisible anyway, so the uncertainty
+  survives. Needs the owner's yes and a North Star edit ("some honest guests simply run hot") in Batch A.
+- **Art conflict, flagged:** emoji symbols vs the pixel-art rule. Proposal: emojis show in the designer and on the
+  play-it-yourself screen; the floor cabinet stays pixel art in the theme's colors.
+- **Hand pays and tax (answering the owner):** the line is per single win, not per bet. US slots: $1,200 until 2025,
+  $2,000 from 2026 (indexed). It's the gambler's income-tax paperwork (W-2G). The casino's gaming tax is on its whole
+  win, every wager, and doesn't care about hand pays; that stays as is. Hand pays become a staff errand.
+- **Emoji theme score (draft for Batch E):** tags are hidden, 3–5 per emoji, no tag says which symbol pays most.
+  A tag shared by 2+ symbols is a link. Score = sum over linked tags of (specificity × coverage), where specificity
+  falls with how common the tag is across the master list ("tropical" beats "colorful", "animal" is near zero) and a
+  tag carried by every symbol counts as the theme's spine (once, not per symbol). Bonus for sub-motifs (tags shared
+  by some but not all); penalty per symbol with no link. Note: in the owner's Hawaii example the dolphin links only
+  by "tropical", so "every emoji shares 2 tags" is too strict; "every emoji linked, many distinct links" fits the
+  intent. Crowds get hidden tag tastes (Families: animal, cartoon; High rollers: gold, luxury).
+
 ## 2026-09-25 · M12: The Outfit built first; enforcement reasons; luxury (owner)
 - **Green light** (owner, 2026-09-25): build The Outfit (rung 5) before rungs 1–4, "and any associated ideas and
   mechanics (eg adding any other high class luxury stuff)".

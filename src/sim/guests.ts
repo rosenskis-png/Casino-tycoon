@@ -1457,9 +1457,10 @@ function watchTable(g: Game, a: Agent, r: Rng): boolean {
   if (gd.mem.fun > 0 && r.chance(0.5)) return false;
   const w = g.state.map.w, here = a.y * w + a.x;
   // (M8.5) A slot in a big bonus draws a crowd too.
-  for (const [id, until] of g.bonusNow) {
-    if (until <= g.state.tick) { g.bonusNow.delete(id); continue; }
+  // In id order, so a reloaded game (whose index is rebuilt) draws the same.
+  for (const [id, until] of [...g.bonusNow].sort((p, q) => p[0] - q[0])) {
     const o = g.objById.get(id);
+    if (until <= g.state.tick) { g.bonusNow.delete(id); if (o) delete o.bonus; continue; }
     if (!o || Math.abs(o.x - a.x) + Math.abs(o.y - a.y) > SIGHT || !canSee(g, here, o.y * w + o.x) || !r.chance(LOOK_CHANCE)) continue;
     if (lookSpot(g, a, o, r, here)) { gd.look = 1; return true; }
   }

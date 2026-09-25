@@ -238,7 +238,7 @@ function resolve(g: Game, a: Agent) {
       gd.sfk = seen;
       g.bus.emit({ type: "sound", id: inf.d.show.call, x: o.x, y: o.y });
       // A big bonus draws a crowd (onlookers, like a hot craps table).
-      if (big) g.bonusNow.set(o.id, g.state.tick + Math.max(extra, 8 * TICKS_PER_SECOND));
+      if (big) { o.bonus = g.state.tick + Math.max(extra, 8 * TICKS_PER_SECOND); g.bonusNow.set(o.id, o.bonus); }
     }
     gd.extra = (gd.extra ?? 0) + Math.round(extra);
     if (voided) gd.voided = (gd.voided ?? 0) + voided;

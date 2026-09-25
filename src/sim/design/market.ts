@@ -102,8 +102,11 @@ function rebuild(g: Game): Cache {
   }
   for (const [k, v] of c.share) c.share.set(k, v / Math.max(1, c.slots));
   for (const [k, v] of c.mech) c.mech.set(k, v / Math.max(1, c.slots));
+  // (M11.4) What was fixed at the last rebuild comes from the saved snapshot, so a reload matches the running game.
+  const snap = s.mkt;
+  if (snap) c.regulars = snap.regulars;
   for (const p of s.pool) {
-    if (p.visits > 0) c.regulars[p.type] = (c.regulars[p.type] ?? 0) + 1;
+    if (!snap && p.visits > 0) c.regulars[p.type] = (c.regulars[p.type] ?? 0) + 1;
     if (!p.fan) continue;
     const m = c.fans.get(p.fan) ?? {};
     m[p.type] = (m[p.type] ?? 0) + 1;
@@ -116,16 +119,23 @@ function rebuild(g: Game): Cache {
     for (const [t, n] of Object.entries(st.ff)) if (Math.round(n)) m[t] = (m[t] ?? 0) + Math.round(n);
     c.fans.set(id, m);
   }
+  if (snap) {
+    c.draw = snap.draw;
+    c.wishes = snap.wishes;
+    for (const [id, m] of Object.entries(snap.f)) c.f.set(id, new Map(Object.entries(m)));
+    return c;
+  }
   // A game with a following is a reason to come (only while it's on the floor).
   for (const [id, m] of c.fans) {
     if (!c.share.has(id)) continue;
     for (const [t, n] of Object.entries(m)) if (n > 10) c.draw[t] = Math.min(MARKET.drawCap, (c.draw[t] ?? 0) + MARKET.draw * Math.log2(n / 10));
   }
-  c.wishes = wishesOf(g, c);
+  s.mkt = { f: {}, draw: c.draw, wishes: {}, regulars: c.regulars };
+  s.mkt.wishes = c.wishes = wishesOf(g, c);
   return c;
 }
 /** Forget the cache (the floor or the pool changed). */
-export const marketChanged = (g: Game) => { caches.delete(g); if (lastG === g) lastC = null; version++; };
+export const marketChanged = (g: Game) => { delete g.state.mkt; caches.delete(g); if (lastG === g) lastC = null; version++; };
 /** A fan won or lost: counted now; the draw it adds waits for the day's rebuild. */
 function fanDelta(g: Game, id: string | undefined, type: string, d: number) {
   if (!id) return;
@@ -156,6 +166,7 @@ export function marketFactor(g: Game, id: string, type: string): number {
   const nov = st?.ever ? 0 : (st?.nov ?? 0) * Math.exp(-ageDays(s, st) / MARKET.noveltyDays);
   v = (MARKET.unaware + (1 - MARKET.unaware) * aw) * (1 + nov * (0.5 + tt.bore)) * variety(g, id, type);
   m.set(type, v);
+  if (s.mkt) (s.mkt.f[id] ??= {})[type] = v;
   return v;
 }
 
@@ -522,7 +533,8 @@ export const marketSystem: System = {
   deps: ["designs", "pool"],
   commands,
   init(g) {
-    marketChanged(g);
+    // A loaded game keeps its saved snapshot (M11.4); a new one builds it.
+    if (!g.state.mkt) marketChanged(g);
     for (const o of g.state.objects) if (OBJECTS[o.kind]?.slot) launch(g, designIdOf(o));
   },
   layout(g) {

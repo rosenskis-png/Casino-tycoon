@@ -117,14 +117,27 @@ temptation between attractions; party: drink and friends; high rollers: big tabl
 | Party | $0.91 | $48 | $0.52 | 5.9% |
 | High rollers | $18.46 | $991 | $4.35 | 4.8% |
 
-  The "high roller problem" reverses: per seat they earn 32× what retirees do, per guest slot 12×. By take they looked
-  worst; by what the player spends (seats, build money, room on the floor) they are by far the best. Retirees and
-  locals trail. Not tuned: whether parity should hold per seat, per guest slot or per build dollar is the owner's call
-  (DECISIONS, Open), and the crowd floors' markets and layouts are only rough.
+  The "high roller problem" reversed: per seat they earned 32× what retirees did, per guest slot 12×.
+- **Gap closed (owner, 2026-09-25), numbers only:** tilt 1 in 100; high rollers bet 0.4× their stake at tables (was
+  1.5×); stakes up for locals (0.6–1.5% of budget), retirees (0.75–1.75%) and party groups (1.1–2.5%). Measured
+  (150 days, seeds 1–3):
+
+| | per seat/day | per $1K built/mo | per guest slot/day | take | visit score |
+|---|---|---|---|---|---|
+| Locals | $1.04 | $107 | $0.75 | 14.7% | 0.66 |
+| Retirees | $1.04 | $86 | $0.69 | 24.3% | 0.56 |
+| Tourists | $2.33 | $117 | $1.52 | 13.0% | 0.69 |
+| Families | $1.44 | $52 | $1.13 | 17.5% | 0.75 |
+| Party | $1.58 | $84 | $0.86 | 9.9% | 0.64 |
+| High rollers | $9.81 | $526 | $2.30 | 2.9% | 0.71 |
+
+  Per guest on the floor the spread is 3.3× (was 12×): high rollers about 2× the middle, a premium for a crowd that's
+  hard to draw. Per seat and per build dollar they stay ~10× ahead: their bets are 20–40× everyone else's, so matching
+  there would mean high rollers who don't bet like high rollers. Claude's recommendation: judge parity per guest slot.
 
 ## Tilt (M11.4, owner)
 High rollers are the most disciplined crowd (savvy 0.95: they find the thinnest edges and hold their limits), until
-they aren't. `tilt` per type (High rollers 0.35, others 0): each round while drunk or high and down, the chance is
+they aren't. `tilt` per type (High rollers 0.02, others 0; owner: "too frequent for the payout", about 1 visit in 100): each round while drunk or high and down, the chance is
 tilt × (intoxication + high) × the share of their money lost. On tilt:
 - savvy is 0: no edge-seeking, every limit stretched as far as it goes;
 - each bet is at least a quarter of what they're down (doubling down to claw it back), up to the game's limits;
@@ -132,8 +145,8 @@ tilt × (intoxication + high) × the share of their money lost. On tilt:
   their savings at once (a regular's life savings; High rollers' savings are $25K median, sized to game money);
 - they stop when back to even ("Back to even. Never again.") or when the money's gone, or when their group drags them
   home. The ticker says when a high roller goes on tilt (tap to go to them). Whales don't tilt.
-- Measured (Test Floor, 180 days, seeds 1–4): about 1 high-roller visit in 11 tips over (noisy: 1–8 a run); some win
-  it back, some draw $10K–$35K from the ATM and lose it, and a broke regular stops coming.
+- Measured (Test Floor, 240 days, seeds 1–8): 3 tilts in 364 high-roller visits (about 1 in 120) on an ordinary
+  floor. The chance scales with intoxication and highs, so pushing drink and drugs raises it (The Outfit, scenarios.md).
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.

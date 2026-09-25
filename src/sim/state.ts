@@ -41,6 +41,8 @@ export interface PlacedObject {
   w?: number; h?: number;
   /** Player-set price: a restaurant's multiplier, a show ticket or a club's cover (dollars). */
   price?: number;
+  /** (M8.5) Slots in a big bonus: the tick it ends (onlookers gather). Saved so a reloaded game plays on the same. */
+  bonus?: number;
   /** (M11.4) Priced places and bars: what they serve, 0 cheap, 1 standard (missing), 2 fancy (data/grades.ts). */
   grade?: number;
   /** 1 while broken down (slots), waiting for a tech. */
@@ -540,6 +542,12 @@ export interface GameState {
   nextDesign: number;
   /** (M8) Numbers per slot design on this floor, stock designs included. */
   dstats: Record<string, DesignStats>;
+  /**
+   * (M11.4) The slot market as it stood at its last rebuild (weekly, and when the floor or the month changes): market
+   * factors by design and type, fans' draw, wishes, regulars by type. Saved, so a reloaded game reads the same numbers
+   * the running one had cached; missing means rebuild now.
+   */
+  mkt?: { f: Record<string, Record<string, number>>; draw: Record<string, number>; wishes: Record<string, string>; regulars: Record<string, number> };
   /** (M8.5) Linked and must-hit-by progressive meters, one per design (standalone meters live on each machine). */
   meters: Record<string, Meter>;
   /** (M8.5) What guests thought at each game kind (a slot design, a table game), by month, for the last 6 months. */

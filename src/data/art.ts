@@ -751,6 +751,24 @@ export const DECOR_SPRITES: Record<string, SpriteDef> = {
     "..l...L.", "...lLLlL", "....lLLL", ".....LLL", "....yyyy", "...y9999", "..yyyyyy", "..yyy9yy",
     "..yy999y", "..yyy9yy", "...yyyyy", "....yyyy", "....8888", "...yyyyy",
   ])),
+  // (M12) Monte Carlo: crystal, gilt, black lacquer and red velvet.
+  mc_chandelier: S(M([
+    "......78", "......78", "......89", ".....900", "..8.9999", ".898QVQV", "8998VQVQ", ".9..Q.V.", "....V.Q.",
+    "...Q9999", "..V.8998", "....VQVQ", ".....Q.V", "......V.",
+  ])),
+  mc_piano: S([
+    "....YYYYYYYY....", "...YyyyyyyyyYY..", "..Yy9yyyyyyyyyY.", "..Yyyyyyyyyyyyyy", ".Yyyyyyyyyyyyyyy", ".yyyyyyyyyyyyyyy",
+    ".wwwwwwwwwwyyyyy", ".wywywwywywyyyyy", ".yyyyyyyyyyyyyy.", "..8.....8....8..", "..8.....8....8..", "..7.....7....7..",
+  ]),
+  mc_champagne: S([
+    ".......0........", "......0V0.......", ".....VQVQV......", "......888.......", "....VQVQVQV.....", ".....88888......",
+    "...VQVQVQVQV....", "....8888888.....", "..VQVQVQVQVQV...", "...888888888....", "..rRRRRRRRRRr...", "..rrrrrrrrrrr...",
+    "...7.......7....",
+  ]),
+  mc_rope: S([
+    "..99........99..", "..88........88..", "..78RRR..RRR78..", "..78.rRRRRr.78..", "..78..rrrr..78..", "..78........78..",
+    "..78........78..", "..78........78..", ".7888......8887.", ".666........666.",
+  ]),
   // Modern Luxe: chrome, glass, white.
   luxe_sculpture: S([
     ".....NNNNN......", "....NnnnnNN.....", "...Nn....nNN....", "...Nn.....nN....", "...NN.....nN....",
@@ -1340,6 +1358,7 @@ export const LIGHTS: Record<string, LightDef> = {
   djbooth: { color: "#ff4fa0", r: 4, k: 0.55 },
   tiki_torch: { color: "#ffb050", r: 2.2, k: 0.45 },
   dragon_lantern: { color: "#ff6a3a", r: 2, k: 0.4 },
+  mc_chandelier: { color: "#fff0c8", r: 3.2, k: 0.45 },
   med_brazier: { color: "#ff9a40", r: 2.4, k: 0.45 },
   atom_star: { color: "#ff4fa0", r: 3, k: 0.55 },
   rat_marquee: { color: "#ffd23f", r: 2.6, k: 0.45 },
@@ -1579,6 +1598,11 @@ export const PEOPLE: Record<string, LookSet> = {
   entertainer: {
     variants: 6, skin: SKINS, hair: ["#e04a4a", "#ffd23d", "#48b8f0", ...HAIRS], shoes: ["#c0283c", "#101014"], top: ["#fff6e0"], bottom: ["#2a3050"], accent: ["#6a3a9a"], hat: ["#6a3a9a"],
     styles: [[{ o: "blazer", h: "puff", x: ["bowtie"] }], [{ o: "blazer", h: "puff", x: ["bowtie"] }]],
+  },
+  // (M12) Casino hosts: a gold dinner jacket, a bow tie and a name badge.
+  host: {
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#f6f1e6"], bottom: ["#141418"], accent: ["#c99a3e"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "short", x: ["bowtie", "badge"] }], [{ o: "blazer", h: "bob", x: ["bowtie", "badge"] }]],
   },
   operator: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#7a808c"], bottom: ["#2a2e38"], accent: ["#1c2030"], hat: ["#1c2030"],

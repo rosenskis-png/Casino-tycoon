@@ -1,11 +1,11 @@
 // Saved game state: plain serializable data only. Derived caches live in the runtime (game.ts) and are rebuilt on load.
 import type { RoomPurpose } from "../data/rooms";
 import type { NewsLevel } from "./events";
-import type { EnfAction } from "../data/cheats";
+import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 22;
 
 export interface MapState {
   w: number;
@@ -265,6 +265,18 @@ export interface GuestData {
   high: number;
   /** (M11.4, owner) 1 once on tilt: drink or drugs and a heavy loss broke their discipline (docs/spec/guests.md "Tilt"). */
   tilt?: number;
+  /** (M12) 1 once they went on tilt this visit (tilt ends when they're back to even). */
+  tilted?: number;
+  /**
+   * (M12, owner) Behaviors (ENF_REASONS bits) security warned, kicked or banned them for (they do those less), and
+   * behaviors they actually did this visit (so the sim knows whether an action was deserved).
+   */
+  dt?: number;
+  did?: number;
+  /** (M12) An escort on their arm (agent id) while they play: company erodes savvy like a drink or two. */
+  arm?: number;
+  /** (M12) Tick a casino host last looked after them this visit (0 or missing: not yet). */
+  hosted?: number;
 }
 
 /**
@@ -305,6 +317,8 @@ export interface Person {
   /** (M8.6) Sessions played per slot design (the few most played; fading monthly), and the design they're a fan of. */
   dp?: Record<string, number>;
   fan?: string;
+  /** (M12) Behaviors (ENF_REASONS bits) security has warned, kicked or banned them for: they remember. */
+  dt?: number;
 }
 
 /**
@@ -345,8 +359,8 @@ export type Activity =
   | "swim" | "rest" | "golf"
   // M7: a dealer at their table; a guest watching a craps table.
   | "deal" | "look"
-  // M11.2: an entertainer performing.
-  | "perform";
+  // M11.2: an entertainer performing. M12: an escort keeping a player company; a casino host looking after a guest.
+  | "perform" | "company" | "host";
 
 /** (M9) A worker's hidden knack and honesty, morale, today's workload, and patrol zone (docs/spec/staff.md). */
 export interface StaffData {
@@ -364,7 +378,7 @@ export interface StaffData {
 export interface Agent {
   id: number;
   /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
-  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector" | "escort" | "entertainer";
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector" | "escort" | "entertainer" | "host";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;
@@ -450,6 +464,8 @@ export interface EnfJob {
   id: number;
   guest: number;
   action: EnfAction;
+  /** (M12) What it's for: the behavior it deters (data/cheats ENF_REASONS). */
+  reason: EnfReason;
   house: number;
   staff: number;
   stage: number;
@@ -465,6 +481,8 @@ export interface Enforcement {
   jobs: EnfJob[];
   rumors: { at: number; type: string; rep: number; police: number; text: string }[];
   missing: { at: number; name: number }[];
+  /** (M12, owner) The chill per behavior (EnfReason) from beatings and disappearances, 0-CHILL_MAX, fading daily. */
+  chill: Record<string, number>;
 }
 
 /** Closed by the police (a raid, or the license revoked): nobody comes in. */
@@ -557,6 +575,12 @@ export interface GameState {
   records: SlotRecords;
   /** (M11.2) What each crowd is saying, for the Guests tab's survey (halved each month). */
   survey: Record<string, SurveyRow>;
+  /**
+   * (M12) Gaming win (wagered − won, as played; not pool games) by crowd: this month so far, and closed months (newest last, 24
+   * kept), for goals by crowd; the lowest police standing seen, for held goals.
+   */
+  crowdWin: { month: Record<string, number>; hist: Record<string, number>[] };
+  lowPolice: number;
 }
 
 /** (M11.2) One crowd's survey: visits and their scores, thoughts had, and themes enjoyed or disliked (by theme id; "none" for bad theming with no theme). */

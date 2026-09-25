@@ -4,10 +4,18 @@ import { DOOR_STATE } from "./terrain";
 export interface Rect { x: number; y: number; w: number; h: number }
 
 export interface Goals {
-  /** Casino worth (cash + resale value of everything placed) to reach. */
+  /** Casino worth (cash + resale value of everything placed) to reach (0: no money goal). */
   worth: number;
   /** Reputation to reach with one guest type (or every type when `type` is omitted). */
-  rep: { type?: string; min: number };
+  rep?: { type?: string; min: number };
+  /**
+   * (M12) Gaming win (what they lost at the house's games, as they play) from one crowd (every crowd when `type` is
+   * omitted) averaging at least `min` a month over the last `months` closed months (big tables swing too much month
+   * to month for every month to count on its own).
+   */
+  gaming?: { type?: string; min: number; months: number };
+  /** (M12) Police standing held at or above this the whole time: dropping below it loses the scenario on the spot. */
+  police?: number;
   /** (M11.2) Reputation to reach with each of these types too (the tutorial: tourists and families). */
   reps?: { types: string[]; min: number };
   /** Deadline: end of this month (0-11) of this year (from 1). */
@@ -84,6 +92,15 @@ export interface ScenarioDef {
   rules?: Partial<Record<"intox" | "disorder" | "misconduct" | "vice" | "drugs", number>>;
   /** Not offered in the New game list (engine test maps). */
   hidden?: boolean;
+  /** (M12) The letter shown when the game starts (and kept in the Goals tab): who sent you and what they want. */
+  intro?: { from: string; text: string };
+  /** (M12) Starting police standing (default 75). */
+  police?: number;
+  /** (M12) Cheats: × the crowds' usual share of cheats, and × what each means to take. */
+  cheatRate?: number;
+  cheatTake?: number;
+  /** (M12) The rough end of enforcement (beatings, disappearances) costs this share of the usual heat, police standing, rumors and reputation. Witnesses and missing-person reports are unchanged. */
+  violence?: number;
 }
 
 // Shared lot: a tutorial-size building (~3× the v0.2 lot) with a back room, front doors, and a street entrance.
@@ -392,6 +409,98 @@ function highrollersFloor(): ScenarioDef {
   });
 }
 
+// ---------------------------------------------------------------------------------------------------------
+// (M12, owner) The Outfit: a luxury casino from scratch on the family's money, for rich New Yorkers. Draw them with
+// luxury, then loosen them with drink, drugs and company, and keep the police off. docs/spec/scenarios.md rung 5.
+// ---------------------------------------------------------------------------------------------------------
+
+/** The Outfit's lot: a big empty building shell with front doors, a hotel elevator on the back wall, and a street. */
+const OUTFIT_LOT = {
+  w: 96, h: 64,
+  grounds: [{ x: 2, y: 2, w: 92, h: 60 }],
+  buildings: [{ x: 8, y: 6, w: 72, h: 40 }],
+  walls: [] as Rect[],
+  doors: [[43, 45], [44, 45]] as [number, number][],
+  water: [] as Rect[],
+  entrances: [[43, 61], [44, 61]] as [number, number][],
+  sidewalks: [{ from: [0, 62] as [number, number], to: [95, 62] as [number, number] }],
+  elevator: [30, 7] as [number, number],
+};
+
+const OUTFIT_LETTER = {
+  from: "— Your friends in Chicago",
+  text: "Our friends in New York have more money than sense. Build them somewhere worth the trip: marble, velvet, crystal, a private room. Then see they have a good time. A very good time.\n\n"
+    + "The money in the bank is ours; what we want is the take from those high rollers, every month. A careful man with a thin edge gets nothing out of that crowd. A happy one, a drunk one, one with a pretty girl on his arm, gets everything.\n\n"
+    + "The cops in this town are friends of ours, up to a point. Keep it quiet. No fights, no bodies in the lobby, no raids. Cheats will come for the same money we do; deal with them however you like.\n\n"
+    + "We'll want our cut every month. Don't make us come down there.",
+};
+
+function outfit(): ScenarioDef {
+  return {
+    id: "outfit", name: "The Outfit",
+    blurb: "The family's money, an empty building and a town that looks the other way. Rich New Yorkers are coming. The Outfit wants the take from them every month, and no trouble with the police.",
+    ...OUTFIT_LOT, startCash: 250_000, objects: [], staff: {},
+    intro: OUTFIT_LETTER,
+    // Rich New Yorkers down for the weekend (nobody knows you yet), a few party groups, a few tourists off the street.
+    footfall: 0.25, street: { highroller: 1, party: 0.5, tourist: 0.3 },
+    market: { highroller: { size: 400, regulars: 0 } },
+    population: { highroller: 3, party: 0.5, tourist: 0.3 },
+    rep: { highroller: 30, party: 45, tourist: 45 },
+    arrivals: 0.35, maxGuests: 800,
+    goals: { worth: 0, gaming: { type: "highroller", min: 40_000, months: 3 }, police: 25, by: { year: 2, month: 11 } },
+    // A lenient town: bribable cops, a friendly start, violence that costs a quarter as much; cheats after the same money.
+    tools: 4, tax: 0.06, whales: true, bribe: 0.95, police: 70, cheatRate: 3, cheatTake: 2, violence: 0.25,
+    research: "build", rules: { vice: 2, drugs: 2 },
+  };
+}
+
+/**
+ * (M12) The Outfit built, hidden: a luxury salon on the Outfit's lot for `npm run outfit` (the honest casino, the
+ * free-for-all and the squeeze are the same floor with different rules, drinks and staff). A Salon Privé of
+ * baccarat, blackjack, craps and roulette with a members' bar, a dining room and a cabaret, a main floor with $5
+ * slots, a bar, the cage and restrooms, and a security office and back room.
+ */
+function outfitBuilt(): ScenarioDef {
+  const o: Obj[] = [
+    // The Salon Privé (high limit).
+    at("baccarat", 11, 9), at("baccarat", 17, 9), at("baccarat", 23, 9), at("roulette", 34, 9), at("roulette", 39, 9),
+    at("blackjack", 11, 15), at("blackjack", 16, 15), at("blackjack", 21, 15), at("blackjack", 26, 15), at("craps", 32, 15), at("craps", 39, 15),
+    ...designed("slot_slant", "platinum", 11, 21, 8, 0), at("bar", 30, 21, { w: 4, h: 2, bar: { strength: 1, comp: 0 } }), at("restroom", 40, 22, { w: 4, h: 2 }), at("restroom", 9, 24, { w: 3, h: 2 }), at("sign", 12, 26), at("sign", 44, 25), at("sign", 20, 20),
+    ...decor([["mc_chandelier", 20, 13], ["mc_chandelier", 32, 13], ["mc_rope", 26, 25], ["mc_rope", 29, 25], ["mc_piano", 36, 21], ["mc_champagne", 29, 20],
+      ["luxe_sculpture", 9, 12], ["deco_statue", 44, 12], ["luxe_orchid", 9, 18], ["deco_lamp", 44, 20], ["mc_chandelier", 14, 19], ["mc_chandelier", 38, 7],
+      ["deco_statue", 9, 7], ["mc_champagne", 44, 7], ["luxe_orchid", 20, 7], ["deco_lamp", 36, 19]]),
+    // The dining room and the cabaret.
+    at("restaurant", 48, 10, { w: 8, h: 6 }), at("showlounge", 65, 10, { w: 9, h: 8 }),
+    ...decor([["mc_chandelier", 52, 18], ["mc_piano", 58, 8], ["luxe_orchid", 47, 20], ["mc_chandelier", 69, 20], ["deco_lamp", 64, 22], ["mc_rope", 76, 22]]),
+    at("restroom", 57, 23, { w: 3, h: 2 }), at("restroom", 75, 24, { w: 3, h: 2 }),
+    // The main floor: $5 machines, a table pit, a bar, the cages, ATMs, restrooms, signs.
+    ...bank([["slot_slant", "platinum"], ["slot_stepper", "diamond"]], 16, 33, 12), ...bank([["slot_stepper", "diamond"], ["slot_slant", "platinum"]], 16, 38, 12),
+    at("blackjack", 31, 30), at("blackjack", 36, 30), at("baccarat", 47, 30), at("baccarat", 53, 30),
+    at("roulette", 30, 35), at("blackjack", 37, 35), at("craps", 47, 35), at("blackjack", 54, 35),
+    at("bar", 58, 31, { w: 4, h: 2 }), at("cage", 12, 43, { w: 2, h: 1 }), at("atm", 16, 43), at("atm", 58, 43), at("cage", 62, 43, { w: 2, h: 1 }),
+    at("restroom", 9, 29, { w: 4, h: 2 }), at("restroom", 64, 29, { w: 4, h: 2 }), at("restroom", 73, 29, { w: 4, h: 2 }),
+    at("sign", 30, 41), at("sign", 46, 41), at("sign", 60, 28), at("bin", 40, 39), at("bin", 56, 40),
+    ...decor([["mc_chandelier", 29, 29], ["mc_chandelier", 45, 29], ["deco_statue", 38, 43], ["luxe_glass", 57, 29], ["mc_rope", 41, 43], ["mc_rope", 46, 43],
+      ["mc_piano", 64, 36], ["deco_statue", 66, 40], ["deco_lamp", 14, 36], ["luxe_sculpture", 30, 43], ["mc_chandelier", 58, 38]]),
+    // Cameras over the salon and the floor, watched from the office; a dumpster out back.
+    at("camera", 15, 12), at("camera", 30, 12), at("camera", 40, 12), at("camera", 24, 18), at("camera", 38, 19), at("camera", 22, 36), at("camera", 44, 37), at("camera", 34, 33),
+    at("dumpster", 84, 40, { w: 2, h: 1 }),
+  ];
+  return {
+    ...outfit(), id: "outfit_built", name: "The Outfit, built (test)", hidden: true, startCash: 100_000, intro: undefined, objects: o,
+    walls: [{ x: 45, y: 7, w: 1, h: 20 }, { x: 9, y: 27, w: 37, h: 1 }, { x: 62, y: 7, w: 1, h: 20 }, { x: 46, y: 27, w: 33, h: 1 },
+      { x: 70, y: 35, w: 1, h: 10 }, { x: 71, y: 35, w: 8, h: 1 }, { x: 71, y: 40, w: 8, h: 1 }],
+    doors: [...OUTFIT_LOT.doors, [45, 17], [27, 27], [28, 27], [62, 17], [54, 27], [70, 27], [70, 37], [70, 42]],
+    gates: [{ x: 70, y: 37, rule: DOOR_STATE.STAFF }, { x: 70, y: 42, rule: DOOR_STATE.STAFF }],
+    rooms: [
+      { x: 20, y: 24, name: "Salon Privé", purpose: "highlimit" }, { x: 50, y: 20, name: "Dining room", purpose: "restaurant" },
+      { x: 70, y: 22, name: "Cabaret", purpose: "show" }, { x: 74, y: 37, name: "Security office", purpose: "office" },
+      { x: 74, y: 42, name: "Back room", purpose: "enforcement" },
+    ],
+    staff: { janitor: 6, tech: 1, server: 4, guard: 4, operator: 1, pitboss: 2, host: 2 },
+  };
+}
+
 /** The crowd floors by crowd, for `npm run parity`. */
 export const CROWD_FLOORS: Record<string, string> = { local: "crowd_local", retiree: "crowd_retiree", tourist: "crowd_tourist", family: "crowd_family", party: "crowd_party", highroller: "crowd_highroller" };
 
@@ -468,5 +577,6 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
   testfloor: testFloor(),
   crowd_local: localsFloor(), crowd_retiree: retireesFloor(), crowd_tourist: touristsFloor(),
   crowd_family: familiesFloor(), crowd_party: partyFloor(), crowd_highroller: highrollersFloor(),
+  outfit: outfit(), outfit_built: outfitBuilt(),
 };
 export const DEFAULT_SCENARIO = "horseshoe";

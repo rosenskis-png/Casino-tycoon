@@ -10,8 +10,9 @@ import {
   BEAT_GROUP_ANNOY, BEAT_GROUP_CALL, BEAT_GROUP_POLICE, CAMS_PER_OPERATOR, CATCH_BASE, CATCH_CAMERA, CATCH_DEALER, CATCH_GUARD, CATCH_PIT, COUNT_SPOT, PIT_SIGHT,
   CHEAT_HIT, CHEAT_X, CREW, ENF, ENF_ACTIONS, ESTIMATE_CAP, SUSPECT_Z, GUARD_SIGHT, HEAT_DECAY, HEAT_SCALE, HONEST_SECS, INNOCENT_VANISH_POLICE,
   LUCK_SHARE, LUCK_SHIFT, TAKE_MIN, MARKED, MISSING_POLICE, MISSING_SECS, RUMOR_DAYS, SPELL_SECS, TAKE, WITNESS_POLICE, WITNESS_REACH,
-  WITNESS_REPORTS, type EnfAction,
+  WITNESS_REPORTS, ENF_REASONS, PERSONAL_DETER, CHILL_MAX, CHILL_DECAY, type EnfAction, type EnfReason,
 } from "../data/cheats";
+import { SCENARIOS } from "../data/scenarios";
 import type { SlotModel } from "../data/games";
 import type { RoomPurpose } from "../data/rooms";
 import { TABLE_GAMES } from "../data/tables";
@@ -37,7 +38,7 @@ declare module "./commands" {
     /** Mark a guest (bits: 1 marked, 2 alert on leaving, 4 alert on returning; 0 unmarks). */
     mark: { id: number; flags: number };
     /** Order an enforcement action on a guest. */
-    enforce: { id: number; action: EnfAction };
+    enforce: { id: number; action: EnfAction; reason?: EnfReason };
     /** The house treatment for caught cheats, first offense and any later one. */
     setTreatment: { first: EnfAction; repeat: EnfAction };
   }
@@ -45,7 +46,7 @@ declare module "./commands" {
 
 const SEC = TICKS_PER_SECOND;
 
-export const newEnforcement = (): Enforcement => ({ policy: { first: "ban", repeat: "ban" }, heat: 0, jobs: [], rumors: [], missing: [] });
+export const newEnforcement = (): Enforcement => ({ policy: { first: "ban", repeat: "ban" }, heat: 0, jobs: [], rumors: [], missing: [], chill: {} });
 
 /** A stable 0-1 number from an id and a salt (hidden tags for life, the estimate's noise). Consumes no stream. */
 export function hash01(id: number, salt: number): number {
@@ -57,9 +58,18 @@ export function hash01(id: number, salt: number): number {
 }
 
 /** A person's hidden tags for life, from their id: luck shift and cheat flag. */
-export function lifeTags(id: number, type: GuestTypeDef): { luck: number; cheat: number } {
+export function lifeTags(id: number, type: GuestTypeDef, rate = 1): { luck: number; cheat: number } {
   const u = hash01(id, 1);
-  return { luck: u < LUCK_SHARE ? LUCK_SHIFT : u < 2 * LUCK_SHARE ? -LUCK_SHIFT : 0, cheat: hash01(id, 2) < type.cheat ? 1 : 0 };
+  return { luck: u < LUCK_SHARE ? LUCK_SHIFT : u < 2 * LUCK_SHARE ? -LUCK_SHIFT : 0, cheat: hash01(id, 2) < type.cheat * rate ? 1 : 0 };
+}
+
+/**
+ * (M12, owner) How often this guest does a behavior now, 0-1: a quarter as often once security dealt with them for
+ * it (this visit, or a pool person on an earlier one), times (1 − the chill) beatings and disappearances left.
+ */
+export function deterOf(s: GameState, gd: GuestData, reason: EnfReason): number {
+  const bit = ENF_REASONS[reason].bit;
+  return (gd.dt && gd.dt & bit ? PERSONAL_DETER : 1) * (1 - (s.enf.chill[reason] ?? 0));
 }
 
 /** Name as the UI shows it ("Rosa K."), for news items. */
@@ -77,12 +87,12 @@ export function tagGuest(g: Game, gd: GuestData, p: Person | null, leader: Guest
   else {
     const u = r.next();
     gd.luck = u < LUCK_SHARE ? LUCK_SHIFT : u < 2 * LUCK_SHARE ? -LUCK_SHIFT : 0;
-    gd.cheat = r.chance(leader?.cheat ? CREW : type.cheat) ? 1 : 0;
+    gd.cheat = r.chance(leader?.cheat ? CREW : type.cheat * (SCENARIOS[s.scenario].cheatRate ?? 1)) ? 1 : 0;
   }
   if (gd.cheat) {
     // Here for the money: they stay longer, and only their take ends the visit early. (M11.1) What they're after is
     // sized to the casino: small change at a small one, serious money at a big one.
-    gd.take = Math.max(TAKE_MIN, scaled(g, logNormal(r, TAKE)));
+    gd.take = Math.max(TAKE_MIN, scaled(g, logNormal(r, TAKE))) * (SCENARIOS[s.scenario].cheatTake ?? 1);
     gd.floorTime = Math.round(gd.floorTime * 1.5);
     gd.spellAt = s.tick + r.int(HONEST_SECS[0], HONEST_SECS[1]) * SEC;
   }
@@ -239,6 +249,9 @@ function cheatBeat(g: Game, a: Agent, guards: Agent[], camShare: number) {
   // Poker and bingo pay out of other players' money, not the house's: cheats don't bother there.
   const o = g.objById.get(a.target), fam = o && OBJECTS[o.kind].game;
   if (fam && TABLE_GAMES[fam].pool) return;
+  // (M12, owner) Warned before, or word of what happens to cheats here: they may lose their nerve for the night.
+  const d = deterOf(s, gd, "cheat");
+  if (d < 1 && !r.chance(d)) { gd.take = 0; return; }
   gd.spell = r.int(SPELL_SECS[0], SPELL_SECS[1]);
 }
 
@@ -282,7 +295,7 @@ function caught(g: Game, a: Agent) {
   g.bus.emit({ type: "sound", id: "caught", x: a.x, y: a.y });
   news(g, "bad", `Caught cheating: ${guestName(gd.name)}${o ? ` at ${OBJECTS[o.kind].name}` : ""}${up > 0 ? `; ${fmtMoney(up)} recovered` : ""}.`, { a: a.id });
   const action = offense > 1 ? s.enf.policy.repeat : s.enf.policy.first;
-  order(g, a, action, 1);
+  order(g, a, action, 1, "cheat");
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -311,7 +324,7 @@ const enforcers = (g: Game) => g.state.agents.filter((a) => a.role === "guard");
 const guardsOf = enforcers;
 
 /** Queues an action on a guest (the player's order, or the house treatment) and holds them. */
-function order(g: Game, a: Agent, action: EnfAction, house: number) {
+function order(g: Game, a: Agent, action: EnfAction, house: number, reason: EnfReason) {
   const s = g.state;
   // With no security at all, a beating or disappearance becomes a ban.
   if (ENF[action].enforcer && !enforcers(g).length) action = "ban";
@@ -320,7 +333,7 @@ function order(g: Game, a: Agent, action: EnfAction, house: number) {
     if (house) { banGroup(g, a); sendHome(g, a, "banned"); }
     return;
   }
-  const job: EnfJob = { id: s.nextId++, guest: a.id, action, house, staff: -1, stage: 0, tile: -1, at: -1 };
+  const job: EnfJob = { id: s.nextId++, guest: a.id, action, reason, house, staff: -1, stage: 0, tile: -1, at: -1 };
   s.enf.jobs.push(job);
   hold(g, a, job.id);
 }
@@ -390,7 +403,8 @@ function jobTick(g: Game, job: EnfJob, byId: Map<number, Agent>) {
     if (isWalking(st)) return;
     if (Math.abs(st.x - t.x) + Math.abs(st.y - t.y) > 1) { go(st, here, "enforce"); return; }
     if (job.action === "warn") { job.stage = 3; job.at = s.tick; return; }
-    const dest = job.action === "ban" ? nearestOf(g, t, here, exits(g)) : nearestOf(g, t, here, purposeTiles(g, "enforcement"));
+    const out = job.action === "ban" || job.action === "kick";
+    const dest = out ? nearestOf(g, t, here, exits(g)) : nearestOf(g, t, here, purposeTiles(g, "enforcement"));
     if (dest < 0 || dest === here) { job.stage = 3; job.at = s.tick; job.tile = dest; act(g, job, t); return; }
     job.tile = dest;
     job.stage = 2;
@@ -398,16 +412,17 @@ function jobTick(g: Game, job: EnfJob, byId: Map<number, Agent>) {
     // The enforcer walks them there and stands beside them.
     const nb = [dest - 1, dest + 1, dest - w, dest + w].filter((i) => i >= 0 && i < w * s.map.h && g.walkable(i) && g.rooms.roomOf[i] === g.rooms.roomOf[dest]);
     go(st, nb.length ? nb[0] : dest, "enforce");
-    if (job.action === "ban") witnessed(g, t, "ban");
+    if (out) witnessed(g, t, job.action);
     return;
   }
   if (job.stage === 2) {
     if (isWalking(t) || isWalking(st)) return;
-    if (job.action === "ban") {
+    if (job.action === "ban" || job.action === "kick") {
       consequences(g, job, t, false);
-      banGroup(g, t);
+      if (job.action === "ban") banGroup(g, t);
+      else kickOut(g, t);
       finish(g, job, t, st);
-      t.g.why = "banned";
+      t.g.why = job.action === "ban" ? "banned" : "ejected";
       t.act = "leave";
       return;
     }
@@ -421,14 +436,57 @@ function jobTick(g: Game, job: EnfJob, byId: Map<number, Agent>) {
   carryOut(g, job, t, st);
 }
 
-/** What any action costs: heat, the base police cost, witnesses (unless already counted), and a rumor if innocent. */
+/** (M12) Did they really do what they're being dealt with for? The sim knows. */
+function guilty(gd: GuestData, reason: EnfReason): boolean {
+  switch (reason) {
+    case "cheat": return !!gd.cheat;
+    case "count": return !!gd.counter;
+    case "intox": return gd.mem.peak >= 0.5;
+    case "none": return false;
+    default: return !!((gd.did ?? 0) & ENF_REASONS[reason].bit);
+  }
+}
+
+/** (M12) The scenario's discount on the rough end (The Outfit's town looks away): heat, base police cost, rumors and the crowd's reputation. */
+const roughMult = (g: Game, action: EnfAction) => (ENF[action].enforcer ? SCENARIOS[g.state.scenario].violence ?? 1 : 1);
+
+/**
+ * What any action costs: heat, the base police cost, witnesses (unless already counted), and a rumor if innocent.
+ * (M12, owner) And what it teaches: warnings, kicks and bans make this guest (and the pool person) do the behavior
+ * less; beatings and disappearances chill it for everyone for a while, and cost the target's crowd reputation,
+ * guilty or not.
+ */
 function consequences(g: Game, job: EnfJob, t: Agent, witnesses: boolean): number {
+  const s = g.state, gd = t.g!, def = ENF[job.action], rough = roughMult(g, job.action);
   const mult = heat(g, job.action);
   if (witnesses) witnessed(g, t, job.action);
-  if (!t.g!.cheat) rumor(g, t, job.action, mult);
-  if (ENF[job.action].police) adjustPolice(g, -ENF[job.action].police * mult);
-  count(g.state, "_enf");
+  const reason = job.reason ?? "cheat";
+  if (!guilty(gd, reason)) rumor(g, t, job.action, reason, mult * rough);
+  if (def.police) adjustPolice(g, -def.police * mult * rough);
+  const bit = ENF_REASONS[reason].bit;
+  if (bit) {
+    gd.dt = (gd.dt ?? 0) | bit;
+    const p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
+    if (p) p.dt = (p.dt ?? 0) | bit;
+    if (def.chill) s.enf.chill[reason] = Math.min(CHILL_MAX, (s.enf.chill[reason] ?? 0) + def.chill);
+  }
+  if (def.rep) hitReputation(g, gd.type, def.rep * GUEST_TYPES[gd.type].repSensitivity * mult * rough);
+  count(s, "_enf");
   return mult;
+}
+
+/** (M12) Shown out for tonight (no ban): the visit is over, their group minds, and a pool person remembers. */
+function kickOut(g: Game, t: Agent) {
+  const gd = t.g!;
+  gd.mem.ejected = 1;
+  const p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
+  if (p) p.ejects++;
+  think(g, t, "ejected");
+  for (const m of companions(g, t)) {
+    m.g!.annoy = Math.min(30, m.g!.annoy + 8 * GUEST_TYPES[m.g!.type].policed);
+    think(g, m, "friendEjected");
+  }
+  count(g.state, "_ejected");
 }
 
 /** It starts: the sound of it (the animation is the renderer's, from the job's stage and start tick). */
@@ -443,7 +501,11 @@ function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
     case "warn": {
       const type = GUEST_TYPES[gd.type];
       gd.warned++;
-      gd.take = 0;
+      // (M12) A warning is about something: the cheat stops cheating, the drunk stops drinking, the counter counting.
+      const reason = job.reason ?? "cheat";
+      if (reason === "cheat") gd.take = 0;
+      if (reason === "intox") gd.intend = Math.min(gd.intend, gd.intox);
+      if (reason === "count") gd.counter = 0;
       gd.annoy = Math.min(30, gd.annoy + 8 * type.policed);
       think(g, t, "warned");
       for (const m of companions(g, t)) m.g!.annoy = Math.min(30, m.g!.annoy + 3 * GUEST_TYPES[m.g!.type].policed);
@@ -453,6 +515,10 @@ function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
       banGroup(g, t);
       finish(g, job, t, st);
       return sendHome(g, t, "banned");
+    case "kick":
+      kickOut(g, t);
+      finish(g, job, t, st);
+      return sendHome(g, t, "ejected");
     case "beat": {
       gd.hurt = 1;
       gd.take = 0;
@@ -497,7 +563,7 @@ function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
 /** The rolling heat, after adding this action: every cost is multiplied by the returned factor. */
 function heat(g: Game, action: EnfAction): number {
   const e = g.state.enf;
-  e.heat += ENF[action].heat;
+  e.heat += ENF[action].heat * roughMult(g, action);
   return 1 + e.heat / HEAT_SCALE;
 }
 
@@ -506,7 +572,7 @@ function witnessed(g: Game, t: Agent, action: EnfAction) {
   const def = ENF[action], s = g.state, w = s.map.w, r = rng(s, "cheats");
   if (!def.witness) return;
   const here = t.y * w + t.x, group = t.g!.group, mult = 1 + s.enf.heat / HEAT_SCALE;
-  const thought = action === "ban" ? "sawBan" : action === "beat" ? "sawBeating" : "sawVanish";
+  const thought = action === "ban" || action === "kick" ? "sawBan" : action === "beat" ? "sawBeating" : "sawVanish";
   let told = 0;
   for (const b of s.agents) {
     const bd = b.g;
@@ -523,18 +589,29 @@ function witnessed(g: Game, t: Agent, action: EnfAction) {
 }
 
 const RUMOR_TEXT: Record<EnfAction, string> = {
-  warn: "Word is the guest your staff warned for cheating never cheated at all.",
-  ban: "Word is the guest you banned for life was just on a lucky streak.",
-  beat: "Rumor: the guest your security beat up was just lucky. People are talking.",
-  vanish: "Rumor: a guest who vanished after a win at the casino was never a cheat. People are scared.",
+  warn: "Word is the guest your staff warned for {why} never did anything of the sort.",
+  kick: "Word is the guest your security threw out for {why} hadn't done a thing.",
+  ban: "Word is the guest you banned for life for {why} was innocent.",
+  beat: "Rumor: the guest your security beat up for {why} hadn't done it. People are talking.",
+  vanish: "Rumor: a guest who vanished from the casino had done nothing wrong. People are scared.",
 };
+const NO_REASON: Record<EnfAction, string> = {
+  warn: "Word is your staff go around warning guests for no reason at all.",
+  kick: "Word is your security throws people out for no reason at all.",
+  ban: "Word is you ban people for life for no reason at all.",
+  beat: "Rumor: your security beat a guest up for no reason. People are talking.",
+  vanish: "Rumor: a guest vanished from the casino for no reason anyone knows. People are scared.",
+};
+/** What the ticker calls each reason in a rumor. */
+const WHY_WORD: Record<EnfReason, string> = { cheat: "cheating", count: "counting cards", intox: "being drunk", disorder: "causing trouble", misconduct: "misconduct", vice: "vice", drugs: "drugs", none: "" };
 
 /** The target was innocent: word gets around in a few days. */
-function rumor(g: Game, t: Agent, action: EnfAction, mult: number) {
+function rumor(g: Game, t: Agent, action: EnfAction, reason: EnfReason, mult: number) {
   const s = g.state, r = rng(s, "cheats"), type = GUEST_TYPES[t.g!.type];
   s.enf.rumors.push({
     at: s.tick + r.int(RUMOR_DAYS[0], RUMOR_DAYS[1]) * TICKS_PER_DAY, type: t.g!.type,
-    rep: ENF[action].rumorRep * type.repSensitivity * mult, police: action === "vanish" ? INNOCENT_VANISH_POLICE * mult : 0, text: RUMOR_TEXT[action],
+    rep: ENF[action].rumorRep * type.repSensitivity * mult, police: action === "vanish" ? INNOCENT_VANISH_POLICE * mult : 0,
+    text: reason === "none" ? NO_REASON[action] : RUMOR_TEXT[action].replace("{why}", WHY_WORD[reason]),
   });
 }
 
@@ -661,13 +738,14 @@ const commands: CommandTable<"mark" | "enforce" | "setTreatment"> = {
       const a = guestById(g, c.id);
       if (!a) return "They've left";
       if (!validAction(c.action)) return "Unknown action";
+      if (c.reason !== undefined && !(c.reason in ENF_REASONS)) return "Unknown reason";
       if (a.g!.held) return "Already being dealt with";
       if (a.act === "out" || a.act === "fight" || a.act === "leave") return "Not now";
       if (ENF[c.action].enforcer && !enforcers(g).length) return "Hire an enforcer first";
       if (!enforcers(g).length && !guardsOf(g).length) return "Hire an enforcer or a guard first";
       return null;
     },
-    apply(g, c) { order(g, guestById(g, c.id)!, c.action, 0); },
+    apply(g, c) { order(g, guestById(g, c.id)!, c.action, 0, c.reason ?? "cheat"); },
   },
   setTreatment: {
     validate: (_g, c) => (validAction(c.first) && validAction(c.repeat) ? null : "Unknown action"),
@@ -717,6 +795,7 @@ export const cheatSystem: System = {
     const s = g.state, e = s.enf;
     e.heat *= HEAT_DECAY;
     if (e.heat < 0.01) e.heat = 0;
+    for (const k of Object.keys(e.chill)) { e.chill[k] *= CHILL_DECAY; if (e.chill[k] < 0.01) delete e.chill[k]; }
     const due = e.rumors.filter((q) => q.at <= s.tick);
     if (!due.length) return;
     e.rumors = e.rumors.filter((q) => q.at > s.tick);

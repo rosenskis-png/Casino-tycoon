@@ -136,6 +136,11 @@ const DECOR_ROWS: DecorRow[] = [
   ["dragon_lion", "dragon", "Guardian Lion", 350, 2.5, 0, { suitsTheme: { deco: 0.3 }, suitsPlace: ["highlimit", "floor"] }, "A bronze lion guarding the house's good fortune."],
   ["dragon_vase", "dragon", "Porcelain Vase", 225, 2, 0, { suitsTheme: { luxe: 0.3 }, suitsPlace: ["restaurant", "highlimit"] }, "Blue and white, older than the building."],
   ["dragon_screen", "dragon", "Lacquer Screen", 275, 2, 0.5, { suitsPlace: ["indoor", "restaurant"], clashesPlace: ["outdoor"] }, "Red lacquer with a golden dragon coiling across it."],
+  // (M12) Monte Carlo: the grandest pieces in the catalog, for the big money.
+  ["mc_chandelier", "monaco", "Crystal Chandelier", 600, 4, 0.5, { suitsTheme: { deco: 0.3 }, suitsPlace: ["highlimit", "restaurant", "show"], clashesPlace: ["outdoor", "club"] }, "A thousand crystal drops and a hundred small flames."],
+  ["mc_piano", "monaco", "Grand Piano", 500, 3, 1, { suitsTheme: { ratpack: 0.3 }, suitsPlace: ["bar", "restaurant", "highlimit"], clashesPlace: ["club", "outdoor"] }, "A black concert grand. Someone plays it, somehow."],
+  ["mc_champagne", "monaco", "Champagne Tower", 350, 2.5, 1.5, { suitsPlace: ["bar", "highlimit", "club"], clashesPlace: ["restaurant"] }, "Coupes stacked in a pyramid, poured from the top."],
+  ["mc_rope", "monaco", "Velvet Rope", 150, 2, 0, { suitsPlace: ["highlimit", "indoor"], clashesPlace: ["outdoor"] }, "Brass posts and red velvet. Not everyone gets in."],
   ["pirate_cannon", "pirate", "Cannon", 225, 1, 1, { suitsPlace: ["outdoor", "floor"], clashesPlace: ["restaurant"] }, "Loaded with confetti, reportedly."],
 ];
 

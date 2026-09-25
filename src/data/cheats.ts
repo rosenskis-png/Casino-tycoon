@@ -38,8 +38,9 @@ export const CAMS_PER_OPERATOR = 8;
 export const ESTIMATE_CAP = 0.92;
 export const SUSPECT_Z = 7;
 
-export type EnfAction = "warn" | "ban" | "beat" | "vanish";
-export const ENF_ACTIONS: EnfAction[] = ["warn", "ban", "beat", "vanish"];
+/** (M12, owner) The ladder, mildest first: warn > kick out = beat up > lifetime ban > disappear. */
+export type EnfAction = "warn" | "kick" | "beat" | "ban" | "vanish";
+export const ENF_ACTIONS: EnfAction[] = ["warn", "kick", "beat", "ban", "vanish"];
 
 export interface EnfActionDef {
   name: string;
@@ -54,15 +55,45 @@ export interface EnfActionDef {
   tell: number;
   /** The rough end of the job (a beating, a disappearance): with no security at all it becomes a ban. */
   enforcer: boolean;
+  /**
+   * (M12, owner) What it teaches. Personal (warn, kick, ban): only this guest does the thing less (PERSONAL_DETER),
+   * for the rest of the visit and, for pool people, on later visits. Global (beat, vanish): everyone does it less for
+   * a while (`chill`, fading), and the target's crowd hears about it (`rep`, reputation, guilty or not).
+   */
+  chill: number;
+  rep: number;
   desc: string;
 }
 
 export const ENF: Record<EnfAction, EnfActionDef> = {
-  warn: { name: "Warning", secs: 2, heat: 0.3, police: 0, rumorRep: 0.5, witness: 0, tell: 0, enforcer: false, desc: "A quiet word. They stop cheating for the rest of the visit." },
-  ban: { name: "Lifetime ban", secs: 1, heat: 0.5, police: 0, rumorRep: 1.5, witness: 3, tell: 0, enforcer: false, desc: "Walked out, with their group, and turned away at the door from now on." },
-  beat: { name: "Beating", secs: 2, heat: 1.5, police: 0.5, rumorRep: 4, witness: 12, tell: 0.25, enforcer: true, desc: "A few punches in the enforcement room. They limp home." },
-  vanish: { name: "Disappearance", secs: 3, heat: 3, police: 1, rumorRep: 8, witness: 20, tell: 0.25, enforcer: true, desc: "Taken to the enforcement room and never seen again." },
+  warn: { name: "Warning", secs: 2, heat: 0.3, police: 0, rumorRep: 0.5, witness: 0, tell: 0, enforcer: false, chill: 0, rep: 0, desc: "A quiet word. They stop doing it for the rest of the visit, and do it less from then on." },
+  kick: { name: "Kicked out", secs: 1, heat: 0.4, police: 0, rumorRep: 1, witness: 2, tell: 0, enforcer: false, chill: 0, rep: 0, desc: "Walked to the door for tonight. They can come back, and do it less when they do." },
+  beat: { name: "Beating", secs: 2, heat: 1.5, police: 0.5, rumorRep: 4, witness: 12, tell: 0.25, enforcer: true, chill: 0.2, rep: 1.5, desc: "A few punches in the enforcement room. They limp home, and word gets around: everyone does it less for a while." },
+  ban: { name: "Lifetime ban", secs: 1, heat: 0.5, police: 0, rumorRep: 1.5, witness: 3, tell: 0, enforcer: false, chill: 0, rep: 0, desc: "Walked out, with their group, and turned away at the door from now on." },
+  vanish: { name: "Disappearance", secs: 3, heat: 3, police: 1, rumorRep: 8, witness: 20, tell: 0.25, enforcer: true, chill: 0.4, rep: 3, desc: "Taken to the enforcement room and never seen again. Nobody does it for a long while, and their crowd is scared." },
 };
+
+/**
+ * (M12, owner) Why: the behavior an action is for. It deters that behavior whether or not the guest was doing it
+ * (the sim knows; acting on an innocent still brings a rumor). "Just because" deters nothing.
+ */
+export type EnfReason = "cheat" | "count" | "intox" | "disorder" | "misconduct" | "vice" | "drugs" | "none";
+export const ENF_REASONS: Record<EnfReason, { name: string; bit: number; desc: string }> = {
+  cheat: { name: "Cheating", bit: 1, desc: "Cheats think twice about starting." },
+  count: { name: "Card counting", bit: 2, desc: "Counters stop counting." },
+  intox: { name: "Drunkenness", bit: 4, desc: "Guests drink less." },
+  disorder: { name: "Fighting and trouble", bit: 8, desc: "Fewer arguments, fights and scenes." },
+  misconduct: { name: "Misconduct", bit: 16, desc: "Fewer planters used as restrooms." },
+  vice: { name: "Vice", bit: 32, desc: "Guests turn escorts down and hook up less." },
+  drugs: { name: "Drugs", bit: 64, desc: "Guests use less." },
+  none: { name: "Just because", bit: 0, desc: "No reason given. It teaches nothing in particular." },
+};
+export const ENF_REASON_IDS = Object.keys(ENF_REASONS) as EnfReason[];
+/** A guest warned, kicked out or banned for a behavior does it this much as often (the rest of the visit, and later visits). */
+export const PERSONAL_DETER = 0.25;
+/** The global chill per behavior never passes this, and fades by CHILL_DECAY a day. */
+export const CHILL_MAX = 0.8;
+export const CHILL_DECAY = 0.98;
 
 /** Heat fades by this each day; every enforcement cost is × (1 + heat / HEAT_SCALE). */
 export const HEAT_DECAY = 0.97;

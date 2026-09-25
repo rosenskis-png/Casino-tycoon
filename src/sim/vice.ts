@@ -7,7 +7,9 @@ import type { System } from "./registry";
 import type { Agent } from "./state";
 import { isClosed } from "./state";
 import { rng } from "./rng";
-import { go, isWalking } from "./agents";
+import { go, isWalking, nearbyTile } from "./agents";
+import { deterOf } from "./cheats";
+import { ENF_REASONS } from "../data/cheats";
 import { begin, buildGrid, leaveFloor, patrol, spawnVisitor } from "./incidents";
 import { sendHome, think } from "./guests";
 import { post } from "./finance";
@@ -39,6 +41,18 @@ function pickMark(g: Game, a: Agent): Agent | null {
   return best;
 }
 
+/** Off they go together: up in the elevator (the room pays the house), or out the door. */
+function goUp(g: Game, a: Agent, b: Agent) {
+  const s = g.state, gd = b.g!, lift = s.map.lift;
+  think(g, b, "leftWithEscort");
+  if (lift >= 0 && g.walkable(lift)) { post(g, "rooms", ROOM_FEE); gd.door = lift; }
+  news(g, "info", `A guest left the floor with an escort${lift >= 0 ? ` (a room: ${fmtMoney(ROOM_FEE)})` : ""}.`, true);
+  sendHome(g, b, "escort");
+  a.target = -1;
+  if (lift >= 0 && g.walkable(lift)) go(a, lift, "leave");
+  else leaveFloor(g, a);
+}
+
 function escortTick(g: Game, a: Agent) {
   const s = g.state, r = rng(s, "vice");
   if (a.act === "leave") { a.hidden = 1; return; }
@@ -51,22 +65,45 @@ function escortTick(g: Game, a: Agent) {
     if (a.timer > 1) { a.timer--; return; }
     a.timer = 0;
     const type = GUEST_TYPES[gd.type], up = gd.mem.won - gd.mem.wagered > 0;
-    const yes = r.chance(Math.min(0.8, 0.2 * (type?.incidents.vice ?? 0) * (1 + gd.intox) * (up ? 1.5 : 1) * (gd.mood / 70)));
+    // (M12) Security dealing with vice (this guest before, or a beating everyone heard about) makes them say no.
+    const yes = r.chance(Math.min(0.8, 0.2 * (type?.incidents.vice ?? 0) * (1 + gd.intox) * (up ? 1.5 : 1) * (gd.mood / 70)) * deterOf(s, gd, "vice"));
+    gd.paid |= ASKED;
     if (!yes) {
-      gd.paid |= ASKED;
       a.act = "idle";
       a.target = -1;
       return;
     }
-    // Off they go together: up in the elevator (the room pays the house), or out the door.
-    const lift = s.map.lift;
-    think(g, b, "leftWithEscort");
-    if (lift >= 0 && g.walkable(lift)) { post(g, "rooms", ROOM_FEE); gd.door = lift; }
-    news(g, "info", `A guest left the floor with an escort${lift >= 0 ? ` (a room: ${fmtMoney(ROOM_FEE)})` : ""}.`, true);
-    sendHome(g, b, "escort");
-    a.target = -1;
-    if (lift >= 0 && g.walkable(lift)) go(a, lift, "leave");
-    else leaveFloor(g, a);
+    gd.did = (gd.did ?? 0) | ENF_REASONS.vice.bit;
+    // (M12, owner) A player at a game keeps the escort on their arm for the rest of the visit: company erodes savvy
+    // like a drink or two (sim/guests.ts savvyNow), they bet to impress, and tilt comes easier. Then they go up together.
+    if (b.act === "play" && !gd.vip) {
+      gd.arm = a.id;
+      a.act = "company";
+      a.due = Math.max(a.due ?? 0, s.tick + 30 * SEC);
+      think(g, b, "escortCompany");
+      return;
+    }
+    return goUp(g, a, b);
+  }
+  // Keeping a player company: at their side for the rest of their visit, then up together.
+  if (a.act === "company") {
+    const b = s.agents.find((q) => q.id === a.target), gd = b?.g;
+    if (!b || !gd || gd.arm !== a.id || gd.held) { if (gd?.arm === a.id) gd.arm = 0; a.act = "idle"; a.target = -1; return; }
+    // Company for the rest of the visit; when they call it a night, they go up together (the room pays the house).
+    if (gd.why) {
+      gd.arm = 0;
+      a.target = -1;
+      const lift = s.map.lift;
+      think(g, b, "leftWithEscort");
+      if (lift >= 0 && g.walkable(lift)) { post(g, "rooms", ROOM_FEE); go(a, lift, "leave"); }
+      else leaveFloor(g, a);
+      return;
+    }
+    a.due = Math.max(a.due ?? 0, s.tick + 30 * SEC);
+    if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > 1 && s.tick % SEC === 0) {
+      const t = nearbyTile(g, "vice", b.x, b.y, 1, a);
+      if (t >= 0) go(a, t, "company");
+    }
     return;
   }
   const b = pickMark(g, a);
@@ -100,6 +137,8 @@ export const viceSystem: System = {
     if (isClosed(s)) return;
     let guests = 0, escorts = 0;
     for (const a of s.agents) { if (a.g && !a.g.minor) guests++; else if (a.role === "escort") escorts++; }
+    // (M12) An escort shown out (or gone) no longer keeps anyone company.
+    for (const a of s.agents) if (a.g?.arm && !s.agents.some((e) => e.id === a.g!.arm && e.role === "escort" && (e.act === "company" || e.next === "company") && e.target === a.id)) a.g.arm = 0;
     if (escorts >= Math.min(MAX, Math.floor(guests / PER_GUESTS))) return;
     if (!rng(s, "vice").chance(RATE[s.rules.vice] * (guests / 100))) return;
     // In by the elevator where there is one.

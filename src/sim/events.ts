@@ -24,6 +24,8 @@ export type SimEvent =
       skill: number; counter: number; marked: number;
       /** M9: a whale; comps earned (bits); winnings the house couldn't pay. */
       vip: number; comp: number; unpaid: number;
+      /** M12: went on tilt this visit; looked after by a casino host; used drugs (uses + 1, 0 never). */
+      tilted: number; hosted: number; drugs: number;
       /** M9.5: a child (their visit isn't scored). */
       minor: number;
       /** M9.6: came by the hotel elevator. */

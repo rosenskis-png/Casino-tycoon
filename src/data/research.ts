@@ -52,7 +52,7 @@ export const RESEARCH: Record<string, ResearchDef> = Object.fromEntries([
   R({ id: "outdoors", name: "Outdoors", cat: "amenities", cost: 3000, objects: ["pool", "garden", "patiobar"], desc: "A pool, a garden and a patio bar." }),
   R({ id: "th_vegas", name: "Old Vegas themes", cat: "themes", cost: 1500, themes: ["ratpack", "atomic", "goldrush"], desc: "Rat Pack Lounge, Neon Atomic, Gold Rush." }),
   R({ id: "th_ancient", name: "Ancient worlds", cat: "themes", cost: 1500, themes: ["rome", "egypt", "medieval"], desc: "Rome, Egypt, Medieval." }),
-  R({ id: "th_luxury", name: "Luxury themes", cat: "themes", cost: 2000, themes: ["deco", "luxe", "riviera", "dragon"], desc: "Gilded Deco, Modern Luxe, Riviera, Lucky Dragon." }),
+  R({ id: "th_luxury", name: "Luxury themes", cat: "themes", cost: 2000, themes: ["deco", "luxe", "riviera", "dragon", "monaco"], desc: "Gilded Deco, Modern Luxe, Riviera, Lucky Dragon, Monte Carlo." }),
   R({ id: "th_fun", name: "Just for fun", cat: "themes", cost: 1500, themes: ["tiki", "pirate", "rock"], desc: "Tropical Tiki, Pirate Cove, Rock & Roll." }),
   R({ id: "cameras", name: "Cameras", cat: "staff", cost: 1500, objects: ["camera"], desc: "Ceiling cameras for a surveillance operator to watch." }),
   R({ id: "slotlab", name: "Slot lab panels", cat: "info", cost: 1500, desc: "The lab's test panel reports by guest type." }),

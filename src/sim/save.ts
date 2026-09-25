@@ -285,6 +285,15 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     b.theoLast = 0;
     return s;
   },
+  // 21 → 22 (M12): enforcement has a reason (jobs in progress were for cheating) and a chill per behavior; gaming
+  // win by crowd per month and the lowest police standing, for goals.
+  21: (s) => {
+    s.enf.chill = {};
+    for (const j of s.enf.jobs) j.reason = "cheat";
+    s.crowdWin = { month: {}, hist: [] };
+    s.lowPolice = s.auth.police.standing;
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

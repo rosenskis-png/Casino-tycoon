@@ -6,6 +6,7 @@
 // Guards, officers and paramedics are run here, not by sim/staff.ts.
 import { GUEST_TYPES } from "../data/guests";
 import { INCIDENTS, INCIDENT_CATS, type IncidentDef } from "../data/incidents";
+import { ENF_REASONS, type EnfReason } from "../data/cheats";
 import { OBJECTS } from "../data/objects";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
@@ -21,6 +22,7 @@ import { post } from "./finance";
 import { scaled } from "./bank";
 import { inZone, skillOf } from "./crew";
 import { fmtMoney, news } from "./news";
+import { deterOf } from "./cheats";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 
 declare module "./commands" {
@@ -129,6 +131,12 @@ export function begin(g: Game, grid: Grid, kind: string, a: Agent, other: Agent 
   // An escort (M9.6) can start one too: they aren't guests.
   if (a.g) a.g.incAt = s.tick + COOLDOWN * SEC;
   if (other?.g) other.g.incAt = s.tick + COOLDOWN * SEC;
+  // (M12) Who really did something security could deal them for (an escort's pitch is the escort's doing, not the mark's).
+  const bit = def.cat in ENF_REASONS ? ENF_REASONS[def.cat as EnfReason].bit : 0;
+  if (bit) {
+    if (a.g) a.g.did = (a.g.did ?? 0) | bit;
+    if (other?.g && a.role !== "escort") other.g.did = (other.g.did ?? 0) | bit;
+  }
   if (def.hidden) return inc;
   count(s, kind);
   if (def.mess) s.dirt[inc.tile] = Math.max(s.dirt[inc.tile], def.mess);
@@ -205,7 +213,9 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
   const roll = (p: number, cat: keyof typeof rate) => {
     if (p <= 0) return false;
     if (deter < 0) deter = guardNearby(g, guards, a) ? DETER_BY : 1;
-    return r.chance(p * (rate[cat] ?? 1) * deter * (gd.warned ? 0.4 : 1));
+    // (M12, owner) What security taught this guest, and the chill beatings and disappearances left on everyone.
+    const taught = cat in ENF_REASONS ? deterOf(s, gd, cat as EnfReason) : 1;
+    return r.chance(p * (rate[cat] ?? 1) * deter * taught * (gd.warned ? 0.4 : 1));
   };
   const x = gd.intox;
   // Children (M9.5): the one thing they get up to is feeding a machine next to them.
@@ -565,6 +575,7 @@ function policeCall(g: Game, q: Agent) {
 export function adjustPolice(g: Game, delta: number) {
   const p = g.state.auth.police;
   p.standing = Math.max(0, Math.min(100, p.standing + delta));
+  g.state.lowPolice = Math.min(g.state.lowPolice, p.standing);
   ladder(g);
 }
 

@@ -52,7 +52,7 @@ export function makePerson(s: GameState, type: GuestTypeDef, r: Rng, score: numb
     next: regular ? Math.round(r.next() * type.returns.days.median * 2 * TICKS_PER_DAY) : -1,
     here: 0, ejects: 0, ban: 0, mark: 0, luck: 0, cheat: 0, caught: 0,
   };
-  Object.assign(p, lifeTags(p.id, type));
+  Object.assign(p, lifeTags(p.id, type, SCENARIOS[s.scenario]?.cheatRate ?? 1));
   return p;
 }
 

@@ -23,7 +23,7 @@ import { TABLE_GAMES, bjEdge, pockets, rulesScore } from "../data/tables";
 import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRINK_UNIT, INTOX_CAP } from "./drinks";
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
-import { tagGuest, guestName, hash01 } from "./cheats";
+import { tagGuest, guestName, hash01, deterOf } from "./cheats";
 import { fmtMoney, news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
@@ -453,6 +453,13 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     const primary = INTENT_NEED[came] ? NEED_BIT[INTENT_NEED[came]] : 0;
     gd.todo &= ~primary;
   }
+  // (M12, owner) What security taught: a pool person remembers what they were dealt with for, and beatings and
+  // disappearances chill everyone for a while. They drink less, and a counter may not count tonight.
+  if (person?.dt) gd.dt = person.dt;
+  if (!gd.minor) {
+    gd.intend *= deterOf(s, gd, "intox");
+    if (gd.counter && !rng(s, "deter").chance(deterOf(s, gd, "count"))) gd.counter = 0;
+  }
   s.agents.push(a);
   s.visits.today.arrived++;
   return a;
@@ -693,7 +700,7 @@ function departedFields(g: Game, a: Agent, score: number) {
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
     fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker, skill: gd.skill, counter: gd.counter, marked: gd.mark & 1,
-    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid, hotel: gd.door === s.map.lift ? 1 : 0, ev: gd.mem.ev, came: gd.intent,
+    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid, hotel: gd.door === s.map.lift ? 1 : 0, ev: gd.mem.ev, came: gd.intent, tilted: gd.tilted ?? 0, hosted: gd.hosted ? 1 : 0, drugs: gd.drugs,
   };
 }
 
@@ -956,9 +963,10 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
  */
 export function savvyNow(gd: GuestData): number {
   if (gd.tilt) return 0;
-  return GUEST_TYPES[gd.type].savvy * Math.max(0, 1 - SAVVY_INTOX * gd.intox - SAVVY_HIGH * gd.high);
+  return GUEST_TYPES[gd.type].savvy * Math.max(0, 1 - SAVVY_INTOX * gd.intox - SAVVY_HIGH * gd.high - (gd.arm ? SAVVY_ESCORT : 0));
 }
-const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5;
+/** (M12) An escort on their arm counts like SAVVY_ESCORT of discipline gone (about two drinks), and as ARM_INHIBIT toward tilt. */
+const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5, SAVVY_ESCORT = 0.35, ARM_INHIBIT = 0.3, TILT_REF = 0.3;
 
 /**
  * (M11.3, owner) Showing off: with friends around, a guest bets bigger, by their crowd's `social` hook (party groups
@@ -966,6 +974,8 @@ const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5;
  */
 export function showOff(g: Game, a: Agent): number {
   const gd = a.g!, h = GUEST_TYPES[gd.type].hooks.social;
+  // (M12) Showing off for the escort on their arm: bets as with a crowd of friends watching, whatever the crowd.
+  if (gd.arm) return 1 + SHOW_OFF * Math.max(1, h);
   if (!h) return 1;
   let n = 0;
   for (const m of companions(g, a)) if (!m.g!.minor && Math.abs(m.x - a.x) + Math.abs(m.y - a.y) <= SHOW_REACH && ++n >= 2) break;
@@ -1594,8 +1604,12 @@ function quitReason(g: Game, a: Agent): string | null {
   // (M11.4, owner) Tilt: drunk or high and deep in the hole, a disciplined player snaps. From then on they ignore
   // their limit and the clock, and play until they're back to even or out of money.
   const tt = GUEST_TYPES[gd.type].tilt ?? 0;
-  if (tt && !gd.tilt && !gd.vip && nt < 0 && gd.intox + gd.high > 0.1 && rng(g.state, "guests").chance(tt * (gd.intox + gd.high) * Math.min(1, -nt / staked(gd)))) {
+  // (M12, owner) Inhibition compounds: the chance grows with the square of how loose they are, the same as before
+  // at TILT_REF (a few drinks), less for one, far more for a drunk, high player with an escort on their arm.
+  const loose = gd.intox + gd.high + (gd.arm ? ARM_INHIBIT : 0);
+  if (tt && !gd.tilt && !gd.vip && nt < 0 && loose > 0.1 && rng(g.state, "guests").chance(tt * (loose * loose / TILT_REF) * Math.min(1, -nt / staked(gd)))) {
     gd.tilt = 1;
+    gd.tilted = 1;
     if (!gd.atm) gd.atm = 500;
     think(g, a, "tilt");
     news(g, "warn", `A high roller is on tilt, chasing ${fmtMoney(-nt)} back.`, { a: a.id });

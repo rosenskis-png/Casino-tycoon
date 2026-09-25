@@ -21,6 +21,14 @@ Twelve themes, four 1×1 pieces each (build menu → Decoration, theme picker):
 | Gold Rush | Mine Cart, Whiskey Barrel, Saguaro Cactus, Wanted Poster |
 | Tropical Tiki | Tiki Idol, Tiki Torch, Bamboo Screen, Carved Drum |
 | Pirate Cove | Ship's Wheel, Treasure Chest, Anchor, Cannon |
+| Monte Carlo (M12) | Crystal Chandelier, Grand Piano, Champagne Tower, Velvet Rope |
+
+**Monte Carlo (M12, owner: "high class luxury stuff" for The Outfit):** Belle Époque grandeur, the grandest pieces
+in the catalog (Chandelier $600, prestige 4 and a warm light pool; Piano $500; Champagne Tower $350; Velvet Rope
+$150), in the Luxury themes research with a matching slot theme ("Belle Époque", "Casino Royale"). Pairs well with
+Deco (+0.4), Riviera (+0.5) and Rat Pack (+0.2); clashes with Rock, Tiki (−0.5), Pirate, Gold Rush (−0.4) and
+Atomic (−0.3). Hidden tastes: High rollers 1 (their favorite), Conventioneers 0.4, Retirees and Tourists 0.3,
+Party −0.2, Locals and Families −0.3.
 
 Each piece also gives off its own prestige and/or energy (luxury themes more prestige; Rock, Atomic and Tiki more
 energy). Costs $200–$900; upkeep about 0.5% of cost a month.

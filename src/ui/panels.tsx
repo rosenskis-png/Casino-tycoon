@@ -18,7 +18,7 @@ import { WAGERS_PER_ROUND } from "../data/games";
 import { STOCK_DESIGNS } from "../data/designs";
 import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
-import { ENF, ENF_ACTIONS, type EnfAction } from "../data/cheats";
+import { ENF, ENF_ACTIONS, ENF_REASONS, ENF_REASON_IDS, type EnfAction, type EnfReason } from "../data/cheats";
 import {
   formatDate, describeGoals, goalStatus, monthlyCosts, worth, meterDebt, covers, compiledOf, designIdOf, designById, cantUse, designLocks, cabKind, ledgerLabel, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
@@ -141,7 +141,8 @@ const SEEKING: Record<string, string> = {
 
 function roleDoing(g: Game, a: Agent): string {
   if (a.role === "inspector") return a.act === "leave" || a.next === "leave" ? "Leaving with their notes" : "Auditing the casino";
-  if (a.role === "escort") return a.act === "offer" ? "Talking to a guest" : a.next === "leave" ? "Leaving" : "Working the floor";
+  if (a.role === "escort") return a.act === "offer" ? "Talking to a guest" : a.act === "company" || a.next === "company" ? "Keeping a player company" : a.next === "leave" ? "Leaving" : "Working the floor";
+  if (a.role === "host") return a.act === "host" ? "Looking after a guest" : a.next === "host" ? "On the way to a guest" : "Looking for big players";
   const obj = a.target >= 0 ? g.objById.get(a.target) : undefined;
   const name = obj ? OBJECTS[obj.kind].name : "";
   switch (a.act) {
@@ -623,25 +624,45 @@ export function PoliciesPanel({ host }: { host: Host }) {
 export function GoalsPanel({ host }: { host: Host }) {
   const g = host.game, sc = SCENARIOS[g.state.scenario];
   const st = goalStatus(g);
+  const [letter, setLetter] = useState(false);
+  const gm = st?.goals.gaming;
   return (
     <>
       <p><b>{sc.name}</b></p>
       <p className="muted">{sc.blurb}</p>
+      {sc.intro && <button className="btn" onClick={() => setLetter(!letter)}>{letter ? "Put the letter away" : "Read the letter again"}</button>}
+      {letter && sc.intro && <Letter intro={sc.intro} />}
       {!st && <p className="muted">No goals here. Build whatever you like.</p>}
       {st && (
         <>
           <p style={{ margin: "10px 0" }}>{describeGoals(st.goals)}</p>
           <div className="kv">
-            <b>Worth</b><span className="num">{money(st.worth)} of {money(st.goals.worth)} {st.worthOk ? "✅" : ""}</span>
-            <b>Reputation{st.goals.rep.type ? `: ${GUEST_TYPES[st.goals.rep.type]?.name ?? ""}` : ""}</b><span className="num">{Math.round(st.rep)} of {st.goals.rep.min} {st.rep >= st.goals.rep.min ? "✅" : ""}</span>
+            {st.gaming && gm && <>
+              <b>Gaming win{gm.type ? `: ${GUEST_TYPES[gm.type]?.name ?? ""}` : ""}</b><span className="num">{money(st.gaming.now)} this month, of {money(gm.min)}</span>
+              {st.gaming.months.map((m, k) => <Fragment key={k}><b>{m.label}</b><span className="num">{money(m.v)}</span></Fragment>)}
+              {st.gaming.months.length > 0 && <><b>Average</b><span className="num">{money(st.gaming.avg)} a month {st.gaming.ok ? "✅" : ""}</span></>}
+            </>}
+            {st.police && <><b>Police standing</b><span className="num">{Math.round(st.police.now)} now · lowest {Math.round(st.police.low)} · never below {st.goals.police} {st.police.ok ? "" : "❌"}</span></>}
+            {st.goals.worth > 0 && <><b>Worth</b><span className="num">{money(st.worth)} of {money(st.goals.worth)} {st.worthOk ? "✅" : ""}</span></>}
+            {st.goals.rep && <><b>Reputation{st.goals.rep.type ? `: ${GUEST_TYPES[st.goals.rep.type]?.name ?? ""}` : ""}</b><span className="num">{Math.round(st.rep)} of {st.goals.rep.min} {st.rep >= st.goals.rep.min ? "✅" : ""}</span></>}
             {st.reps.map((r) => <Fragment key={r.type}><b>Reputation: {GUEST_TYPES[r.type]?.name ?? r.type}</b><span className="num">{Math.round(r.rep)} of {st.goals.reps!.min} {r.ok ? "✅" : ""}</span></Fragment>)}
           </div>
-          <p className="muted" style={{ marginTop: 8 }}>Checked at the end of each month.</p>
+          <p className="muted" style={{ marginTop: 8 }}>Checked at the end of each month{st.police ? "; police standing every day" : ""}.</p>
         </>
       )}
       {g.state.outcome === "won" && <p className="lv-good">Scenario complete!</p>}
-      {g.state.outcome === "lost" && <p className="lv-urgent">The deadline passed. Keep playing if you like.</p>}
+      {g.state.outcome === "lost" && <p className="lv-urgent">Scenario lost. Keep playing if you like.</p>}
     </>
+  );
+}
+
+/** (M12) A scenario's letter: who sent you and what they want. */
+export function Letter({ intro }: { intro: { from: string; text: string } }) {
+  return (
+    <div className="letter">
+      {intro.text.split("\n\n").map((para, k) => <p key={k}>{para}</p>)}
+      <p className="sig">{intro.from}</p>
+    </div>
   );
 }
 
@@ -705,6 +726,9 @@ function EnforcementSummary({ g, rates }: { g: Game; rates: Record<string, numbe
         <b>Cameras</b><span className="num">{cov.cams} · {cov.watching} operator{cov.watching === 1 ? "" : "s"} watching{cov.cams ? ` (${Math.round(cov.share * 100)}% covered)` : ""}{cov.cams && !office ? " · no Back office" : ""}</span>
         <b>Security</b><span className="num">{enforcers}{room ? "" : " · no enforcement room (it happens on the floor)"}</span>
         <b>Heat</b><span className={`num ${heat >= 4 ? "neg" : ""}`}>{heat < 0.5 ? "None" : heat < 2 ? "Low" : heat < 4 ? "Talked about" : heat < 8 ? "High" : "Notorious"}</span>
+        {Object.entries(s.enf.chill).filter(([, v]) => v >= 0.05).map(([k, v]) => (
+          <Fragment key={k}><b>Fear: {ENF_REASONS[k as EnfReason]?.name.toLowerCase()}</b><span className="num">{Math.round(100 * v)}% less of it</span></Fragment>
+        ))}
       </div>
       <p className="muted" style={{ margin: "6px 0 0" }}>What happens to a cheat your staff catch:</p>
       <TreatmentEditor g={g} />
@@ -806,11 +830,12 @@ function SuspicionTools({ g, a }: { g: Game; a: Agent }) {
   );
 }
 
-const ACTION_VERB: Record<EnfAction, string> = { warn: "Warn", ban: "Ban for life", beat: "Beat up", vanish: "Make disappear" };
+const ACTION_VERB: Record<EnfAction, string> = { warn: "Warn", kick: "Kick out", beat: "Beat up", ban: "Ban for life", vanish: "Make disappear" };
 
 /** Mark a guest (with alerts), and order enforcement: the dark two ask for a second tap. */
 function MarkAndAct({ g, a }: { g: Game; a: Agent }) {
   const [armed, setArmed] = useState<EnfAction | "">("");
+  const [reason, setReason] = useState<EnfReason>("cheat");
   const gd = a.g!, mark = gd.mark;
   const job = g.state.enf.jobs.find((j) => j.id === gd.held);
   const setMark = (flags: number) => g.dispatch({ type: "mark", id: a.id, flags });
@@ -821,20 +846,30 @@ function MarkAndAct({ g, a }: { g: Game; a: Agent }) {
         {mark & 1 ? <label><input type="checkbox" checked={!!(mark & 2)} onChange={(e) => setMark((mark & ~2) | (e.target.checked ? 2 : 0))} /> Alert when leaving</label> : null}
         {mark & 1 ? <label><input type="checkbox" checked={!!(mark & 4)} onChange={(e) => setMark((mark & ~4) | (e.target.checked ? 4 : 0))} /> Alert when back</label> : null}
       </div>
-      {job ? <p className="lv-warn">{ENF[job.action].name}{job.house ? " (house treatment)" : ""}: {job.stage === 0 ? "waiting for staff" : "under way"}.</p> : (
+      {job ? <p className="lv-warn">{ENF[job.action].name} for {ENF_REASONS[job.reason ?? "cheat"].name.toLowerCase()}{job.house ? " (house treatment)" : ""}: {job.stage === 0 ? "waiting for staff" : "under way"}.</p> : (<>
+        <div className="kv" style={{ marginTop: 6 }}>
+          <b>Reason</b>
+          <span>
+            <select value={reason} onChange={(e) => setReason(e.target.value as EnfReason)}>
+              {ENF_REASON_IDS.map((k) => <option key={k} value={k}>{ENF_REASONS[k].name}</option>)}
+            </select>
+            <small className="muted"> {ENF_REASONS[reason].desc}</small>
+          </span>
+        </div>
         <div className="row">
           {ENF_ACTIONS.map((k) => {
             const why = g.check({ type: "enforce", id: a.id, action: k });
             const dark = k === "beat" || k === "vanish";
             return (
               <button key={k} className={`btn ${dark ? "danger" : ""}`} disabled={!!why} title={why ?? ENF[k].desc}
-                onClick={() => { if (dark && armed !== k) return setArmed(k); setArmed(""); g.dispatch({ type: "enforce", id: a.id, action: k }); }}>
+                onClick={() => { if (dark && armed !== k) return setArmed(k); setArmed(""); g.dispatch({ type: "enforce", id: a.id, action: k, reason }); }}>
                 {armed === k ? "Tap again" : ACTION_VERB[k]}{why ? <small>{why}</small> : null}
               </button>
             );
           })}
         </div>
-      )}
+        <p className="muted" style={{ fontSize: 12 }}>Warning, kicking out and banning teach this guest. A beating or a disappearance teaches everyone, and costs you with their crowd.</p>
+      </>)}
     </>
   );
 }

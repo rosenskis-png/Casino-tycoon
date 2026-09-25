@@ -168,6 +168,7 @@ function working(a: Agent, camShare: number): boolean {
     case "server": return !!a.tray?.length || a.act === "offer" || a.act === "fetch" || a.act === "serve";
     case "guard": return a.act === "respond" || a.act === "enforce" || a.act === "carry" || a.target >= 0;
     case "entertainer": return a.act === "perform";
+    case "host": return a.act === "host" || a.target >= 0;
     case "operator": return a.act === "watch" && camShare < 1;
     // Dealing is the whole job: a busy table doesn't wear a dealer down.
     default: return false;

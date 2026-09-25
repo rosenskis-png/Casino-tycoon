@@ -14,6 +14,8 @@ export const STAFF_ROLES: Record<string, StaffRole> = {
   dealer: { id: "dealer", name: "Dealer", wage: 0, builtIn: true, desc: "Comes with every table (its price includes them, no wages): runs the table, the keno board or the bingo calls." },
   pitboss: { id: "pitboss", name: "Pit boss", wage: 70, desc: "Watches the tables: cheats at a table in view are caught far more often, and card counters get noticed." },
   // (M11.2, owner) Enforcers merged into Security; an old save's enforcers become security.
+  // (M12) Casino hosts look after big players.
+  host: { id: "host", name: "Casino host", wage: 70, desc: "Looks after your big players: finds high rollers and whales at their games, sends over a drink on the house and makes them feel at home. They stay longer and leave happier." },
   entertainer: { id: "entertainer", name: "Entertainer", wage: 45, desc: "Juggles, does magic and makes balloon animals where the crowd is. Families and tourists love it; people nearby have fun and lose track of time." },
 };
 export type StaffRoleId = keyof typeof STAFF_ROLES;
@@ -44,7 +46,13 @@ export type ShrinkArea = (typeof SHRINK_AREAS)[number];
 export const ENTERTAIN: Record<string, number> = { family: 1.5, tourist: 1.2, party: 1, conventioneer: 0.8, retiree: 0.7, local: 0.6, highroller: 0.2 };
 export const ACT_REACH = 5;
 export const ACT_SECS: [number, number] = [30, 45];
-export const ZONED_ROLES = ["janitor", "tech", "guard", "pitboss", "entertainer"];
+export const ZONED_ROLES = ["janitor", "tech", "guard", "pitboss", "entertainer", "host"];
+/**
+ * (M12) Casino hosts: seconds a visit takes; crowds they look after (a taste for luxury of at least `luxe`, or a
+ * whale); what the first visit does, × the crowd's taste for luxury × skill: mood, a lift, and a share more time on
+ * the floor; and seconds before they come back to top up the guest's glass (on the house, at the nearest bar's policy).
+ */
+export const HOST = { secs: 6, luxe: 0.5, mood: 12, buzz: 6, stay: 0.25, again: 90 };
 export const SKILL_WORDS: [number, string][] = [[0.8, "Poor"], [0.95, "Fair"], [1.1, "Good"], [1.3, "Great"], [Infinity, "Excellent"]];
 
 // (M11) Uniforms: a color per job the player can change (Staff tab). `parts` are the look's color slots the uniform
@@ -64,4 +72,5 @@ export const UNIFORMS: Record<string, { parts: string[]; color: number }> = {
   dealer: { parts: ["j"], color: 4 },
   pitboss: { parts: ["j"], color: 5 },
   entertainer: { parts: ["j", "q"], color: 12 },
+  host: { parts: ["j"], color: 11 },
 };

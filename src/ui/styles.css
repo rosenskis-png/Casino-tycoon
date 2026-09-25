@@ -196,3 +196,11 @@ select,input[type=text]{font:inherit;font-size:16px;background:#120a07;color:var
 /* (M8.5) Interface size (platform/display.ts): panels, bars and play screens scale; the floor zooms on its own. */
 .ui-s .top,.ui-s .ticker,.ui-s .tabs,.ui-s .sheet,.ui-s .dz,.ui-s .play,.ui-s .toast{zoom:.88}
 .ui-l .top,.ui-l .ticker,.ui-l .tabs,.ui-l .sheet,.ui-l .dz,.ui-l .play,.ui-l .toast{zoom:1.14}
+/* (M12) A scenario's letter: cream paper, a typed hand, signed at the bottom. */
+.letter{background:#efe6d0;color:#2a1a12;border:1px solid #c2b396;border-radius:4px;padding:14px 16px;margin:10px 0;font-family:Georgia,"Times New Roman",serif;font-size:15px;line-height:1.45;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+.letter p{margin:0 0 10px}
+.letter .sig{text-align:right;font-style:italic;margin:0}
+.letter-wrap{position:absolute;inset:0;background:rgba(10,5,6,.72);display:flex;flex-direction:column;justify-content:center;align-items:stretch;padding:16px;overflow-y:auto;z-index:5}
+.letter-wrap .letter{max-width:480px;align-self:center}
+.letter-wrap .btn{align-self:center}
+.letter-wrap .btn.big{background:#2a1a12;margin-top:4px}

@@ -110,7 +110,7 @@ export class Game {
     const map = buildScenarioMap(def);
     const n = map.w * map.h;
     const rep: Record<string, number> = {};
-    for (const t of Object.keys(def.population)) if (GUEST_TYPES[t]) rep[t] = def.rep[t] ?? 50;
+    for (const t of Object.keys(def.population)) if (GUEST_TYPES[t] && !GUEST_TYPES[t].noRep) rep[t] = def.rep[t] ?? 50;
     const state: GameState = {
       schema: SCHEMA_VERSION, scenario: def.id, seed: seed >>> 0, tick: 0, rng: {}, nextId: 1,
       cash: def.startCash, map, objects: [], agents: [], wanderPoints: [],

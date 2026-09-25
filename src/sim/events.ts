@@ -28,6 +28,9 @@ export type SimEvent =
       minor: number;
       /** M9.6: came by the hotel elevator. */
       hotel: number;
+      /** M11.3: what they expected back from their wagers (house edge faced = 1 − ev / wagered); why they came. */
+      ev: number;
+      came: string;
     }
   | { type: "incident"; kind: string; x: number; y: number; guestType: string };
 

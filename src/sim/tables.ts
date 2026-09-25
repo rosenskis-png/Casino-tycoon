@@ -24,7 +24,7 @@ import { THEFT } from "../data/staff";
 import { greed, inZone, skillOf, steal } from "./crew";
 import { hash01, sharedPay, wagerPay } from "./cheats";
 import { stakeMult, purposeOf } from "./amenities";
-import { engagement, seatHolders } from "./guests";
+import { engagement, seatHolders, showOff } from "./guests";
 import { TIME_FLIES } from "../data/psych";
 import { colleaguesNear, hireStaff, spreadTile } from "./staff";
 
@@ -178,11 +178,11 @@ export function canSit(g: Game, gd: GuestData, o: PlacedObject): boolean {
 }
 
 /** The bet per hand for a guest at a table: their wish within the limits, rounded to chips, covered by the wallet. */
-function tableBet(g: Game, gd: GuestData, o: PlacedObject, r: Rng, eng = 1): number {
+function tableBet(g: Game, gd: GuestData, o: PlacedObject, r: Rng, eng = 1, show = 1): number {
   const [lo, hi] = limitsNow(g, o);
   // A cheat mid-spell presses (docs/spec/cheats.md), but paces it to their take, as at a machine: a slot cheat's
   // take comes in over some forty rigged wagers. (M11.1) Engaged players bet more.
-  let want = gd.spell > 0 ? Math.max(tableWant(gd), gd.take / 40) : tableWant(gd) * Math.sqrt(eng);
+  let want = gd.spell > 0 ? Math.max(tableWant(gd), gd.take / 40) : tableWant(gd) * Math.sqrt(eng) * show;
   // A counter spreads their bets with the count.
   if (gd.counter && OBJECTS[o.kind].game === "blackjack" && gd.spell <= 0) want = lo * r.pick(COUNT_SPREAD) * Math.max(1, want / lo / 2);
   const chip = lo >= 25 ? 5 : lo >= 1 ? 1 : 0.25;
@@ -261,7 +261,7 @@ function deal(g: Game, o: PlacedObject, byId: Map<number, Agent>) {
   const players: Player[] = [];
   for (const p of waiting) {
     const eng = engagement(g, p.a);
-    const bet = tableBet(g, p.a.g!, o, r, eng);
+    const bet = tableBet(g, p.a.g!, o, r, eng, showOff(g, p.a));
     if (bet > 0) players.push({ ...p, bet, ws: [], eng });
     else p.a.timer = -1;
   }

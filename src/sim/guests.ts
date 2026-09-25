@@ -19,7 +19,7 @@ import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents"
 import { SIGHT, canSee, doorLeg, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
 import { betOf, isGame, isTable, machineModel, minRoundOf, roundTicks } from "./gaming";
 import { canSit, tableAppeal, tableOpen, limitsNow, tableWant } from "./tables";
-import { TABLE_GAMES, rulesScore } from "../data/tables";
+import { TABLE_GAMES, bjEdge, pockets, rulesScore } from "../data/tables";
 import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRINK_UNIT, INTOX_CAP } from "./drinks";
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
@@ -83,12 +83,21 @@ const TODO_EXT = 1 << 14;
  * gamble only if tempted), wants to look around. A place done this visit is its need bit << DONE_SHIFT.
  */
 const DRINK_BIT = 1 << 11, GAMBLE_BIT = 1 << 12, SIGHTS_BIT = 1 << 13, DONE_SHIFT = 16;
-/** Chance per decision, × the type's urge, that a guest who didn't plan to gamble looks for a game they like on the way past. */
-const TEMPT = 0.15;
-/** × the type's urge: chance another adult in a group that came for something else goes to gamble instead. */
-const SPLIT = 0.6;
+/**
+ * (M11.3, owner) Temptation = exposure × match × state × hooks (docs/spec/guests.md "Temptation"). Chance per decision
+ * at a game in view they like 1.0, with no hook working and a fair mood: the same for every crowd.
+ */
+const TEMPT = 0.08;
+/** Exposure: games they've walked past and liked this visit add this much each, up to TEMPT_SEEN of them. */
+const TEMPT_EXPOSE = 0.12, TEMPT_SEEN = 8;
+/** The highest a game's pull can be (appeal plus flash), for the cheap first roll. */
+const TEMPT_MAX_WANT = 2.5;
+/** × the type's `free` hook: chance another adult in a group that came for something else leaves it to the rest. */
+const SPLIT = 0.25;
 /** The least appeal a game needs to tempt someone. */
 const TEMPT_APPEAL = 0.4;
+/** Chance a drink-first guest who sees a game they really like has "just one quick spin" first. */
+const QUICK_SPIN = 0.2;
 /** Chance per decision, × the type's reason weight, that a place they've seen gets added to the list. */
 const IMPULSE = 0.08;
 /** Legs of looking around that satisfy "the sights"; strolls on the way out once the list is done. */
@@ -438,11 +447,11 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   // People who came for a meal, a show or the club don't sightsee first.
   if (INTENT_NEED[came]) gd.browse = 0;
   if (!gd.minor) gd.todo = todoFor(g, type, came);
-  // (M11.2, owner) In a group that came for something else, another adult may peel off to the games instead
-  // (dad plays while mom takes the kids to the show): by the type's urge.
-  if (lead && !gd.minor && came !== "gamble" && rng(s, "todo").chance(type.urge * SPLIT)) {
+  // (M11.3, owner) In a group that came for something else, another adult may leave it to the rest (mom takes the
+  // kids to the show). They don't plan to gamble: they have time to themselves, and what's in view does the rest.
+  if (lead && !gd.minor && came !== "gamble" && rng(s, "todo").chance(Math.min(0.8, type.hooks.free * SPLIT))) {
     const primary = INTENT_NEED[came] ? NEED_BIT[INTENT_NEED[came]] : 0;
-    gd.todo = (gd.todo & ~primary) | GAMBLE_BIT;
+    gd.todo &= ~primary;
   }
   s.agents.push(a);
   s.visits.today.arrived++;
@@ -523,17 +532,66 @@ function notGambling(g: Game, a: Agent, type: GuestTypeDef, r: Rng): void {
   const drinking = gd.todo & DRINK_BIT && gd.intend > 0 && gd.intox < 0.8 * gd.intend && gd.mem.drinks < 4;
   if (drinking || pendingTodo(g, gd).length) return wander(g, a, r);
   if (gd.frus < STROLL_LEGS) { gd.frus++; return wander(g, a, r); }
+  // (M11.3) Nothing left to do while the rest are at the show, the pool or golf: kill time on the floor.
+  if (freeTime(g, a)) { if (r.chance(0.1)) think(g, a, "freeTime"); return wander(g, a, r); }
   wantToLeave(g, a, "done");
 }
 
-/** A game they like, in view, wins over someone who didn't plan to play: now they're gambling. */
+/** (M11.3) The rest of their group are busy at a show, the pool, golf, a meal or the club: time to themselves. */
+function freeTime(g: Game, a: Agent): boolean {
+  const others = companions(g, a);
+  if (!others.length) return false;
+  let busy = 0;
+  for (const m of others) {
+    if (m.act === "play" || m.g!.wait >= 0) return false;
+    // At (or on the way to) something on the list: a show, a meal, golf, the pool, the club.
+    const o = m.target >= 0 ? g.objById.get(m.target) : undefined;
+    const serves = o && (OBJECTS[o.kind].serves as Need | undefined);
+    if (serves && TODO.includes(serves)) busy++;
+  }
+  return busy > 0;
+}
+
+/**
+ * (M11.3, owner) What's working on them right now, each 0..~2: drink, a good time (a show, the club, mood, a win
+ * cheered nearby), time to themselves, and company playing in view. Flash is per game (`flashOf`).
+ */
+function hookPull(g: Game, a: Agent, type: GuestTypeDef): number {
+  const gd = a.g!, h = type.hooks;
+  const buzz = Math.min(2, gd.high + gd.buzz / 20 + Math.max(0, (gd.mood - 60) / 40) + Math.min(1, gd.mem.fun / (120 * TICKS_PER_SECOND)));
+  const social = groupSeats(g, a).length ? 1 : 0;
+  return 1 + h.drink * Math.min(2, 2 * gd.intox) + h.buzz * buzz + h.free * (freeTime(g, a) ? 1 : 0) + h.social * social;
+}
+
+/** (M11.3) Flash at a game, 0..~1.5: just paid a jackpot or a bonus, a big meter over it, a craps table in full swing. */
+function flashOf(g: Game, gd: GuestData, o: import("./state").PlacedObject): number {
+  let f = 0;
+  if ((o.last.win === 2 || o.last.win === 3) && g.state.tick - o.last.tick < HOT_SECONDS * TICKS_PER_SECOND) f += 1;
+  if (OBJECTS[o.kind].slot) f += Math.min(0.5, 4 * meterPull(g, gd.type, gd.stake, o));
+  else if (isTable(o.kind) && (seatHolders(g, o.id) ?? []).filter((id) => id > 0).length >= LOOK_PLAYERS) f += 0.5;
+  return f;
+}
+
+/**
+ * (M11.3, owner) Someone who didn't plan to gamble: exposure (games they've liked on the way past this visit: the
+ * layout's work) × match (how much they like the best game in view, and its flash, weighted by their `flash` hook) ×
+ * state (mood) × what's working on them (hooks). A cheap first roll against the most it could be, then the real one.
+ */
 function tempted(g: Game, a: Agent, type: GuestTypeDef, r: Rng): boolean {
   const gd = a.g!;
   if (!canAffordAnything(g, gd)) return false;
-  const p = TEMPT * type.urge * (0.5 + gd.mood / 100) * (1 + 2 * gd.intox + gd.high) * (1 + gd.buzz / 20);
-  if (!r.chance(Math.min(0.9, p))) return false;
-  if (!chooseMachine(g, a, type, r, TEMPT_APPEAL, candidates(g, a, type, BROWSE_LOOKS))) return false;
+  const expose = 0.6 + TEMPT_EXPOSE * Math.min(TEMPT_SEEN, gd.liked.length);
+  const hooks = hookPull(g, a, type), state = 0.5 + gd.mood / 100;
+  const pMax = TEMPT * expose * state * hooks * (TEMPT_MAX_WANT + type.hooks.flash * 1.5);
+  const u = r.next();
+  if (u >= Math.min(0.9, pMax)) return false;
+  const seen = candidates(g, a, type, BROWSE_LOOKS);
+  let want = 0;
+  for (const c of seen) if (c.seen && c.appeal >= TEMPT_APPEAL) want = Math.max(want, Math.min(TEMPT_MAX_WANT, c.appeal) + type.hooks.flash * flashOf(g, gd, g.objById.get(c.o)!));
+  if (want <= 0 || u >= Math.min(0.9, TEMPT * expose * state * hooks * want)) return false;
+  if (!chooseMachine(g, a, type, r, TEMPT_APPEAL, seen)) return false;
   gd.todo |= GAMBLE_BIT;
+  gd.wait = -1;
   think(g, a, "tempted");
   return true;
 }
@@ -635,7 +693,7 @@ function departedFields(g: Game, a: Agent, score: number) {
     atm: gd.atm > 0 ? 1 : 0, drinks: gd.mem.drinks, served: gd.mem.served, withdrawn: gd.withdrawn, trips: gd.trips, score, why: gd.why, chase: gd.chase,
     warned: gd.warned, ejected: gd.mem.ejected, cheat: gd.cheat, luck: gd.luck, caught: gd.caught, won: gd.mem.won, wagered: gd.mem.wagered,
     fun: gd.mem.fun / TICKS_PER_MIN, spent: gd.mem.spent, smoker: gd.smoker, skill: gd.skill, counter: gd.counter, marked: gd.mark & 1,
-    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid, hotel: gd.door === s.map.lift ? 1 : 0,
+    vip: gd.vip, comp: gd.comp, unpaid: gd.unpaid, hotel: gd.door === s.map.lift ? 1 : 0, ev: gd.mem.ev, came: gd.intent,
   };
 }
 
@@ -887,6 +945,51 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   const def = OBJECTS[o.kind];
   // A whale (M9) plays only their game.
   if (gd.vip) return isTable(o.kind) && def.game === g.state.whale.game && tableOpen(g, o) && canSit(g, gd, o) ? 3 : 0;
+  const v = tasteFor(g, type, gd, o);
+  // (M11.3, owner) The seasoned look for the thinnest house edge; novices hardly notice it.
+  return v > 0.05 ? v + SAVVY_EDGE * savvyNow(gd) * Math.max(-1.5, Math.min(1, (EDGE_REF - edgeOf(g, gd, o)) / EDGE_REF)) : v;
+}
+
+/**
+ * (M11.3, owner) Savvy as it stands now: drink and drugs override experience. A high roller on their third drink
+ * with an escort on their arm stops picking thin edges and holding their limit.
+ */
+export function savvyNow(gd: GuestData): number {
+  return GUEST_TYPES[gd.type].savvy * Math.max(0, 1 - SAVVY_INTOX * gd.intox - SAVVY_HIGH * gd.high);
+}
+const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5;
+
+/**
+ * (M11.3, owner) Showing off: with friends around, a guest bets bigger, by their crowd's `social` hook (party groups
+ * most). Up to SHOW_OFF × the hook with two or more of the group within SHOW_REACH tiles.
+ */
+export function showOff(g: Game, a: Agent): number {
+  const gd = a.g!, h = GUEST_TYPES[gd.type].hooks.social;
+  if (!h) return 1;
+  let n = 0;
+  for (const m of companions(g, a)) if (!m.g!.minor && Math.abs(m.x - a.x) + Math.abs(m.y - a.y) <= SHOW_REACH && ++n >= 2) break;
+  return 1 + SHOW_OFF * h * (n / 2);
+}
+const SHOW_OFF = 0.25, SHOW_REACH = 4;
+
+/** (M11.3) How much a savvy guest's eye for the house edge moves appeal, and the edge they call fair. */
+const SAVVY_EDGE = 0.6, EDGE_REF = 0.06;
+/** Table games' usual edge where it doesn't depend on the table's rules or the player (poker: the rake). */
+const GAME_EDGE: Record<string, number> = { craps: 0.014, baccarat: 0.011, poker: 0.05, keno: 0.25, bingo: 0.3, sports: 0.045 };
+
+/** (M11.3) The house edge against this guest at this game, as a seasoned player would reckon it. */
+export function edgeOf(g: Game, gd: GuestData, o: import("./state").PlacedObject): number {
+  const m = machineModel(g.state, o, gd);
+  if (m) return 1 - m.rtp;
+  const game = OBJECTS[o.kind].game ?? "";
+  if (game === "blackjack") return bjEdge(o.rules, gd.skill, gd.counter);
+  if (game === "roulette") return 1 - 36 / pockets(o.rules);
+  return GAME_EDGE[game] ?? EDGE_REF;
+}
+
+/** Taste for the game before the house edge: the model or table game, and whether they can afford it. */
+function tasteFor(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./state").PlacedObject): number {
+  const def = OBJECTS[o.kind];
   if (isTable(o.kind)) return tableOpen(g, o) && canSit(g, gd, o) ? tableAppeal(g, gd, o) : 0;
   const inf = def.slot ? slotInfo(g.state, o) : undefined;
   const m = inf ? inf.c.model : machineModel(g.state, o, gd);
@@ -1093,7 +1196,8 @@ function wantsAtm(g: Game, a: Agent, r: Rng): boolean {
   if (!gd.atm || gd.withdrawn >= gd.withdrawCap - 1 || !g.has("atm")) return false;
   if (gd.mem.atmYes === gd.trips + 1) return true;
   const down = Math.max(0, Math.min(1, -net(gd) / staked(gd)));
-  let p = type.atm.again + 0.3 * down + 0.5 * gd.intox + 0.6 * gd.chase + (gd.mood < 40 ? 0.1 : 0) - (net(gd) > 0 ? 0.3 : 0);
+  // (M11.3) Novices go back for more; the disciplined rarely do.
+  let p = type.atm.again + (0.1 + 0.4 * (1 - savvyNow(gd))) * down + 0.5 * gd.intox + 0.6 * gd.chase + (gd.mood < 40 ? 0.1 : 0) - (net(gd) > 0 ? 0.3 : 0);
   p *= gd.trips === 0 ? 1 : Math.pow(0.6, gd.trips) * (1 + 2 * gd.chase);
   if (!r.chance(Math.max(0.01, Math.min(0.97, p)))) return false;
   gd.mem.atmYes = gd.trips + 1;
@@ -1266,13 +1370,17 @@ function decide(g: Game, a: Agent) {
       if (seekNeed(g, a, r, "bladder", n.bladder / 40)) return;
     }
   }
-  // Waiting on the group: stay put (a restroom trip above is still allowed).
-  if (gd.wait >= 0) return standBy(g, a);
+  // Waiting on the group: stay put (a restroom trip above is still allowed). (M11.3) Someone who hasn't gambled yet
+  // can be tempted by a game where they wait: what's by the show exit or the pool gate is a layout lever.
+  if (gd.wait >= 0) {
+    if (!gd.mem.rounds && gd.why !== "broke" && !gd.minor && tempted(g, a, type, r)) return;
+    return standBy(g, a);
+  }
   if (g.state.tick - gd.mem.arrived >= gd.floorTime) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
   if (amenityFirst(g, a, r)) return;
   const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0 && gd.drink === 0 && gd.wallet >= DRINK_PRICE;
   // Came for a drink, but a machine they like catches their eye: "just one quick spin".
-  if (firstDrink && r.chance(0.25 * type.urge) && chooseMachine(g, a, type, r, true)) { gd.todo |= GAMBLE_BIT; think(g, a, "quickSpin"); return; }
+  if (firstDrink && r.chance(QUICK_SPIN) && chooseMachine(g, a, type, r, true)) { gd.todo |= GAMBLE_BIT; think(g, a, "quickSpin"); return; }
   if (wantsDrink(g, gd) || firstDrink) {
     const use = g.has("thirst") && !(gd.gaveUp & NEED_BIT.thirst) ? goUse(g, a, "thirst") : "none";
     if (use === "ok") return;
@@ -1440,7 +1548,12 @@ function slotRemark(g: Game, a: Agent, o: import("./state").PlacedObject, secs: 
 
 /** Loss limit and win goal as they stand now: drink loosens both, chasing erodes the limit, engagement (M11.1) stretches the limit. */
 export function limits(gd: GuestData, eng = 1): { loss: number; win: number } {
-  return { loss: gd.lossLimit * eng * (1 + 1.5 * gd.intox) * (1 + 2 * gd.chase), win: gd.winGoal * (1 + gd.intox) * (1 + gd.chase) };
+  // (M11.3, owner) Discipline: seasoned players hold their limit; novices get carried away by drink, a game they
+  // love and a good session (up to twice the old stretch for the least disciplined).
+  const loose = 2 * (1 - savvyNow(gd));
+  const fun = Math.min(1, gd.mem.rounds ? (1.6 * gd.mem.feel) / gd.mem.rounds : 0);
+  const stretch = 1 + loose * (Math.max(0, eng - 1) + 1.5 * gd.intox + 0.5 * fun);
+  return { loss: gd.lossLimit * Math.min(1, eng) * stretch * (1 + 2 * gd.chase), win: gd.winGoal * (1 + loose * gd.intox) * (1 + gd.chase) };
 }
 
 /** Ticks until the next round: a machine's spin at the player's pace; at a table, 1 (waiting for the deal). */

@@ -11,12 +11,10 @@
 - **Why each came** is drawn in proportion to those same terms, and tops the visit's to-do list. Each adult also has
   a chance at every other reason the casino offers (1.5 × its weight, at most 60%). **Gambling is on the list only
   for those who came for it or drew it as an extra.** In a group that came for something else, each other adult may
-  peel off to the games instead (the type's urge × 0.6: dad plays while mom takes the kids to the show); children
-  stay with an adult who isn't gambling.
-- **Temptation:** anyone not planning to gamble, each decision, has a chance (0.15 × urge × mood × (1 + 2 × intox + high) ×
-  (1 + buzz/20)) of sitting at a game in view that appeals to them at least 0.4 ("Ooh, that one looks fun"). Leaving
-  the club drunk and happy, or a show buzzing, is when it happens. Urge: locals and high rollers 1, retirees 0.8,
-  tourists 0.6, party 0.5, conventioneers 0.5, families 0.45.
+  leave it to the rest (`hooks.free` × 0.25, at most 80%: mom takes the kids to the show). They don't plan to gamble:
+  they have **time to themselves** (a hook, below) and kill time on the floor while the rest are busy.
+  Children stay with an adult who isn't gambling.
+- **Temptation** (M11.3; below): anyone not planning to gamble may be tempted by a game they pass.
 - **Impulse:** a place they've seen this visit that their type likes may go on the list (0.08 × its weight a decision).
 - **Knowing the way:** anything on the list is somewhere they know how to get to.
 - **Sights:** eight legs of looking around, fun where the theming suits them; "What a place!" or "Not much to see here".
@@ -31,7 +29,81 @@
   value it, a cheap one fills the house and the floor. Paying more than it's worth is "steep".
 
 
+## Temptation (M11.3, owner: any crowd can gamble as hard as any other; they differ in what gets them)
+- **No ceiling per crowd.** A type no longer has an "urge". Temptation, for anyone not planning to gamble, per
+  decision: `0.08 × exposure × (0.5 + mood/100) × hooks × want`.
+  - **Exposure** (the layout's work): 0.6 + 0.12 for each game they've walked past and liked this visit (up to 8).
+  - **Want** (the match): the best game in view that appeals to them at least 0.4 (its appeal, up to 2.5), plus its
+    **flash** × their `flash` hook: a jackpot or bonus there in the last 30 s (+1), a big progressive meter (up to
+    +0.5), a craps table with 3+ players (+0.5).
+  - **Hooks** = 1 + Σ weight × signal, per crowd (`hooks` in `src/data/guests.ts`): **drink** (2 × intox, up to 2),
+    **buzz** (a high, cheering nearby, mood over 60, fun had this visit; up to 2), **free** (the rest of the group
+    are at a show, meal, golf, the pool or the club), **social** (someone from their group is playing in view).
+
+| | drink | buzz | flash | free | social |
+|---|---|---|---|---|---|
+| Locals | 0.5 | 0.3 | 0.3 | 0.3 | 0.5 |
+| Retirees | 0.2 | 0.5 | 0.6 | 0.5 | 1 |
+| Tourists | 0.8 | 1 | 1.5 | 0.5 | 1 |
+| Party | 1.5 | 1.5 | 1 | 0.2 | 1.5 |
+| High rollers | 0.3 | 0.3 | 0.3 | 0.3 | 0.3 |
+| Conventioneers | 1 | 0.5 | 0.5 | 1.5 | 1.5 |
+| Families | 0.5 | 1 | 1.5 | 2.5 | 0.5 |
+
+- A family adult alone while the family is at the show, by a themed machine they love that just hit, is tempted about
+  5× as readily as the same adult with the kids in tow. Locals barely need hooks: they came to gamble.
+- **Waiting is exposure too:** someone who hasn't gambled yet, waiting for their group, can be tempted by a game where
+  they wait. Games by the show exit, the pool gate or the restaurant are a layout lever.
+- "Just one quick spin" for drink-first guests: 20% for everyone (was 25% × urge).
+- Measured (Test Floor, 200 days, seed 1): with the games within 12 tiles of the attractions removed, party guests who
+  came for the club gambled 39% of visits (54% with them) and wagered $92 a visit ($217); with every hook at 0, 27%.
+
+## Savvy (M11.3, owner: locals aren't an easy win)
+`savvy` per type, 0–1: Locals 0.8, High rollers 0.85, Conventioneers 0.45, Retirees 0.4, Families 0.3, Tourists 0.25,
+Party 0.1. The seasoned seek out thin edges and walk away; novices play whatever catches their eye and get carried away.
+- **Game choice:** appeal + 0.6 × savvy × (6% − the game's edge against them) ÷ 6%, clamped −1.5..1 (`edgeOf`: a slot's
+  or video poker's payback, blackjack by its rules and their skill, roulette by its zeros, fixed edges for the rest),
+  on top of the slot `drain` taste and table `rules`.
+- **Discipline** (looseness = 2 × (1 − savvy)): the loss limit stretches by looseness × (engagement above 1 + 1.5 × intox
+  + 0.5 × how good the session feels), the win goal by looseness × intox; bets swing with a win or a loss × looseness;
+  out of money, the ATM pull from being down is 0.1 + 0.4 × (1 − savvy). A local stops near their limit and bets flat;
+  a tourist, drunk and on a game they love, plays well past it.
+- **Substances override experience:** savvy as it stands = savvy × (1 − 0.8 × intox − 0.5 × high) (`savvyNow`), used
+  for edge-seeking, discipline and the ATM. Drink and drugs are how you loosen a high roller or a local.
+- **Showing off:** bets × (1 + 0.25 × `hooks.social` × (friends within 4 tiles, up to 2) ÷ 2) (`showOff`, slots and
+  tables); party groups most.
+- So the crowds that come on their own give thin margins, and the ones you have to earn give rich ones.
+- `npm run targets` reports "house edge faced" and "came for else / of them played", and flags locals facing as big an
+  edge as tourists or party guests, or a crowd whose non-gamblers almost never gamble.
+
+
 Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.ts` (sidewalk and entrance), `drinks.ts` (drink policy and serving), `dist.ts` (distribution draws), with types in `src/data/guests.ts` and thoughts in `src/data/thoughts.ts`. Design agreed with the owner 2026-09-23 (history in DECISIONS.md); wayfinding is in `navigation.md`.
+
+## The roster (M11.3, owner)
+Each crowd comes for its own reasons and is worked in its own way:
+- **Locals:** thin house edges, favorite machines, smoking, cheap food and drinks (savvy 0.8, smokers 40%).
+- **Retirees:** cheap long-lasting games (penny slots, bingo, keno), smoking, quiet (smokers 35%).
+- **Tourists:** sightseeing, flashy spectacle and entertainment, approachable games.
+- **Families:** non-gambling attractions and cheap food; opportunistic, undisciplined gamblers (savvy 0.2); dislike
+  nuisance and incidents.
+- **Party groups:** drink, drugs (25%), dancing, hookups, fun; enjoy incidents (disorder and misconduct tolerance 1+).
+- **High rollers** (the business crowd): luxury, big tables, vice, drugs (20%), escorts; want lenient rules except on
+  fights (vice, drugs and drink tolerated; disorder not).
+- **Conventioneers** are an event crowd: they come with conventions and no reputation is tracked for them (`noRep`).
+
+## Crowd parity (M11.3, owner)
+**Goal:** whichever crowd a casino is built for, catering to it well should earn roughly the same from gambling; only
+the method differs (locals: volume on thin edges; retirees: long cheap sessions; tourists: spectacle; families:
+temptation between attractions; party: drink and friends; high rollers: big tables and vice).
+- **Crowd floors** (`crowd_*` in `src/data/scenarios.ts`, hidden): six mini-casinos on the tutorial lot, each designed
+  for one crowd in games, amenities, decor, rooms and house rules. Never judge parity on a mixed floor (theming
+  clashes and a layout built for no one decide it). Every piece is placed through the real build checks.
+- `npm run parity [days] [seeds]` plays each with only its crowd and reports **take** (theoretical gaming win ÷ the
+  money the crowd brought, wallets and ATM draws), so wealth and market size don't decide it; flags a spread over 2×.
+- Measured (120 days, seeds 1–2): take Locals 10.1%, Retirees 10.8%, Tourists 13.1%, Families 17.0%, Party 7.0%,
+  High rollers 4.1%. Families on their own floor: 72% of adults gamble ($22 a visit). The party floor's first draft
+  walled the club off from the games (take 5.2%, 38% gambled); games at the club exit raised it to 7.0% and 57%.
+  **Open (owner):** high rollers lose ~4% of a $2,400 bankroll: thin edges and a 10-minute visit cap them.
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.
@@ -166,7 +238,7 @@ Measured with `npm run targets` (Test Floor scenario, 300 days, seed 1), M6 buil
 | Came for meal / show / club | 16/5/3% | 18/18/0% | 12/23/9% | 1/3/39% | `comeFor`, amenity tiers |
 
 ## Families (M9.5)
-- One-off groups of 3–5: one or two adults, the rest children. Adults gamble lightly (cheap slots, bingo), rarely drink, and come for the pool, meals and shows; they mind drunks, fights and mess (they report), and smoke as everyone does.
+- One-off groups of 3–5: one or two adults, the rest children. Adults come for the pool, meals, shows, golf and the sights, rarely drink, and gamble when tempted (M11.3: time to themselves and flashy games they like); they mind drunks, fights and mess (they report), and smoke as everyone does.
 - **Children** (`minor`) have no money, never drink or gamble, and stay near the adults (a restroom trip is all they do alone). Their visits aren't scored: the adults' visit is the family's. Next to a machine, a child may start feeding it: an **underage gambling** incident (docs/spec/incidents.md).
 - Drawn a row shorter in bright tees and caps.
 

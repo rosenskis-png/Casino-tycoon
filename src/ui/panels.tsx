@@ -352,7 +352,7 @@ export function GuestsPanel({ host }: { host: Host }) {
       <Calendar g={g} />
       {hasClub(g.state) && <ByType g={g} />}
       <p className="muted" style={{ margin: "10px 0 6px" }}>Reputation</p>
-      {Object.entries(s.rep).map(([t, r]) => (
+      {Object.entries(s.rep).filter(([t]) => !GUEST_TYPES[t]?.noRep).map(([t, r]) => (
         <div className="bar" key={t}>
           <span>{GUEST_TYPES[t]?.name ?? t}</span>
           <div><i style={{ width: `${Math.round(r)}%` }} /></div>
@@ -377,7 +377,7 @@ export function GuestsPanel({ host }: { host: Host }) {
 function Survey({ g }: { g: Game }) {
   const s = g.state;
   const [open, setOpen] = useState<string>("");
-  const types = Object.keys(s.rep).filter((t) => (s.survey[t]?.n ?? 0) >= 1);
+  const types = Object.keys(GUEST_TYPES).filter((t) => (s.survey[t]?.n ?? 0) >= 1);
   if (!types.length) return null;
   const top = (m: Record<string, number>, bad: boolean) => Object.entries(m).filter(([k, n]) => THOUGHTS[k] && !!THOUGHTS[k].bad === bad && n >= 1).sort((a, b) => b[1] - a[1]).slice(0, 4);
   const themes = (m: Record<string, number>) => Object.entries(m).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => (k === "none" ? "unthemed or broken spots" : THEMES[k as ThemeId] ?? k)).join(", ");

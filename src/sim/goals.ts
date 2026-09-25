@@ -14,7 +14,7 @@ export function goalStatus(g: Game): GoalStatus | null {
   const goals = SCENARIOS[g.state.scenario].goals;
   if (!goals) return null;
   const w = worth(g);
-  const types = goals.rep.type ? [goals.rep.type] : Object.keys(g.state.rep);
+  const types = goals.rep.type ? [goals.rep.type] : Object.keys(g.state.rep).filter((t) => !GUEST_TYPES[t]?.noRep);
   const rep = Math.min(...types.map((t) => g.state.rep[t] ?? 0));
   const reps = (goals.reps?.types ?? []).map((t) => ({ type: t, rep: g.state.rep[t] ?? 0, ok: (g.state.rep[t] ?? 0) >= goals.reps!.min }));
   return { worth: w, rep, worthOk: w >= goals.worth, repOk: rep >= goals.rep.min && reps.every((r) => r.ok), goals, reps };

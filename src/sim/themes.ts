@@ -4,7 +4,7 @@
 // the hidden pairings, the curated bonus and the muddle of unrelated themes; each room gets a coherence. Guests
 // read only the score (sim/guests.ts). Runtime cache, rebuilt on layout and purpose changes; never saved.
 import { OBJECTS } from "../data/objects";
-import { SYNERGY, THEME_IDS, THEME_RADIUS, type Place } from "../data/themes";
+import { SYNERGY, THEME_IDS, THEME_PEAK, THEME_RADIUS, type Place } from "../data/themes";
 import { designById } from "./design/lookup";
 import { T } from "../data/terrain";
 import type { Game } from "./game";
@@ -73,13 +73,13 @@ export class ThemeField {
       // M8: a designed slot themes its spot a little, like a weak decor piece (docs/spec/designer.md §2).
       if (o.design && OBJECTS[o.kind].slot) {
         const d = designById(this.g.state, o.design), k = d ? THEME_IDS.indexOf(d.theme as never) : -1;
-        if (k >= 0) { themedAny = true; this.sources.push({ k, kind: 0, cx: o.x, cy: o.y, s: 0.8 }); }
+        if (k >= 0) { themedAny = true; this.sources.push({ k, kind: 0, cx: o.x, cy: o.y, s: 0.8 * THEME_PEAK }); }
         continue;
       }
       const tags = OBJECTS[o.kind].tags;
       if (!tags) continue;
       const { w, h } = objSize(o), cx = o.x + (w - 1) / 2, cy = o.y + (h - 1) / 2;
-      if (tags.junk) { themedAny = true; this.sources.push({ k: 0, kind: 3, cx, cy, s: tags.junk }); continue; }
+      if (tags.junk) { themedAny = true; this.sources.push({ k: 0, kind: 3, cx, cy, s: tags.junk * THEME_PEAK }); continue; }
       const at = this.placesOf(Math.round(cx), Math.round(cy));
       // Hidden place fit: suited places strengthen an item, clashing ones weaken it.
       let mult = 1;
@@ -87,10 +87,10 @@ export class ThemeField {
       if (tags.clashesPlace?.some((p) => at.has(p))) mult -= 0.5;
       if (tags.theme) {
         themedAny = true;
-        this.sources.push({ k: THEME_IDS.indexOf(tags.theme), kind: 0, cx, cy, s: (tags.strength ?? 3) * mult });
+        this.sources.push({ k: THEME_IDS.indexOf(tags.theme), kind: 0, cx, cy, s: (tags.strength ?? 3) * mult * THEME_PEAK });
       }
-      for (const [t, wgt] of Object.entries(tags.suitsTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 1, cx, cy, s: 1.5 * (wgt ?? 0) * mult });
-      for (const [t, wgt] of Object.entries(tags.clashesTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 2, cx, cy, s: 1.5 * (wgt ?? 0) });
+      for (const [t, wgt] of Object.entries(tags.suitsTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 1, cx, cy, s: 1.5 * (wgt ?? 0) * mult * THEME_PEAK });
+      for (const [t, wgt] of Object.entries(tags.clashesTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 2, cx, cy, s: 1.5 * (wgt ?? 0) * THEME_PEAK });
     }
     if (themedAny && !this.active) { this.active = true; this.alloc(); }
     if (!themedAny && this.active) { this.active = false; this.themed = []; this.gen = []; this.clash = []; this.junk = new Float32Array(0); this.q = new Float32Array(0); this.score = new Float32Array(0); this.dom = new Int8Array(0); this.rooms = []; }

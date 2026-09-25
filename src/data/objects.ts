@@ -129,6 +129,11 @@ const DECOR_ROWS: DecorRow[] = [
   ["pirate_wheel", "pirate", "Ship's Wheel", 400, 1.5, 0.5, { suitsPlace: ["water", "bar"] }, "Hard a-port, toward the slots."],
   ["pirate_chest", "pirate", "Treasure Chest", 550, 2, 0.5, { suitsTheme: { goldrush: 0.3 }, suitsPlace: ["highlimit", "floor"] }, "Overflowing with gold. Bolted to the floor."],
   ["pirate_anchor", "pirate", "Anchor", 350, 1, 0, { suitsPlace: ["water", "outdoor"] }, "A barnacled iron anchor on a coil of rope."],
+  // (M8.6) Lucky Dragon: red lacquer, bronze and porcelain.
+  ["dragon_lantern", "dragon", "Red Lantern", 300, 1, 1.5, { suitsPlace: ["floor", "bar", "restaurant"] }, "A red silk lantern glowing gold inside."],
+  ["dragon_lion", "dragon", "Guardian Lion", 700, 2.5, 0, { suitsTheme: { deco: 0.3 }, suitsPlace: ["highlimit", "floor"] }, "A bronze lion guarding the house's good fortune."],
+  ["dragon_vase", "dragon", "Porcelain Vase", 450, 2, 0, { suitsTheme: { luxe: 0.3 }, suitsPlace: ["restaurant", "highlimit"] }, "Blue and white, older than the building."],
+  ["dragon_screen", "dragon", "Lacquer Screen", 550, 2, 0.5, { suitsPlace: ["indoor", "restaurant"], clashesPlace: ["outdoor"] }, "Red lacquer with a golden dragon coiling across it."],
   ["pirate_cannon", "pirate", "Cannon", 450, 1, 1, { suitsPlace: ["outdoor", "floor"], clashesPlace: ["restaurant"] }, "Loaded with confetti, reportedly."],
 ];
 

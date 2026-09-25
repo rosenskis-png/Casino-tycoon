@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export interface MapState {
   w: number;
@@ -292,6 +292,9 @@ export interface Person {
   luck: number;
   cheat: number;
   caught: number;
+  /** (M8.6) Sessions played per slot design (the few most played; fading monthly), and the design they're a fan of. */
+  dp?: Record<string, number>;
+  fan?: string;
 }
 
 /**
@@ -523,6 +526,24 @@ export interface GameState {
   meters: Record<string, Meter>;
   /** (M8.5) What guests thought at each game kind (a slot design, a table game), by month, for the last 6 months. */
   ohist: Record<string, OpinionMonth[]>;
+  /** (M8.6) A slot maker's offer for one of your designs, waiting for an answer; the casino's slot records. */
+  offer: SaleOffer | null;
+  records: SlotRecords;
+}
+
+/** (M8.6) A maker's offer (docs/spec/designer.md "Selling a design"): one-time cash, your share of the edge, the royalty. */
+export interface SaleOffer { id: string; maker: string; cash: number; share: number; roy: number; until: number; s: number }
+/**
+ * (M8.6) A design sold to a maker: who, the terms, when (tick), the hidden number of machines it will sell and the
+ * months it takes to get there, the most installed so far, royalties paid, and the win per machine-day royalties use.
+ */
+export interface Sale { maker: string; share: number; roy: number; at: number; units: number; ramp: number; peak: number; paid: number; win: number; cash: number }
+/** (M8.6) Records: the biggest slot jackpot, most fans, best performance index, most plays in a month, and the Evergreens. */
+export interface SlotRecords {
+  jackpot?: { v: number; id: string; day: number };
+  fans?: { v: number; id: string; day: number };
+  index?: { v: number; id: string; day: number };
+  month?: { v: number; id: string; day: number };
 }
 
 /** (M8.5) Progressive meters in dollars per jackpot level (0 where a level has none), must-hit-by hit points, and seeds. */
@@ -541,6 +562,20 @@ export interface DesignStats {
   /** Day first placed (-1 never), and guests' remarks by thought id. */
   born: number;
   said: Record<string, number>;
+  /**
+   * (M8.6) The market: awareness by guest type (0-1), the novelty it launched with, sessions and machine-days this
+   * month, sessions and machine-days per closed month (newest last, 24 kept), peak fans, 1 once an Evergreen.
+   */
+  aw?: Record<string, number>;
+  nov?: number;
+  mo?: number;
+  md?: number;
+  hs?: number[];
+  hm?: number[];
+  fans?: number;
+  ever?: number;
+  /** (M8.6) Visitors who became fans, by type (they don't come back, but they tell people); fades as they forget. */
+  ff?: Record<string, number>;
 }
 /**
  * (M8) A slot design in this casino: the design, when its certification finishes (0 never submitted; a tick in
@@ -550,6 +585,10 @@ export interface DesignRec {
   d: SlotDesign;
   cert: number;
   rigged: number;
+  /** (M8.6) Sold to a maker; offers declined, and when the next offer may come (0 the usual monthly chance, -1 never). */
+  sale?: Sale;
+  declined?: number;
+  reAt?: number;
 }
 
 export type YourFam = "slot" | "vpoker" | "blackjack" | "roulette" | "craps" | "baccarat" | "keno";

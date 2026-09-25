@@ -9,6 +9,7 @@ import { priceOf } from "./geometry";
 import { SCENARIOS } from "../data/scenarios";
 import { wageFor } from "./crew";
 import { liability } from "./design/meters";
+import { houseMeters } from "./design/market";
 
 export const LEDGER_LABELS: Record<string, string> = {
   start: "Starting cash", slots: "Slot win", tables: "Table win", poker: "Poker rake", keno: "Keno & bingo", sports: "Sportsbook", marketing: "Marketing", research: "Research", rooms: "Hotel rooms", bar: "Bar sales", build: "Construction", sales: "Sold objects",
@@ -49,7 +50,12 @@ export function worth(g: Game): number {
   return g.state.cash + assetsOf(g) - g.state.bank.loan - g.state.bank.emergency - meterDebt(g);
 }
 /** (M8.5) What players have put on the progressive meters beyond their seeds: owed, so it counts against worth. */
-export const meterDebt = (g: Game) => liability(g.state.meters ?? {}, g.state.objects);
+export const meterDebt = (g: Game) => { const h = houseMeters(g.state); return liability(h.meters, h.objects); };
+/** A ledger line's name: (M8.6) each sold design has its own. */
+export function ledgerLabel(g: Game, k: string): string {
+  if (k.startsWith("sale:")) { const rec = g.state.designs[k.slice(5)]; return `Sold: ${rec?.d.name ?? "a design"}`; }
+  return LEDGER_LABELS[k] ?? k;
+}
 
 /** Ledger lines that move money without being income or cost (kept out of a month's net). */
 export const NOT_INCOME = new Set(["start", "borrowed", "repaid"]);

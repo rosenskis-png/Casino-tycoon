@@ -8,6 +8,8 @@ export interface LibEntry {
   saved: number;
   /** Lab ratings when saved (Excitement for the casino it was saved from), and that casino's scenario. */
   ex?: number; int?: number; drain?: number; where?: string;
+  /** (M8.6) Its life in a casino: sold to a maker (and the most machines it reached out there), an Evergreen. */
+  sold?: string; peak?: number; ever?: 1;
 }
 
 const KEY = "ct-slot-library";
@@ -27,6 +29,18 @@ export function saveToLibrary(e: Omit<LibEntry, "key" | "saved"> & { key?: strin
   const i = lib.findIndex((q) => q.key === key);
   if (i >= 0) lib[i] = entry; else lib.unshift(entry);
   try { localStorage.setItem(KEY, JSON.stringify(lib.slice(0, 200))); } catch { /* storage full or blocked */ }
+  return lib;
+}
+
+/** (M8.6) Note a design's achievements on every library entry with the same math. Returns the library. */
+export function noteInLibrary(match: (d: SlotDesign) => boolean, note: Pick<LibEntry, "sold" | "peak" | "ever">): LibEntry[] {
+  const lib = loadLibrary();
+  let changed = false;
+  for (const e of lib) {
+    if (!match(e.d)) continue;
+    for (const [k, v] of Object.entries(note) as [keyof typeof note, never][]) if (v !== undefined && e[k] !== v) { e[k] = v; changed = true; }
+  }
+  if (changed) try { localStorage.setItem(KEY, JSON.stringify(lib)); } catch { /* ignore */ }
   return lib;
 }
 

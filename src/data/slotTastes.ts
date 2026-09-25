@@ -30,18 +30,21 @@ export interface SlotTaste {
   /** Calibration: appeal = base + gain × Excitement / 10 + fits (fitted so the original machines keep their appeal). */
   base: number;
   gain: number;
+  /** (M8.6) How fast they tire of a design they play a lot, and how attached they grow to a favorite (0-1). */
+  bore: number;
+  attach: number;
 }
 
 const P = (ideal: number, tol: number, w: number): Pref => ({ ideal, tol, w });
 
 export const SLOT_TASTES: Record<string, SlotTaste> = {
-  local: { hit: P(0.22, 0.14, 1), intensity: P(3.5, 2.5, 1), feats: P(0.5, 2, 0.6), featAppetite: 0.4, dream: 0.25, spectacle: P(3.5, 3, 1), complexity: P(1, 3, 1), ldw: -0.8, near: 0.6, classic: 0.6, drain: 0.8, base: 0.404, gain: 0.223 },
-  retiree: { hit: P(0.4, 0.15, 1), intensity: P(2, 2, 1), feats: P(2, 1.5, 1), featAppetite: 0.9, dream: 0.8, spectacle: P(6, 3, 1), complexity: P(3, 2.5, 1), ldw: 0.6, near: 0.3, classic: 0.5, drain: 0.6, base: 0.298, gain: 0.702 },
-  tourist: { hit: P(0.3, 0.3, 0.6), intensity: P(5.5, 3, 1), feats: P(1.5, 2, 1), featAppetite: 1, dream: 1.6, spectacle: P(8, 3, 1), complexity: P(4, 3, 0.6), ldw: 0.5, near: 0.3, classic: -0.8, drain: 0.3, base: 0.202, gain: 1.283 },
-  party: { hit: P(0.25, 0.3, 0.5), intensity: P(6, 4, 0.5), feats: P(1.5, 2, 1), featAppetite: 0.9, dream: 2.2, spectacle: P(9, 3, 1.2), complexity: P(2, 3, 0.8), ldw: 0.6, near: 0.2, classic: -0.5, drain: 0.2, base: -0.122, gain: 1.311 },
-  highroller: { hit: P(0.15, 0.15, 0.6), intensity: P(7, 3, 1), feats: P(0.5, 2, 0.5), featAppetite: 0.4, dream: 0.8, spectacle: P(2.5, 3.5, 1), complexity: P(3, 3, 0.5), ldw: -0.9, near: -0.3, classic: 0.2, drain: 0.1, base: -0.04, gain: 1.004 },
-  conventioneer: { hit: P(0.3, 0.2, 0.6), intensity: P(4.5, 3, 1), feats: P(1, 2, 0.8), featAppetite: 0.7, dream: 0.7, spectacle: P(6, 3, 0.8), complexity: P(3, 3, 0.6), ldw: 0, near: 0.2, classic: -0.4, drain: 0.4, base: 0.487, gain: 0.1 },
-  family: { hit: P(0.38, 0.15, 1), intensity: P(3, 2.5, 1), feats: P(1.5, 1.5, 0.8), featAppetite: 0.8, dream: 0.6, spectacle: P(7.5, 3, 1), complexity: P(2, 2.5, 0.8), ldw: 0.5, near: 0.1, classic: -0.3, drain: 0.5, base: 0.239, gain: 0.598 },
+  local: { hit: P(0.22, 0.14, 1), intensity: P(3.5, 2.5, 1), feats: P(0.5, 2, 0.6), featAppetite: 0.4, dream: 0.25, spectacle: P(3.5, 3, 1), complexity: P(1, 3, 1), ldw: -0.8, near: 0.6, classic: 0.6, drain: 0.8, base: 0.404, gain: 0.223, bore: 0.3, attach: 0.8 },
+  retiree: { hit: P(0.4, 0.15, 1), intensity: P(2, 2, 1), feats: P(2, 1.5, 1), featAppetite: 0.9, dream: 0.8, spectacle: P(6, 3, 1), complexity: P(3, 2.5, 1), ldw: 0.6, near: 0.3, classic: 0.5, drain: 0.6, base: 0.298, gain: 0.702, bore: 0.4, attach: 0.6 },
+  tourist: { hit: P(0.3, 0.3, 0.6), intensity: P(5.5, 3, 1), feats: P(1.5, 2, 1), featAppetite: 1, dream: 1.6, spectacle: P(8, 3, 1), complexity: P(4, 3, 0.6), ldw: 0.5, near: 0.3, classic: -0.8, drain: 0.3, base: 0.202, gain: 1.283, bore: 1, attach: 0 },
+  party: { hit: P(0.25, 0.3, 0.5), intensity: P(6, 4, 0.5), feats: P(1.5, 2, 1), featAppetite: 0.9, dream: 2.2, spectacle: P(9, 3, 1.2), complexity: P(2, 3, 0.8), ldw: 0.6, near: 0.2, classic: -0.5, drain: 0.2, base: -0.122, gain: 1.311, bore: 1, attach: 0 },
+  highroller: { hit: P(0.15, 0.15, 0.6), intensity: P(7, 3, 1), feats: P(0.5, 2, 0.5), featAppetite: 0.4, dream: 0.8, spectacle: P(2.5, 3.5, 1), complexity: P(3, 3, 0.5), ldw: -0.9, near: -0.3, classic: 0.2, drain: 0.1, base: -0.04, gain: 1.004, bore: 0.5, attach: 0.4 },
+  conventioneer: { hit: P(0.3, 0.2, 0.6), intensity: P(4.5, 3, 1), feats: P(1, 2, 0.8), featAppetite: 0.7, dream: 0.7, spectacle: P(6, 3, 0.8), complexity: P(3, 3, 0.6), ldw: 0, near: 0.2, classic: -0.4, drain: 0.4, base: 0.487, gain: 0.1, bore: 0.8, attach: 0 },
+  family: { hit: P(0.38, 0.15, 1), intensity: P(3, 2.5, 1), feats: P(1.5, 1.5, 0.8), featAppetite: 0.8, dream: 0.6, spectacle: P(7.5, 3, 1), complexity: P(2, 2.5, 0.8), ldw: 0.5, near: 0.1, classic: -0.3, drain: 0.5, base: 0.239, gain: 0.598, bore: 0.8, attach: 0.2 },
 };
 
 /**

@@ -234,6 +234,14 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     }
     return s;
   },
+  // 16 → 17 (M8.6): no offers or records yet; every design already on the floor is known to everyone and past its
+  // novelty (awareness fills in on the first day), and nobody is a fan yet.
+  16: (s) => {
+    s.offer = null;
+    s.records = {};
+    for (const st of Object.values<any>(s.dstats ?? {})) if (st.machDays > 0) { st.aw = { "*": 1 }; st.nov = 0; }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

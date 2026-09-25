@@ -120,7 +120,8 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 - Standalone, linked (banks with a sign of live meters) and must-hit-by progressives; bet eligibility; meters as liabilities; hunters. Onlookers at big bonuses; hidden pairings. Lightning Link- and wheel-style stock games.
 - Owner's notes (designer.md, "M8.5 plan with the owner's notes"): linked meters shared by every machine of a design, with a doubling-based pull; what guests think of each game over 6 months; logo fonts and face layout; spaces in names; slam-stop keeps the win; no early reveal of results. Save schema 16.
 - Built: every feature with exact math and its own play screen; standalone, linked and must-hit-by progressives (bank signs, hunters, meters in the books); onlookers; wider ratings; a lifetime performance index; five stock bonus games; interface size.
-## M8.6 · Slot designer: the market ☐
-- Novelty and ageing, boredom and favorites, floor variety, fans who come for a design; a yearly Slot Expo of trends; rival makers' releases to buy, study and copy; guests' wishes; records and Evergreens; research projects; Test Floor and sanity flags per design.
+## M8.6 · Slot designer: the market ☑  (see docs/spec/designer.md "As built in M8.6")
+- Novelty and ageing, boredom and favorites, floor variety, fans who come for a design; guests' wishes; records and Evergreens; research projects; Test Floor and sanity flags per design. (Slot Expo and rival releases dropped by the owner.)
 - Owner's notes (designer.md, "M8.6 additions"): word of mouth (awareness curve, novelty bump, fans, steady state); slot makers' offers to buy your own designs (cash, a share of the edge, royalties with a long tail, wide-area progressives).
+- Built: awareness by guest type, novelty, boredom, fans (visitors count too) and their draw, variety, wishes, records, Evergreens, Game launches and Market research, the life curve, offers and sales, Lucky Dragon decor. Save schema 17.
 ## M11 · Scenarios, tutorial, balance ☐

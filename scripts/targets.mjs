@@ -32,7 +32,22 @@ g.bus.on((e) => {
 const totals = {};
 // M7: who plays what, sampled every 5 s: per type, seats taken at machines and at each table game.
 const at = {}, fams = new Set();
+// M8.6: a new game of your own launches on day 30 (three of the tall Stampede cabinets converted), so word of mouth,
+// novelty and fans have something to do; its awareness is sampled monthly.
+let launched = "";
+const launchCurve = [];
 for (let d = 0; d < days; d++) {
+  if (d === 20) {
+    g.dispatch({ type: "designSave", d: { ...sim.STOCK_DESIGNS.ember, id: "", name: "Test Launch", origin: "own", theme: "pirate" } });
+    g.flushCommands?.();
+    launched = g.lastDesign;
+    g.dispatch({ type: "designCertify", id: launched });
+  }
+  if (d === 30) for (const o of g.state.objects.filter((q) => q.design === "stampede").slice(0, 3)) g.dispatch({ type: "designConvert", obj: o.id, id: launched });
+  if (launched && d > 30 && d % 30 === 0) {
+    const st = g.state.dstats[launched], pop = Object.keys(sim.SCENARIOS.testfloor.population);
+    launchCurve.push(`${Math.round(pop.reduce((a, t) => a + sim.awareness(st, t), 0) / pop.length * 100)}%`);
+  }
   for (let t = 0; t < sim.TICKS_PER_DAY; t++) {
     g.step();
     if (t % 100) continue;
@@ -172,6 +187,20 @@ if (days >= 120 && !whales.length) flags.push("no whale ever came");
 if (whales.some((e) => !e.wagered)) flags.push("a whale never played");
 if (days >= 120 && !m9.audits) flags.push("the regulator never audited");
 if (s.auth.regulator.standing < 60) flags.push("regulator standing fell on an honest floor");
+// M8.6: the slot market, per design: machines, plays per machine-day, fans, performance index, awareness; the launch.
+const ids = [...new Set(s.objects.filter((o) => sim.OBJECTS[o.kind].slot).map((o) => sim.designIdOf(o)))];
+const drows = ids.map((id) => {
+  const st = s.dstats[id], n = sim.machinesOf(s, id).length, idx = sim.perfIndex(s, id), plays = (st.hs ?? []).reduce((a, b) => a + b, 0) + (st.mo ?? 0);
+  const md = (st.hm ?? []).reduce((a, b) => a + b, 0) + (st.md ?? 0);
+  return { id, name: sim.designById(s, id)?.name ?? id, n, rate: plays / Math.max(1, md), fans: sim.fanCount(g, id), idx };
+});
+console.log(`slot designs: ${drows.map((r) => `${r.name} ×${r.n} ${f1(r.rate)}/day ${r.fans} fans${r.idx !== null ? ` idx ${f2(r.idx)}` : ""}`).join("; ")}`);
+console.log(`launch (Test Launch, 3 machines from day 30): awareness by month ${launchCurve.join(" → ") || "–"}; wishes ${JSON.stringify(sim.wishes(g))}; records ${Object.keys(s.records ?? {}).join(", ") || "none"}`);
+const avgRate = drows.reduce((a, r) => a + r.rate * r.n, 0) / Math.max(1, drows.reduce((a, r) => a + r.n, 0));
+for (const r of drows) if (days >= 60 && r.rate < 0.1 * avgRate) flags.push(`${r.name} is barely played (${f1(r.rate)} a machine-day)`);
+if (days >= 120 && !drows.some((r) => r.fans)) flags.push("no slot design has a single fan");
+if (launched && days >= 200 && pop0(launched) < 0.5) flags.push("a new design is still unknown to most guests after half a year");
+function pop0(id) { const pop = Object.keys(sim.SCENARIOS.testfloor.population); return pop.reduce((a, t) => a + sim.awareness(s.dstats[id], t), 0) / pop.length; }
 // M9.5: the calendar, families.
 console.log(`events: ${Object.entries(m95.events).map(([k, n]) => `${k} ${n}`).join(", ") || "none"}; children ${m95.kids}; sportsbook ${usd(tot.sports ?? 0)}`);
 if (days >= 60 && !Object.keys(m95.events).length) flags.push("no event ever started");

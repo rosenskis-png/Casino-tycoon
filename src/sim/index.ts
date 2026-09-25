@@ -15,7 +15,7 @@ export { objSeats, objSize, objCells, objStaff, objFootprint, covers, dims, pric
 export { placement, landForSale } from "./build";
 export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult } from "./amenities";
 export type { Gate } from "./state";
-export { LEDGER_LABELS, monthlyCosts, worth, meterDebt } from "./finance";
+export { LEDGER_LABELS, ledgerLabel, monthlyCosts, worth, meterDebt } from "./finance";
 export { goalStatus, describeGoals } from "./goals";
 export { thoughtRates, guestCount } from "./guests";
 export { newcomerRates, poolSummary, person } from "./pool";
@@ -24,11 +24,14 @@ export { DRINK_PRICE, STRENGTHS } from "./drinks";
 export { betOf, machineModel, limitsOf, isTable, tableDefOf } from "./gaming";
 export {
   compiledOf, compiledById, designById, designIdOf, perfIndex, panelMix, statsOf, machinesOf, cantUse, certified, certPending, illegal, sanitize,
-  designLocks, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind, PERF_INDEX_HELP,
+  designLocks, sameMath, minRtpOf, certFee, designPrice, cabKind, isStock, CERT, CONVERT_FEE, cabOfKind, PERF_INDEX_HELP,
 } from "./design";
 export { opinionsOf, gameKey, OPINION_MONTHS, type OpinionSummary } from "./opinions";
 export { huntEdge, topMeter, signDesign, collectHuntAt } from "./design";
 export { meterPull } from "./guests";
+export {
+  awareness, ageDays, marketVersion, fansOf, fanCount, wishes, saleBlocks, saleOf, installs, saleLine, marketFactor, MARKET, SALE_RULES, MAKERS,
+} from "./design/market";
 export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";
 export { judge, feelOf } from "./design/appeal";
@@ -50,3 +53,4 @@ export { STOCK_DESIGNS } from "../data/designs";
 export { newDesign } from "../data/designer";
 export { cantPlay, yourFam, yourMoves, bjTotal, rankOf, vpHand, vpX, VP_HANDS, bacTotal, rouletteX } from "./yours";
 export type { YourPlay, YourFam } from "./state";
+export { SCENARIOS } from "../data/scenarios";

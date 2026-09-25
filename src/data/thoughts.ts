@@ -30,6 +30,17 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   slotDull: { text: "{game} is dull to look at.", alt: ["{game} could use some sparkle."], bad: true },
   slotComplex: { text: "{game} is too complicated.", alt: ["I don't get how {game} works."], voice: { retiree: ["All these rules on {game}, I can't follow."] }, bad: true },
   slotLdw: { text: "Stop celebrating when I lose, {game}.", alt: ["{game} makes a fuss over nothing."], bad: true },
+  // (M8.6) The market: fans, favorites, boredom, variety and wishes.
+  slotFan: { text: "{game} is my game now.", alt: ["I'm coming back for {game}.", "Found my machine: {game}."] },
+  slotCameFor: { text: "Came here to play {game}.", alt: ["Straight to {game}.", "Is my {game} free?"] },
+  slotPlayedOut: { text: "Played out on {game}.", alt: ["I've seen everything {game} has.", "{game} is getting old."], bad: true },
+  slotSame: { text: "These slots all play the same.", alt: ["Row after row of the same game."], bad: true },
+  wishExcite: { text: "Nothing exciting enough here.", alt: ["None of these slots grab me."], bad: true },
+  wishTame: { text: "Everything here is too wild for me.", alt: ["Is there anything gentler to play?"], bad: true },
+  wishWild: { text: "These slots are all too tame.", alt: ["I want something with a real kick."], bad: true },
+  wishPenny: { text: "Wish there were more penny games.", alt: ["Everything here costs too much a spin."], bad: true },
+  wishBonus: { text: "Wish there were a game with a bonus.", alt: ["None of these have free spins."], bad: true },
+  wishNew: { text: "Same old machines every time.", alt: ["When do they get new games here?"], bad: true },
   slotNoBonusAt: { text: "{game} has no bonus to play for.", bad: true },
   // Vice and drugs (M9.6).
   escortSeen: { text: "Is she working the room?", alt: ["That guy is definitely working.", "Escorts, in here?"], voice: { party: ["Now this place has everything."] } },

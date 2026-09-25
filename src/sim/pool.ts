@@ -17,6 +17,7 @@ import { comeIn } from "./street";
 import { lifeTags, guestName } from "./cheats";
 import { news } from "./news";
 import { BEATEN_SCORE } from "../data/cheats";
+import { fanDraw, onFloor } from "./design/market";
 
 /** How much one visit moves a person's disposition. */
 const SCORE_RATE = 0.5;
@@ -144,7 +145,8 @@ export function afterVisit(g: Game, a: Agent, score: number) {
   const back = Math.min(0.98, type.returns.share * Math.max(0, Math.min(1.15, (score - 0.2) / 0.5)));
   const broke = p.cash + p.savings < BROKE;
   if (!broke && r.chance(back)) {
-    const days = logNormal(r, type.returns.days) * (1 + Math.max(0, 0.6 - score) * 2);
+    // (M8.6) A fan of a game still on the floor comes back for it a little sooner.
+    const days = logNormal(r, type.returns.days) * (1 + Math.max(0, 0.6 - score) * 2) * (p.fan && onFloor(g, p.fan) ? 0.85 : 1);
     p.next = s.tick + Math.round(days * TICKS_PER_DAY);
   } else p.next = -1;
   if (recurring(type)) s.rep[gd.type] = poolRep(s, gd.type) ?? s.rep[gd.type];
@@ -178,7 +180,7 @@ export function newcomerRates(g: Game): Record<string, number> {
     const type = GUEST_TYPES[t];
     if (!type || !total) continue;
     // What the casino has (a restaurant, shows, a club) draws extra people who come for it (M6).
-    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * rm * amenityPull(g, t) * demand(s, t);
+    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * rm * amenityPull(g, t) * demand(s, t) * (1 + fanDraw(g, t));
   }
   return out;
 }

@@ -56,7 +56,11 @@ export function compiledById(s: GameState, id: string): Compiled | undefined {
   return c;
 }
 /** Per-machine cache (runtime): the design it plays, compiled, and each type's appeal. Checked against the design object. */
-interface SlotInfo { o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array; prog: boolean }
+interface SlotInfo {
+  o: PlacedObject; id: string; d: SlotDesign; c: Compiled; ap: Map<string, number>; ex: Map<string, number>; th: Float32Array; prog: boolean;
+  /** (M8.6) Appeal × the market factor by type, valid for market version `mv`. */
+  am: Map<string, number>; mv: number;
+}
 const infos = new Map<number, SlotInfo>();
 export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   const inf = infos.get(o.id);
@@ -64,7 +68,7 @@ export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   if (inf && inf.o === o && (o.design === undefined || (s.designs[o.design]?.d ?? STOCK_DESIGNS[o.design]) === inf.d)) return inf;
   const id = designIdOf(o), c = compiledById(s, id);
   if (!c) return undefined;
-  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme), prog: hasMeters(c) };
+  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme), prog: hasMeters(c), am: new Map(), mv: -1 };
   if (infos.size > 50000) infos.clear();
   infos.set(o.id, n);
   return n;
@@ -230,7 +234,12 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
     apply(g, c) { const o = g.objById.get(c.obj)!; if (c.id) o.design = c.id; else delete o.design; },
   },
   designSave: {
-    validate: (_g, c) => (c.d && typeof c.d === "object" ? null : "No design"),
+    validate(g, c) {
+      if (!c.d || typeof c.d !== "object") return "No design";
+      // (M8.6) A sold design's math belongs to its maker; its looks are still yours.
+      const rec = g.state.designs[c.d.id];
+      return rec?.sale && !sameMath(rec.d, sanitize(c.d)) ? `Sold to ${rec.sale.maker}: its math and features are theirs now` : null;
+    },
     apply(g, c) {
       const s = g.state, d = sanitize(c.d);
       d.name = d.name.trim() || "Untitled";
@@ -299,7 +308,8 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
     },
   },
   designDelete: {
-    validate: (g, c) => (!g.state.designs[c.id] ? "Not one of your designs" : machinesOf(g.state, c.id).length ? "Still on the floor" : null),
+    validate: (g, c) => (!g.state.designs[c.id] ? "Not one of your designs" : machinesOf(g.state, c.id).length ? "Still on the floor"
+      : g.state.designs[c.id].sale ? "Sold designs stay on your books" : g.state.offer?.id === c.id ? "An offer for it is waiting" : null),
     apply(g, c) { delete g.state.designs[c.id]; },
   },
 };

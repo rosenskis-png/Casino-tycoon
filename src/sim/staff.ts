@@ -332,7 +332,7 @@ function staffTick(g: Game, a: Agent) {
     g.bus.emit({ type: "sound", id: "fixed", x: o.x, y: o.y });
     // M9: a crooked tech helps themselves from the machine's hopper.
     const r = rng(g.state, "crew");
-    if (a.st?.crook && r.chance(greed(a, THEFT.tech.p))) {
+    if (a.st?.crook && r.chance(greed(g, a, THEFT.tech.p))) {
       steal(g, "machines", r.int(THEFT.tech.amount[0], THEFT.tech.amount[1]), a.y * g.state.map.w + a.x, `pocketing coins from ${OBJECTS[o.kind].name}`, a);
     }
     a.target = -1;

@@ -13,7 +13,7 @@ import { post } from "./finance";
 import { fmtMoney, news } from "./news";
 import { hitReputation } from "./pool";
 import { adjustPolice, close, leaveFloor, patrol, spawnVisitor, LADDER, STEP_GAP_DAYS } from "./incidents";
-import { GAMING } from "./bank";
+import { GAMING, scaled } from "./bank";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { canSee } from "./wayfinding";
 import { machinesOf, minRtpOf } from "./design";
@@ -55,12 +55,14 @@ function ladder(g: Game) {
 function stepUp(g: Game, stage: number) {
   const s = g.state;
   if (stage === 1) news(g, "bad", "The gaming regulator has sent a warning letter. Keep the games and the books clean.", { tab: "authorities" });
-  if (stage === 2) { post(g, "fines", -REG.fine); news(g, "bad", `The gaming regulator fined the casino ${fmtMoney(REG.fine)}.`, { tab: "authorities" }); }
+  // (M11.1) Fines are sized to the casino (sim/bank.ts `scaled`).
+  if (stage === 2) { const fine = scaled(g, REG.fine); post(g, "fines", -fine); news(g, "bad", `The gaming regulator fined the casino ${fmtMoney(fine)}.`, { tab: "authorities" }); }
   if (stage === 3) { news(g, "bad", "The gaming regulator will now audit the casino regularly.", { tab: "authorities" }); s.reg.next = s.tick; }
   if (stage === 4 && s.tick - s.reg.suspendAt >= REG.suspendEvery * TICKS_PER_DAY) {
     s.reg.suspendAt = s.tick;
-    post(g, "fines", -REG.suspendFine);
-    news(g, "urgent", `The gaming license is suspended: closed for ${REG.suspendDays} days and fined ${fmtMoney(REG.suspendFine)}.`);
+    const fine = scaled(g, REG.suspendFine);
+    post(g, "fines", -fine);
+    news(g, "urgent", `The gaming license is suspended: closed for ${REG.suspendDays} days and fined ${fmtMoney(fine)}.`);
     close(g, REG.suspendDays);
   }
 }
@@ -140,7 +142,7 @@ function audit(g: Game) {
       found.push(`${spotted.length === 1 ? "an" : spotted.length} uncertified ${rec.d.name} machine${spotted.length === 1 ? "" : "s"}${sev > 0 ? " (rigged)" : ""}: certify ${spotted.length === 1 ? "it" : "them"} or take ${spotted.length === 1 ? "it" : "them"} off the floor within ${RIG.graceDays} days`);
       continue;
     }
-    const fine = Math.round(RIG.fine * (1 + 4 * sev));
+    const fine = scaled(g, RIG.fine * (1 + 4 * sev));
     post(g, "fines", -fine);
     delta -= RIG.standing * (1 + sev);
     s.objects = s.objects.filter((o) => !ms.includes(o));
@@ -186,8 +188,8 @@ function inspectorTick(g: Game, a: Agent) {
 
 /** Chance an official takes a bribe here (0: nobody can be bribed). */
 export const bribeChance = (g: Game) => SCENARIOS[g.state.scenario]?.bribe ?? 0;
-/** What a bribe costs for this official. */
-export const bribePrice = (a: Agent) => (a.role === "inspector" ? BRIBE.inspector : BRIBE.officer);
+/** What a bribe costs for this official (M11.1: sized to the casino). */
+export const bribePrice = (g: Game, a: Agent) => scaled(g, a.role === "inspector" ? BRIBE.inspector : BRIBE.officer);
 
 const commands: CommandTable<"bribe"> = {
   bribe: {
@@ -196,11 +198,11 @@ const commands: CommandTable<"bribe"> = {
       const a = g.state.agents.find((b) => b.id === c.id);
       if (!a || (a.role !== "inspector" && a.role !== "officer") || a.act === "leave") return "Not an official on the floor";
       if (a.paid) return "Already asked";
-      if (g.state.cash < bribePrice(a)) return "Not enough cash";
+      if (g.state.cash < bribePrice(g, a)) return "Not enough cash";
       return null;
     },
     apply(g, c) {
-      const s = g.state, a = s.agents.find((b) => b.id === c.id)!, price = bribePrice(a), insp = a.role === "inspector";
+      const s = g.state, a = s.agents.find((b) => b.id === c.id)!, price = bribePrice(g, a), insp = a.role === "inspector";
       const who = insp ? "The gaming inspector" : "The officer";
       if (rng(s, insp ? "regulator" : "police").chance(bribeChance(g))) {
         a.paid = 1;

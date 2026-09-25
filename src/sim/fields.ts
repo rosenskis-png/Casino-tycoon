@@ -10,6 +10,7 @@ import { tierOf } from "./amenities";
 import { ThemeField } from "./themes";
 import { designById } from "./design/lookup";
 import { energyOf } from "./design/appeal";
+import { NOISE } from "../data/psych";
 
 /** Room purposes that give off a quality throughout the room (docs/spec/construction.md): sources on a grid. */
 const ROOM_EMITS: Record<string, { ch: Channel; s: number; r: number }[]> = {
@@ -32,11 +33,16 @@ export class FieldEngine {
   recomputes = 0;
   /** Theme fields and scores (M6.5, docs/spec/themes.md). */
   readonly themes: ThemeField;
+  /** (M11.1) Crowd noise per room (its own plus what carries in from rooms nearby), refreshed with the crowd. */
+  noise = new Float32Array(0);
+  /** (M11.1) The casino's draw by guest type (sim/guests.ts `floorDraw`), dropped on every layout change. */
+  drawCache: Record<string, number> | null = null;
 
   constructor(private g: Game) { this.themes = new ThemeField(g); }
 
   /** Full rebuild (new game or load). */
   init() {
+    this.drawCache = null;
     const { w, h } = this.g.state.map;
     for (const c of CHANNELS) this.values[c] = new Float32Array(w * h);
     this.collectSources();
@@ -78,6 +84,7 @@ export class FieldEngine {
   /** Recompute everything a change at these tiles can reach. */
   tilesChanged(tiles: number[]) {
     if (!tiles.length) return;
+    this.drawCache = null;
     const { w, h } = this.g.state.map;
     let x0 = w, y0 = h, x1 = 0, y1 = 0;
     for (const i of tiles) {
@@ -116,11 +123,12 @@ export class FieldEngine {
     }
   }
 
-  /** CRW from agent density (3×3 neighborhood count), run on the beat cadence. */
+  /** CRW from agent density (3×3 neighborhood count), run on the beat cadence; crowd noise per room with it. */
   updateCrowd() {
     const { w, h } = this.g.state.map;
     const count = new Float32Array(w * h);
     for (const a of this.g.state.agents) if (!a.hidden) count[a.y * w + a.x]++;
+    this.updateNoise();
     const crw = this.values.CRW;
     crw.fill(0);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -131,6 +139,36 @@ export class FieldEngine {
         if (X >= 0 && Y >= 0 && X < w && Y < h) crw[Y * w + X] += dx || dy ? c * 0.5 : c;
       }
     }
+  }
+
+  /**
+   * (M11.1) Noise by room: guests make it (more when drunk, high or dancing), a room's level is its total over
+   * its size, and it carries into rooms nearby, cut by the wall between and fading with distance.
+   */
+  private updateNoise() {
+    const g = this.g, rooms = g.rooms.rooms, roomOf = g.rooms.roomOf, w = g.state.map.w;
+    const own = new Float32Array(rooms.length);
+    for (const a of g.state.agents) {
+      const gd = a.g;
+      if (!gd || a.hidden) continue;
+      const r = roomOf[a.y * w + a.x];
+      if (r < 0) continue;
+      own[r] += NOISE.base + NOISE.drunk * Math.max(0, gd.intox - 0.2) + NOISE.high * gd.high + (a.act === "dance" ? NOISE.dance : 0);
+    }
+    for (let r = 0; r < rooms.length; r++) own[r] = own[r] ? (NOISE.scale * own[r]) / Math.max(20, rooms[r].size) : 0;
+    const near = g.rooms.near(g.state, NOISE.reach), eff = new Float32Array(rooms.length);
+    for (let r = 0; r < rooms.length; r++) {
+      let v = own[r];
+      for (const nb of near[r]) if (own[nb.id]) v += own[nb.id] * NOISE.wall * (1 - nb.d / (NOISE.reach + 1));
+      eff[r] = v;
+    }
+    this.noise = eff;
+  }
+
+  /** (M11.1) Crowd noise at tile i (0 outside rooms). */
+  noiseAt(i: number): number {
+    const r = this.g.rooms.roomOf[i];
+    return r >= 0 && r < this.noise.length ? this.noise[r] : 0;
   }
 
   get(ch: Channel, i: number): number {

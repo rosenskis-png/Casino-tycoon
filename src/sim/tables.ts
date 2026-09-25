@@ -24,7 +24,8 @@ import { THEFT } from "../data/staff";
 import { greed, inZone, skillOf, steal } from "./crew";
 import { hash01, sharedPay, wagerPay } from "./cheats";
 import { stakeMult, purposeOf } from "./amenities";
-import { seatHolders } from "./guests";
+import { engagement, seatHolders } from "./guests";
+import { TIME_FLIES } from "../data/psych";
 import { colleaguesNear, hireStaff, spreadTile } from "./staff";
 
 declare module "./commands" {
@@ -177,11 +178,11 @@ export function canSit(g: Game, gd: GuestData, o: PlacedObject): boolean {
 }
 
 /** The bet per hand for a guest at a table: their wish within the limits, rounded to chips, covered by the wallet. */
-function tableBet(g: Game, gd: GuestData, o: PlacedObject, r: Rng): number {
+function tableBet(g: Game, gd: GuestData, o: PlacedObject, r: Rng, eng = 1): number {
   const [lo, hi] = limitsNow(g, o);
   // A cheat mid-spell presses (docs/spec/cheats.md), but paces it to their take, as at a machine: a slot cheat's
-  // take comes in over some forty rigged wagers.
-  let want = gd.spell > 0 ? Math.max(tableWant(gd), gd.take / 40) : tableWant(gd);
+  // take comes in over some forty rigged wagers. (M11.1) Engaged players bet more.
+  let want = gd.spell > 0 ? Math.max(tableWant(gd), gd.take / 40) : tableWant(gd) * Math.sqrt(eng);
   // A counter spreads their bets with the count.
   if (gd.counter && OBJECTS[o.kind].game === "blackjack" && gd.spell <= 0) want = lo * r.pick(COUNT_SPREAD) * Math.max(1, want / lo / 2);
   const chip = lo >= 25 ? 5 : lo >= 1 ? 1 : 0.25;
@@ -215,7 +216,7 @@ export function tableAppeal(g: Game, gd: GuestData, o: PlacedObject): number {
 // ---------------------------------------------------------------------------------------------------------
 // Dealing.
 
-interface Player { a: Agent; k: number; bet: number; ws: Wager[] }
+interface Player { a: Agent; k: number; bet: number; ws: Wager[]; eng: number }
 
 function drawIndex(r: Rng, ps: number[]): number {
   let u = r.next();
@@ -259,8 +260,9 @@ function deal(g: Game, o: PlacedObject, byId: Map<number, Agent>) {
   const r = rng(s, "gaming");
   const players: Player[] = [];
   for (const p of waiting) {
-    const bet = tableBet(g, p.a.g!, o, r);
-    if (bet > 0) players.push({ ...p, bet, ws: [] });
+    const eng = engagement(g, p.a);
+    const bet = tableBet(g, p.a.g!, o, r, eng);
+    if (bet > 0) players.push({ ...p, bet, ws: [], eng });
     else p.a.timer = -1;
   }
   if (players.length < def.minPlayers) { for (const p of players) p.a.timer = -1; tbl.next = tick + RECHECK * SEC; return; }
@@ -372,9 +374,11 @@ function deal(g: Game, o: PlacedObject, byId: Map<number, Agent>) {
   let skill = 0;
   for (const d of dealers) skill += skillOf(g, d);
   tbl.next = tick + Math.round((def.round * SEC) / Math.sqrt(dealers.length ? skill / dealers.length : 1));
+  // (M11.1) Time flies for engaged players (as at a machine).
+  for (const p of players) p.a.g!.floorTime += Math.round((tbl.next - tick) * (p.eng - 1) * TIME_FLIES);
   const cr = rng(s, "crew");
   for (const d of dealers) {
-    if (!d.st?.crook || !cr.chance(greed(d, THEFT.dealer.p))) continue;
+    if (!d.st?.crook || !cr.chance(greed(g, d, THEFT.dealer.p))) continue;
     steal(g, "tables", Math.max(1, Math.round(bets * THEFT.dealer.share)), d.y * w + d.x, `palming chips at ${OBJECTS[o.kind].name}`, d, undefined, true);
     break;
   }

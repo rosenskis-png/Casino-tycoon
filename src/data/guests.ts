@@ -3,6 +3,7 @@
 // at the edges. Distribution numbers are the M3 starting targets (docs/spec/guests.md §Targets), tuned headless.
 import type { Channel } from "./fields";
 import type { IncidentCat } from "./incidents";
+import type { ThemeId } from "./themes";
 
 /** A quality a guest reacts to: the hidden field channels plus DIRT (litter near them). */
 export type Taste = Extract<Channel, "NRG" | "CRW" | "PRS" | "TRF" | "SMK"> | "DIRT" | "THM";
@@ -119,6 +120,11 @@ export interface GuestTypeDef {
   smokers: number;
   /** (M6.5) How much theming matters to them: a coherent themed room lifts their mood, a muddled one sours it. */
   theming: number;
+  /**
+   * (M11.1) Hidden taste for each theme, -1..1 (unlisted: 0). A coherent room in a theme they love pleases them far
+   * more than one they're indifferent to; one they dislike can put them off however well it's done.
+   */
+  themes: Partial<Record<ThemeId, number>>;
 }
 
 const flat = (v = 1) => Array(12).fill(v);
@@ -150,6 +156,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.13 },
     secPerDollar: 6,
     comeFor: { dine: 0.12, show: 0.05, club: 0.02, pool: 0.03 }, drugs: 0.03, hotel: 0, smokers: 0.25, theming: 0.3,
+    themes: { goldrush: 0.6, ratpack: 0.4, rock: 0.3, dragon: 0.2, luxe: -0.3, egypt: -0.1 },
   },
   retiree: {
     id: "retiree", name: "Retirees",
@@ -176,6 +183,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.1 },
     secPerDollar: 12,
     comeFor: { dine: 0.2, show: 0.2, club: 0, pool: 0.05 }, drugs: 0, hotel: 0.1, smokers: 0.15, theming: 0.5,
+    themes: { ratpack: 0.9, deco: 0.6, riviera: 0.4, rome: 0.2, rock: -0.4, atomic: -0.6, pirate: -0.2, tiki: -0.2 },
   },
   tourist: {
     id: "tourist", name: "Tourists",
@@ -202,6 +210,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.18 },
     secPerDollar: 2.2,
     comeFor: { dine: 0.15, show: 0.2, club: 0.1, pool: 0.15 }, drugs: 0.03, hotel: 0.5, smokers: 0.15, theming: 1,
+    themes: { rome: 0.7, egypt: 0.7, pirate: 0.5, tiki: 0.5, medieval: 0.4, riviera: 0.3, goldrush: 0.3, dragon: 0.3 },
   },
   party: {
     id: "party", name: "Party groups",
@@ -228,6 +237,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.4, fatigue: 0.15 },
     secPerDollar: 3.3,
     comeFor: { dine: 0.05, show: 0.1, club: 0.45, pool: 0.2 }, drugs: 0.15, hotel: 0.3, smokers: 0.35, theming: 0.6,
+    themes: { atomic: 0.9, rock: 0.8, tiki: 0.5, pirate: 0.2, ratpack: -0.3, deco: -0.3, medieval: -0.2, riviera: -0.2 },
   },
   highroller: {
     id: "highroller", name: "High rollers",
@@ -254,6 +264,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.3, fatigue: 0.12 },
     secPerDollar: 1.5,
     comeFor: { dine: 0.3, show: 0.2, club: 0.02, pool: 0.1 }, drugs: 0.05, hotel: 0.6, smokers: 0.2, theming: 0.8,
+    themes: { luxe: 0.9, deco: 0.8, dragon: 0.7, riviera: 0.3, ratpack: 0.2, goldrush: -0.5, pirate: -0.6, tiki: -0.4, rock: -0.3 },
   },
   // M9.5 (docs/spec/calendar.md): business visitors who come in waves with conventions.
   conventioneer: {
@@ -281,6 +292,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.4, fatigue: 0.18 },
     secPerDollar: 2,
     comeFor: { dine: 0.2, show: 0.2, club: 0.1, pool: 0.05 }, drugs: 0.04, hotel: 0.8, smokers: 0.15, theming: 0.6,
+    themes: { luxe: 0.4, rome: 0.4, riviera: 0.4, atomic: 0.3, rock: 0.3, goldrush: 0.1 },
   },
   // M9.5 (docs/spec/guests.md §Families): parents with children. The children never gamble or drink.
   family: {
@@ -309,6 +321,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     needs: { bladder: 0.25, hunger: 0.2, thirst: 0.3, fatigue: 0.22 },
     secPerDollar: 2.5,
     comeFor: { dine: 0.4, show: 0.3, club: 0, pool: 0.5 }, drugs: 0, hotel: 0.5, smokers: 0.05, theming: 1,
+    themes: { pirate: 0.9, tiki: 0.7, medieval: 0.6, egypt: 0.4, rome: 0.2, rock: -0.2, ratpack: -0.3, luxe: -0.2 },
   },
 };
 export type GuestTypeId = keyof typeof GUEST_TYPES;

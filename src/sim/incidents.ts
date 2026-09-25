@@ -18,6 +18,7 @@ import { canSee } from "./wayfinding";
 import { companions, depart, release, sendHome, think, THOUGHT_DAYS } from "./guests";
 import { cutoff, handsFull, serveDrink, DRINK_PRICE } from "./drinks";
 import { post } from "./finance";
+import { scaled } from "./bank";
 import { inZone, skillOf } from "./crew";
 import { fmtMoney, news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
@@ -58,6 +59,7 @@ export const STEP_GAP_DAYS = 7;
 /** Standing below which each step of the ladder is reached; a step is left again 5 points above it. */
 export const LADDER = [60, 45, 30, 15];
 export const LADDER_NAMES = ["Good standing", "Warned", "Fined", "Under inspection", "Raided"];
+// Fines are for a casino winning $10K a month; M11.1 sizes them to this one (sim/bank.ts `scaled`).
 const FINE_STAGE = 500, FINE_CALL = 400, FINE_SEEN = 100, FINE_RAID = 1500, MEDIC_COST = 200;
 const CLOSE_DAYS = 3, REVOKE_DAYS = 30, RAID_EVERY_DAYS = 30, INSPECT_EVERY_DAYS = 4;
 const OFFICER_SECS = 90;
@@ -539,7 +541,7 @@ function officersWatch(g: Game, officers: Agent[]) {
       if (o.act === "leave" || o.paid === 1 || Math.abs((inc.tile % w) - o.x) + Math.abs(Math.floor(inc.tile / w) - o.y) > 8 || !canSee(g, o.y * w + o.x, inc.tile)) continue;
       inc.seen = 1;
       adjustPolice(g, -def.police * 2);
-      if (def.police >= 1) { post(g, "fines", -FINE_SEEN); news(g, "bad", `An officer saw ${def.name.toLowerCase()} on the floor: ${fmtMoney(FINE_SEEN)} fine.`, { a: o.id }); }
+      if (def.police >= 1) { const fine = scaled(g, FINE_SEEN); post(g, "fines", -fine); news(g, "bad", `An officer saw ${def.name.toLowerCase()} on the floor: ${fmtMoney(fine)} fine.`, { a: o.id }); }
       break;
     }
   }
@@ -555,7 +557,7 @@ function policeCall(g: Game, q: Agent) {
   count(s, "_calls");
   s.auth.police.calls++;
   news(g, "bad", "A guest called the police: nobody answered their reports.", { a: q.id });
-  if (s.auth.police.stage >= 2) { post(g, "fines", -FINE_CALL); news(g, "bad", `Police fine for disorder: ${fmtMoney(FINE_CALL)}.`); }
+  if (s.auth.police.stage >= 2) { const fine = scaled(g, FINE_CALL); post(g, "fines", -fine); news(g, "bad", `Police fine for disorder: ${fmtMoney(fine)}.`); }
   adjustPolice(g, -COST_CALL);
   sendOfficer(g);
 }
@@ -582,12 +584,13 @@ function ladder(g: Game) {
 function stepUp(g: Game, stage: number) {
   const s = g.state, p = s.auth.police;
   if (stage === 1) news(g, "bad", "Police warning: too much trouble at the casino. Keep order, or expect fines.", { tab: "authorities" });
-  if (stage === 2) { post(g, "fines", -FINE_STAGE); news(g, "bad", `The police fined the casino ${fmtMoney(FINE_STAGE)} for disorder.`, { tab: "authorities" }); }
+  if (stage === 2) { const fine = scaled(g, FINE_STAGE); post(g, "fines", -fine); news(g, "bad", `The police fined the casino ${fmtMoney(fine)} for disorder.`, { tab: "authorities" }); }
   if (stage === 3) { news(g, "bad", "The police will now inspect the floor regularly.", { tab: "authorities" }); p.inspectAt = s.tick + INSPECT_EVERY_DAYS * TICKS_PER_DAY; sendOfficer(g); }
   if (stage === 4 && s.tick - p.raidAt >= RAID_EVERY_DAYS * TICKS_PER_DAY) {
     p.raidAt = s.tick;
-    post(g, "fines", -FINE_RAID);
-    news(g, "urgent", `Police raid! The casino is closed for ${CLOSE_DAYS} days and fined ${fmtMoney(FINE_RAID)}.`);
+    const fine = scaled(g, FINE_RAID);
+    post(g, "fines", -fine);
+    news(g, "urgent", `Police raid! The casino is closed for ${CLOSE_DAYS} days and fined ${fmtMoney(fine)}.`);
     for (let k = 0; k < 3; k++) sendOfficer(g);
     close(g, CLOSE_DAYS);
   }

@@ -13,8 +13,8 @@ import { purposeAt } from "./amenities";
 import { wallsBetween } from "./fields";
 
 const K = THEME_IDS.length;
-/** Fraction of a theme removed per wall crossed (doors half). */
-const WALL_CUT = 0.6;
+/** Fraction of a theme removed per wall crossed (doors half). M11.1: 0.35 (was 0.6), so a clashing room next door is felt. */
+const WALL_CUT = 0.35;
 /** A general item only counts toward a theme already this present from themed items. */
 const PRESENT = 0.2;
 /** How much each unit of an unrelated theme muddles the dominant one. */
@@ -166,4 +166,7 @@ export class ThemeField {
 
   /** The theme score guests read at tile i (0 when nothing is themed). */
   at(i: number): number { return this.active ? this.score[i] : 0; }
+
+  /** (M11.1) The dominant theme at tile i (index into THEME_IDS), or -1. */
+  domAt(i: number): number { return this.active ? this.dom[i] : -1; }
 }

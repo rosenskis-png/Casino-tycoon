@@ -11,6 +11,7 @@ import { rng } from "./rng";
 import { range } from "./dist";
 import { canSee } from "./wayfinding";
 import { post } from "./finance";
+import { ORG } from "../data/psych";
 import { fmtMoney, news } from "./news";
 import { coverage } from "./cheats";
 import { hireStaff } from "./staff";
@@ -89,9 +90,20 @@ export function inZone(g: Game, a: Agent, tile: number): boolean {
 // Theft and catching it.
 
 /** Crooks steal more when they're unhappy: the chance of taking an opportunity, scaled. */
-export function greed(a: Agent | null, p: number): number {
+export function greed(g: Game, a: Agent | null, p: number): number {
   const m = a?.st?.morale ?? 50;
-  return p * (1.5 - m / 100);
+  return p * (1.5 - m / 100) * orgFactor(g);
+}
+
+/**
+ * (M11.1) Staff theft is a big organization's problem (owner): at a small family-run place everyone knows
+ * everyone. Scales from 0 at ORG.small staff (bar and cage crews count one each) to 1 at ORG.big.
+ */
+export function orgFactor(g: Game): number {
+  let n = 0;
+  for (const a of g.state.agents) if (a.st) n++;
+  for (const o of g.state.objects) if (o.crook !== undefined) n++;
+  return Math.max(0, Math.min(1, (n - ORG.small) / (ORG.big - ORG.small)));
 }
 
 /** Who sees a theft at `tile`: honest guards in view, honest pit bosses (at a table), and watched cameras. */

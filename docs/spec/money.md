@@ -19,8 +19,11 @@
 - **Worth** = cash + resale value + land − debt.
 
 ## Jackpot insurance
-- Off, or cover every single payout above $1K, $5K or $25K. The insurer pays the part above the line (a ledger line).
-- The premium, charged at month-end, is 1.3× the expected excess of that month's actual wagers, exact from each paytable. Insurance costs 30% more than it pays on average and buys survival. Pool games (poker, bingo) aren't covered: their prizes are other players' money.
+- (M11.4, owner) **Lines follow the casino:** Off, or cover every single machine payout over half a month's expected machine win ("Big payouts"), a month's ("Huge payouts") or two months' ("Disasters only"), at least $250. The month is last month's expected win (coin-in × edge on covered machines), or this month's so far over a full month if more (counting at least a week); the line is reset daily, so it grows with the floor. The insurer pays the part above the line (a ledger line).
+- **Machines only:** slots, video poker and keno. Tables are covered by their limits; pool games (poker, bingo) pay other players' money; whales are a risk of their own.
+- The premium, charged at month-end, is 1.3× the expected excess of that month's actual wagers, exact from each paytable. Insurance costs 30% more than it pays on average and buys survival.
+- Measured (Test Floor, 180 days, seeds 1–6): uninsured, the machines' result ran from −$17K to +$61K against ~$35K expected. "Big payouts" halves that spread for about 15% of the expected machine win on average (the premium looks like ~65% of it, but most comes back as claims); "Huge payouts" ~6%; "Disasters only" ~2% and protects little. The report scripts (`targets`, `parity`, `economy`, `dark`) buy "Big payouts", as a sensible player would.
+- Why it matters (outside review, 2026-09-25): the house edge on a 2,500× game at high-limit stakes lives largely in rare payouts, so a casino's month can swing more than its whole profit. Eight seeds confirmed the machines pay exactly their math on average (Thunder Jackpot 0.879 against 0.89); the swings are real variance, not a bug.
 
 ## The gaming regulator
 - Standing 0–100, starts at 100, recovers 0.5 a day (M11). Ladder like the police (M11: one step a week at most; revoked only from the top) (a step at 60, 45, 30, 15, left again 5 above): warned; fined $1,000; under audit (an inspector every 10 days); suspended (closed 3 days, $3,000, at most every 30 days). At 0 the license is revoked: the scenario is lost, closed 30 days, reopens at 30.

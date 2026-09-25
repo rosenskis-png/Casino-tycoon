@@ -3,6 +3,7 @@
 // a panel of the scenario's own guests, without a room, neighbors or novelty. Pure; cached per compiled design.
 import { CABINETS, CELEBRATE, LAYOUTS, ROLLUPS, SLOT_THEMES, featuresOf, howOf, kindOf, type SlotDesign } from "../../data/designer";
 import { GUEST_TYPES } from "../../data/guests";
+import { WAGERS_PER_ROUND } from "../../data/games";
 import { PAIRINGS, SLOT_TASTES, type SlotTaste } from "../../data/slotTastes";
 import type { Pref } from "../../data/guests";
 import type { Compiled } from "./compile";
@@ -35,6 +36,8 @@ function scale(v: number, pts: [number, number][]): number {
 }
 export const intensityOf = (sd: number) => Math.min(10, scale(sd, [[1.2, 0], [2, 1.5], [3, 3], [6, 5], [12, 7], [25, 9], [40, 10]]));
 export const drainOf = (perMin: number) => Math.min(10, scale(perMin, [[2, 1], [5, 3], [8, 5], [12, 7], [20, 10]]));
+/** (M11.4) Guests' money against the M8 calibration: budgets doubled with 8 wagers a round (was 4). */
+const MONEY_X = WAGERS_PER_ROUND / 4;
 
 const LAYOUT_CX: Record<string, number> = { c3: 0.5, r33: 1.5, l20: 3, l40: 4, w243: 3.5, w1024: 4.5, w4096: 5.5 };
 const ENH_CX: Record<string, number> = { none: 0, x2: 0.3, x3: 0.3, rand: 0.6, wildx: 1, extra: 0.5, expand: 1 };
@@ -158,7 +161,8 @@ export function judge(c: Compiled, type: string): TypeJudgment {
     featScore = tt.featAppetite > 0.6 ? -0.3 * tt.featAppetite : 0;
     if (tt.featAppetite > 0.8) reasons.push("No bonus to play for");
   }
-  const dream = tt.dream * Math.max(-0.5, Math.min(1, Math.log10(Math.max(1, (f.top * sess.stake) / sess.budget)) / 2));
+  // (M11.4) A top award against what a visit cycles through: budgets doubled with the money scale, and so did the spins.
+  const dream = tt.dream * Math.max(-0.5, Math.min(1, Math.log10(Math.max(1, (f.top * sess.stake * MONEY_X) / sess.budget)) / 2));
   const ldw = tt.ldw * Math.min(1, f.ldw * 3);
   const intensity = fit(f.intensity, tt.intensity);
   const raw = 0.3 + 0.2 * fit(f.hit, tt.hit) + 0.2 * featScore + 0.15 * dream + 0.15 * fit(f.spectacle, tt.spectacle)

@@ -30,6 +30,21 @@ money tuned to that:
 - **Measure money over several seeds** and compare theoretical win (coin-in × edge): jackpots and whales swing a
   single run's cash by more than any lever.
 
+## Serving grades and margins (M11.4, owner)
+Every place with a price (bars, restaurants, the show lounge, the nightclub, the pool, mini golf) also has a **grade**:
+Cheap, Standard or Fancy (`data/grades.ts`). The grade sets what each serving costs the house (Standard: a drink $1.50,
+a meal $6, a show seat $6, a club entry $2, a swim or a round $1; Cheap 0.4×, Fancy 2.2×) and what it's worth to each
+crowd by its taste for luxury (`luxe`: Locals 0.1, Families 0.15, Retirees 0.3, Party 0.4, Tourists 0.5,
+Conventioneers 0.6, High rollers 1): Cheap is worth 1 − 0.5 × luxe of Standard, Fancy 0.7 + 1.3 × luxe. So any grade
+can be fairly priced, a bargain or a rip-off, and the right grade depends on the crowd: families barely value fancy;
+high rollers value it twice as much and grumble about cheap food.
+- The card shows price, grade and the **margin per serving** (price − cost, and as a share of the price; a free show
+  shows what each seat costs you). Guests say so: "Pricey food for what it is" over 1.2× fair, "What a bargain!" under
+  half of it.
+- The books net each place's serving costs into its line ("Bar (less drink costs)", "Restaurants (less food costs)",
+  "Shows (less show costs)"...), so there are no separate cost lines. Shows, the club, the pool and golf now have a
+  serving cost too, so a free show is a visible loss leader (Test Floor: shows −$1.6K over 120 days at free tickets).
+
 ## Scenarios and goals (`src/data/scenarios.ts`, `src/sim/goals.ts`)
 - Scenario data: map, starting cash, objects and staff, guest mix, starting reputation, arrival rate, guest cap, goals; since M3 also sidewalks, footfall and street mix, and the market of returning people (docs/spec/guests.md).
 - Goals: worth at least X and reputation at least Y with one guest type (or all), by the end of a month. Checked each month-end; met → won, deadline passed → lost. Play continues either way.
@@ -42,7 +57,7 @@ money tuned to that:
   (`rules`), no janitor, one tech. Research starts with Ancient worlds (Rome, Egypt, Medieval: tourists and
   families like them, though Egypt and Medieval clash) and Old Vegas (mostly wrong for them) and the restaurant;
   the show lounge takes research. Tourists and families come in greater numbers and start at reputation 35 and 30.
-  $20K cash. Goal: worth $40K, Tourists 55 and Families 50 by the end of December, Year 2. Mini golf is unlocked
+  $20K cash. Goal: worth $55K (M11.4; was $40K), Tourists 55 and Families 50 by the end of December, Year 2. Mini golf is unlocked
   from the start (families' favorite), and entertainers can be hired. What it teaches through
   setup: read the thoughts (dirty, bad theming, drunks, fights), clean up, throw out the junk, retheme for the
   crowd you want, rein in the bar and hire a guard with stricter rules, add a restaurant and shows. Machines can
@@ -64,4 +79,9 @@ money tuned to that:
   (`npm run economy <s> 24 1,2,3`): idle is mostly locals, 40–54% of seats in use, slots $500–$760 a month, Families
   stay at 30 (lost); "good" and "big" draw 40–60 tourists and 11–19 family adults on the floor, 16–25% and 9–14% of them
   playing, slots $1.3–$1.6K a month, and win between month 12 and month 24 (worth $45–54K at month 24).
+  **M11.4 (richer guests, 8 wagers a round):** the tutorial's slots take about twice as much ($2.0–3.0K a month on
+  "good", $0.9–1.7K idle), so the worth goal rose from $40K to $55K (Claude's call, flagged). Measured (`npm run economy
+  <s> 24 1,2,3`, insured): idle worth $51–54K at month 24 but Families stay at 30 (lost); "good" meets both reputations
+  by month 12 and worth ~$55K around month 18 (was a win between months 12 and 24); "big" ~$49–55K at month 18,
+  $64–70K at month 24 (was 1 seed of 3).
 - **Free Play Lot**: empty building, $50K, no goals, a guest cap of 1,500. Old M1 saves load into it.

@@ -22,7 +22,7 @@ Costs halved in M11.2 (the money scale, docs/spec/economy.md).
 | Amenities | Restaurant | $1,500 | | restaurant, patio restaurant |
 | Amenities | Show lounge | $2,500 | Restaurant | show lounge |
 | Amenities | Mini golf (M11.2) | $1,000 | | mini golf |
-| Amenities | Nightclub | $2,500 | | nightclub |
+| Amenities | Nightclub | $2,500 | | nightclub (id `nightclub`; M11.4 fixed it sharing `club` with the player's club, which let nightclubs skip research) |
 | Amenities | Outdoors | $3,000 | | pool, garden, patio bar |
 | Themes | Old Vegas | $1,500 | | Rat Pack Lounge, Neon Atomic, Gold Rush |
 | Themes | Ancient worlds | $1,500 | | Ancient Rome, Ancient Egypt, Medieval |

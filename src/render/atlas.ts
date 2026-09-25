@@ -75,7 +75,9 @@ function composePerson(set: string, sex: number, v: number, pose: string): strin
     if (outfit.pattern && (ch === "u" || ch === "U" || ch === "c") && (x * 2 + y) % 3 === 0) return outfit.pattern;
     return outfit.map[ch] ?? ch;
   }));
-  const layers = [...(outfit.over ?? []).map((n) => ACCESSORIES[n]), ...(style.x ?? []).map((n) => ACCESSORIES[n]), HAIR[style.h]];
+  // (M11) Things worn on the head (a visor, a headset, dark glasses) go over the hair.
+  const x = style.x ?? [], onHead = (n: string) => n === "visor" || n === "headset" || n === "shades";
+  const layers = [...(outfit.over ?? []), ...x.filter((n) => !onHead(n))].map((n) => ACCESSORIES[n]).concat(HAIR[style.h], x.filter(onHead).map((n) => ACCESSORIES[n]));
   for (const layer of layers) {
     const o = layer?.[dir];
     if (!o) continue;

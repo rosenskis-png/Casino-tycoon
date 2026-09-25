@@ -108,6 +108,7 @@ export function checkInvariants(g: Game): string[] {
   const held = new Map<string, number>();
   const pids = new Set<number>();
   const groups = new Map<number, { n: number; leads: number; type: string }>();
+  let dealers = 0;
   for (const a of s.agents) {
     if (ids.has(a.id) || objIds.has(a.id)) p.push(`duplicate id ${a.id}`);
     ids.add(a.id);
@@ -116,6 +117,7 @@ export function checkInvariants(g: Game): string[] {
     if (a.t < 0 || a.t >= a.steps) p.push(`agent ${a.id} bad progress`);
     if (a.role !== "guest" && a.role !== "officer" && a.role !== "medic" && a.role !== "inspector" && a.role !== "escort" && !STAFF_ROLES[a.role]) p.push(`agent ${a.id} unknown role ${a.role}`);
     if (a.role === "server" && (a.tray?.length ?? 0) > TRAY) p.push(`server ${a.id} carrying ${a.tray!.length} drinks`);
+    if (a.role === "dealer") dealers++;
     if (a.role === "dealer" && a.act === "deal") {
       const o = s.objects.find((o) => o.id === a.target), st = o && objSeats(o)[a.seat];
       if (!st || st.kind !== "dealer" || st.x !== a.x || st.y !== a.y) p.push(`dealer ${a.id} dealing away from a dealer's spot`);
@@ -164,6 +166,10 @@ export function checkInvariants(g: Game): string[] {
       }
     }
   }
+  // M11: dealers come with the tables, one per dealer spot.
+  let spots = 0;
+  for (const o of s.objects) spots += objSeats(o).filter((q) => q.kind === "dealer").length;
+  if (dealers !== spots) p.push(`${dealers} dealers for ${spots} dealer spots`);
   for (const [id, grp] of groups) if (grp.n > 8 || grp.leads > 1) p.push(`group ${id}: ${grp.n} members, ${grp.leads} leaders`);
   // Incidents: known kinds on the map; nobody passed out or fighting outside one; standings in range.
   const inIncident = new Map<number, string>();

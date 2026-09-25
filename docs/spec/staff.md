@@ -29,5 +29,17 @@
 ## Patrol zones
 Janitors, slot techs, guards and pit bosses can be kept to one room (the staff card; "Anywhere" by default). They look for work and patrol only there; guards still run to trouble anywhere. Drink servers keep their bar's service area (docs/spec/guests.md).
 
+## Dealers come with the tables (M11, owner)
+- A table's price includes its dealers ($800 per dealer spot, added to each table's cost; craps has two) and there are no wages. Dealers aren't hired, paid or given a pay level (skill is their knack alone); the Staff tab lists them as "come with the tables".
+- The table system keeps one dealer per dealer spot: a new table's dealers start at their spots; selling a table lets its dealers go; a dealer caught stealing (or fired) is replaced. Checked as an invariant by `npm run check`.
+
+## Spreading out (M11, owner)
+Staff of the same job drift apart like a soft repel field. When a janitor, tech, guard or pit boss picks somewhere to patrol, it tries 4 spots (or 3 wander points) and takes the one with the least colleague pressure: Σ e^(−d/6) over colleagues of the same job, by where each stands or is walking to. A pit boss compares two tables the same way. Work (litter, broken machines, incidents) still goes to whoever is nearest.
+
+## Uniforms (M11, owner)
+Every job has a uniform color the player sets in the Staff tab (tap the job's color: 16 swatches, `UNIFORM_COLORS`); it dyes the job's parts (`UNIFORMS`: janitor coverall and cap, tech vest and hard hat, server vest, guard jacket, operator polo, dealer jacket, pit boss jacket, enforcer top). Defaults: janitor teal, tech orange, server black, guard red, operator grey, dealer wine, pit boss charcoal, enforcer black. Silhouettes and props: docs/spec/art.md §6.
+
 ## Save
+Schema 18 (M11): `crew.uniform` (color per job; missing = default). Dealers from older saves are matched to the tables on load.
+
 Schema 11: staff gain `st` (knack, crook, morale, busy and counted beats today, zone tile); state gains `crew` (pay per role, shrinkage pending per area); bars and cages gain `crook`.

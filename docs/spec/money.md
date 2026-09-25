@@ -19,8 +19,15 @@
 - The premium, charged at month-end, is 1.3× the expected excess of that month's actual wagers, exact from each paytable. Insurance costs 30% more than it pays on average and buys survival. Pool games (poker, bingo) aren't covered: their prizes are other players' money.
 
 ## The gaming regulator
-- Standing 0–100, starts at 100, recovers 0.2 a day. Ladder like the police (a step at 60, 45, 30, 15, left again 5 above): warned; fined $1,000; under audit (an inspector every 10 days); suspended (closed 3 days, $3,000, at most every 30 days). At 0 the license is revoked: the scenario is lost, closed 30 days, reopens at 30.
+- Standing 0–100, starts at 100, recovers 0.5 a day (M11). Ladder like the police (M11: one step a week at most; revoked only from the top) (a step at 60, 45, 30, 15, left again 5 above): warned; fined $1,000; under audit (an inspector every 10 days); suspended (closed 3 days, $3,000, at most every 30 days). At 0 the license is revoked: the scenario is lost, closed 30 days, reopens at 30.
 - **The inspector** (grey suit, clipboard) comes every 45–75 days and walks the floor for 2 minutes. On leaving, the audit: skimming (above); unpaid winnings since the last visit, −5 each; weak controls, when shrinkage over the last 3 months passed 3% of the gaming win, −5. A clean audit is +3.
+- **Uncertified machines (M11):** the inspector has to see a machine to find it: once a second they note every uncertified machine within sight (walls, slot banks and other opaque objects block it; docs/spec/navigation.md). So one hidden in a maze of banks, or behind walls away from where people walk, can go unnoticed. At the audit, a design seen for the first time gets a **warning**: certify it or take it off the floor within 30 days, −3 standing (× the rigging severity), and the inspector comes back when the deadline is up. Seen again while still uncertified: every machine of it is seized, −10 × (1 + severity) standing, and a fine of $2,000 × (1 + 4 × severity). (M8 seized on the first find, 70% of the time, sight or not, at −15.)
+
+## Bribes (M11)
+- A scenario says whether officials can be bought (`bribe`: the chance one takes it; Free Play and the Test Floor 60%, the tutorial none). Then the gaming inspector's and a police officer's cards have **Offer a bribe**: $2,000 for the inspector, $500 for an officer.
+- Taken: booked as "Bribes"; the inspector's audit finds nothing this visit (and says so, knowingly); an officer sees nothing for the rest of their visit. Each bribe taken adds 1 to a hidden tally.
+- Refused: reported, a fine of twice the bribe and −20 standing with that authority.
+- Each month, a chance of 4% × the tally (at most 50%) that it comes out: a scandal, −10 standing with both authorities and a reputation hit with every type (like skimming exposed); the tally then resets. Otherwise the tally fades 15% a month.
 
 ## Whales (FOUNDATIONS §17)
 - In scenarios that allow them (Free Play, the Test Floor), once the floor has a banked table game: announced on the ticker 2 days ahead, then every 30–60 days.

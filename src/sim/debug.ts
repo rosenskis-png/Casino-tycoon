@@ -156,7 +156,7 @@ export function checkInvariants(g: Game): string[] {
       grp.leads += gd.lead;
       if (grp.type !== gd.type) p.push(`group ${gd.group} mixes types`);
       groups.set(gd.group, grp);
-      if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
+      if ((a.act === "play" || a.act === "drink" || a.act === "restroom" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest" || a.act === "golf") && a.seat < 0) p.push(`guest ${a.id} ${a.act} without a seat`);
       if (a.act === "play") {
         const o = s.objects.find((o) => o.id === a.target);
         if (o) {

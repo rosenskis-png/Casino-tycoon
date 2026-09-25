@@ -97,7 +97,9 @@ export interface GuestData {
   /** 0 or 1, drawn from the group's makeup (party groups are all men, all women, or mixed). */
   sex: number;
   /** Why they came (M6 adds a meal, a show, the club): they head there first. */
-  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool";
+  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool" | "golf";
+  /** (M11.2) The visit's to-do list: need bits (sim/guests.ts NEED_BIT) of the places they mean to go before leaving; TODO_EXT once they stayed on for it. */
+  todo: number;
   /** 1 for a returning guest (a "card holder" at card doors until the M9 player's club). */
   card: number;
   /** Smokers (M6): 1, with the urge building 0-100 (satisfied in a smoking room or outdoors). */
@@ -332,7 +334,7 @@ export type Activity =
   // M6: eating, at a show (seated, waiting or watching), dancing, having a smoke.
   | "dine" | "show" | "dance" | "smoke"
   // M6.5: at the pool (swimming or on a lounger), sitting in a garden.
-  | "swim" | "rest"
+  | "swim" | "rest" | "golf"
   // M7: a dealer at their table; a guest watching a craps table.
   | "deal" | "look";
 

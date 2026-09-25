@@ -47,8 +47,8 @@ const SYSTEMS: System[] = [
   doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem, yoursSystem, designSystem, marketSystem,
 ];
 
-export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
-const emptyAmenities = (): Record<Serves, PlacedObject[]> => ({ thirst: [], bladder: [], cage: [], atm: [], hunger: [], show: [], club: [], pool: [], garden: [] });
+export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden" | "golf";
+const emptyAmenities = (): Record<Serves, PlacedObject[]> => ({ thirst: [], bladder: [], cage: [], atm: [], hunger: [], show: [], club: [], pool: [], garden: [], golf: [] });
 
 export interface CommandRecord { tick: number; cmd: Command; error: string | null }
 

@@ -144,6 +144,46 @@ export function signLeg(g: Game, a: Agent, r: Rng, targets: number[]): number {
   return -1;
 }
 
+/** (M11.2) Door tiles and the rooms either side of each, per room layout (runtime cache). */
+const doorCache = new WeakMap<Game, { rooms: unknown; doors: { i: number; sides: [number, number][] }[] }>();
+function doorsOf(g: Game) {
+  const c = doorCache.get(g);
+  if (c && c.rooms === g.rooms.rooms) return c.doors;
+  const { w, h, terrain } = g.state.map, roomOf = g.rooms.roomOf, doors: { i: number; sides: [number, number][] }[] = [];
+  for (let i = 0; i < terrain.length; i++) {
+    if (terrain[i] !== T.DOOR) continue;
+    const x = i % w, y = (i - x) / w, sides: [number, number][] = [];
+    for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) {
+      const X = x + dx, Y = y + dy;
+      if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+      const j = Y * w + X;
+      if (roomOf[j] >= 0) sides.push([roomOf[j], j]);
+    }
+    if (sides.length) doors.push({ i, sides });
+  }
+  doorCache.set(g, { rooms: g.rooms.rooms, doors });
+  return doors;
+}
+
+/**
+ * (M11.2, owner) Doors say what's inside, like a sign: a door in view onto a room holding one of the targets (not
+ * the room they're in) takes them through it.
+ */
+export function doorLeg(g: Game, a: Agent, targets: number[]): number {
+  const w = g.state.map.w, here = a.y * w + a.x, roomOf = g.rooms.roomOf, mine = roomOf[here];
+  const want = new Set<number>();
+  for (const t of targets) if (roomOf[t] >= 0 && roomOf[t] !== mine) want.add(roomOf[t]);
+  if (!want.size) return -1;
+  const paths = g.pathsFor(a);
+  let best = -1, bd = Infinity;
+  for (const d of doorsOf(g)) {
+    const dd = dist(w, here, d.i);
+    if (dd > SIGHT || dd >= bd || !canSee(g, here, d.i)) continue;
+    for (const [room, j] of d.sides) if (want.has(room) && j !== here && paths.reachable(here, j)) { best = j; bd = dd; break; }
+  }
+  return best;
+}
+
 function besideSign(g: Game, s: PlacedObject): number {
   const { w, h } = g.state.map;
   for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) {

@@ -207,7 +207,7 @@ function testFloor(): ScenarioDef {
   );
   // Outdoors (M6.5): a garden, a pool with a patio bar and a patio restaurant, tiki torches and a parasol.
   objects.push(
-    { kind: "garden", x: 34, y: 33, rot: 0, w: 6, h: 5 },
+    { kind: "garden", x: 34, y: 33, rot: 0, w: 6, h: 5 }, { kind: "minigolf", x: 15, y: 33, rot: 0, w: 6, h: 4 },
     { kind: "pool", x: 50, y: 33, rot: 0, w: 8, h: 6 },
     { kind: "patiobar", x: 59, y: 33, rot: 0, w: 4, h: 3 },
     { kind: "patiorestaurant", x: 64, y: 33, rot: 0, w: 5, h: 4 },
@@ -287,8 +287,8 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     arrivals: 0.16,
     maxGuests: 300,
     // Starting themes: Ancient worlds suit tourists and families (Egypt and Medieval clash, though); Old Vegas
-    // mostly doesn't. The restaurant is ready to build; the show lounge takes research.
-    research: ["th_ancient", "th_vegas", "restaurant"],
+    // mostly doesn't. The restaurant and mini golf are ready to build; the show lounge takes research.
+    research: ["th_ancient", "th_vegas", "restaurant", "minigolf"],
     goals: { worth: 36_000, rep: { type: "tourist", min: 55 }, reps: { types: ["family"], min: 50 }, by: { year: 2, month: 11 } },
     tools: 2, tax: 0.05,
   },

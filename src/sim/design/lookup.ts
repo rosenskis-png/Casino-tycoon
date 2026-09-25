@@ -14,7 +14,7 @@ export const designById = (s: GameState, id: string): SlotDesign | undefined => 
 export function designPrice(d: SlotDesign): { cost: number; upkeep: number } {
   const cost = CABINETS[d.cab.type].cost + TOPPERS[d.cab.topper].cost + 25 * featuresOf(d).length + 15 * d.jackpots.length
     + 40 * d.jackpots.filter((j) => j.kind && j.kind !== "fixed").length;
-  return { cost, upkeep: Math.max(2, Math.round(cost * 0.012)) };
+  return { cost, upkeep: Math.max(1, Math.round(cost * 0.006)) };
 }
 /** Price of a placed (or to-be-placed) slot with a design; null for anything else (the original machines keep theirs). */
 export function slotPrice(s: GameState | undefined, kind: string, design: string | undefined): { cost: number; upkeep: number } | null {

@@ -112,6 +112,17 @@ function build(sd: SizedDef, w: number, h: number): Layout {
       }
       break;
     }
+    case "golf": {
+      // (M11.2) Mini golf: green everywhere, a windmill in the middle, a hole (a player's spot) every third tile.
+      const mx = Math.floor(w / 2), my = Math.floor((h - 1) / 2);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (x === mx && y === my) { L.cells[i] = solid("windmill"); continue; }
+        if ((x + 2 * y) % 3 === 0) { L.cells[i] = open("hole"); L.seats.push({ dx: x, dy: y, kind: "stand", f: (x + y) & 3 }); continue; }
+        L.cells[i] = open("green");
+      }
+      break;
+    }
   }
   return L;
 }

@@ -85,7 +85,7 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
           {c.id === "game" && <SlotPicks g={g} tool={tool} setTool={setTool} onDesigner={onDesigner} thumb={thumb} />}
           <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && !o.slot && !o.scenarioOnly && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
             ? <button key={o.id} className="btn" disabled>{o.name}<small>Research: {RESEARCH[projectFor(o.id)].name}</small></button>
-            : b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div></>}
+            : b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)}${o.upkeep || o.sized ? ` · ${money(o.upkeep)}/mo` : ""}`, thumb?.(o.id)))}</div></>}
         </Fragment>
       ))}
       {land.length > 0 && (

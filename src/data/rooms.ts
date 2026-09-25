@@ -21,6 +21,6 @@ export const ROOM_HELP: Record<RoomPurpose, string> = {
   club: "A nightclub inside is one tier finer.",
   show: "A show lounge inside is one tier finer.",
   smoking: "Smokers light up in here, happily. The smoke drifts through walls and doors, and non-smokers hate it.",
-  enforcement: "Enforcers wait here; beatings and disappearances happen here, out of sight.",
+  enforcement: "Security take people here for beatings and disappearances, out of sight.",
   office: "Surveillance operators watch the cameras from desks in here.",
 };

@@ -359,11 +359,50 @@ export function GuestsPanel({ host }: { host: Host }) {
           <span className="num">{Math.round(r)}</span>
         </div>
       ))}
+      <Survey g={g} />
       <p className="muted" style={{ margin: "10px 0 6px" }}>What guests are saying (a day, over the last two)</p>
       {list.length === 0 && <p className="muted">Nothing yet.</p>}
       {list.map(([k, n]) => (
         <div className={`thought ${THOUGHTS[k].bad ? "bad" : "good"}`} key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text.replace("{game}", "a slot")}</span></div>
       ))}
+    </>
+  );
+}
+
+/**
+ * (M11.2, owner) What each crowd is saying: the last month or two of their visits (the survey halves monthly).
+ * Tap a crowd to open it: how their visits went, their top praise and complaints, and the themes they enjoyed or
+ * disliked (named by where they were when they said so).
+ */
+function Survey({ g }: { g: Game }) {
+  const s = g.state;
+  const [open, setOpen] = useState<string>("");
+  const types = Object.keys(s.rep).filter((t) => (s.survey[t]?.n ?? 0) >= 1);
+  if (!types.length) return null;
+  const top = (m: Record<string, number>, bad: boolean) => Object.entries(m).filter(([k, n]) => THOUGHTS[k] && !!THOUGHTS[k].bad === bad && n >= 1).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const themes = (m: Record<string, number>) => Object.entries(m).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => (k === "none" ? "unthemed or broken spots" : THEMES[k as ThemeId] ?? k)).join(", ");
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>What each crowd says (the last month or two; tap one)</p>
+      {types.map((t) => {
+        const row = s.survey[t], avg = row.n ? row.score / row.n : 0, on = open === t;
+        const good = top(row.th, false), bad = top(row.th, true), liked = themes(row.like), disliked = themes(row.dislike);
+        return (
+          <Fragment key={t}>
+            <button className={`btn ${on ? "on" : ""}`} style={{ width: "100%", textAlign: "left", marginBottom: 4 }} onClick={() => setOpen(on ? "" : t)}>
+              {GUEST_TYPES[t]?.name ?? t}<small>{avg >= 0.72 ? "loving it" : avg >= 0.6 ? "happy" : avg >= 0.5 ? "so-so" : "unhappy"} · visit score {Math.round(avg * 100)}</small>
+            </button>
+            {on && (
+              <div style={{ margin: "0 0 8px 8px" }}>
+                {good.map(([k, n]) => <div className="thought good" key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text.replace("{game}", "a slot")}</span></div>)}
+                {bad.map(([k, n]) => <div className="thought bad" key={k}><span className="c num">{Math.round(n)}</span><span>{THOUGHTS[k].text.replace("{game}", "a slot")}</span></div>)}
+                {liked && <p className="muted" style={{ margin: "4px 0" }}>Theming they enjoyed: {liked}.</p>}
+                {disliked && <p className="muted" style={{ margin: "4px 0" }}>Theming that put them off: {disliked}.</p>}
+              </div>
+            )}
+          </Fragment>
+        );
+      })}
     </>
   );
 }
@@ -633,7 +672,7 @@ export function AuthoritiesPanel({ host }: { host: Host }) {
 
 function EnforcementSummary({ g, rates }: { g: Game; rates: Record<string, number> }) {
   const s = g.state, cov = coverage(g);
-  const enforcers = s.agents.filter((a) => a.role === "enforcer").length;
+  const enforcers = s.agents.filter((a) => a.role === "guard").length;
   const room = purposeTiles(g, "enforcement").length > 0, office = purposeTiles(g, "office").length > 0;
   const heat = s.enf.heat;
   return (
@@ -642,7 +681,7 @@ function EnforcementSummary({ g, rates }: { g: Game; rates: Record<string, numbe
       <div className="kv">
         <b>Caught</b><span className="num">{Math.round(rates._caught ?? 0)} a day · {Math.round(rates._enf ?? 0)} dealt with · {Math.round(rates._banned ?? 0)} banned</span>
         <b>Cameras</b><span className="num">{cov.cams} · {cov.watching} operator{cov.watching === 1 ? "" : "s"} watching{cov.cams ? ` (${Math.round(cov.share * 100)}% covered)` : ""}{cov.cams && !office ? " · no Back office" : ""}</span>
-        <b>Enforcers</b><span className="num">{enforcers}{room ? "" : " · no enforcement room (it happens on the floor)"}</span>
+        <b>Security</b><span className="num">{enforcers}{room ? "" : " · no enforcement room (it happens on the floor)"}</span>
         <b>Heat</b><span className={`num ${heat >= 4 ? "neg" : ""}`}>{heat < 0.5 ? "None" : heat < 2 ? "Low" : heat < 4 ? "Talked about" : heat < 8 ? "High" : "Notorious"}</span>
       </div>
       <p className="muted" style={{ margin: "6px 0 0" }}>What happens to a cheat your staff catch:</p>
@@ -972,7 +1011,7 @@ export function Inspector({ host, sel, onClose, onMove }: { host: Host; sel: Non
           {room.indoor && <RoomEditor key={room.first} host={host} tile={i} name={meta?.name ?? ""} purpose={meta?.purpose ?? "floor"} />}
           {meta?.purpose === "enforcement" && (
             <>
-              <p className="muted" style={{ margin: "8px 0 0" }}>Enforcers wait here, and beatings and disappearances happen here, out of sight. What happens to a cheat your staff catch:</p>
+              <p className="muted" style={{ margin: "8px 0 0" }}>Beatings and disappearances happen here, out of sight. What happens to a cheat your staff catch:</p>
               <TreatmentEditor g={g} />
             </>
           )}

@@ -1575,6 +1575,11 @@ export const PEOPLE: Record<string, LookSet> = {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#1c1820"], bottom: ["#1e1e24"], accent: ["#141418"], hat: ["#141418"],
     styles: [[{ o: "longsleeve", h: "bald", x: ["shades"] }], [{ o: "longsleeve", h: "bun", x: ["shades"] }]],
   },
+  // (M11.2) Entertainers: a bright jacket, a bow tie and a shock of curls.
+  entertainer: {
+    variants: 6, skin: SKINS, hair: ["#e04a4a", "#ffd23d", "#48b8f0", ...HAIRS], shoes: ["#c0283c", "#101014"], top: ["#fff6e0"], bottom: ["#2a3050"], accent: ["#6a3a9a"], hat: ["#6a3a9a"],
+    styles: [[{ o: "blazer", h: "puff", x: ["bowtie"] }], [{ o: "blazer", h: "puff", x: ["bowtie"] }]],
+  },
   operator: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#7a808c"], bottom: ["#2a2e38"], accent: ["#1c2030"], hat: ["#1c2030"],
     styles: [[{ o: "polo", h: "short", x: ["headset"] }], [{ o: "polo", h: "bob", x: ["headset"] }]],

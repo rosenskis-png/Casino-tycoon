@@ -12,7 +12,7 @@ import { DRAW, ENGAGE, ENV_MOOD, THEME_TASTE, TIME_FLIES } from "../data/psych";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
-import type { Agent, GuestData, Person, PlacedObject } from "./state";
+import type { Agent, GameState, GuestData, Person, PlacedObject, SurveyRow } from "./state";
 import { rng, type Rng } from "./rng";
 import { logNormal, normal, pickIndex, pickKey, range, skewed } from "./dist";
 import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
@@ -27,7 +27,7 @@ import { tagGuest, guestName, hash01 } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
-import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult } from "./amenities";
+import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult, tierOf } from "./amenities";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
@@ -289,8 +289,24 @@ export function think(g: Game, a: Agent, id: string) {
   if (gd.recent.length > 5) gd.recent.shift();
   const t = g.state.thoughts[0];
   t[id] = (t[id] ?? 0) + 1;
+  if (!gd.minor) surveyThought(g, a, id);
   // (M8.5) A thought had at a game counts toward what guests think of that game.
   if (a.act === "play" && a.target >= 0) noteThought(g.state, gameKey(g.objById.get(a.target)), id);
+}
+
+/** (M11.2) The survey row for a crowd. */
+export function surveyRow(s: GameState, type: string): SurveyRow {
+  return (s.survey[type] ??= { n: 0, score: 0, th: {}, like: {}, dislike: {} });
+}
+
+/** (M11.2) A thought goes into the crowd's survey; theming thoughts note the theme where they were. */
+function surveyThought(g: Game, a: Agent, id: string) {
+  const row = surveyRow(g.state, a.g!.type);
+  row.th[id] = (row.th[id] ?? 0) + 1;
+  if (id !== "goodTheme" && id !== "badTheme") return;
+  const d = g.fields.themes.domAt(a.y * g.state.map.w + a.x), k = d >= 0 ? THEME_IDS[d] : "none";
+  const m = id === "goodTheme" ? row.like : row.dislike;
+  m[k] = (m[k] ?? 0) + 1;
 }
 
 const net = (gd: GuestData) => gd.mem.won - gd.mem.wagered;
@@ -510,6 +526,9 @@ export function depart(g: Game, a: Agent, vanished = false) {
   // Children tag along: the adults' visit is the family's.
   if (gd.minor) { g.bus.emit({ type: "departed", ...departedFields(g, a, vs.score), minor: 1 }); if (!vanished) walkAway(g, a); gone(g).add(a.id); return; }
   s.visits.today.satSum += vs.score;
+  const row = surveyRow(s, gd.type);
+  row.n++;
+  row.score += vs.score;
   if (gd.why === "broke") s.visits.today.broke++;
   if (vs.score >= 0.72) think(g, a, "goodTime");
   else if (vs.score < 0.45) think(g, a, "badTime");
@@ -1037,7 +1056,8 @@ function tryAmenity(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean
   const use = goUse(g, a, what);
   if (use === "ok") return true;
   if (use === "unknown") return seekNeed(g, a, r, what, det);
-  think(g, a, "line");
+  // (M11.2) Which place was full, so the survey can say what there's too little of.
+  think(g, a, what === "hunger" ? "foodLine" : what === "show" ? "showFull" : what === "golf" ? "golfLine" : "line");
   gd.annoy += 2;
   gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND;
   return false;
@@ -1522,7 +1542,7 @@ function guestTick(g: Game, a: Agent) {
         if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "food");
         post(g, "foodCost", -FOOD_COST);
-        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steepFood"); gd.annoy += 4; }
         a.timer = useTicks(g, a, r);
         return;
       }
@@ -1531,7 +1551,9 @@ function guestTick(g: Game, a: Agent) {
       gd.needs.hunger = 0;
       gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 20);
       gd.floorTime += 2 * TICKS_PER_MIN;
-      if (r.chance(0.4)) think(g, a, "goodMeal");
+      // (M11.2) Crowds used to finer places notice a plain one (a snack bar); the rest just enjoy it.
+      if ((GUEST_TYPES[gd.type].prefs.PRS?.ideal ?? 0) >= 5 && tierOf(g, o) === 0 && r.chance(0.5)) think(g, a, "plainFood");
+      else if (r.chance(0.4)) think(g, a, "goodMeal");
       if (r.chance(0.08)) litter(g, a.y * g.state.map.w + a.x, a);
       return doneWith(g, a, r);
     }
@@ -1546,7 +1568,7 @@ function guestTick(g: Game, a: Agent) {
           const free = useComp(gd, "show"), price = free ? 0 : priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "shows");
-          if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+          if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steepShow"); gd.annoy += 4; }
           a.timer = 2;
         }
         gd.mem.fun++;
@@ -1627,7 +1649,7 @@ function guestTick(g: Game, a: Agent) {
         const price = priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.golf; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "golfFees");
-        if (price > GOLF_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+        if (price > GOLF_FAIR * priceTolerance(g, o)) { think(g, a, "steepGolf"); gd.annoy += 4; }
         a.timer = useTicks(g, a, r);
         return;
       }

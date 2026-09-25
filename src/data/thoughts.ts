@@ -120,7 +120,16 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   whereClub: { text: "I heard there's a club here somewhere.", bad: true },
   goodMeal: { text: "That hit the spot.", alt: ["Great food here."], voice: { retiree: ["What a lovely meal."] } },
   steep: { text: "Those prices are steep.", alt: ["That cost an arm and a leg."], bad: true },
-  // (M11.2) The visit's to-do list and mini golf.
+  // (M11.2) Entertainers, the visit's to-do list and mini golf; which place was full or pricey, and plain food.
+  foodLine: { text: "The restaurant's full.", alt: ["No table to be had."], bad: true },
+  showFull: { text: "The show's sold out.", alt: ["No seats left for the show."], bad: true },
+  golfLine: { text: "Mini golf's packed.", bad: true },
+  steepFood: { text: "Pricey food for what it is.", bad: true },
+  steepShow: { text: "Too much for a show ticket.", bad: true },
+  steepGolf: { text: "Mini golf costs how much?", bad: true },
+  plainFood: { text: "Just a snack bar? I hoped for a real restaurant.", alt: ["I expected something finer to eat."], bad: true },
+  entertained: { text: "That magician was amazing!", alt: ["Look, a balloon dog!", "What a juggler!"], voice: { family: ["The kids can't stop laughing."] } },
+  entertainedMeh: { text: "A juggler. In a casino.", alt: ["Cute act, I suppose."] },
   notYet: { text: "Not leaving till I've done what I came for.", alt: ["Just one more thing before we go."] },
   missed_show: { text: "Never got to see the show.", alt: ["We missed the show."], bad: true },
   missed_hunger: { text: "Never got that meal.", alt: ["Leaving hungry. Wanted to eat here."], bad: true },

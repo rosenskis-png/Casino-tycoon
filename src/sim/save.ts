@@ -254,6 +254,18 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.crew.uniform = {};
     return s;
   },
+  // 18 → 19 (M11.2): enforcers join security (one role now); guests on the floor have an empty to-do list; every
+  // crowd's survey starts empty.
+  18: (s) => {
+    for (const a of s.agents) {
+      if (a.role === "enforcer") { a.role = "guard"; if (a.act === "carry") { a.act = "idle"; a.bag = undefined; } }
+      if (a.g) a.g.todo = 0;
+    }
+    delete s.crew.pay.enforcer;
+    delete s.crew.uniform.enforcer;
+    s.survey = {};
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

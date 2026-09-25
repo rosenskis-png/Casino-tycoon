@@ -52,7 +52,7 @@ export interface EnfActionDef {
   /** Mood hit for each guest who sees it; how likely (× (1 − drama)) a witness tells the police. */
   witness: number;
   tell: number;
-  /** Needs an enforcer (guards can do the rest). */
+  /** The rough end of the job (a beating, a disappearance): with no security at all it becomes a ban. */
   enforcer: boolean;
   desc: string;
 }

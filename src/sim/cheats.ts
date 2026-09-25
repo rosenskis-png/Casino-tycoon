@@ -306,13 +306,14 @@ function unhold(a: Agent) {
   if (a.act === "held" || a.act === "walk") { a.act = "idle"; a.timer = 0; }
 }
 
-const enforcers = (g: Game) => g.state.agents.filter((a) => a.role === "enforcer");
-const guardsOf = (g: Game) => g.state.agents.filter((a) => a.role === "guard");
+// (M11.2, owner) One security role does it all: enforcers merged into security.
+const enforcers = (g: Game) => g.state.agents.filter((a) => a.role === "guard");
+const guardsOf = enforcers;
 
 /** Queues an action on a guest (the player's order, or the house treatment) and holds them. */
 function order(g: Game, a: Agent, action: EnfAction, house: number) {
   const s = g.state;
-  // Only enforcers beat or disappear people; with guards alone that becomes a ban.
+  // With no security at all, a beating or disappearance becomes a ban.
   if (ENF[action].enforcer && !enforcers(g).length) action = "ban";
   if (!enforcers(g).length && !guardsOf(g).length) {
     // Nobody to carry anything out: a caught cheat is banned and shown out on the spot.
@@ -324,13 +325,12 @@ function order(g: Game, a: Agent, action: EnfAction, house: number) {
   hold(g, a, job.id);
 }
 
-/** Staff free to take a job needing an enforcer (or, for warnings and bans, a guard too). */
-function free(g: Game, job: EnfJob): Agent[] {
+/** Security staff free to take a job. */
+function free(g: Game, _job: EnfJob): Agent[] {
   const busy = new Set(g.state.enf.jobs.map((j) => j.staff));
   return g.state.agents.filter((a) => {
     if (busy.has(a.id)) return false;
-    if (a.role === "enforcer") return a.act !== "carry" && !(isWalking(a) && a.next === "carry");
-    if (a.role === "guard" && !ENF[job.action].enforcer) return a.act === "wander" || a.act === "idle" || (a.act === "walk" && a.next === "idle");
+    if (a.role === "guard") return a.act === "wander" || a.act === "idle" || (a.act === "walk" && a.next === "idle");
     return false;
   });
 }
@@ -515,7 +515,7 @@ function witnessed(g: Game, t: Agent, action: EnfAction) {
     bd.annoy = Math.min(30, bd.annoy + def.witness);
     if (r.chance(0.5)) think(g, b, thought);
     if (told < WITNESS_REPORTS && def.tell && r.chance(def.tell * (1 - GUEST_TYPES[bd.type].drama))) {
-      if (!told) news(g, "warn", `A guest told the police what they saw your ${action === "beat" ? "enforcers do to someone" : "enforcers take someone away"}.`, { t: here });
+      if (!told) news(g, "warn", `A guest told the police what they saw your ${action === "beat" ? "security do to someone" : "security take someone away"}.`, { t: here });
       told++;
       adjustPolice(g, -WITNESS_POLICE * mult);
     }
@@ -525,7 +525,7 @@ function witnessed(g: Game, t: Agent, action: EnfAction) {
 const RUMOR_TEXT: Record<EnfAction, string> = {
   warn: "Word is the guest your staff warned for cheating never cheated at all.",
   ban: "Word is the guest you banned for life was just on a lucky streak.",
-  beat: "Rumor: the guest your enforcers beat up was just lucky. People are talking.",
+  beat: "Rumor: the guest your security beat up was just lucky. People are talking.",
   vanish: "Rumor: a guest who vanished after a win at the casino was never a cheat. People are scared.",
 };
 
@@ -562,14 +562,6 @@ function pauseThenGo(g: Game, a: Agent, tiles: number[]) {
   const w = s.map.w;
   const t = tiles.length ? tiles[r.int(0, tiles.length - 1)] : nearbyTile(g, "cheats", a.x, a.y, 10, a);
   if (t >= 0 && t !== a.y * w + a.x && g.pathsFor(a).reachable(a.y * w + a.x, t)) go(a, t, "idle");
-}
-
-function enforcerTick(g: Game, a: Agent) {
-  if (a.act === "carry") { a.bag = undefined; a.act = "idle"; return; }
-  if (isWalking(a) || a.act === "enforce") return;
-  a.act = "idle";
-  // Free: wait in the enforcement room, if there is one.
-  pauseThenGo(g, a, purposeTiles(g, "enforcement"));
 }
 
 function operatorTick(g: Game, a: Agent) {
@@ -690,7 +682,7 @@ export const cheatSystem: System = {
   tick(g) {
     const s = g.state;
     for (const a of s.agents) {
-      if (a.role === "enforcer") enforcerTick(g, a);
+      if (a.role === "guard" && a.act === "carry") { a.bag = undefined; a.act = "idle"; }
       else if (a.role === "operator") operatorTick(g, a);
     }
     if (s.enf.jobs.length) {

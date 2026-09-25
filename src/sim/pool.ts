@@ -22,7 +22,8 @@ import { fanDraw, onFloor } from "./design/market";
 /** How much one visit moves a person's disposition. */
 const SCORE_RATE = 0.5;
 /** Word of mouth per departing one-off guest. */
-const WOM_RATE = 0.02;
+/** Word of mouth: how far one departing one-off guest moves their crowd's reputation toward their visit (M11.2: 0.04, was 0.02). */
+const WOM_RATE = 0.04;
 /** Spending money kept between visits, in months of income. */
 const CASH_MONTHS = 2;
 /** Below this (cash + savings) a person can't afford to come any more. */
@@ -240,6 +241,11 @@ export const poolSystem: System = {
     }
   },
   month(g) {
+    // (M11.2) The survey leans on the last month or two.
+    for (const row of Object.values(g.state.survey)) {
+      row.n /= 2; row.score /= 2;
+      for (const m of [row.th, row.like, row.dislike]) for (const k of Object.keys(m)) { m[k] /= 2; if (m[k] < 0.5) delete m[k]; }
+    }
     // Monthly disposable income refills spending money (anything beyond a couple of months' worth goes elsewhere).
     for (const p of g.state.pool) p.cash = Math.max(p.cash, Math.min(p.cash + p.income, p.income * CASH_MONTHS));
   },

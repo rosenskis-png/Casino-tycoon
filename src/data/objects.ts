@@ -18,7 +18,7 @@ export interface SeatDef { dx: number; dy: number; kind: "stool" | "stand" | "hi
  * frame (row 0 is the back).
  */
 export interface SizedDef {
-  layout: "bar" | "restroom" | "cage" | "restaurant" | "show" | "club" | "pool" | "garden";
+  layout: "bar" | "restroom" | "cage" | "restaurant" | "show" | "club" | "pool" | "garden" | "golf";
   min: [number, number];
   max: [number, number];
   /** Build cost: base + per tile of area. */
@@ -63,7 +63,7 @@ export interface ObjectDef {
   /** Sized amenities (M6): w and h above are the default size. */
   sized?: SizedDef;
   /** What using it does for a guest. */
-  serves?: "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
+  serves?: "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden" | "golf";
   /** Hidden theming tags (docs/spec/themes.md); `theme` is also the item's visible category. */
   tags?: ThemeTags;
   /** Seconds a visit takes at 1×. */
@@ -140,7 +140,7 @@ const DECOR_ROWS: DecorRow[] = [
 ];
 
 const THEMED_DECOR: Record<string, ObjectDef> = Object.fromEntries(DECOR_ROWS.map(([id, theme, name, cost, prs, nrg, tags, desc]) => [id, {
-  id, name, cat: "decor", w: 1, h: 1, cost, upkeep: Math.max(1, Math.round(cost / 100)), blocks: true, place: "any",
+  id, name, cat: "decor", w: 1, h: 1, cost, upkeep: 0, blocks: true, place: "any",
   emits: [...(prs ? [{ channel: "PRS" as const, strength: prs, radius: 3 }] : []), ...(nrg ? [{ channel: "NRG" as const, strength: nrg, radius: 4 }] : [])],
   sprite: id, art: "whole", seats: [], tags: { theme, ...tags }, desc,
 } satisfies ObjectDef]));
@@ -158,54 +158,54 @@ const sides = (w: number, dy: number, kind: SeatDef["kind"]): SeatDef[] => [{ dx
 /** Table games and draw games (M7, docs/spec/tables.md). Tables are low: people see over them. */
 const TABLES: Record<string, ObjectDef> = {
   vpoker: {
-    id: "vpoker", name: "Video Poker", cat: "game", w: 1, h: 1, cost: 250, upkeep: 2, blocks: true, opaque: true, place: "indoor",
+    id: "vpoker", name: "Video Poker", cat: "game", w: 1, h: 1, cost: 250, upkeep: 1, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 0.8, radius: 2 }], sprite: "vpoker", art: "facing", seats: FRONT, game: "vpoker",
     desc: "Jacks or Better. The best payback in the house for a player who knows the game; mistakes cost them.",
   },
   blackjack: {
-    id: "blackjack", name: "Blackjack", cat: "table", w: 3, h: 1, cost: 1150, upkeep: 10, blocks: true, place: "indoor",
+    id: "blackjack", name: "Blackjack", cat: "table", w: 3, h: 1, cost: 1150, upkeep: 5, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1, radius: 2 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "felt", art: "whole",
     seats: [...front(0, 2, 1, "stool"), ...sides(3, 0, "stool"), dealer(1)], game: "blackjack",
     desc: "Five stools and a dealer. A low edge, if the players know what they're doing.",
   },
   roulette: {
-    id: "roulette", name: "Roulette", cat: "table", w: 4, h: 1, cost: 1650, upkeep: 12, blocks: true, place: "indoor",
+    id: "roulette", name: "Roulette", cat: "table", w: 4, h: 1, cost: 1650, upkeep: 6, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }, { channel: "PRS", strength: 1.5, radius: 3 }], sprite: "felt", art: "whole",
     seats: [...front(0, 3, 1, "stool"), { dx: 4, dy: 0, kind: "stool", f: 1 }, dealer(1)], game: "roulette",
     desc: "A wheel and five stools. Slow, social, and every bet carries the same edge.",
   },
   craps: {
-    id: "craps", name: "Craps", cat: "table", w: 5, h: 2, cost: 2550, upkeep: 15, blocks: true, place: "indoor",
+    id: "craps", name: "Craps", cat: "table", w: 5, h: 2, cost: 2550, upkeep: 7.5, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 4, radius: 5 }], sprite: "felt", art: "whole",
     seats: [...front(0, 4, 2, "stand"), ...sides(5, 0, "stand"), ...sides(5, 1, "stand"), dealer(1), dealer(3)], game: "craps",
     desc: "Nine players standing and two dealers. Loud: the whole table wins together, and a crowd gathers.",
   },
   baccarat: {
-    id: "baccarat", name: "Baccarat", cat: "table", w: 4, h: 2, cost: 1900, upkeep: 12, blocks: true, place: "indoor",
+    id: "baccarat", name: "Baccarat", cat: "table", w: 4, h: 2, cost: 1900, upkeep: 6, blocks: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 2.5, radius: 3 }], sprite: "felt", art: "whole",
     seats: [...front(0, 3, 2, "chair"), ...sides(4, 1, "chair"), dealer(1)], game: "baccarat",
     desc: "Six chairs and big bets. A low edge and large swings; its players like privacy.",
   },
   poker: {
-    id: "poker", name: "Poker Table", cat: "table", w: 4, h: 2, cost: 1300, upkeep: 8, blocks: true, place: "indoor",
+    id: "poker", name: "Poker Table", cat: "table", w: 4, h: 2, cost: 1300, upkeep: 4, blocks: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "felt", art: "whole",
     seats: [...front(0, 3, 2, "chair"), ...sides(4, 1, "chair"), dealer(1)], game: "poker",
     desc: "Players against each other; the house takes a rake from every pot. Needs two players.",
   },
   keno: {
-    id: "keno", name: "Keno Lounge", cat: "table", w: 4, h: 1, cost: 1400, upkeep: 10, blocks: true, opaque: true, place: "indoor",
+    id: "keno", name: "Keno Lounge", cat: "table", w: 4, h: 1, cost: 1400, upkeep: 5, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 0.5, radius: 3 }], sprite: "keno", art: "facing",
     seats: [...front(0, 3, 1, "chair"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "keno",
     desc: "A board of 80 numbers and eight chairs. A draw every so often; cheap tickets, a steep edge.",
   },
   sportsbook: {
-    id: "sportsbook", name: "Sportsbook", cat: "table", w: 4, h: 1, cost: 1650, upkeep: 12, blocks: true, opaque: true, place: "indoor",
+    id: "sportsbook", name: "Sportsbook", cat: "table", w: 4, h: 1, cost: 1650, upkeep: 6, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "sports", art: "facing",
     seats: [...front(0, 3, 1, "stool"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "sports",
     desc: "A wall of screens and a writer taking bets on the games: a small, steady edge, and a crowd on big nights.",
   },
   bingo: {
-    id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 2150, upkeep: 15, blocks: true, opaque: true, place: "indoor",
+    id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 2150, upkeep: 7.5, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 2, radius: 4 }], sprite: "bingo", art: "facing",
     seats: [...front(0, 5, 1, "chair"), ...front(0, 5, 2, "chair"), ...front(0, 5, 3, "chair"), dealer(-1, 0)], game: "bingo",
     desc: "A caller and eighteen chairs. The prize is the cards sold less the house's hold: the fuller the room, the bigger it gets.",
@@ -214,103 +214,103 @@ const TABLES: Record<string, ObjectDef> = {
 
 export const OBJECTS: Record<string, ObjectDef> = {
   slot_cherry: {
-    id: "slot_cherry", name: "Cherry Parade", cat: "game", w: 1, h: 1, cost: 150, upkeep: 2, blocks: true, opaque: true, place: "indoor",
+    id: "slot_cherry", name: "Cherry Parade", cat: "game", w: 1, h: 1, cost: 150, upkeep: 1, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "slot_cherry", art: "facing", seats: FRONT, slot: "cherry",
     desc: "Quarter video slot. Lots of small hits, some smaller than the bet.",
   },
   slot_liberty: {
-    id: "slot_liberty", name: "Liberty Bell", cat: "game", w: 1, h: 1, cost: 200, upkeep: 2, blocks: true, opaque: true, place: "indoor",
+    id: "slot_liberty", name: "Liberty Bell", cat: "game", w: 1, h: 1, cost: 200, upkeep: 1, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1, radius: 2 }], sprite: "slot_liberty", art: "facing", seats: FRONT, slot: "liberty",
     desc: "Dollar three-reel. Quiet, steady, and the best payback on the floor.",
   },
   slot_thunder: {
-    id: "slot_thunder", name: "Thunder Jackpot", cat: "game", w: 1, h: 1, cost: 350, upkeep: 4, blocks: true, opaque: true, place: "indoor",
+    id: "slot_thunder", name: "Thunder Jackpot", cat: "game", w: 1, h: 1, cost: 350, upkeep: 2, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 3, radius: 4 }], sprite: "slot_thunder", art: "facing", seats: FRONT, slot: "thunder",
     desc: "Loud, rare, huge wins. A jackpot here can dent your cash.",
   },
   // (M8) Cabinets for designed slots (docs/spec/designer.md §2, §8): the design sets the look, sound, price and math.
   slot_slant: {
-    id: "slot_slant", name: "Slant-top slot", cat: "game", w: 1, h: 1, cost: 250, upkeep: 3, blocks: true, place: "indoor",
+    id: "slot_slant", name: "Slant-top slot", cat: "game", w: 1, h: 1, cost: 250, upkeep: 1.5, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1, radius: 2 }], sprite: "slot_slant", art: "facing", seats: FRONT, slot: "diamond",
     desc: "A low, seated cabinet. Guests can see over it.",
   },
   slot_upright: {
-    id: "slot_upright", name: "Upright slot", cat: "game", w: 1, h: 1, cost: 200, upkeep: 2, blocks: true, opaque: true, place: "indoor",
+    id: "slot_upright", name: "Upright slot", cat: "game", w: 1, h: 1, cost: 200, upkeep: 1, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "slot_upright", art: "facing", seats: FRONT, slot: "cherry",
     desc: "The standard video cabinet.",
   },
   slot_stepper: {
-    id: "slot_stepper", name: "Stepper slot", cat: "game", w: 1, h: 1, cost: 225, upkeep: 3, blocks: true, opaque: true, place: "indoor",
+    id: "slot_stepper", name: "Stepper slot", cat: "game", w: 1, h: 1, cost: 225, upkeep: 1.5, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1, radius: 2 }], sprite: "slot_stepper", art: "facing", seats: FRONT, slot: "liberty",
     desc: "Mechanical reels behind glass.",
   },
   slot_tall: {
-    id: "slot_tall", name: "Tall slot", cat: "game", w: 1, h: 1, cost: 400, upkeep: 5, blocks: true, opaque: true, place: "indoor",
+    id: "slot_tall", name: "Tall slot", cat: "game", w: 1, h: 1, cost: 400, upkeep: 2.5, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 2, radius: 3 }], sprite: "slot_tall", art: "facing", seats: FRONT, slot: "stampede",
     desc: "A curved portrait screen, seen from farther away.",
   },
   slot_giant: {
-    id: "slot_giant", name: "Giant slot", cat: "game", w: 2, h: 2, cost: 1500, upkeep: 18, blocks: true, opaque: true, place: "indoor",
+    id: "slot_giant", name: "Giant slot", cat: "game", w: 2, h: 2, cost: 1500, upkeep: 9, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 3.5, radius: 5 }], sprite: "slot_giant", art: "whole", seats: [{ dx: 0, dy: 2, kind: "stool" }], slot: "stampede",
     desc: "A 2×2 attraction, seen and heard across the floor.",
   },
   bar: {
-    id: "bar", name: "Bar", cat: "amenity", w: 3, h: 2, cost: 1000, upkeep: 50, blocks: true, place: "indoor",
+    id: "bar", name: "Bar", cat: "amenity", w: 3, h: 2, cost: 1000, upkeep: 25, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 2, radius: 4 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "counter", art: "zone",
     seats: [], serves: "thirst", use: [8, 15], price: 7,
-    sized: { layout: "bar", min: [3, 2], max: [12, 6], cost: [400, 100], upkeep: [26, 4, 12], tiers: ["Bar", "Lounge", "Grand bar"], tierAt: [8, 16], staffEvery: 4, purpose: "bar" },
+    sized: { layout: "bar", min: [3, 2], max: [12, 6], cost: [400, 100], upkeep: [13, 2, 6], tiers: ["Bar", "Lounge", "Grand bar"], tierAt: [8, 16], staffEvery: 4, purpose: "bar" },
     desc: "A counter with stools; deeper bars get lounge tables. Drinks loosen bets. Messy.",
   },
   restroom: {
-    id: "restroom", name: "Restrooms", cat: "amenity", w: 2, h: 2, cost: 450, upkeep: 15, blocks: true, opaque: true, place: "indoor",
+    id: "restroom", name: "Restrooms", cat: "amenity", w: 2, h: 2, cost: 450, upkeep: 7.5, blocks: true, opaque: true, place: "indoor",
     emits: [], sprite: "restroom", art: "zone",
     seats: [], serves: "bladder", use: [5, 9],
-    sized: { layout: "restroom", min: [2, 2], max: [8, 5], cost: [150, 75], upkeep: [7, 4, 0], tiers: ["Restrooms", "Lounge restrooms"], tierAt: [6], staffEvery: 0 },
+    sized: { layout: "restroom", min: [2, 2], max: [8, 5], cost: [150, 75], upkeep: [3.5, 2, 0], tiers: ["Restrooms", "Lounge restrooms"], tierAt: [6], staffEvery: 0 },
     desc: "A stall for every two tiles. The doors face the front.",
   },
   cage: {
-    id: "cage", name: "Cashier Cage", cat: "amenity", w: 2, h: 1, cost: 750, upkeep: 35, blocks: true, opaque: true, place: "indoor",
+    id: "cage", name: "Cashier Cage", cat: "amenity", w: 2, h: 1, cost: 750, upkeep: 17.5, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "cage", art: "zone",
     seats: [], serves: "cage", use: [3, 5],
-    sized: { layout: "cage", min: [2, 1], max: [8, 1], cost: [250, 250], upkeep: [5, 0, 15], tiers: ["Cashier cage"], tierAt: [], staffEvery: 1 },
+    sized: { layout: "cage", min: [2, 1], max: [8, 1], cost: [250, 250], upkeep: [2.5, 0, 7.5], tiers: ["Cashier cage"], tierAt: [], staffEvery: 1 },
     desc: "A window and a teller per tile. Winners cash out here; guests who ran dry draw more money.",
   },
   restaurant: {
-    id: "restaurant", name: "Restaurant", cat: "amenity", w: 4, h: 4, cost: 1950, upkeep: 60, blocks: true, place: "indoor",
+    id: "restaurant", name: "Restaurant", cat: "amenity", w: 4, h: 4, cost: 1950, upkeep: 30, blocks: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 1.5, radius: 4 }, { channel: "PRV", strength: 1, radius: 3 }], sprite: "kitchen", art: "zone",
     seats: [], serves: "hunger", use: [40, 80], price: 18, priceRange: [0.5, 3],
-    sized: { layout: "restaurant", min: [3, 3], max: [12, 10], cost: [750, 75], upkeep: [30, 1.5, 12], tiers: ["Snack bar", "Diner", "Buffet"], tierAt: [8, 20], staffEvery: 4, purpose: "restaurant" },
+    sized: { layout: "restaurant", min: [3, 3], max: [12, 10], cost: [750, 75], upkeep: [15, 0.75, 6], tiers: ["Snack bar", "Diner", "Buffet"], tierAt: [8, 20], staffEvery: 4, purpose: "restaurant" },
     desc: "A kitchen and tables. Fed guests stay longer. Some come just to eat.",
   },
   showlounge: {
-    id: "showlounge", name: "Show Lounge", cat: "amenity", w: 5, h: 5, cost: 3375, upkeep: 90, blocks: true, place: "indoor",
+    id: "showlounge", name: "Show Lounge", cat: "amenity", w: 5, h: 5, cost: 3375, upkeep: 45, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 3, radius: 5 }, { channel: "PRS", strength: 2, radius: 4 }], sprite: "stage", art: "zone",
     seats: [], serves: "show", use: [45, 45], price: 0, priceRange: [0, 40],
-    sized: { layout: "show", min: [4, 4], max: [14, 12], cost: [1500, 75], upkeep: [50, 1.5, 0], tiers: ["Lounge", "Showroom", "Theater"], tierAt: [24, 60], staffEvery: 0, purpose: "show" },
+    sized: { layout: "show", min: [4, 4], max: [14, 12], cost: [1500, 75], upkeep: [25, 0.75, 0], tiers: ["Lounge", "Showroom", "Theater"], tierAt: [24, 60], staffEvery: 0, purpose: "show" },
     desc: "A stage and rows of seats. A show every so often, then the whole crowd gets up at once.",
   },
   club: {
-    id: "club", name: "Nightclub", cat: "amenity", w: 5, h: 5, cost: 3125, upkeep: 80, blocks: true, place: "indoor",
+    id: "club", name: "Nightclub", cat: "amenity", w: 5, h: 5, cost: 3125, upkeep: 40, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 8, radius: 7 }, { channel: "PRV", strength: 1, radius: 3 }], sprite: "djbooth", art: "zone",
     seats: [], serves: "club", use: [45, 120], price: 10, priceRange: [0, 40],
-    sized: { layout: "club", min: [4, 4], max: [14, 12], cost: [1250, 75], upkeep: [40, 2, 0], tiers: ["Dance hall", "Club", "Superclub"], tierAt: [16, 40], staffEvery: 0, purpose: "club" },
+    sized: { layout: "club", min: [4, 4], max: [14, 12], cost: [1250, 75], upkeep: [20, 1, 0], tiers: ["Dance hall", "Club", "Superclub"], tierAt: [16, 40], staffEvery: 0, purpose: "club" },
     desc: "A DJ and a dance floor. Loud through the walls. Party crowds come for it; dancing is thirsty work.",
   },
   ...TABLES,
   atm: {
-    id: "atm", name: "ATM", cat: "amenity", w: 1, h: 1, cost: 300, upkeep: 6, blocks: true, opaque: true, place: "indoor",
+    id: "atm", name: "ATM", cat: "amenity", w: 1, h: 1, cost: 300, upkeep: 3, blocks: true, opaque: true, place: "indoor",
     emits: [], sprite: "atm", art: "whole", seats: FRONT.map((s) => ({ ...s, kind: "stand" as const })),
     serves: "atm", use: [3, 5],
     desc: "Cash withdrawals only. The easier it is to find, the more guests come back to it.",
   },
   plant: {
-    id: "plant", name: "Potted Palm", cat: "decor", w: 1, h: 1, cost: 75, upkeep: 1, blocks: true, place: "any",
+    id: "plant", name: "Potted Palm", cat: "decor", w: 1, h: 1, cost: 75, upkeep: 0, blocks: true, place: "any",
     emits: [{ channel: "PRS", strength: 2, radius: 3 }, { channel: "CLN", strength: 1, radius: 2 }], sprite: "plant", art: "whole", seats: [],
     tags: { suitsTheme: { tiki: 1, riviera: 0.8, pirate: 0.5 }, clashesTheme: { medieval: 0.5, luxe: 0.3 }, suitsPlace: ["outdoor", "water"] },
     desc: "Raises prestige nearby.",
   },
   neon: {
-    id: "neon", name: "Neon Sign", cat: "decor", w: 1, h: 1, cost: 150, upkeep: 2, blocks: true, place: "indoor",
+    id: "neon", name: "Neon Sign", cat: "decor", w: 1, h: 1, cost: 150, upkeep: 0, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 6, radius: 6 }], sprite: "neon", art: "whole", seats: [],
     tags: { suitsTheme: { atomic: 1, rock: 0.8, ratpack: 0.5 }, clashesTheme: { rome: 0.6, egypt: 0.6, medieval: 0.8, luxe: 0.4 }, suitsPlace: ["club", "bar"], clashesPlace: ["restaurant", "highlimit"] },
     desc: "Loud light. Energy for some, a headache for others.",
@@ -321,57 +321,66 @@ export const OBJECTS: Record<string, ObjectDef> = {
     desc: "Points guests toward whatever they're looking for, roughly. Guests have to see it.",
   },
   bin: {
-    id: "bin", name: "Litter Bin", cat: "decor", w: 1, h: 1, cost: 30, upkeep: 1, blocks: true, place: "any",
+    id: "bin", name: "Litter Bin", cat: "decor", w: 1, h: 1, cost: 30, upkeep: 0, blocks: true, place: "any",
     emits: [], sprite: "bin", art: "whole", seats: [],
     desc: "Guests nearby drop their rubbish in it instead of on the floor (unless they're drunk). Fewer janitors needed.",
   },
   bank_sign: {
-    id: "bank_sign", name: "Bank sign", cat: "decor", w: 2, h: 1, cost: 500, upkeep: 6, blocks: true, place: "indoor",
+    id: "bank_sign", name: "Bank sign", cat: "decor", w: 2, h: 1, cost: 500, upkeep: 3, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "bank_sign", art: "whole", seats: [],
     desc: "Shows a linked game's live jackpot meters. A big meter on a sign pulls players from across the room.",
   },
   fountain: {
-    id: "fountain", name: "Fountain", cat: "decor", w: 2, h: 2, cost: 750, upkeep: 5, blocks: true, place: "any",
+    id: "fountain", name: "Fountain", cat: "decor", w: 2, h: 2, cost: 750, upkeep: 0, blocks: true, place: "any",
     emits: [{ channel: "PRS", strength: 5, radius: 6 }, { channel: "NRG", strength: 2, radius: 4 }], sprite: "fountain", art: "whole", seats: [],
     tags: { suitsTheme: { pirate: 1, tiki: 1, riviera: 0.8, rome: 0.6 }, clashesTheme: { egypt: 0.8 }, suitsPlace: ["outdoor", "water"] },
     desc: "A showpiece. Prestige for the whole area.",
   },
   // Outdoors (M6.5): always hot and sunny pool weather. Sized like the indoor amenities.
   pool: {
-    id: "pool", name: "Pool", cat: "outdoor", w: 6, h: 5, cost: 3500, upkeep: 90, blocks: true, place: "outdoor",
+    id: "pool", name: "Pool", cat: "outdoor", w: 6, h: 5, cost: 3500, upkeep: 45, blocks: true, place: "outdoor",
     emits: [{ channel: "NRG", strength: 3, radius: 5 }, { channel: "PRS", strength: 3, radius: 5 }], sprite: "pool", art: "zone",
     seats: [], serves: "pool", use: [60, 120], price: 0, priceRange: [0, 20],
-    sized: { layout: "pool", min: [4, 3], max: [14, 10], cost: [1250, 75], upkeep: [45, 1.5, 0], tiers: ["Pool", "Pool deck", "Lagoon"], tierAt: [20, 50], staffEvery: 0 },
+    sized: { layout: "pool", min: [4, 3], max: [14, 10], cost: [1250, 75], upkeep: [22.5, 0.75, 0], tiers: ["Pool", "Pool deck", "Lagoon"], tierAt: [20, 50], staffEvery: 0 },
     tags: { suitsTheme: { tiki: 1, riviera: 1, pirate: 0.6, atomic: 0.4 }, clashesTheme: { medieval: 0.6, egypt: 0.4 } },
     desc: "Loungers along the back and water to swim in. Pool weather, always. Party crowds and tourists come for it.",
   },
+  // (M11.2, owner) Mini golf: a draw for families above all (kids love it), tourists too. Indoors or out.
+  minigolf: {
+    id: "minigolf", name: "Mini Golf", cat: "amenity", w: 5, h: 4, cost: 1400, upkeep: 20, blocks: true, place: "any",
+    emits: [{ channel: "NRG", strength: 1.5, radius: 4 }, { channel: "PRS", strength: 0.5, radius: 3 }], sprite: "windmill", art: "zone",
+    seats: [], serves: "golf", use: [40, 70], price: 6, priceRange: [0, 20],
+    sized: { layout: "golf", min: [4, 3], max: [12, 10], cost: [600, 40], upkeep: [10, 0.5, 0], tiers: ["Putt-putt", "Adventure golf"], tierAt: [12], staffEvery: 0 },
+    tags: { suitsTheme: { pirate: 1, medieval: 0.6, tiki: 0.6 }, clashesTheme: { luxe: 0.6, deco: 0.4 }, suitsPlace: ["outdoor"], clashesPlace: ["highlimit"] },
+    desc: "Putting greens round a windmill. Families come for it; kids beg for another round. A ticket per round.",
+  },
   garden: {
-    id: "garden", name: "Garden", cat: "outdoor", w: 5, h: 4, cost: 1300, upkeep: 25, blocks: true, place: "outdoor",
+    id: "garden", name: "Garden", cat: "outdoor", w: 5, h: 4, cost: 1300, upkeep: 12.5, blocks: true, place: "outdoor",
     emits: [{ channel: "PRS", strength: 2, radius: 4 }, { channel: "PRV", strength: 2, radius: 3 }, { channel: "CLN", strength: 1, radius: 3 }], sprite: "hedge", art: "zone",
     seats: [], serves: "garden", use: [30, 60],
-    sized: { layout: "garden", min: [4, 3], max: [12, 10], cost: [500, 40], upkeep: [10, 1, 0], tiers: ["Garden", "Formal garden"], tierAt: [10], staffEvery: 0 },
+    sized: { layout: "garden", min: [4, 3], max: [12, 10], cost: [500, 40], upkeep: [5, 0.5, 0], tiers: ["Garden", "Formal garden"], tierAt: [10], staffEvery: 0 },
     tags: { suitsTheme: { riviera: 1, rome: 0.6, medieval: 0.4 }, clashesTheme: { atomic: 0.4, rock: 0.4 } },
     desc: "Hedges, flower beds and benches. A quiet sit for tired feet.",
   },
   patiobar: {
-    id: "patiobar", name: "Patio Bar", cat: "outdoor", w: 3, h: 3, cost: 1300, upkeep: 50, blocks: true, place: "outdoor",
+    id: "patiobar", name: "Patio Bar", cat: "outdoor", w: 3, h: 3, cost: 1300, upkeep: 25, blocks: true, place: "outdoor",
     emits: [{ channel: "NRG", strength: 2, radius: 4 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "counter", art: "zone",
     seats: [], serves: "thirst", use: [8, 15], price: 7,
-    sized: { layout: "bar", min: [3, 2], max: [12, 6], cost: [400, 100], upkeep: [26, 4, 12], tiers: ["Patio bar", "Beach bar", "Grand patio"], tierAt: [8, 16], staffEvery: 4, purpose: "bar" },
+    sized: { layout: "bar", min: [3, 2], max: [12, 6], cost: [400, 100], upkeep: [13, 2, 6], tiers: ["Patio bar", "Beach bar", "Grand patio"], tierAt: [8, 16], staffEvery: 4, purpose: "bar" },
     tags: { suitsTheme: { tiki: 0.8, riviera: 0.6, pirate: 0.4 } },
     desc: "A bar out in the sun, with shaded tables. Its servers work the grounds.",
   },
   patiorestaurant: {
-    id: "patiorestaurant", name: "Patio Restaurant", cat: "outdoor", w: 4, h: 4, cost: 1950, upkeep: 60, blocks: true, place: "outdoor",
+    id: "patiorestaurant", name: "Patio Restaurant", cat: "outdoor", w: 4, h: 4, cost: 1950, upkeep: 30, blocks: true, place: "outdoor",
     emits: [{ channel: "PRS", strength: 1.5, radius: 4 }, { channel: "PRV", strength: 1, radius: 3 }], sprite: "kitchen", art: "zone",
     seats: [], serves: "hunger", use: [40, 80], price: 18, priceRange: [0.5, 3],
-    sized: { layout: "restaurant", min: [3, 3], max: [12, 10], cost: [750, 75], upkeep: [30, 1.5, 12], tiers: ["Snack shack", "Terrace", "Terrace grill"], tierAt: [8, 20], staffEvery: 4, purpose: "restaurant" },
+    sized: { layout: "restaurant", min: [3, 3], max: [12, 10], cost: [750, 75], upkeep: [15, 0.75, 6], tiers: ["Snack shack", "Terrace", "Terrace grill"], tierAt: [8, 20], staffEvery: 4, purpose: "restaurant" },
     tags: { suitsTheme: { riviera: 0.8, tiki: 0.6 } },
     desc: "A grill and shaded tables outside. Fed guests stay longer.",
   },
   ...THEMED_DECOR,
   camera: {
-    id: "camera", name: "Camera", cat: "security", w: 1, h: 1, cost: 200, upkeep: 3, blocks: false, place: "indoor",
+    id: "camera", name: "Camera", cat: "security", w: 1, h: 1, cost: 200, upkeep: 1.5, blocks: false, place: "indoor",
     emits: [{ channel: "SRVH", strength: 3, radius: 6 }], sprite: "camera", art: "whole", seats: [],
     desc: "A ceiling dome. Catches cheats in the act, but only while a surveillance operator watches from a Back office.",
   },
@@ -388,7 +397,7 @@ export const OBJECTS: Record<string, ObjectDef> = {
     desc: "Cracked tubes, half of them dangling. It hasn't lit since the nineties. Throw it out before theming around it.",
   },
   dumpster: {
-    id: "dumpster", name: "Dumpster", cat: "security", w: 2, h: 1, cost: 150, upkeep: 1, blocks: true, place: "outdoor",
+    id: "dumpster", name: "Dumpster", cat: "security", w: 2, h: 1, cost: 150, upkeep: 0.5, blocks: true, place: "outdoor",
     emits: [], sprite: "dumpster", art: "whole", seats: [],
     desc: "Out back. Where your enforcers take what's left after a disappearance.",
   },

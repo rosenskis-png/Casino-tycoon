@@ -226,7 +226,7 @@ function causes(g: Game, grid: Grid, guards: Agent[], a: Agent, r: Rng) {
   if (x >= 1 && roll(0.02, "intox")) return void begin(g, grid, "passout", a, null);
   if (x >= 0.9 && roll(0.006, "intox")) return void begin(g, grid, "vomit", a, null);
   // Bursting, drunk, and no restroom to be had (none, can't find one, or stuck in a line): the nearest planter.
-  const noRestroom = !g.has("bladder") || (gd.gaveUp & 2) !== 0 || (gd.seek === "bladder" && gd.lost >= 3) || gd.thought === "line";
+  const noRestroom = !g.has("bladder") || (gd.gaveUp & 2) !== 0 || (gd.seek === "bladder" && gd.lost >= 3) || gd.thought === "restroomLine";
   if (gd.needs.bladder >= 85 && x >= 0.4 && noRestroom && plantNear(g, a, 4) && roll(0.03, "misconduct")) return void begin(g, grid, "urinate", a, null);
   if (x >= 0.5 && roll(0.004 * (x / 0.5), "intox")) return void begin(g, grid, "loud", a, null);
   if (x >= 0.6 && isWalking(a) && roll(0.02, "intox")) return void begin(g, grid, "stumble", a, null);

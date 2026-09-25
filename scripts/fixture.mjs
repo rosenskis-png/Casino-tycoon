@@ -6,6 +6,8 @@ import { loadSim } from "./sim-bundle.mjs";
 const sim = await loadSim();
 const file = `tests/saves/schema-${sim.SCHEMA_VERSION}.json`;
 if (existsSync(file)) { console.log(`${file} already exists`); process.exit(0); }
+// M11.2: the tutorial allows no new games; the fixture builds as if it did.
+sim.SCENARIOS.horseshoe.noGames = false;
 const g = sim.Game.create("horseshoe", 12345);
 const w = g.state.map.w;
 // M9.5: the tutorial starts with no research; the fixture builds as if it had it all.

@@ -58,8 +58,9 @@ export function showPhase(o: PlacedObject, tick: number): { phase: "on" | "seati
 }
 
 /** The kinds of place people come for, and what they serve. */
-export const DRAWS: { intent: "dine" | "show" | "club" | "pool"; serves: Serves }[] = [
+export const DRAWS: { intent: "dine" | "show" | "club" | "pool" | "golf"; serves: Serves }[] = [
   { intent: "dine", serves: "hunger" }, { intent: "show", serves: "show" }, { intent: "club", serves: "club" }, { intent: "pool", serves: "pool" },
+  { intent: "golf", serves: "golf" },
 ];
 
 /** Each kind the casino has pulls its share of a type (more for a finer one): comeFor × (1 + 0.25 × best tier). */
@@ -92,7 +93,7 @@ function tablePull(g: Game, type: GuestTypeDef): number {
 }
 
 /** Why an arriving group came: a meal, a show, the club (at the share of arrivals those pulls account for), or undefined. */
-export function pickIntent(g: Game, typeId: string, r: Rng): "dine" | "show" | "club" | "pool" | undefined {
+export function pickIntent(g: Game, typeId: string, r: Rng): "dine" | "show" | "club" | "pool" | "golf" | undefined {
   const type = GUEST_TYPES[typeId];
   if (!type) return undefined;
   const p = pulls(g, type), total = 1 + p.reduce((a, b) => a + b, 0);

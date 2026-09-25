@@ -9,11 +9,12 @@ import type { Agent, PlacedObject } from "./state";
 import { rng } from "./rng";
 import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize, objStaff } from "./geometry";
-import { TICKS_PER_SECOND } from "./clock";
-import { faceTile } from "./wayfinding";
+import { TICKS_PER_BEAT, TICKS_PER_SECOND } from "./clock";
+import { canSee, faceTile } from "./wayfinding";
+import { think } from "./guests";
 import { acceptChance, barPolicy, cutoff, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
 import { OBJECTS } from "../data/objects";
-import { THEFT } from "../data/staff";
+import { ACT_REACH, ACT_SECS, ENTERTAIN, THEFT } from "../data/staff";
 import { firedWorker, greed, inZone, newStaffData, setPace, skillOf, steal } from "./crew";
 
 declare module "./commands" {
@@ -378,9 +379,44 @@ export const staffSystem: System = {
   },
   tick(g) {
     // Guards and visitors (police, paramedics) are run by the incident system (sim/incidents.ts).
-    for (const a of g.state.agents) if (a.role === "janitor" || a.role === "tech" || a.role === "server") staffTick(g, a);
+    for (const a of g.state.agents) {
+      if (a.role === "janitor" || a.role === "tech" || a.role === "server") staffTick(g, a);
+      else if (a.role === "entertainer") entertainerTick(g, a);
+    }
   },
 };
+
+/**
+ * (M11.2, owner) An entertainer walks to where the crowd is (a guest in their zone, picked at random), performs for
+ * a while, then moves on. Every beat of an act, guests in view nearby have fun (it counts toward the visit, like a
+ * show) and get a lift, by how much their crowd enjoys it (data/staff.ts ENTERTAIN).
+ */
+function entertainerTick(g: Game, a: Agent) {
+  if (isWalking(a)) return;
+  const s = g.state, w = s.map.w;
+  if (a.act === "perform") {
+    if (a.timer <= 0) { a.act = "idle"; return; }
+    a.timer--;
+    if ((s.tick + a.id) % TICKS_PER_BEAT) return;
+    const here = a.y * w + a.x, r = rng(s, "entertain"), k = skillOf(g, a);
+    for (const b of s.agents) {
+      const gd = b.g;
+      if (!gd || b.hidden || Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > ACT_REACH || !canSee(g, here, b.y * w + b.x)) continue;
+      const like = (ENTERTAIN[gd.type] ?? 0.5) * k;
+      gd.mem.fun += Math.round(0.5 * like * TICKS_PER_BEAT);
+      gd.buzz = Math.min(20, gd.buzz + 1.2 * like);
+      if (!gd.minor && r.chance(0.02 * like)) think(g, b, like >= 0.8 ? "entertained" : "entertainedMeh");
+    }
+    return;
+  }
+  const r = rng(s, "entertain");
+  const crowd = s.agents.filter((b) => b.g && !b.hidden && b.act !== "leave" && inZone(g, a, b.y * w + b.x));
+  const t = crowd.length ? r.pick(crowd) : null;
+  const spot = t ? nearbyTile(g, "entertain", t.x, t.y, 2, a) : -1;
+  a.timer = r.int(ACT_SECS[0], ACT_SECS[1]) * TICKS_PER_SECOND;
+  if (spot >= 0 && spot !== a.y * w + a.x) go(a, spot, "perform");
+  else a.act = "perform";
+}
 
 /** On the payroll (not a guest, and not a visiting officer or paramedic). */
 export const isStaff = (a: Agent) => a.role in STAFF_ROLES;

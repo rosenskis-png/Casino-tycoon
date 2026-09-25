@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 
 export interface MapState {
   w: number;
@@ -97,7 +97,9 @@ export interface GuestData {
   /** 0 or 1, drawn from the group's makeup (party groups are all men, all women, or mixed). */
   sex: number;
   /** Why they came (M6 adds a meal, a show, the club): they head there first. */
-  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool";
+  intent: "gamble" | "drink" | "dine" | "show" | "club" | "pool" | "golf";
+  /** (M11.2) The visit's to-do list: need bits (sim/guests.ts NEED_BIT) of the places they mean to go before leaving; TODO_EXT once they stayed on for it. */
+  todo: number;
   /** 1 for a returning guest (a "card holder" at card doors until the M9 player's club). */
   card: number;
   /** Smokers (M6): 1, with the urge building 0-100 (satisfied in a smoking room or outdoors). */
@@ -332,9 +334,11 @@ export type Activity =
   // M6: eating, at a show (seated, waiting or watching), dancing, having a smoke.
   | "dine" | "show" | "dance" | "smoke"
   // M6.5: at the pool (swimming or on a lounger), sitting in a garden.
-  | "swim" | "rest"
+  | "swim" | "rest" | "golf"
   // M7: a dealer at their table; a guest watching a craps table.
-  | "deal" | "look";
+  | "deal" | "look"
+  // M11.2: an entertainer performing.
+  | "perform";
 
 /** (M9) A worker's hidden knack and honesty, morale, today's workload, and patrol zone (docs/spec/staff.md). */
 export interface StaffData {
@@ -352,7 +356,7 @@ export interface StaffData {
 export interface Agent {
   id: number;
   /** Guests, staff (data/staff.ts), and visitors from outside: police officers and paramedics (M4). */
-  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector" | "escort";
+  role: "guest" | "janitor" | "tech" | "server" | "guard" | "officer" | "medic" | "operator" | "enforcer" | "dealer" | "pitboss" | "inspector" | "escort" | "entertainer";
   /** Tile the agent is leaving and tile it is entering; progress t of steps ticks. */
   x: number; y: number;
   nx: number; ny: number;
@@ -537,7 +541,12 @@ export interface GameState {
   /** (M8.6) A slot maker's offer for one of your designs, waiting for an answer; the casino's slot records. */
   offer: SaleOffer | null;
   records: SlotRecords;
+  /** (M11.2) What each crowd is saying, for the Guests tab's survey (halved each month). */
+  survey: Record<string, SurveyRow>;
 }
+
+/** (M11.2) One crowd's survey: visits and their scores, thoughts had, and themes enjoyed or disliked (by theme id; "none" for bad theming with no theme). */
+export interface SurveyRow { n: number; score: number; th: Record<string, number>; like: Record<string, number>; dislike: Record<string, number> }
 
 /** (M8.6) A maker's offer (docs/spec/designer.md "Selling a design"): one-time cash, your share of the edge, the royalty. */
 export interface SaleOffer { id: string; maker: string; cash: number; share: number; roy: number; until: number; s: number }

@@ -47,6 +47,7 @@ export const RESEARCH: Record<string, ResearchDef> = Object.fromEntries([
   R({ id: "fastcert", name: "Fast-track certification", cat: "games", cost: 1250, desc: "Your designs are certified in 3 days for $375." }),
   R({ id: "restaurant", name: "Restaurant", cat: "amenities", cost: 1500, objects: ["restaurant", "patiorestaurant"], desc: "Meals indoors and out." }),
   R({ id: "shows", name: "Show lounge", cat: "amenities", cost: 2500, needs: ["restaurant"], objects: ["showlounge"], desc: "Scheduled shows that draw a crowd." }),
+  R({ id: "minigolf", name: "Mini golf", cat: "amenities", cost: 1000, objects: ["minigolf"], desc: "Putting greens round a windmill. Families love it." }),
   R({ id: "club", name: "Nightclub", cat: "amenities", cost: 2500, objects: ["club"], desc: "Dancing and a cover charge." }),
   R({ id: "outdoors", name: "Outdoors", cat: "amenities", cost: 3000, objects: ["pool", "garden", "patiobar"], desc: "A pool, a garden and a patio bar." }),
   R({ id: "th_vegas", name: "Old Vegas themes", cat: "themes", cost: 1500, themes: ["ratpack", "atomic", "goldrush"], desc: "Rat Pack Lounge, Neon Atomic, Gold Rush." }),

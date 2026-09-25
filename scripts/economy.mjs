@@ -1,6 +1,6 @@
 // Tutorial economy report (M11.2): plays The Lucky Horseshoe headless under scripted strategies and prints cash,
 // worth, the monthly books, guests and reputation every 6 months, over several seeds. "idle" does nothing,
-// "janitor" only hires janitors, "good" fixes what the tutorial is about (janitors, a guard and moderate rules,
+// "janitor" only hires janitors, "big" spends freely on everything, "good" fixes what the tutorial is about (janitors, a guard and moderate rules,
 // no free strong drinks, the broken theming out, Medieval decor, a restaurant, a family campaign, a show lounge
 // once researched). Doing nothing must never win; "good" should win before the deadline. For balancing, not a check.
 // Usage: node scripts/economy.mjs [strategy] [months] [seeds]
@@ -11,6 +11,24 @@ const P = (kind, x, y, extra = {}) => ({ type: "place", kind, x, y, rot: 0, ...e
 const plan = {
   idle: [],
   janitor: [[0, (g) => [{ type: "hire", role: "janitor" }, { type: "hire", role: "janitor" }]]],
+  // Spends freely, as a player who fixes everything and themes the whole floor would (M11.2 owner's playtest).
+  big: [
+    [0, (g) => [
+      { type: "hire", role: "janitor" }, { type: "hire", role: "janitor" }, { type: "hire", role: "janitor" }, { type: "hire", role: "guard" }, { type: "hire", role: "guard" },
+      { type: "setRule", cat: "intox", level: 2 }, { type: "setRule", cat: "disorder", level: 3 },
+      ...g.state.objects.filter((o) => o.kind === "bar").map((o) => ({ type: "setBar", id: o.id, comp: 0, strength: 1 })),
+      ...g.state.objects.filter((o) => sim.OBJECTS[o.kind].scenarioOnly).map((o) => ({ type: "remove", id: o.id })),
+      { type: "setFunding", amount: 1000 }, { type: "setProject", id: "shows" },
+    ]],
+    [2, () => [P("med_banner", 21, 7), P("med_banner", 21, 10), P("med_shield", 22, 14), P("med_armor", 7, 9), P("med_armor", 34, 9), P("med_brazier", 21, 17), P("med_shield", 7, 18), P("med_banner", 38, 6),
+      P("med_armor", 7, 12), P("med_brazier", 34, 13), P("med_shield", 10, 6), P("med_banner", 33, 6), P("rome_bust", 44, 12), P("rome_urn", 38, 13), P("rome_column", 45, 6), P("rome_standard", 41, 6),
+      P("bin", 22, 12), P("bin", 26, 19), P("bin", 9, 25), P("plant", 34, 16), P("plant", 20, 28)]],
+    [10, () => [P("restaurant", 30, 20, { w: 6, h: 4 }), { type: "hire", role: "server" }, { type: "hire", role: "entertainer" }]],
+    [15, () => [P("minigolf", 16, 33, { w: 7, h: 5 })]],
+    [30, () => [{ type: "advertise", id: "family", months: 6 }, { type: "advertise", id: "travel", months: 6 }]],
+    [45, () => [P("med_armor", 29, 19), P("med_brazier", 37, 22), P("egypt_cat", 44, 8), P("med_banner", 29, 25), P("med_shield", 36, 26)]],
+    [-1, (g) => sim.researched(g.state, "shows") && !g.state.objects.some((o) => o.kind === "showlounge") ? [P("showlounge", 38, 18, { w: 6, h: 6 }), { type: "setFunding", amount: 0 }] : []],
+  ],
   good: [
     [0, (g) => [
       { type: "hire", role: "janitor" }, { type: "hire", role: "janitor" }, { type: "hire", role: "guard" },
@@ -21,7 +39,7 @@ const plan = {
     ]],
     [3, () => [P("med_banner", 21, 7), P("med_banner", 21, 10), P("med_shield", 22, 14), P("med_armor", 7, 9), P("med_armor", 34, 9), P("med_brazier", 21, 17), P("med_shield", 7, 18), P("med_banner", 38, 6), P("bin", 22, 12), P("bin", 26, 19), P("plant", 34, 16)]],
     [20, () => [P("restaurant", 30, 20, { w: 4, h: 4 }), { type: "hire", role: "server" }]],
-    [60, () => [{ type: "advertise", id: "family", months: 6 }]],
+    [60, () => [{ type: "advertise", id: "family", months: 6 }, P("minigolf", 16, 33, { w: 6, h: 4 }), { type: "hire", role: "entertainer" }]],
     [40, () => [P("med_armor", 29, 19), P("med_brazier", 35, 22), P("egypt_cat", 44, 8), P("rome_bust", 44, 12), P("rome_urn", 38, 13)]],
     [-1, (g) => sim.researched(g.state, "shows") && !g.state.objects.some((o) => o.kind === "showlounge") ? [P("showlounge", 38, 18, { w: 5, h: 5 }), { type: "setFunding", amount: 0 }] : []],
   ],

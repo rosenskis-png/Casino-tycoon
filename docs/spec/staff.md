@@ -1,5 +1,13 @@
 # Staff depth (M9)
 
+> **M11.2 (owner's playtest):** wages and upkeep halved (janitor $35, tech $55, server $45, security $60,
+> operator $60, pit boss $70, entertainer $45). Security absorbs the enforcer's job (docs/spec/cheats.md).
+> **Entertainer** (new): walks to where the crowd is (a guest in their zone, at random), performs 30–45 s, moves
+> on. Each beat of an act, guests in view within 5 tiles have fun (0.5 × taste × a beat of fun time, which counts
+> toward the visit like a show) and a lift (buzz +1.2 × taste); taste by crowd (`ENTERTAIN`): families 1.5,
+> tourists 1.2, party 1, conventioneers 0.8, retirees 0.7, locals 0.6, high rollers 0.2; skill scales it. Can be
+> kept to a room. A bright jacket, a bow tie and a shock of curls.
+
 `src/sim/crew.ts` (pay, skill, morale, honesty, theft, audits, zones), `src/data/staff.ts` (roles and numbers). Roles and their jobs are in docs/spec/floor.md, incidents.md, cheats.md and tables.md. All numbers are starting values, checked only against sanity flags until M11.
 
 ## Pay and skill

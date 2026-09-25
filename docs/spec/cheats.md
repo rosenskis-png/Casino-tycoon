@@ -1,5 +1,9 @@
 # Cheats, suspicion, enforcement, luck (M5)
 
+> **M11.2 (owner):** enforcers are merged into **Security** (one role, $60/mo): any security staff carry out
+> warnings, bans, beatings and disappearances; with no security at all, a beating or disappearance becomes a
+> ban. Old saves' enforcers become security. Mentions of enforcers below now mean security.
+
 Built in `src/sim/cheats.ts` (hidden tags, cheating spells, getting caught, the suspicion estimate, marking,
 enforcement jobs, consequences and rumors), with the numbers in `src/data/cheats.ts`, cameras and the dumpster
 in `src/data/objects.ts`, operators and enforcers in `src/data/staff.ts`, and the UI in the guest card, the

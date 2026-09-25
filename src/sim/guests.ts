@@ -12,11 +12,11 @@ import { DRAW, ENGAGE, ENV_MOOD, THEME_TASTE, TIME_FLIES } from "../data/psych";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
-import type { Agent, GuestData, Person, PlacedObject } from "./state";
+import type { Agent, GameState, GuestData, Person, PlacedObject, SurveyRow } from "./state";
 import { rng, type Rng } from "./rng";
 import { logNormal, normal, pickIndex, pickKey, range, skewed } from "./dist";
 import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
-import { SIGHT, canSee, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
+import { SIGHT, canSee, doorLeg, explore, faceTile, knowsExit, knowsRoute, remember, signLeg } from "./wayfinding";
 import { betOf, isGame, isTable, machineModel, minRoundOf, roundTicks } from "./gaming";
 import { canSit, tableAppeal, tableOpen, limitsNow, tableWant } from "./tables";
 import { TABLE_GAMES, rulesScore } from "../data/tables";
@@ -27,7 +27,7 @@ import { tagGuest, guestName, hash01 } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
-import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult } from "./amenities";
+import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult, tierOf } from "./amenities";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
@@ -72,14 +72,25 @@ const WAIT_LONG = 120;
 const GROUP_PULL = 0.2;
 /** Intoxication worn off per real minute on the floor. */
 const SOBER_PER_MIN = 0.02;
-type Need = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden";
-const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8, hunger: 16, show: 32, club: 64, pool: 256, garden: 512 };
+type Need = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden" | "golf";
+const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8, hunger: 16, show: 32, club: 64, pool: 256, garden: 512, golf: 1024 };
+/** (M11.2) The visit's to-do list: places a guest means to go before leaving, in the order they try them. */
+const TODO: Need[] = ["show", "golf", "pool", "club", "hunger"];
+/** Set once a guest stayed on past their time to finish their list (once a visit). */
+const TODO_EXT = 1 << 14;
+/** A wish that isn't why they came waits until this share of the visit has gone. */
+const TODO_LATER = 0.25;
+/** Seconds a guest stays on past their time to finish their list. */
+const TODO_STAY = 120;
+/** (M11.2) A mini golf round guests call fair (dollars; a finer course takes more). */
+const GOLF_FAIR = 10;
 const WHERE: Record<Need, string> = {
-  thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm", hunger: "whereFood", show: "whereShow", club: "whereClub", pool: "wherePool", garden: "whereSit",
+  thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm", hunger: "whereFood", show: "whereShow", club: "whereClub", pool: "wherePool", garden: "whereSit", golf: "whereGolf",
 };
-const ACT_OF: Record<Need, Agent["act"]> = { thirst: "drink", bladder: "restroom", cage: "cage", atm: "cage", hunger: "dine", show: "show", club: "dance", pool: "swim", garden: "rest" };
+const ACT_OF: Record<Need, Agent["act"]> = { thirst: "drink", bladder: "restroom", cage: "cage", atm: "cage", hunger: "dine", show: "show", club: "dance", pool: "swim", garden: "rest", golf: "golf" };
 /** Why someone came → what serves it. */
-const INTENT_NEED: Record<string, Need> = { dine: "hunger", show: "show", club: "club", pool: "pool" };
+const INTENT_NEED: Record<string, Need> = { dine: "hunger", show: "show", club: "club", pool: "pool", golf: "golf" };
+const COME_FOR: Partial<Record<Need, "dine" | "show" | "club" | "pool" | "golf">> = { hunger: "dine", show: "show", club: "club", pool: "pool", golf: "golf" };
 /** Smoke: how smokers and everyone else take it (penalty only; clean air isn't remarked on). */
 const SMOKE_PREF = { smoker: { tol: 4, w: 0.1 }, other: { tol: 0.8, w: 0.8 } };
 /** Smokers' urge per second (100 = must smoke; every 3-6 minutes) and seconds a smoke takes. */
@@ -278,8 +289,24 @@ export function think(g: Game, a: Agent, id: string) {
   if (gd.recent.length > 5) gd.recent.shift();
   const t = g.state.thoughts[0];
   t[id] = (t[id] ?? 0) + 1;
+  if (!gd.minor) surveyThought(g, a, id);
   // (M8.5) A thought had at a game counts toward what guests think of that game.
   if (a.act === "play" && a.target >= 0) noteThought(g.state, gameKey(g.objById.get(a.target)), id);
+}
+
+/** (M11.2) The survey row for a crowd. */
+export function surveyRow(s: GameState, type: string): SurveyRow {
+  return (s.survey[type] ??= { n: 0, score: 0, th: {}, like: {}, dislike: {} });
+}
+
+/** (M11.2) A thought goes into the crowd's survey; theming thoughts note the theme where they were. */
+function surveyThought(g: Game, a: Agent, id: string) {
+  const row = surveyRow(g.state, a.g!.type);
+  row.th[id] = (row.th[id] ?? 0) + 1;
+  if (id !== "goodTheme" && id !== "badTheme") return;
+  const d = g.fields.themes.domAt(a.y * g.state.map.w + a.x), k = d >= 0 ? THEME_IDS[d] : "none";
+  const m = id === "goodTheme" ? row.like : row.dislike;
+  m[k] = (m[k] ?? 0) + 1;
 }
 
 const net = (gd: GuestData) => gd.mem.won - gd.mem.wagered;
@@ -342,7 +369,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   const x = at % w, y = (at - x) / w;
   const quit = pickKey(r, type.play.quit);
   const gd: GuestData = {
-    type: typeId, pid: person?.id ?? -1, group: 0, lead: leader ? 0 : 1, sex, intent: came, card,
+    type: typeId, pid: person?.id ?? -1, group: 0, lead: leader ? 0 : 1, sex, intent: came, card, todo: lead ? lead.todo & ~TODO_EXT : 0,
     smoker: 0, urge: 0, trapAt: -1, esc: 0, paid: 0,
     name: person?.name ?? r.int(0, FIRST_NAMES.length * 26 - 1),
     bankroll, wallet: bankroll, withdrawn: 0,
@@ -395,6 +422,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   if (rs.chance(type.smokers)) { gd.smoker = 1; gd.urge = rs.int(0, 60); }
   // People who came for a meal, a show or the club don't sightsee first.
   if (INTENT_NEED[came]) gd.browse = 0;
+  if (!lead) gd.todo = todoFor(g, type, came);
   s.agents.push(a);
   s.visits.today.arrived++;
   return a;
@@ -439,6 +467,26 @@ export function groupSize(r: Rng, type: GuestTypeDef): number {
   return Math.min(8, 1 + pickIndex(r, type.group));
 }
 
+/**
+ * (M11.2) What a visit means to do besides gambling: whatever drew them, plus now and then another place the
+ * casino has that their type likes (1.5 × its pull, at most 60%). Drawn on its own stream.
+ */
+function todoFor(g: Game, type: GuestTypeDef, came: GuestData["intent"]): number {
+  const r = rng(g.state, "todo");
+  let t = INTENT_NEED[came] ? NEED_BIT[INTENT_NEED[came]] : 0;
+  for (const what of TODO) {
+    const k = COME_FOR[what]!;
+    if (INTENT_NEED[came] !== what && g.has(what) && r.chance(Math.min(0.6, 1.5 * type.comeFor[k]))) t |= NEED_BIT[what];
+  }
+  return t;
+}
+
+/** (M11.2) To-do items still possible here (the place exists, and they haven't given up finding it). */
+function pendingTodo(g: Game, gd: GuestData): Need[] {
+  if (!gd.todo) return [];
+  return TODO.filter((w) => gd.todo & NEED_BIT[w] && g.has(w) && !(gd.gaveUp & NEED_BIT[w]));
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // The visit score and departure.
 
@@ -470,11 +518,17 @@ export function visitScore(a: Agent): VisitScore {
 export function depart(g: Game, a: Agent, vanished = false) {
   const gd = a.g!, s = g.state;
   release(g, a);
+  // (M11.2) Leaving with the list unfinished: whatever they didn't get to do counts against the visit.
+  // (Giving up finding it counts too: the want was real.)
+  if (!gd.minor && !vanished && gd.todo) for (const w of TODO) if (gd.todo & NEED_BIT[w] && g.has(w)) { gd.mem.unmet++; think(g, a, `missed_${w}`); }
   const vs = visitScore(a);
   s.visits.today.left++;
   // Children tag along: the adults' visit is the family's.
   if (gd.minor) { g.bus.emit({ type: "departed", ...departedFields(g, a, vs.score), minor: 1 }); if (!vanished) walkAway(g, a); gone(g).add(a.id); return; }
   s.visits.today.satSum += vs.score;
+  const row = surveyRow(s, gd.type);
+  row.n++;
+  row.score += vs.score;
   if (gd.why === "broke") s.visits.today.broke++;
   if (vs.score >= 0.72) think(g, a, "goodTime");
   else if (vs.score < 0.45) think(g, a, "badTime");
@@ -514,6 +568,14 @@ function wantToLeave(g: Game, a: Agent, why: string) {
   // Anything but urgent: wait for the others, the leader too (M11.2: a leader done or out of time used to take
   // everyone home mid-game). The group goes once everyone is ready, or half have waited WAIT_LONG.
   const waits = !urgent;
+  // (M11.2) Not before they've done what they came to do: they stay on a while for it (once a visit).
+  if (!urgent && why !== "broke" && !(gd.todo & TODO_EXT) && !gd.minor && pendingTodo(g, gd).length) {
+    gd.todo |= TODO_EXT;
+    gd.floorTime = Math.max(gd.floorTime, g.state.tick - gd.mem.arrived + TODO_STAY * TICKS_PER_SECOND);
+    think(g, a, "notYet");
+    a.act = "idle";
+    return;
+  }
   const others = companions(g, a);
   // Children follow the adults: only an adult still playing is worth waiting for.
   if (waits && others.length && others.some((m) => !m.g!.minor && m.g!.wait < 0 && !m.g!.why)) {
@@ -619,7 +681,7 @@ function startLeaving(g: Game, a: Agent, why: string) {
 function lookAround(g: Game, a: Agent) {
   const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
   // Cages are on the ATM list too; look at each object once.
-  for (const what of ["thirst", "bladder", "cage", "atm", "hunger", "show", "club", "pool", "garden"] as Need[])
+  for (const what of ["thirst", "bladder", "cage", "atm", "hunger", "show", "club", "pool", "garden", "golf"] as Need[])
     for (const o of g.amenities[what]) {
       if (what === "atm" && OBJECTS[o.kind].serves === "cage") continue;
       const t = faceTile(g, o);
@@ -640,7 +702,8 @@ function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
   for (const o of g.amenities[what]) {
     const t = faceTile(g, o);
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
-    if (!knowsRoute(gd, o) && (d > SIGHT || !canSee(g, here, t))) continue;
+    // (M11.2) One they saw earlier this visit counts as known: they remember where it was.
+    if (!knowsRoute(gd, o) && !gd.seen.includes(o.id) && (d > SIGHT || !canSee(g, here, t))) continue;
     if (!paths.reachable(here, t)) continue;
     known = true;
     // Priced places (a meal, a show, a club's cover): only if they can pay.
@@ -665,6 +728,8 @@ function search(g: Game, a: Agent, r: Rng, goal: string, targets: number[], towa
   gd.lost++;
   if (gd.lost >= 2) gd.annoy += 2;
   let dest = signLeg(g, a, r, targets);
+  // (M11.2) A door onto the room it's in reads like a sign.
+  if (dest < 0) dest = doorLeg(g, a, targets);
   if (dest >= 0 && gd.lost >= 2 && r.chance(0.3)) think(g, a, "signHelped");
   if (dest < 0) dest = explore(g, a, r, (i) => fitAt(g, type, i, gd).score, toward, det);
   if (dest < 0) return false;
@@ -991,7 +1056,8 @@ function tryAmenity(g: Game, a: Agent, r: Rng, what: Need, det: number): boolean
   const use = goUse(g, a, what);
   if (use === "ok") return true;
   if (use === "unknown") return seekNeed(g, a, r, what, det);
-  think(g, a, "line");
+  // (M11.2) Which place was full, so the survey can say what there's too little of.
+  think(g, a, what === "hunger" ? "foodLine" : what === "show" ? "showFull" : what === "golf" ? "golfLine" : "line");
   gd.annoy += 2;
   gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND;
   return false;
@@ -1046,11 +1112,17 @@ function goSmoke(g: Game, a: Agent): boolean {
  */
 function amenityFirst(g: Game, a: Agent, r: Rng): boolean {
   const gd = a.g!, n = gd.needs;
-  const want = INTENT_NEED[gd.intent];
-  if (want) {
-    if (tryAmenity(g, a, r, want, 0.9)) return true;
-    // Couldn't (or it's gone): the trip turns into a casino visit.
-    gd.intent = "gamble";
+  // (M11.2) The to-do list: what drew them first, the rest once they've settled in. A full place or a line keeps
+  // the item for later; a place that's gone, or that they gave up finding, comes off the list.
+  const want = INTENT_NEED[gd.intent], since = g.state.tick - gd.mem.arrived;
+  for (const what of want ? [want, ...TODO.filter((w) => w !== want)] : TODO) {
+    const bit = NEED_BIT[what];
+    if (!(gd.todo & bit)) continue;
+    if (!g.has(what)) { gd.todo &= ~bit; continue; }
+    if (gd.gaveUp & bit) continue;
+    if (what !== want && since < TODO_LATER * gd.floorTime) continue;
+    if (what === "hunger" && what !== want && n.hunger < 40) continue;
+    if (tryAmenity(g, a, r, what, what === want ? 0.9 : 0.6)) return true;
   }
   if (n.hunger >= 70 && tryAmenity(g, a, r, "hunger", n.hunger / 50)) return true;
   if (n.fatigue >= 80 && tryAmenity(g, a, r, "show", 0.6)) return true;
@@ -1070,8 +1142,11 @@ function amenityFirst(g: Game, a: Agent, r: Rng): boolean {
 /** Finished a meal, a show or dancing: whatever they came for is done; some go on to gamble. */
 function doneWith(g: Game, a: Agent, r: Rng) {
   const gd = a.g!;
-  if (INTENT_NEED[gd.intent]) { gd.intent = "gamble"; if (r.chance(0.3)) think(g, a, "mightAsWell"); }
   const o = g.objById.get(a.target);
+  // (M11.2) Off the list.
+  const serves = o && OBJECTS[o.kind].serves;
+  if (serves && serves in NEED_BIT) gd.todo &= ~NEED_BIT[serves as Need];
+  if (INTENT_NEED[gd.intent] && !pendingTodo(g, gd).length) { gd.intent = "gamble"; if (r.chance(0.3)) think(g, a, "mightAsWell"); }
   if (o) o.st.uses++;
   release(g, a);
   a.act = "idle";
@@ -1096,7 +1171,7 @@ function decide(g: Game, a: Agent) {
     } else {
       const use = goUse(g, a, "bladder");
       if (use === "ok") return;
-      if (use === "full") { think(g, a, "line"); gd.annoy += 3; return wander(g, a, r); }
+      if (use === "full") { think(g, a, "restroomLine"); gd.annoy += 3; return wander(g, a, r); }
       // The more urgent, the more single-minded the search.
       if (seekNeed(g, a, r, "bladder", n.bladder / 40)) return;
     }
@@ -1113,7 +1188,7 @@ function decide(g: Game, a: Agent) {
     if (use === "ok") return;
     if (use === "unknown" && seekNeed(g, a, r, "thirst", 0.8)) return;
     if (use === "none") { if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; } gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
-    else if (use === "full") { think(g, a, "line"); gd.annoy += 2; gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
+    else if (use === "full") { think(g, a, "barLine"); gd.annoy += 2; gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
     else gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND;
     gd.intent = "gamble";
   }
@@ -1467,7 +1542,7 @@ function guestTick(g: Game, a: Agent) {
         if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "food");
         post(g, "foodCost", -FOOD_COST);
-        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steepFood"); gd.annoy += 4; }
         a.timer = useTicks(g, a, r);
         return;
       }
@@ -1476,7 +1551,9 @@ function guestTick(g: Game, a: Agent) {
       gd.needs.hunger = 0;
       gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 20);
       gd.floorTime += 2 * TICKS_PER_MIN;
-      if (r.chance(0.4)) think(g, a, "goodMeal");
+      // (M11.2) Crowds used to finer places notice a plain one (a snack bar); the rest just enjoy it.
+      if ((GUEST_TYPES[gd.type].prefs.PRS?.ideal ?? 0) >= 5 && tierOf(g, o) === 0 && r.chance(0.5)) think(g, a, "plainFood");
+      else if (r.chance(0.4)) think(g, a, "goodMeal");
       if (r.chance(0.08)) litter(g, a.y * g.state.map.w + a.x, a);
       return doneWith(g, a, r);
     }
@@ -1491,7 +1568,7 @@ function guestTick(g: Game, a: Agent) {
           const free = useComp(gd, "show"), price = free ? 0 : priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "shows");
-          if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+          if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steepShow"); gd.annoy += 4; }
           a.timer = 2;
         }
         gd.mem.fun++;
@@ -1561,6 +1638,26 @@ function guestTick(g: Game, a: Agent) {
       if (--a.timer > 0) return;
       gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 40);
       if (r.chance(0.4)) think(g, a, "garden");
+      return doneWith(g, a, r);
+    }
+    case "golf": {
+      // (M11.2) A round of mini golf: the ticket at the first hole, fun the whole way round; kids love it.
+      const o = g.objById.get(a.target);
+      if (a.seat < 0 || !o) { release(g, a); a.act = "idle"; return; }
+      const r = rng(g.state, "guests");
+      if (a.timer === 0) {
+        const price = priceFor(o);
+        if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.golf; release(g, a); a.act = "idle"; return; }
+        pay(g, gd, price, "golfFees");
+        if (price > GOLF_FAIR * priceTolerance(g, o)) { think(g, a, "steepGolf"); gd.annoy += 4; }
+        a.timer = useTicks(g, a, r);
+        return;
+      }
+      gd.mem.fun++;
+      if (--a.timer > 0) return;
+      gd.buzz = Math.min(20, gd.buzz + 6);
+      gd.needs.fatigue = Math.min(100, gd.needs.fatigue + 4);
+      if (r.chance(0.5)) think(g, a, "golfed");
       return doneWith(g, a, r);
     }
     case "look": {

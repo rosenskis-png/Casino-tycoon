@@ -473,6 +473,9 @@ export class Renderer {
       else if (k === "hedge") put(["obj:hedge"], c.x, c.y, c.y + 0.99);
       else if (k === "flowers") put(["obj:flowers"], c.x, c.y, c.y + 0.5);
       else if (k === "path") put(["obj:path"], c.x, c.y, c.y - 0.46);
+      else if (k === "green") put(["obj:green"], c.x, c.y, c.y - 0.46);
+      else if (k === "hole") { put(["obj:green"], c.x, c.y, c.y - 0.46); put(["obj:golfhole"], c.x, c.y, c.y - 0.3); }
+      else if (k === "windmill") { put(["obj:green"], c.x, c.y, c.y - 0.46); put(["obj:windmill"], c.x, c.y, c.y + 0.99); }
       else if (k === "bench") { put(["obj:path"], c.x, c.y, c.y - 0.46); put(["obj:bench"], c.x, c.y, c.y - 0.05); }
       else if (k === "stage") {
         put(["obj:stage"], c.x, c.y, c.y - 0.45);
@@ -907,7 +910,7 @@ export class Renderer {
       const set = a.role === "guest" ? (a.g!.vip ? "whale" : a.g!.minor ? "kid" : a.g!.type) : a.role;
       const sex = a.g ? a.g.sex & 1 : (a.look >> 2) & 1;
       let dir: string, pose: string;
-      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest" || a.act === "deal");
+      const atSeat = !moving && a.seat >= 0 && (a.act === "play" || a.act === "drink" || a.act === "cage" || a.act === "dine" || a.act === "show" || a.act === "dance" || a.act === "swim" || a.act === "rest" || a.act === "golf" || a.act === "deal");
       const swimming = a.act === "swim" && atSeat && !!so0(a) && objSeats(so0(a)!)[a.seat]?.kind === "swim";
       const so = atSeat ? g.objById.get(a.target) : undefined;
       const seatKind = so ? objSeats(so)[a.seat]?.kind : undefined;

@@ -40,3 +40,9 @@ Walking guests show what they're searching for ("Looking for a restroom", "Looki
 
 ## Not yet
 Crowds and jackpot cheers as things that pull guests, regulars walking to things that were removed, A machine search considers at most 400 machines, and a first-timer only searches the nearest sector ring (sight never reaches farther). With the guests.md cadence change, the 5,000-guest Big Floor headless tick is ~1.3–1.4 ms on average, with a worst tick of ~4 ms (it was ~2.5 ms and ~13 ms).
+
+## Doors as signs (M11.2, owner)
+A door in view onto a room that holds what a guest is looking for (not the room they're in) works like a sign:
+they head through it (`doorLeg` in `src/sim/wayfinding.ts`, tried when no sign helps). Door tiles and the rooms
+either side are a runtime cache, rebuilt when the rooms change. An amenity a guest saw earlier in the visit counts
+as known (they walk straight back to it).

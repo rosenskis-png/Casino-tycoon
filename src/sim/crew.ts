@@ -55,7 +55,7 @@ export const honest = (a: Agent) => !a.st?.crook;
 const crookShare = (pay: number) => STAFF.crook / Math.pow(pay, STAFF.crookPow);
 
 /** Walking pace by role (ticks per tile), before skill. */
-const BASE_STEPS: Record<string, number> = { server: 6.5, guard: 6.5, enforcer: 6.5 };
+const BASE_STEPS: Record<string, number> = { server: 6.5, guard: 6.5 };
 export function setPace(g: Game, a: Agent) {
   a.steps = Math.max(4, Math.round((BASE_STEPS[a.role] ?? 10) / Math.sqrt(skillOf(g, a))));
 }
@@ -164,8 +164,8 @@ function working(a: Agent, camShare: number): boolean {
     case "janitor": return a.act === "clean" || a.target >= 0;
     case "tech": return a.act === "repair" || a.target >= 0;
     case "server": return !!a.tray?.length || a.act === "offer" || a.act === "fetch" || a.act === "serve";
-    case "guard": return a.act === "respond" || a.act === "enforce" || a.target >= 0;
-    case "enforcer": return a.act === "enforce" || a.act === "carry";
+    case "guard": return a.act === "respond" || a.act === "enforce" || a.act === "carry" || a.target >= 0;
+    case "entertainer": return a.act === "perform";
     case "operator": return a.act === "watch" && camShare < 1;
     // Dealing is the whole job: a busy table doesn't wear a dealer down.
     default: return false;

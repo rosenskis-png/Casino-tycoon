@@ -65,6 +65,8 @@ export interface ScenarioDef {
   /** (M8) Legal minimum payback for slots (default 0.8, docs/spec/designer.md §10). */
   minRtp?: number;
   whales?: boolean;
+  /** (M11) Chance a police officer or gaming inspector takes a bribe (0 or missing: nobody can be bribed here). */
+  bribe?: number;
   /** (M9.5) Scheduled events allowed (default: all that fit its population); research projects done at the start. */
   events?: string[];
   /** (M9.6) The hotel elevator: a floor tile against a wall (an entrance for hotel guests and escorts). */
@@ -204,7 +206,7 @@ function testFloor(): ScenarioDef {
     { kind: "restroom", x: 13, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 6, rot: 0 }, { kind: "restroom", x: 7, y: 23, rot: 0 }, { kind: "restroom", x: 44, y: 12, rot: 0 }, { kind: "restroom", x: 31, y: 6, rot: 0 }, { kind: "restroom", x: 33, y: 6, rot: 0 }, { kind: "restroom", x: 25, y: 29, rot: 2 },
     { kind: "cage", x: 14, y: 29, rot: 0 }, { kind: "atm", x: 36, y: 29, rot: 0 },
     { kind: "neon", x: 8, y: 26, rot: 0 }, { kind: "fountain", x: 44, y: 20, rot: 0 },
-    { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 41, y: 30, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
+    { kind: "bin", x: 23, y: 6, rot: 0 }, { kind: "bin", x: 17, y: 13, rot: 0 }, { kind: "bin", x: 31, y: 15, rot: 0 }, { kind: "bin", x: 39, y: 22, rot: 0 }, { kind: "plant", x: 7, y: 29, rot: 0 }, { kind: "plant", x: 41, y: 30, rot: 0 }, { kind: "plant", x: 33, y: 14, rot: 0 }, { kind: "plant", x: 47, y: 6, rot: 0 },
     { kind: "sign", x: 18, y: 27, rot: 0 }, { kind: "sign", x: 29, y: 16, rot: 0 }, { kind: "sign", x: 43, y: 23, rot: 0 },
     { kind: "sign", x: 7, y: 17, rot: 0 }, { kind: "sign", x: 23, y: 11, rot: 0 }, { kind: "sign", x: 46, y: 11, rot: 0 },
     // Cameras over the slot banks and the back room, watched from the office; a dumpster out back.
@@ -215,7 +217,7 @@ function testFloor(): ScenarioDef {
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
     elevator: [20, 5],
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1, dealer: 11, pitboss: 1 },
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 2, operator: 1, enforcer: 1, pitboss: 1 },
     // The tutorial lot, widened for the east wing.
     w: 80, grounds: [{ x: 2, y: 2, w: 76, h: 40 }], buildings: [...LOT.buildings, { x: 49, y: 4, w: 25, h: 28 }],
     sidewalks: [{ from: [0, 42], to: [79, 42] }],
@@ -233,7 +235,7 @@ function testFloor(): ScenarioDef {
     ],
     footfall: 0.3, street: { tourist: 1, party: 1, local: 0.4, retiree: 0.3, family: 0.4, conventioneer: 0.2 },
     market: { local: { size: 90, regulars: 0.3 }, retiree: { size: 60, regulars: 0.3 }, highroller: { size: 25, regulars: 0.3 } },
-    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1, family: 1, conventioneer: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4, tax: 0.08, whales: true, research: "build",
+    population: { local: 1, retiree: 1, tourist: 1, party: 1, highroller: 1, family: 1, conventioneer: 1 }, rep: {}, arrivals: 0.3, maxGuests: 500, goals: null, tools: 4, tax: 0.08, whales: true, research: "build", bribe: 0.6,
   };
 }
 
@@ -288,7 +290,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     arrivals: 0.45,
     maxGuests: 400,
     goals: null,
-    tools: 4, tax: 0.08, whales: true, research: "build",
+    tools: 4, tax: 0.08, whales: true, research: "build", bribe: 0.6,
   },
   bigfloor: bigFloor(),
   testfloor: testFloor(),

@@ -274,7 +274,7 @@ const commands: CommandTable<"designSave" | "designCertify" | "designRun" | "des
       const s = g.state, fast = researched(s, "fastcert");
       post(g, "lab", -(fast ? CERT.fastFee : CERT.fee));
       s.designs[c.id].cert = s.tick + (fast ? CERT.fastDays : CERT.days) * TICKS_PER_DAY;
-      news(g, "info", `${s.designs[c.id].d.name} went to the regulator's lab: certified in ${fast ? CERT.fastDays : CERT.days} days.`);
+      news(g, "info", `${s.designs[c.id].d.name} went to the regulator's lab: certified in ${fast ? CERT.fastDays : CERT.days} days.`, { tab: "slots" });
     },
   },
   designRun: {
@@ -323,7 +323,7 @@ export const designSystem: System = {
     const s = g.state;
     for (const [id, rec] of Object.entries(s.designs)) {
       // The lab's verdict arrives.
-      if (rec.cert > s.tick - TICKS_PER_DAY && rec.cert <= s.tick) news(g, "good", `${rec.d.name} is certified. Place it from the Build menu.`);
+      if (rec.cert > s.tick - TICKS_PER_DAY && rec.cert <= s.tick) news(g, "good", `${rec.d.name} is certified. Place it from the Build menu.`, { tab: "slots" });
       void id;
     }
     for (const st of Object.values(s.dstats)) { st.rWin *= 0.97; st.rDays *= 0.97; }

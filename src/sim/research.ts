@@ -91,6 +91,6 @@ export const researchSystem: System = {
     r.done.push(p);
     delete r.points[p];
     r.project = "";
-    news(g, "good", `Research done: ${def.name}. ${def.desc} Pick the next project in the Research tab.`);
+    news(g, "good", `Research done: ${def.name}. ${def.desc} Pick the next project in the Research tab.`, { tab: "research" });
   },
 };

@@ -26,13 +26,19 @@ export const INSURE_LOAD = 1.3;
 
 /** The gaming regulator (docs/spec/money.md): costs to standing, the ladder's money, and the inspector's schedule. */
 export const REG = {
-  recover: 0.2,
+  recover: 0.5,
   unpaid: 8, unpaidBig: 15, unpaidBigAt: 1000, unpaidSmall: 2, unpaidSmallAt: 100,
   auditUnpaid: 5, weakControls: 5, weakShare: 0.03, clean: 3,
   skimFound: 20, skimFoundPerShare: 40, skimBase: 0.25,
   fine: 1000, suspendFine: 3000, suspendDays: 3, suspendEvery: 30, revokeDays: 30,
   visitDays: [45, 75] as [number, number], auditEvery: 10, visitSecs: 120,
 };
+/**
+ * (M11) Bribes, where a scenario allows them (docs/spec/money.md): the price for an officer and an inspector, what a
+ * refusal costs (standing, and a fine of this multiple of the bribe), and the monthly chance per recent bribe that
+ * it comes out (a scandal: standing with both authorities and reputation), with bribes fading from memory.
+ */
+export const BRIBE = { officer: 500, inspector: 2000, refused: 20, refusedFineX: 2, expose: 0.04, exposed: 10, fade: 0.85 };
 export const REG_LADDER_NAMES = ["Good standing", "Warned", "Fined", "Under audit", "Suspended"];
 
 /** Whales (FOUNDATIONS §17): how often, how rich, what they want. */

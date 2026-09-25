@@ -1,11 +1,12 @@
 // Event bus: systems emit plain events during a step; consumers (ticker, audio, fx, stats, renderer caches)
 // drain them afterwards. Events are transient and never saved.
+import type { NewsRef } from "./state";
 export type SimEvent =
   | { type: "tilesChanged"; tiles: number[] }
   | { type: "objectPlaced"; id: number; kind: string; x: number; y: number }
   | { type: "objectRemoved"; id: number; x: number; y: number }
   | { type: "roomsChanged" }
-  | { type: "news"; level: NewsLevel; text: string }
+  | { type: "news"; level: NewsLevel; text: string; ref?: NewsRef }
   | { type: "sound"; id: string; x?: number; y?: number }
   | { type: "day"; day: number }
   | { type: "month"; month: number; year: number }

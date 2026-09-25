@@ -38,12 +38,13 @@ const OFFER_REACH = 6;
 /** A guest isn't offered again for this long after saying yes or no. */
 const OFFER_AGAIN = 30 * TICKS_PER_SECOND;
 
-export function hireStaff(g: Game, role: string): Agent | null {
+/** A new worker, walking in from the street (or, `at`, starting on that tile: a dealer who comes with a table). */
+export function hireStaff(g: Game, role: string, spot = -1): Agent | null {
   const s = g.state;
   const ents = s.map.entrances.filter((e) => g.walkable(e) && e !== s.map.lift);
-  if (!ents.length || !STAFF_ROLES[role]) return null;
+  if ((!ents.length && spot < 0) || !STAFF_ROLES[role]) return null;
   const r = rng(s, "staff");
-  const at = r.pick(ents), w = s.map.w;
+  const at = spot >= 0 ? spot : r.pick(ents), w = s.map.w;
   const x = at % w, y = (at - x) / w;
   const a: Agent = {
     // Drink servers move briskly.
@@ -65,17 +66,57 @@ function claimed(g: Game, role: string): Set<number> {
   return out;
 }
 
-/** Patrol: a walk to somewhere nearby, sometimes across the floor. */
+// (M11) Staff of the same job drift apart: where a worker patrols to is picked from a few candidates, the one
+// least crowded by colleagues (where they stand, or where they're walking to). A soft push, not a rule.
+const REPEL_TILES = 6;
+const REPEL_TRIES = 4;
+
+/** How crowded a tile is with `a`'s colleagues (same job): 0 for nobody near, about 1 per colleague on it. */
+export function colleaguesNear(g: Game, a: Agent, tile: number): number {
+  const w = g.state.map.w, x = tile % w, y = (tile - x) / w;
+  let v = 0;
+  for (const b of g.state.agents) {
+    if (b === a || b.role !== a.role) continue;
+    const at = isWalking(b) ? b.dest : b.y * w + b.x, bx = at % w, by = (at - bx) / w;
+    const d = Math.abs(bx - x) + Math.abs(by - y);
+    if (d < REPEL_TILES * 3) v += Math.exp(-d / REPEL_TILES);
+  }
+  return v;
+}
+
+/** A tile to walk to within `r` of (x, y): of a few tries, the one with the fewest colleagues around it (-1: none). */
+export function spreadTile(g: Game, a: Agent, stream: string, x: number, y: number, r: number, ok: (t: number) => boolean = () => true): number {
+  let best = -1, bv = Infinity;
+  for (let k = 0; k < REPEL_TRIES; k++) {
+    const t = nearbyTile(g, stream, x, y, r, a);
+    if (t < 0 || !ok(t)) continue;
+    const v = colleaguesNear(g, a, t);
+    if (v < bv) { bv = v; best = t; }
+  }
+  return best;
+}
+
+/** Of a few wander points, the one with the fewest colleagues around it. */
+export function spreadPoint(g: Game, a: Agent, stream: string): number {
+  const pts = g.state.wanderPoints, r = rng(g.state, stream);
+  let best = -1, bv = Infinity;
+  for (let k = 0; k < 3 && pts.length; k++) {
+    const t = r.pick(pts), v = colleaguesNear(g, a, t);
+    if (v < bv) { bv = v; best = t; }
+  }
+  return best;
+}
+
+/** Patrol: a walk to somewhere nearby, sometimes across the floor, away from colleagues. */
 function wanderStaff(g: Game, a: Agent) {
   const r = rng(g.state, "staff");
-  const pts = g.state.wanderPoints;
   a.target = -1;
   // M9: a worker kept to a room patrols inside it, and heads back there first.
   const zone = a.st?.zone ?? -1, w = g.state.map.w;
   if (zone >= 0 && !inZone(g, a, a.y * w + a.x)) { if (g.walkable(zone)) go(a, zone, "idle"); return; }
-  const near = r.chance(0.7) || zone >= 0 ? nearbyTile(g, "staff", a.x, a.y, zone >= 0 ? 6 : 12, a) : -1;
-  if (near >= 0 && inZone(g, a, near)) go(a, near, "idle");
-  else if (pts.length && zone < 0) go(a, r.pick(pts), "idle");
+  const near = r.chance(0.7) || zone >= 0 ? spreadTile(g, a, "staff", a.x, a.y, zone >= 0 ? 6 : 12, (t) => inZone(g, a, t)) : -1;
+  if (near >= 0) go(a, near, "idle");
+  else if (zone < 0) { const p = spreadPoint(g, a, "staff"); if (p >= 0) go(a, p, "idle"); }
 }
 
 function janitorFindWork(g: Game, a: Agent) {
@@ -83,11 +124,17 @@ function janitorFindWork(g: Game, a: Agent) {
   const dirt = g.state.dirt;
   const taken = claimed(g, "janitor");
   const here = a.y * w + a.x;
-  let best = -1, bs = -Infinity;
+  // (M11) The nearest mess first (a sweep clears the tiles around it); a bigger pile only breaks a near tie, and
+  // mess a free janitor is closer to is left to them.
+  const others = g.state.agents.filter((b) => b !== a && b.role === "janitor" && b.target < 0);
+  let best = -1, bs = Infinity;
   for (let i = 0; i < dirt.length; i++) {
     if (!dirt[i] || taken.has(i) || !g.walkable(i) || !inZone(g, a, i)) continue;
-    const s = dirt[i] * 4 - (Math.abs((i % w) - a.x) + Math.abs(Math.floor(i / w) - a.y)) / 3;
-    if (s > bs) { bs = s; best = i; }
+    const x = i % w, y = (i - x) / w, d = Math.abs(x - a.x) + Math.abs(y - a.y);
+    const s = d - Math.min(dirt[i], 4) * 0.5;
+    if (s >= bs) continue;
+    if (others.some((b) => Math.abs(x - b.x) + Math.abs(y - b.y) + 2 < d && (b.st?.zone ?? -1) < 0)) continue;
+    bs = s; best = i;
   }
   if (best >= 0 && g.pathsFor(a).reachable(here, best)) { a.target = best; go(a, best, "clean"); return; }
   wanderStaff(g, a);
@@ -299,6 +346,7 @@ const commands: CommandTable<"hire" | "fire"> = {
   hire: {
     validate(g, c) {
       if (!STAFF_ROLES[c.role]) return "Unknown job";
+      if (STAFF_ROLES[c.role].builtIn) return "They come with the tables";
       if (g.state.agents.filter(isStaff).length >= MAX_STAFF) return "That's enough staff";
       if (!g.state.map.entrances.some((e) => g.walkable(e))) return "The entrance is blocked";
       return null;

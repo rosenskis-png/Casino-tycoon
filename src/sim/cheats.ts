@@ -262,7 +262,7 @@ function counterBeat(g: Game, a: Agent) {
   gd.mark |= 1;
   const p = gd.pid >= 0 ? person(g, gd.pid) : undefined;
   if (p) p.mark |= 1;
-  news(g, "warn", `Your pit boss thinks ${guestName(gd.name)} is counting cards at ${OBJECTS[o.kind].name}. Marked.`);
+  news(g, "warn", `Your pit boss thinks ${guestName(gd.name)} is counting cards at ${OBJECTS[o.kind].name}. Marked.`, { a: a.id });
 }
 
 /** Caught in the act: certain, on the ticker, the winnings recovered, and the house treatment follows. */
@@ -278,7 +278,7 @@ function caught(g: Game, a: Agent) {
   if (up > 0) { gd.wallet -= up; post(g, "recovered", up); }
   count(s, "_caught");
   g.bus.emit({ type: "sound", id: "caught", x: a.x, y: a.y });
-  news(g, "bad", `Caught cheating: ${guestName(gd.name)}${o ? ` at ${OBJECTS[o.kind].name}` : ""}${up > 0 ? `; ${fmtMoney(up)} recovered` : ""}.`);
+  news(g, "bad", `Caught cheating: ${guestName(gd.name)}${o ? ` at ${OBJECTS[o.kind].name}` : ""}${up > 0 ? `; ${fmtMoney(up)} recovered` : ""}.`, { a: a.id });
   const action = offense > 1 ? s.enf.policy.repeat : s.enf.policy.first;
   order(g, a, action, 1);
 }
@@ -465,7 +465,7 @@ function carryOut(g: Game, job: EnfJob, t: Agent, st: Agent) {
       }
       if (mates.length && r.chance(BEAT_GROUP_CALL)) {
         adjustPolice(g, -BEAT_GROUP_POLICE * heatNow);
-        news(g, "bad", "A guest's friends called the police: they say your staff beat him up.");
+        news(g, "bad", "A guest's friends called the police: they say your staff beat them up.", { tab: "authorities" });
       }
       finish(g, job, t, st);
       return sendHome(g, t, "beaten");
@@ -513,7 +513,7 @@ function witnessed(g: Game, t: Agent, action: EnfAction) {
     bd.annoy = Math.min(30, bd.annoy + def.witness);
     if (r.chance(0.5)) think(g, b, thought);
     if (told < WITNESS_REPORTS && def.tell && r.chance(def.tell * (1 - GUEST_TYPES[bd.type].drama))) {
-      if (!told) news(g, "warn", `A guest told the police what they saw your ${action === "beat" ? "enforcers do to someone" : "enforcers take someone away"}.`);
+      if (!told) news(g, "warn", `A guest told the police what they saw your ${action === "beat" ? "enforcers do to someone" : "enforcers take someone away"}.`, { t: here });
       told++;
       adjustPolice(g, -WITNESS_POLICE * mult);
     }
@@ -716,7 +716,7 @@ export const cheatSystem: System = {
     while (s.enf.missing.length && s.enf.missing[0].at <= s.tick) {
       const m = s.enf.missing.shift()!;
       adjustPolice(g, -MISSING_POLICE * (1 + s.enf.heat / HEAT_SCALE));
-      news(g, "bad", `A group reported their friend ${guestName(m.name)} missing after a night at the casino.`);
+      news(g, "bad", `A group reported their friend ${guestName(m.name)} missing after a night at the casino.`, { tab: "authorities" });
     }
   },
   day(g) {
@@ -727,7 +727,7 @@ export const cheatSystem: System = {
     if (!due.length) return;
     e.rumors = e.rumors.filter((q) => q.at > s.tick);
     for (const q of due) {
-      news(g, "warn", q.text);
+      news(g, "warn", q.text, { tab: "authorities" });
       hitReputation(g, q.type, q.rep);
       if (q.police) adjustPolice(g, -q.police);
     }

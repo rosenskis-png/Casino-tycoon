@@ -9,7 +9,7 @@ import { LIGHT_COLORS } from "../data/designer";
 import { CRAPS_OUTCOMES, TABLE_GAMES } from "../data/tables";
 import { ENF } from "../data/cheats";
 import { SCENARIOS } from "../data/scenarios";
-import { compiledById, designById, meterValue, signDesign, dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
+import { uniformHexes, compiledById, designById, meterValue, signDesign, dims, purposeAt, objCells, objSeats, objSize, objStaff, pedSpot, showPhase, TICKS_PER_SECOND, type Agent, type EnfJob, type Game, type PlacedObject, type SimEvent } from "../sim";
 import { buildAtlas, PAD, type Atlas } from "./atlas";
 import type { Camera } from "./camera";
 
@@ -67,6 +67,8 @@ export class Renderer {
   private game: Game | null = null;
   private unsub: (() => void) | null = null;
   private lightLayer: HTMLCanvasElement | null = null;
+  private uniKey = "";
+  private uni: Record<string, string> = {};
   stats: DrawStats = { agentsDrawn: 0, chunksRedrawn: 0 };
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -90,14 +92,18 @@ export class Renderer {
     if (!g) return;
     if (!force && g.state.tick === this.looksAt) return;
     this.looksAt = g.state.tick;
+    // (M11) Uniform colors are compiled into the atlas too: a change rebuilds it.
+    const uni = uniformHexes(g.state), uk = JSON.stringify(uni);
+    let rebuild = false;
+    if (uk !== this.uniKey) { this.uniKey = uk; this.uni = uni; rebuild = true; }
     const need = new Set(this.wantLooks);
     for (const o of g.state.objects) if (o.design && OBJECTS[o.kind]?.slot) { const d = designById(g.state, o.design); if (d) need.add(lookOf(d)); }
-    let missing = false;
+    let missing = rebuild;
     for (const l of need) if (!this.looks.has(l)) { missing = true; break; }
     if (!missing) return;
     for (const l of this.looks) need.add(l);
     this.looks = need;
-    this.atlas = buildAtlas([...need].sort());
+    this.atlas = buildAtlas([...need].sort(), this.uni);
     this.chunks.clear(); this.farChunks.clear(); this.thumbs.clear();
   }
 
@@ -848,7 +854,9 @@ export class Renderer {
           if (a.g && a.g.drink > 0) at(a.g.dStr > 0 ? "obj:glass" : "obj:soda", 0, 1);
           else if (a.role === "server") at(a.act === "serve" ? "obj:tray:full" : "obj:tray", dir === "left" ? -3 : dir === "up" ? -1 : 0, a.act === "serve" ? -6 : -4);
           else if (a.role === "janitor") at(a.act === "clean" && Math.floor(now / 120) & 1 ? "obj:mop~1" : "obj:mop", dir === "left" ? -2 : 1, -1);
+          if (a.role === "janitor" && a.act === "clean") blit("obj:bucket", px + (dir === "left" ? 7 : -3) * scale, py + 11 * scale);
           else if (a.role === "tech") at("obj:toolbox", 0, 3);
+          else if (a.role === "pitboss") at("obj:clipboard", dir === "left" ? -2 : 0, 0);
           else if (a.role === "guard") at("obj:radio", dir === "left" ? -1 : 0, 1);
           if (a.bag) blit("obj:bag:carry", px + (dir === "left" ? 5 : -1) * scale, py + 4 * scale);
           const act = acting.get(a.id);

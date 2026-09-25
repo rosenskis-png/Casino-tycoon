@@ -242,6 +242,18 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const st of Object.values<any>(s.dstats ?? {})) if (st.machDays > 0) { st.aw = { "*": 1 }; st.nov = 0; }
     return s;
   },
+  // 17 → 18 (M11): the authorities' ladders remember when they last stepped up (long ago), no bribes yet, the inspector
+  // on the floor (if any) hasn't seen anything yet, and every job wears its default uniform. Dealers come with their
+  // tables from now on (the table system adds or lets go of dealers on load; no wages).
+  17: (s) => {
+    s.auth.police.stepAt = -1e9;
+    s.auth.regulator.stepAt = -1e9;
+    s.auth.bribed = 0;
+    s.reg.seen = [];
+    s.reg.paid = 0;
+    s.crew.uniform = {};
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

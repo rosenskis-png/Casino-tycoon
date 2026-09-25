@@ -1,12 +1,12 @@
 // Staff depth (FOUNDATIONS §9, docs/spec/staff.md): pay per role, hidden knack and honesty, skill, morale and
 // quitting, theft by crooked staff (and crooked bartenders and tellers), catching them in the act, the monthly
 // count that shows what went missing, and patrol zones.
-import { PAY_MAX, PAY_MIN, SHRINK_AREAS, SKILL_WORDS, STAFF, STAFF_ROLES, ZONED_ROLES, type ShrinkArea } from "../data/staff";
+import { PAY_MAX, PAY_MIN, SHRINK_AREAS, SKILL_WORDS, STAFF, STAFF_ROLES, UNIFORMS, UNIFORM_COLORS, ZONED_ROLES, type ShrinkArea } from "../data/staff";
 import { OBJECTS } from "../data/objects";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
-import type { Agent, Crew, PlacedObject, StaffData } from "./state";
+import type { Agent, Crew, GameState, PlacedObject, StaffData } from "./state";
 import { rng } from "./rng";
 import { range } from "./dist";
 import { canSee } from "./wayfinding";
@@ -21,12 +21,20 @@ declare module "./commands" {
     setPay: { role: string; pay: number };
     /** Keep a worker to the room holding `tile` (-1: anywhere). */
     setZone: { id: number; tile: number };
+    /** (M11) A job's uniform color (index into UNIFORM_COLORS). */
+    setUniform: { role: string; color: number };
   }
 }
 
-export const newCrew = (): Crew => ({ pay: {}, shrink: {}, hist: [] });
+export const newCrew = (): Crew => ({ pay: {}, shrink: {}, hist: [], uniform: {} });
 
-export const payOf = (g: Game, role: string) => g.state.crew.pay[role] ?? 1;
+export const payOf = (g: Game, role: string) => (STAFF_ROLES[role]?.builtIn ? 1 : g.state.crew.pay[role] ?? 1);
+
+/** (M11) The uniform color a job wears (an index into UNIFORM_COLORS). */
+export const uniformOf = (s: GameState, role: string) => s.crew.uniform?.[role] ?? UNIFORMS[role]?.color ?? 0;
+/** Every job's uniform as hex colors (the renderer's atlas input). */
+export const uniformHexes = (s: GameState): Record<string, string> =>
+  Object.fromEntries(Object.keys(UNIFORMS).map((r) => [r, UNIFORM_COLORS[uniformOf(s, r)]?.hex ?? UNIFORM_COLORS[0].hex]));
 /** Monthly wage for one worker in this role at the current pay. */
 export const wageFor = (g: Game, role: string) => (STAFF_ROLES[role]?.wage ?? 0) * payOf(g, role);
 
@@ -113,7 +121,7 @@ export function steal(g: Game, area: ShrinkArea, amount: number, tile: number, w
   const { p, by } = catchChance(g, tile, atTable, thief);
   if (rng(s, "crew").chance(Math.min(1, p))) {
     const who = thief ? `${STAFF_ROLES[thief.role].name} #${thief.id}` : crew && OBJECTS[crew.kind].serves === "cage" ? "a cage teller" : "a bartender";
-    news(g, "warn", `${by} caught ${who} ${what} (${fmtMoney(amount)}). ${thief ? "Fired; a replacement is on the way." : "Replaced."}`);
+    news(g, "warn", `${by} caught ${who} ${what} (${fmtMoney(amount)}). ${thief ? "Fired; a replacement is on the way." : "Replaced."}`, thief ? { a: thief.id } : { t: tile });
     if (thief) replace(g, thief);
     else if (crew) crew.crook = rng(s, "crew").chance(STAFF.amenityCrook) ? 1 : 0;
     return;
@@ -176,7 +184,7 @@ function moraleDay(g: Game) {
     setPace(g, a);
   }
   for (const a of quit) {
-    news(g, "warn", `${STAFF_ROLES[a.role].name} #${a.id} quit: ${payOf(g, a.role) < 1 ? "the pay is too low" : "too much work"}.`);
+    news(g, "warn", `${STAFF_ROLES[a.role].name} #${a.id} quit: ${payOf(g, a.role) < 1 ? "the pay is too low" : "too much work"}.`, { tab: "staff" });
     removeStaff(g, a);
   }
 }
@@ -199,9 +207,13 @@ export function roleMorale(g: Game, role: string): number {
 export const SHRINK_LABEL: Record<ShrinkArea, string> = { bar: "bar", cage: "cage", tables: "tables", machines: "machines" };
 export const shrinkKey = (a: ShrinkArea) => `shrink_${a}`;
 
-const commands: CommandTable<"setPay" | "setZone"> = {
+const commands: CommandTable<"setPay" | "setZone" | "setUniform"> = {
+  setUniform: {
+    validate: (_g, c) => (!UNIFORMS[c.role] ? "No uniform" : !(Number.isInteger(c.color) && c.color >= 0 && c.color < UNIFORM_COLORS.length) ? "Unknown color" : null),
+    apply(g, c) { g.state.crew.uniform[c.role] = c.color; },
+  },
   setPay: {
-    validate: (_g, c) => (!STAFF_ROLES[c.role] ? "Unknown job" : !(c.pay >= PAY_MIN - 1e-9 && c.pay <= PAY_MAX + 1e-9) ? "Out of range" : null),
+    validate: (_g, c) => (!STAFF_ROLES[c.role] ? "Unknown job" : STAFF_ROLES[c.role].builtIn ? "No wages to set" : !(c.pay >= PAY_MIN - 1e-9 && c.pay <= PAY_MAX + 1e-9) ? "Out of range" : null),
     apply(g, c) {
       g.state.crew.pay[c.role] = Math.round(c.pay * 10) / 10;
       for (const a of g.state.agents) if (a.role === c.role) setPace(g, a);
@@ -253,7 +265,7 @@ export const crewSystem: System = {
     c.shrink = {};
     c.hist.push(total);
     if (c.hist.length > 3) c.hist.shift();
-    if (total > 0) news(g, "warn", `Monthly count: ${fmtMoney(total)} missing (${parts.join(", ")}).`);
+    if (total > 0) news(g, "warn", `Monthly count: ${fmtMoney(total)} missing (${parts.join(", ")}).`, { tab: "finance" });
   },
 };
 

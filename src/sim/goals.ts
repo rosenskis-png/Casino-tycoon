@@ -35,10 +35,10 @@ export const goalSystem: System = {
     const pastDeadline = d.year > st.goals.by.year || (d.year === st.goals.by.year && d.month >= st.goals.by.month);
     if (st.worthOk && st.repOk) {
       g.state.outcome = "won";
-      news(g, "good", "Scenario complete! You met every goal. Play on as long as you like.");
+      news(g, "good", "Scenario complete! You met every goal. Play on as long as you like.", { tab: "goals" });
     } else if (pastDeadline) {
       g.state.outcome = "lost";
-      news(g, "urgent", "The deadline passed with goals unmet. The scenario is lost, but you can keep playing.");
+      news(g, "urgent", "The deadline passed with goals unmet. The scenario is lost, but you can keep playing.", { tab: "goals" });
     }
   },
 };

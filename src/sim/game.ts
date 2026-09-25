@@ -82,7 +82,7 @@ export class Game {
   minRound = Infinity;
   /** (M8) The id the last `designSave` stored the design under (the designer reads it back). */
   lastDesign = "";
-  /** (M8.5) Slots in a big bonus now, and the tick it ends (onlookers gather). Runtime only. */
+  /** (M8.5) Slots in a big bonus now, and the tick it ends (onlookers gather): an index of `PlacedObject.bonus`. */
   bonusNow = new Map<number, number>();
   /** (M8.5) Bank signs on the floor. */
   bankSigns: PlacedObject[] = [];
@@ -195,6 +195,7 @@ export class Game {
     this.signs = [];
     this.bankSigns = [];
     this.objById.clear();
+    this.bonusNow.clear();
     this.slotSectors.clear();
     this.seatTiles.clear();
     this.amenities = emptyAmenities();
@@ -208,6 +209,7 @@ export class Game {
       if (def.serves === "cage") this.amenities.atm.push(o);
       if (def.guide) this.signs.push(o);
       if (o.kind === "bank_sign") this.bankSigns.push(o);
+      if (o.bonus !== undefined) this.bonusNow.set(o.id, o.bonus);
       if (def.slot || def.game) {
         const key = (o.y >> 4) * 4096 + (o.x >> 4);
         let list = this.slotSectors.get(key);

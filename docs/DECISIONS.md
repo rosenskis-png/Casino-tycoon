@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · Parity gap closed, tilt 1 in 100, The Outfit (owner)
+- **Owner:** close the parity gap; the high rollers' crash-out was too frequent for the payout ("maybe 1 in 100 is better?").
+- **Tilt** 0.35 → 0.02: 3 tilts in 364 high-roller visits on the Test Floor (was ~16%). It scales with drink and highs, so pushing them raises it.
+- **Parity, numbers only:** high rollers bet 0.4× at tables (was 1.5×); locals, retirees and party groups bet more. Per guest on the floor the spread is 3.3× (was 12×): high rollers ~2× the middle crowds, retirees and locals lowest. Per seat and per build dollar high rollers stay ~10× ahead; Claude recommends judging parity per guest slot (flagged). Tutorial worth goal $60K (money rose again); idle still loses on reputation, "good" wins by month 18, "big" by month 24.
+- **Bugs found on the way (older than M11.4, exposed by the new numbers):** a reloaded save played on differently. Slots in a big bonus lost their onlookers (runtime-only, now saved on the machine); the slot market's cached appeal and fan draw were recomputed fresh on load (now saved as a snapshot, `state.mkt`, cleared at each rebuild). A day's new staff pace could leave a walker past the end of their step (clamped).
+- **The Outfit (owner's dark-lever rung, from scratch):** mob money, an empty lot, rich New Yorkers to draw with luxury and then crack with drink, drugs and escorts while keeping the police off; high-stakes cheats to deal with, violence cheaper. Designed in docs/spec/scenarios.md (rung 5); needs an intro screen, a goal by crowd, scenario multipliers for cheats and violence, and escorts eroding savvy.
+
 ## 2026-09-25 · M11.4 quick fixes (owner) after an outside review of the code base
 - **Outside review** (the v0.2 designer's agent): luck swings too large for the money scale; parity measured on the wrong thing; freeze guest psychology before building the ladder; phone perf at 8× on big maps; the duplicate `club` research id; stale FOUNDATIONS sections; three ladder concerns (Boardwalk solvable in one move, too many "fix the mess" rungs, the designer at rung 3). The owner took the fixes below; the ladder revisions and the freeze wait.
 - **Nightclub research** has its own id (`nightclub`); the player's club's entry had overwritten it, so nightclubs needed no research. Saves that could build one (open scenarios, or a club already placed) keep it. Both show in the Research tab, the build menu and the club features.

@@ -28,6 +28,7 @@ Order: **get them in the door → walk them to the games → play to how they pl
 | 2 | Big Top Family Resort | Temptation by layout (2) | More and better slots in the slot hall | Games on the paths: show exit, restaurant line, golf gate |
 | 3 | Sundowner Club | Savvy crowds: edge vs time (1, 2) | Tight machines, big flashy jackpots | Loose games, video poker, comfort, volume |
 | 4 | The River Belle | Inhibition and its price (2, 3) | Strict and dry, *or* free strong drinks and Ignore | Lenient on drink, strict on fights, games at the club door |
+| 5 | The Outfit (owner, from scratch; dark) | Breaking the disciplined, and getting away with it (1, 3, dark levers) | An honest luxury casino, *or* a free-for-all that brings the police | A luxury salon that draws them, then drink, drugs and escorts to crack them, fights kept down, cheats dealt with |
 
 ---
 
@@ -152,6 +153,53 @@ cheering crowd.
 
 ---
 
+### 5 · The Outfit: "Squeeze them, but don't get raided" (owner, 2026-09-25)
+**Lesson:** high rollers are the sharpest, most disciplined crowd (savvy 0.95, the thinnest edges, flat bets), so an
+honest casino earns little from them. What cracks them is inhibition: drink, drugs and company erode savvy, and a
+heavy loss while drunk or high can tip one on tilt (guests.md "Tilt": about 1 visit in 100 on an ordinary floor, far
+more when you push it). The dark levers work, and each one draws the police.
+
+**Setup** (the build-from-scratch rung the outside review asked for)
+- **An empty lot and a lot of money:** $250K of the Outfit's money, fronted, and a building shell. Everything is built
+  from nothing: the draw is the player's to make.
+- **Intro text (the mission):** a letter from the family backing you (new engine piece: a scenario intro screen).
+  Something like: *"Our friends in New York have more money than sense. Build them somewhere worth the trip: marble,
+  velvet, a private room. Then see they have a good time. A very good time. We'll want our cut every month. Don't make
+  us come down there."*
+- **The market:** almost entirely high rollers, rich New Yorkers down for the weekend (a large pool, high-roller
+  reputation starts at 30: nobody knows you yet), plus a few party groups. Whales on.
+- **Lenient town, bribable cops:** bribes allowed (a high chance), police standing starts at 70.
+- **Cheats come for the money:** high-stakes cheat crews at 3× the usual rate, taking big money off tables.
+- **Violence is cheaper here** (owner): the Outfit's town looks away. Beatings and disappearances cost a quarter of the
+  usual heat, rumors and standing, but witnesses still talk and a missing person with company is still reported.
+- All building research done except the information projects; vice and drugs rules start at Moderate.
+
+**Goal:** the Outfit's cut. A **gaming win from high rollers** of $X a month (new goal: gaming win by crowd, set by
+measurement well above what an honest luxury floor earns), held for the last 3 months of the year, **and the license
+kept** (police standing never below 25, the raid line). Money in the bank doesn't count: it's the take.
+
+**Wrong moves and why they fail**
+- **The honest luxury casino** (what rungs 1-4 taught): marble, a high-limit room, good tables, strict rules. High
+  rollers come, face a 1.7% edge, hold their limits and leave; the take is a third of the goal. Symptom: a full salon
+  and a thin books line; "expected loss" per visit tiny next to their bankrolls.
+- **The free-for-all:** free strong drinks everywhere, every rule on Ignore. Tilts rise, but so do fights (high rollers
+  don't tolerate disorder), overdoses and reports; police calls climb, a raid comes and the license goes. Symptom: the
+  police ladder on the Authorities tab.
+- **Ignoring the cheats:** crews take tens of thousands a month off the tables; the goal slips away with no one
+  visibly to blame.
+
+**Right move:** build the draw first (luxury theming, a high-limit salon, fine dining and a show: rung 0-2 skills).
+Then crack them where it pays: the salon's bar pouring strong drinks comped to players, Lenient vice so escorts work
+the room, drugs tolerated in private rooms, guards Strict on disorder so no fights, cameras and an operator for the
+cheats, enforcers to teach lessons quietly, bribes when an inspector or officer gets close.
+
+**Engine work:** a scenario intro screen; `gaming` goal by crowd; scenario multipliers for cheat rate and violence
+consequences; a hold on police standing (shared with rung 4). **Escorts as a lever on savvy:** a guest with an escort
+on their arm loses savvy like a drink or two (M11.3's comment promised it; the code doesn't do it yet). Measure tilt
+under heavy drink and drugs: it must rise enough (target ~1 visit in 10) to carry the goal.
+
+---
+
 ## Engine work for the ladder (one build chat)
 - **Goals** (additive fields on `Goals`, `src/sim/goals.ts`, the Goals tab): `walkins` (in one month), `gaming` (gaming
   win in one month), `hold` (a reputation or police standing kept ≥ X at every month-end in a window). Missing a held
@@ -167,5 +215,5 @@ cheering crowd.
 ## Next rungs (not designed yet)
 - **Leaks:** The Pit (cheats and card counters at tables: ignoring winners bleeds the edge, banning every winner
   hits innocents and brings rumors).
-- **Variance:** Salon Privé (a whale with no reserve or insurance sinks you).
+- **Variance:** a whale rung (a whale with no reserve or insurance sinks you); the name Salon Privé could go to it or to The Outfit's salon.
 - **Calendar:** Convention Row and Fight Night (a floor and staff right for event week, wrong for the slow months).

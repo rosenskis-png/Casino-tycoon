@@ -58,6 +58,8 @@ const crookShare = (pay: number) => STAFF.crook / Math.pow(pay, STAFF.crookPow);
 const BASE_STEPS: Record<string, number> = { server: 6.5, guard: 6.5 };
 export function setPace(g: Game, a: Agent) {
   a.steps = Math.max(4, Math.round((BASE_STEPS[a.role] ?? 10) / Math.sqrt(skillOf(g, a))));
+  // A new pace mid-step: never past the end of the step.
+  if (a.t >= a.steps) a.t = a.steps - 1;
 }
 
 /** A new hire's hidden knack and honesty, drawn on the `crew` stream. Morale starts at what the job pays for. */

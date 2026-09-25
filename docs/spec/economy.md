@@ -57,7 +57,7 @@ high rollers value it twice as much and grumble about cheap food.
   (`rules`), no janitor, one tech. Research starts with Ancient worlds (Rome, Egypt, Medieval: tourists and
   families like them, though Egypt and Medieval clash) and Old Vegas (mostly wrong for them) and the restaurant;
   the show lounge takes research. Tourists and families come in greater numbers and start at reputation 35 and 30.
-  $20K cash. Goal: worth $55K (M11.4; was $40K), Tourists 55 and Families 50 by the end of December, Year 2. Mini golf is unlocked
+  $20K cash. Goal: worth $60K (M11.4; was $40K), Tourists 55 and Families 50 by the end of December, Year 2. Mini golf is unlocked
   from the start (families' favorite), and entertainers can be hired. What it teaches through
   setup: read the thoughts (dirty, bad theming, drunks, fights), clean up, throw out the junk, retheme for the
   crowd you want, rein in the bar and hire a guard with stricter rules, add a restaurant and shows. Machines can
@@ -80,7 +80,7 @@ high rollers value it twice as much and grumble about cheap food.
   stay at 30 (lost); "good" and "big" draw 40–60 tourists and 11–19 family adults on the floor, 16–25% and 9–14% of them
   playing, slots $1.3–$1.6K a month, and win between month 12 and month 24 (worth $45–54K at month 24).
   **M11.4 (richer guests, 8 wagers a round):** the tutorial's slots take about twice as much ($2.0–3.0K a month on
-  "good", $0.9–1.7K idle), so the worth goal rose from $40K to $55K (Claude's call, flagged). Measured (`npm run economy
+  "good", $0.9–1.7K idle), so the worth goal rose from $40K to $55K, then $60K with the parity stakes (Claude's call, flagged). Measured (`npm run economy
   <s> 24 1,2,3`, insured): idle worth $51–54K at month 24 but Families stay at 30 (lost); "good" meets both reputations
   by month 12 and worth ~$55K around month 18 (was a win between months 12 and 24); "big" ~$49–55K at month 18,
   $64–70K at month 24 (was 1 seed of 3).

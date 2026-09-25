@@ -283,18 +283,18 @@ export interface CabinetDef {
   research?: string;
 }
 export const CABINETS: Record<CabType, CabinetDef> = {
-  slant: { id: "slant", name: "Slant-top", kind: "slot_slant", cost: 500, loud: 0.7, desc: "Low and seated. Doesn't block sight lines; a touch of class." },
-  upright: { id: "upright", name: "Upright", kind: "slot_upright", cost: 400, loud: 1, desc: "The standard video cabinet." },
-  stepper: { id: "stepper", name: "Stepper", kind: "slot_stepper", cost: 450, loud: 0.9, desc: "Mechanical reels behind glass, for classics." },
-  tall: { id: "tall", name: "Tall portrait", kind: "slot_tall", cost: 800, loud: 1.3, desc: "A curved portrait screen, seen from farther.", research: "cabinets" },
-  giant: { id: "giant", name: "Giant", kind: "slot_giant", cost: 3000, loud: 2.2, desc: "A 2×2 attraction, seen across the floor.", research: "cabinets" },
+  slant: { id: "slant", name: "Slant-top", kind: "slot_slant", cost: 250, loud: 0.7, desc: "Low and seated. Doesn't block sight lines; a touch of class." },
+  upright: { id: "upright", name: "Upright", kind: "slot_upright", cost: 200, loud: 1, desc: "The standard video cabinet." },
+  stepper: { id: "stepper", name: "Stepper", kind: "slot_stepper", cost: 225, loud: 0.9, desc: "Mechanical reels behind glass, for classics." },
+  tall: { id: "tall", name: "Tall portrait", kind: "slot_tall", cost: 400, loud: 1.3, desc: "A curved portrait screen, seen from farther.", research: "cabinets" },
+  giant: { id: "giant", name: "Giant", kind: "slot_giant", cost: 1500, loud: 2.2, desc: "A 2×2 attraction, seen across the floor.", research: "cabinets" },
 };
 export const CAB_IDS = Object.keys(CABINETS) as CabType[];
 
 export type TopperId = "none" | "sign" | "dome" | "figure" | "wheel";
 export const TOPPERS: Record<TopperId, { name: string; cost: number }> = {
-  none: { name: "None", cost: 0 }, sign: { name: "Lit sign", cost: 100 }, dome: { name: "Dome light", cost: 150 }, figure: { name: "Theme figure", cost: 300 },
-  wheel: { name: "Topper wheel", cost: 600 },
+  none: { name: "None", cost: 0 }, sign: { name: "Lit sign", cost: 50 }, dome: { name: "Dome light", cost: 75 }, figure: { name: "Theme figure", cost: 150 },
+  wheel: { name: "Topper wheel", cost: 300 },
 };
 export const TOPPER_IDS = Object.keys(TOPPERS) as TopperId[];
 

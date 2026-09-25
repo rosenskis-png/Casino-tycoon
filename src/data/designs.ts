@@ -17,6 +17,18 @@ export const STOCK_DESIGNS: Record<string, SlotDesign> = {
     rtp: 0.92, hit: 0.2, vol: 0.34, wild: "plain", stacks: false, fs: null, jackpots: [{ x: 800, every: 5000 }],
     show: show({ lights: 1, light: 0, sound: 1, speed: 0, rollup: 0 }), cab: { type: "stepper", body: 6, topper: "none" },
   },
+  // (M11.2) Gentle classics for the tutorial (owner: smaller jackpots): the same games with a small top prize, so
+  // one jackpot never wipes out a month.
+  cherries: {
+    id: "cherries", name: "Lucky Cherries", theme: "classic", set: 1, layout: "l20", denom: 0.25, minBet: 1, maxBet: 4,
+    rtp: 0.88, hit: 0.42, vol: 0.2, wild: "plain", stacks: false, fs: null, jackpots: [{ x: 150, every: 2500 }],
+    show: show({ lights: 3, light: 3, sound: 2, ldw: 1, speed: 2 }), cab: { type: "upright", body: 3, topper: "sign" },
+  },
+  bells: {
+    id: "bells", name: "Silver Bells", theme: "classic", set: 0, layout: "c3", denom: 1, minBet: 1, maxBet: 2,
+    rtp: 0.92, hit: 0.22, vol: 0.25, wild: "plain", stacks: false, fs: null, jackpots: [{ x: 150, every: 2500 }],
+    show: show({ lights: 1, light: 0, sound: 1, speed: 0, rollup: 0 }), cab: { type: "stepper", body: 4, topper: "none" },
+  },
   thunder: {
     id: "thunder", name: "Thunder Jackpot", theme: "rome", set: 1, layout: "c3", denom: 1, minBet: 1, maxBet: 3,
     rtp: 0.89, hit: 0.08, vol: 0.53, wild: "x3", stacks: false, fs: null, jackpots: [{ x: 2500, every: 8300 }],

@@ -40,8 +40,8 @@ declare module "../commands" {
   }
 }
 
-export const CERT = { fee: 1500, days: 7, fastFee: 750, fastDays: 3 };
-export const CONVERT_FEE = 100;
+export const CERT = { fee: 750, days: 7, fastFee: 375, fastDays: 3 };
+export const CONVERT_FEE = 50;
 
 export { designIdOf, isStock, designById, designPrice, slotPrice } from "./lookup";
 const h32 = (str: string) => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return (h >>> 0).toString(36); };

@@ -20,4 +20,4 @@ export const DOOR_RULES: { id: number; name: string; arg?: "type" | "role"; fee:
 export const MAX_DOOR_FEE = 20;
 
 /** Build prices in game money (docs/spec/clock.md: tuned for play, not real-world). */
-export const BUILD_COST = { wall: 40, door: 120, demolish: 10, entrance: 500 } as const;
+export const BUILD_COST = { wall: 20, door: 60, demolish: 5, entrance: 250 } as const;

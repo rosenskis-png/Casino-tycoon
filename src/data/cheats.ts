@@ -1,8 +1,8 @@
 // Cheats, suspicion and enforcement numbers (FOUNDATIONS §11, docs/spec/cheats.md). Starting values, tuned headless.
 
-/** Share of people who are lucky, and of people who are unlucky; the payback shift either way. */
+/** Share of people who are lucky, and of people who are unlucky; the payback shift either way (M11.2: 0.1, was 0.2: lucky players at +20 points played on for free and leaked money). */
 export const LUCK_SHARE = 0.03;
-export const LUCK_SHIFT = 0.2;
+export const LUCK_SHIFT = 0.1;
 /** A cheat who leads a group brings a crew: each companion cheats too with this chance. */
 export const CREW = 0.5;
 /** What a cheat means to walk out with (dollars, at a casino winning $10K a month; M11.1 sizes it to the casino, never under TAKE_MIN). */

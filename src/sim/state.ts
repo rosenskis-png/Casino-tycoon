@@ -576,7 +576,7 @@ export interface GameState {
   /** (M11.2) What each crowd is saying, for the Guests tab's survey (halved each month). */
   survey: Record<string, SurveyRow>;
   /**
-   * (M12) Gaming win (wagered − won, as played; not pool games) by crowd: this month so far, and closed months (newest last, 24
+   * (M12) The take by crowd (each wager's edge as played, a rigged win as what the cheat took; not pool games or whales): this month so far, and closed months (newest last, 24
    * kept), for goals by crowd; the lowest police standing seen, for held goals.
    */
   crowdWin: { month: Record<string, number>; hist: Record<string, number>[] };

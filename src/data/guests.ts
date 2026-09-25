@@ -144,6 +144,12 @@ export interface GuestTypeDef {
    * (intoxication + high) × how far down they are. On tilt they lose all discipline and chase back to even.
    */
   tilt?: number;
+  /**
+   * (M12, owner) The house edge this crowd calls fair (default 6%): a savvy guest likes games under it and shuns games
+   * over it, as far as drink, drugs and company leave their savvy. High rollers 3%: sober, they walk from double zero
+   * and loose slots; loosened up, they don't notice.
+   */
+  edgeRef?: number;
   /** (M11.2) What a show ticket is worth to them (dollars; mini golf, the pool and a club's cover at 30%, a meal at 80%). Pricier than this puts them off. */
   ticket: number;
   /** (M11.4) Taste for luxury, 0-1: how much more a fancy meal, drink or show is worth to them than a cheap one (data/grades.ts). */
@@ -298,7 +304,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.005, 0.0125], pace: [0.9, 1.1], quit: { winGoal: 2, lossLimit: 3, broke: 0.5, jackpot: 0.5 }, winGoal: [0.5, 1.5], lossLimit: [0.5, 0.9], compSeek: 0 },
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.3, fatigue: 0.12 },
     secPerDollar: 1.5,
-    reasons: { gamble: 0.8, drink: 0.02, dine: 0.1, show: 0.08, club: 0, pool: 0, golf: 0, sights: 0 }, hooks: { drink: 0.3, buzz: 0.8, flash: 0.3, free: 1, social: 0.3 }, savvy: 0.95, tilt: 0.02, ticket: 120, luxe: 1, drugs: 0.2, hotel: 0.6, smokers: 0.2, theming: 0.8,
+    reasons: { gamble: 0.8, drink: 0.02, dine: 0.1, show: 0.08, club: 0, pool: 0, golf: 0, sights: 0 }, hooks: { drink: 0.3, buzz: 0.8, flash: 0.3, free: 1, social: 0.3 }, savvy: 0.95, tilt: 0.02, edgeRef: 0.03, ticket: 120, luxe: 1, drugs: 0.2, hotel: 0.6, smokers: 0.2, theming: 0.8,
     themes: { monaco: 1, luxe: 0.9, deco: 0.8, dragon: 0.7, riviera: 0.3, ratpack: 0.2, goldrush: -0.5, pirate: -0.6, tiki: -0.4, rock: -0.3 },
   },
   // M9.5 (docs/spec/calendar.md): business visitors who come in waves with conventions.

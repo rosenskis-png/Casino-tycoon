@@ -9,9 +9,9 @@ export interface Goals {
   /** Reputation to reach with one guest type (or every type when `type` is omitted). */
   rep?: { type?: string; min: number };
   /**
-   * (M12) Gaming win (what they lost at the house's games, as they play) from one crowd (every crowd when `type` is
-   * omitted) averaging at least `min` a month over the last `months` closed months (big tables swing too much month
-   * to month for every month to count on its own).
+   * (M12) The take from one crowd (every crowd when `type` is omitted): what the house's edge earned on their play as
+   * they play (luck and whales aside), less what cheats' rigged wins took, averaging at least `min` a month over the
+   * last `months` closed months. Actual wins swing too much at big tables for a goal a player can steer by.
    */
   gaming?: { type?: string; min: number; months: number };
   /** (M12) Police standing held at or above this the whole time: dropping below it loses the scenario on the spot. */
@@ -94,8 +94,9 @@ export interface ScenarioDef {
   hidden?: boolean;
   /** (M12) The letter shown when the game starts (and kept in the Goals tab): who sent you and what they want. */
   intro?: { from: string; text: string };
-  /** (M12) Starting police standing (default 75). */
+  /** (M12) Starting police standing (default 75), and the share of every police standing loss the town takes (default 1). */
   police?: number;
+  policeCost?: number;
   /** (M12) Cheats: × the crowds' usual share of cheats, and × what each means to take. */
   cheatRate?: number;
   cheatTake?: number;
@@ -219,6 +220,8 @@ function testFloor(): ScenarioDef {
     d("rat_chair", 62, 29), d("deco_urn", 72, 27), d("rat_lamp", 70, 24),
     d("riv_lemon", 70, 6), d("riv_amphora", 71, 8), d("riv_cypress", 62, 11),
     d("pirate_chest", 47, 21), d("tiki_idol", 42, 21),
+    // M12: Monte Carlo pieces in the members' bar.
+    d("mc_chandelier", 66, 28), d("mc_piano", 64, 29), d("mc_champagne", 62, 27), d("mc_rope", 67, 29),
     // M8.6: Lucky Dragon pieces along the bingo room's outer wall (its door at x 42 kept clear).
     d("dragon_lantern", 37, 17), d("dragon_lion", 39, 17), d("dragon_vase", 45, 17), d("dragon_screen", 47, 17),
   );
@@ -247,7 +250,7 @@ function testFloor(): ScenarioDef {
   return {
     id: "testfloor", name: "Test Floor (engine test)", blurb: "A fully equipped casino for measuring guest behavior.", hidden: true,
     elevator: [20, 5],
-    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 3, operator: 1, pitboss: 1, entertainer: 2 },
+    ...LOT, startCash: 100_000, objects, staff: { janitor: 4, tech: 2, server: 8, guard: 3, operator: 1, pitboss: 1, entertainer: 2, host: 1 },
     // The tutorial lot, widened for the east wing.
     w: 80, grounds: [{ x: 2, y: 2, w: 76, h: 40 }], buildings: [...LOT.buildings, { x: 49, y: 4, w: 25, h: 28 }],
     sidewalks: [{ from: [0, 42], to: [79, 42] }],
@@ -447,9 +450,9 @@ function outfit(): ScenarioDef {
     population: { highroller: 3, party: 0.5, tourist: 0.3 },
     rep: { highroller: 30, party: 45, tourist: 45 },
     arrivals: 0.35, maxGuests: 800,
-    goals: { worth: 0, gaming: { type: "highroller", min: 40_000, months: 3 }, police: 25, by: { year: 2, month: 11 } },
+    goals: { worth: 0, gaming: { type: "highroller", min: 30_000, months: 3 }, police: 25, by: { year: 2, month: 11 } },
     // A lenient town: bribable cops, a friendly start, violence that costs a quarter as much; cheats after the same money.
-    tools: 4, tax: 0.06, whales: true, bribe: 0.95, police: 70, cheatRate: 3, cheatTake: 2, violence: 0.25,
+    tools: 4, tax: 0.06, whales: true, bribe: 0.95, police: 70, policeCost: 0.4, cheatRate: 3, cheatTake: 1.5, violence: 0.25,
     research: "build", rules: { vice: 2, drugs: 2 },
   };
 }

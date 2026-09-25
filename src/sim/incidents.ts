@@ -8,6 +8,7 @@ import { GUEST_TYPES } from "../data/guests";
 import { INCIDENTS, INCIDENT_CATS, type IncidentDef } from "../data/incidents";
 import { ENF_REASONS, type EnfReason } from "../data/cheats";
 import { OBJECTS } from "../data/objects";
+import { SCENARIOS } from "../data/scenarios";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
@@ -574,6 +575,8 @@ function policeCall(g: Game, q: Agent) {
 
 export function adjustPolice(g: Game, delta: number) {
   const p = g.state.auth.police;
+  // (M12) A town that looks the other way (The Outfit) takes a share of the usual offense.
+  if (delta < 0) delta *= SCENARIOS[g.state.scenario].policeCost ?? 1;
   p.standing = Math.max(0, Math.min(100, p.standing + delta));
   g.state.lowPolice = Math.min(g.state.lowPolice, p.standing);
   ladder(g);

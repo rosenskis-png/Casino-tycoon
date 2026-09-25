@@ -16,7 +16,8 @@
     "targets": "node scripts/targets.mjs",
     "parity": "node scripts/parity.mjs",
     "economy": "node scripts/economy.mjs",
-    "dark": "node scripts/dark.mjs"
+    "dark": "node scripts/dark.mjs",
+    "outfit": "node scripts/outfit.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",

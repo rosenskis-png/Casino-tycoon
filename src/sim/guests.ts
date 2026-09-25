@@ -706,6 +706,8 @@ function departedFields(g: Game, a: Agent, score: number) {
 
 const goneSets = new WeakMap<Game, Set<number>>();
 function gone(g: Game) { let s = goneSets.get(g); if (!s) goneSets.set(g, (s = new Set())); return s; }
+/** (M12) Departed this tick (paramedics, a closure) and removed at the guests' next tick: not on the floor any more. */
+export const isGone = (g: Game, id: number) => gone(g).has(id);
 
 /**
  * Someone wants to go home. A group member (the leader too) waits for the others instead, unless it's urgent;
@@ -954,7 +956,9 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   if (gd.vip) return isTable(o.kind) && def.game === g.state.whale.game && tableOpen(g, o) && canSit(g, gd, o) ? 3 : 0;
   const v = tasteFor(g, type, gd, o);
   // (M11.3, owner) The seasoned look for the thinnest house edge; novices hardly notice it.
-  return v > 0.05 ? v + SAVVY_EDGE * savvyNow(gd) * Math.max(-1.5, Math.min(1, (EDGE_REF - edgeOf(g, gd, o)) / EDGE_REF)) : v;
+  // (M12) Each crowd's idea of a fair edge (High rollers: thinner than most; EDGE_REF for the rest).
+  const ref = type.edgeRef ?? EDGE_REF;
+  return v > 0.05 ? v + SAVVY_EDGE * savvyNow(gd) * Math.max(-1.5, Math.min(1, (ref - edgeOf(g, gd, o)) / ref)) : v;
 }
 
 /**

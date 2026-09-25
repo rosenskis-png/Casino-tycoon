@@ -52,7 +52,7 @@ export function describeGoals(goals: Goals): string {
   const parts: string[] = [];
   if (goals.gaming) {
     const who = goals.gaming.type ? GUEST_TYPES[goals.gaming.type]?.name ?? goals.gaming.type : "every crowd";
-    parts.push(`A gaming win from ${who} averaging ${fmtMoney(goals.gaming.min)} a month over ${goals.gaming.months} months`);
+    parts.push(`The take from ${who} averaging ${fmtMoney(goals.gaming.min)} a month over ${goals.gaming.months} months`);
   }
   if (goals.worth) parts.push(`Worth ${fmtMoney(goals.worth)}`);
   if (goals.rep) {

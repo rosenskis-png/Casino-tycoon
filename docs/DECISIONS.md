@@ -2,6 +2,43 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · M12: The Outfit built first; enforcement reasons; luxury (owner)
+- **Green light** (owner, 2026-09-25): build The Outfit (rung 5) before rungs 1–4, "and any associated ideas and
+  mechanics (eg adding any other high class luxury stuff)".
+- **Enforcement reasons and the kick-out (owner):** every order carries a reason (cheating, card counting,
+  drunkenness, fighting, misconduct, vice, drugs, or "just because"), which deters that behavior whether or not the
+  guest was doing it. Ladder: warn > kick out = beat up > lifetime ban > disappear. Warn, kick out and ban teach only
+  that guest (and the pool person, for later visits); beat up and disappear put a global chill on the behavior and
+  cost the target's crowd reputation. "Just because" deters nothing. docs/spec/cheats.md.
+- **The Outfit, built:** the letter (a scenario intro screen), goals by crowd and a police line, town settings (police
+  start, a town that takes 40% of the offense, 95% bribes, violence at a quarter, 3× cheats taking 1.5×), all as
+  scenario data. Proved by `npm run outfit` on 3 seeds × 24 months: honest, greedy and the free-for-all miss; the
+  squeeze meets it (scenarios.md "As built").
+- **Luxury (owner's ask):** the Monte Carlo theme (Crystal Chandelier, Grand Piano, Champagne Tower, Velvet Rope, and
+  a slot theme), the casino host (looks after big players, tops up their glass on the house), escorts on the arm.
+- **Claude's calls, flagged:**
+  - **The goal counts the take, not the actual win:** each wager's edge as played, less what cheats' rigged wins took,
+    whales excluded. Actual high-roller wins swung ±$40K a month against a ~$25K mean; no lever could be read
+    through that. The Goals tab explains it.
+  - **High rollers call a 3% edge fair** (`edgeRef`; 6% for everyone else, unchanged). Without it an honest salon
+    and a squeezed one earned the same, and tight games on sober high rollers earned the most, the opposite of the
+    rung's premise. With it: honest ~$20K, greedy ~$24K, squeeze ~$36K best 3-month take. It moves high rollers on
+    every floor (parity numbers below).
+  - **Inhibition compounds:** tilt chance × loose² / 0.3 (same as before at a few drinks). Squeezed: 1 in ~55 visits
+    (target was 1 in 10; tilts mostly chase back to even, so they add play, not a windfall).
+  - **Comped drinks nudge** intended drinking by 0.1 × the crowd's taste for luxury.
+  - **Escorts on the arm stay for the rest of the visit** (they used to take a player off the floor at once): savvy
+    −0.35, 0.3 toward tilt, bets as if friends were watching; up together at the end (the room).
+  - Scenario numbers: $250K, market 400 high rollers at reputation 30, goal $30K over 3 months by the end of Year 2,
+    police line 25, policeCost 0.4 (without it every squeeze lost its license to drunk-incident reports), bribes
+    0.95, cheatTake 1.5 (2 made cheats the whole story).
+  - Two old bugs found in long runs: a guest turned away at a full door could come back by the hotel while their
+    figure was still walking off (a person "both inside and on the sidewalk"); guests carried out by paramedics
+    counted as on the floor until the next tick. Both fixed.
+  - Save schema 22 (migration from 21): enforcement reason and chill, take by crowd, lowest police standing.
+- **Open (owner):** rungs 1–4 and the ladder unlocks (The Outfit is simply in the New game list); whether the take is
+  the right measure for later crowd goals; how hard the squeeze should be to sustain past the goal.
+
 ## 2026-09-25 · Parity gap closed, tilt 1 in 100, The Outfit (owner)
 - **Owner:** close the parity gap; the high rollers' crash-out was too frequent for the payout ("maybe 1 in 100 is better?").
 - **Tilt** 0.35 → 0.02: 3 tilts in 364 high-roller visits on the Test Floor (was ~16%). It scales with drink and highs, so pushing them raises it.

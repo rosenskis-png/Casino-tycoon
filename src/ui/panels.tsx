@@ -638,9 +638,10 @@ export function GoalsPanel({ host }: { host: Host }) {
           <p style={{ margin: "10px 0" }}>{describeGoals(st.goals)}</p>
           <div className="kv">
             {st.gaming && gm && <>
-              <b>Gaming win{gm.type ? `: ${GUEST_TYPES[gm.type]?.name ?? ""}` : ""}</b><span className="num">{money(st.gaming.now)} this month, of {money(gm.min)}</span>
+              <b>The take{gm.type ? `: ${GUEST_TYPES[gm.type]?.name ?? ""}` : ""}</b><span className="num">{money(st.gaming.now)} this month, of {money(gm.min)}</span>
               {st.gaming.months.map((m, k) => <Fragment key={k}><b>{m.label}</b><span className="num">{money(m.v)}</span></Fragment>)}
               {st.gaming.months.length > 0 && <><b>Average</b><span className="num">{money(st.gaming.avg)} a month {st.gaming.ok ? "✅" : ""}</span></>}
+              <span className="muted" style={{ gridColumn: "1 / -1", fontSize: 12 }}>The take is what the games' edge says their play earned you (luck doesn't count, whales don't count), less what cheats took off the tables.</span>
             </>}
             {st.police && <><b>Police standing</b><span className="num">{Math.round(st.police.now)} now · lowest {Math.round(st.police.low)} · never below {st.goals.police} {st.police.ok ? "" : "❌"}</span></>}
             {st.goals.worth > 0 && <><b>Worth</b><span className="num">{money(st.worth)} of {money(st.goals.worth)} {st.worthOk ? "✅" : ""}</span></>}

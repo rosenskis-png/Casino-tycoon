@@ -150,6 +150,10 @@ tilt × (intoxication + high) × the share of their money lost. On tilt:
 - **(M12, owner) Inhibition compounds:** the chance is tilt × loose² / 0.3 × the share lost, where loose =
   intoxication + high + 0.3 with an escort on their arm: the same as before at loose 0.3 (a few drinks), less for one
   drink, far more for a drunk, high player with company.
+- **(M12, owner) A fair edge per crowd (`edgeRef`):** savvy guests like games under the edge their crowd calls fair
+  and shun games over it (appeal ± 0.6 × savvy now). Everyone 6%, except High rollers 3%: sober, they walk from
+  double zero and $5 slots and crowd the baccarat and good-rules blackjack; loosened up (drink, drugs, company) they
+  don't notice. This is what makes an honest luxury floor thin and a squeezed one rich (The Outfit, scenarios.md).
 - **(M12) Comped drinks nudge:** each drink on the house raises how drunk a guest means to get by 0.1 × their crowd's
   taste for luxury (High rollers 0.1, Tourists 0.05, Locals 0.01). A drink on the house is hard to refuse.
 

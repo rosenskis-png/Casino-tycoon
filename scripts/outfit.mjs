@@ -3,9 +3,11 @@
 // police standing, and how often a high roller went on tilt. The lesson's proof (docs/spec/scenarios.md rule 6): the
 // honest casino and the free-for-all must miss the goal on every seed, the squeeze must meet it. A report, not a check.
 // The goal is judged over the months run (the scenario's own deadline is later: building from nothing takes a while).
-//   honest   strict house rules, ordinary drinks, caught cheats banned
+//   honest   the best table rules in town, strict house rules, ordinary drinks, caught cheats banned
+//   greedy   the house's table rules (6:5 blackjack, double zero, no craps odds, 5% commission), otherwise honest
 //   wild     every rule on Ignore, every drink free and strong
-//   squeeze  lenient on drink, vice and drugs, strict on fights; the salon bar pours strong and comps half; caught
+//   squeeze  the house's table rules; moderate on drink (nobody wasted), lenient on vice and drugs, strict on fights; the salon bar
+//            pours strong and comps every drink, more servers, hosts and security; caught
 //            cheats beaten (the town looks away); officers and inspectors paid off
 //   blind    the squeeze with no one watching for cheats (cameras, operator and pit bosses gone)
 // Usage: node scripts/outfit.mjs [strategies] [months] [seeds]
@@ -18,18 +20,24 @@ const usd = (n) => `$${Math.round(n / 1000)}K`;
 
 function setup(g, strat) {
   const s = g.state, cmds = [{ type: "setInsurance", level: 1 }];
-  const rules = { honest: [2, 3, 3, 3, 3], wild: [0, 0, 0, 0, 0], squeeze: [1, 3, 2, 1, 1], blind: [1, 3, 2, 1, 1] }[strat];
+  const dark = strat === "squeeze" || strat === "blind";
+  const rules = { honest: [2, 3, 3, 3, 3], greedy: [2, 3, 3, 3, 3], wild: [0, 0, 0, 0, 0], squeeze: [2, 3, 2, 1, 1], blind: [2, 3, 2, 1, 1] }[strat];
+  // Table rules: the honest salon deals the best games in town (sober high rollers notice); everyone else deals the
+  // house's games: 6:5 blackjack from an 8-deck shoe hitting soft 17, double zero, craps without odds, 5% commission.
+  const good = strat === "honest";
+  const TABLE = good ? { blackjack: [0, 3, 0], roulette: [1], craps: [4], baccarat: [1] } : { blackjack: [1, 1, 1], roulette: [0], craps: [1], baccarat: [0] };
+  for (const o of s.objects) if (TABLE[o.kind]) cmds.push({ type: "setTable", id: o.id, rules: TABLE[o.kind] });
   ["intox", "disorder", "misconduct", "vice", "drugs"].forEach((cat, k) => cmds.push({ type: "setRule", cat, level: rules[k] }));
   for (const o of s.objects) {
     if (o.kind === "restaurant" || o.kind === "bar") cmds.push({ type: "setGrade", id: o.id, grade: 2 });
     if (!o.bar) continue;
     const salon = o.x < 45 && o.y < 27;
     if (strat === "wild") cmds.push({ type: "setBar", id: o.id, comp: 1, strength: 1.4 });
-    else if (strat === "squeeze" || strat === "blind") cmds.push({ type: "setBar", id: o.id, comp: salon ? 1 : 0.5, strength: salon ? 1.4 : 1 });
+    else if (dark) cmds.push({ type: "setBar", id: o.id, comp: salon ? 1 : 0.5, strength: salon ? 1.4 : 1 });
   }
   cmds.push({ type: "setTreatment", first: strat === "honest" || strat === "wild" ? "ban" : "beat", repeat: strat === "honest" || strat === "wild" ? "ban" : "vanish" });
   // The squeeze keeps the drinks coming: more servers and hosts.
-  if (strat === "squeeze" || strat === "blind") for (const role of ["server", "server", "server", "server", "server", "server", "host", "host"]) cmds.push({ type: "hire", role });
+  if (dark) for (const role of ["server", "server", "server", "server", "server", "server", "host", "host", "guard", "guard", "guard", "guard"]) cmds.push({ type: "hire", role });
   for (const c of cmds) { const why = g.dispatch(c); if (why) console.log(`  ${c.type} refused: ${why}`); }
   g.flushCommands();
   if (strat === "blind") {
@@ -40,7 +48,7 @@ function setup(g, strat) {
 }
 
 for (const strat of strats.split(",")) {
-  console.log(`\n${strat} (goal: high rollers' gaming win averaging ${usd(goal.gaming.min)} a month over ${goal.gaming.months} months; police never below ${goal.police})`);
+  console.log(`\n${strat} (goal: high rollers' take averaging ${usd(goal.gaming.min)} a month over ${goal.gaming.months} months; police never below ${goal.police})`);
   for (const seed of String(seeds).split(",").map(Number)) {
     const g = sim.Game.create("outfit_built", seed);
     setup(g, strat);
@@ -61,6 +69,7 @@ for (const strat of strats.split(",")) {
         for (let t = 0; t < sim.TICKS_PER_DAY; t++) { g.step(); if (bribe && t % 20 === 0) payOff(); }
         g.bus.flush();
         low = Math.min(low, g.state.auth.police.standing);
+        if (process.env.CHECK) { const bad = sim.checkInvariants(g); if (bad.length) { console.error(`seed ${seed} month ${m + 1} day ${d}:`, bad.slice(0, 5).join("; ")); process.exit(1); } }
       }
       // Month boundaries are calendar months: step on until the goals system has closed this one.
       while (g.state.crowdWin.hist.length < m + 1) { for (let t = 0; t < sim.TICKS_PER_DAY; t++) g.step(); g.bus.flush(); low = Math.min(low, g.state.auth.police.standing); }

@@ -29,7 +29,7 @@ import { SCENARIOS } from "../data/scenarios";
 import { MAX_PEDS } from "./street";
 import { TRAY } from "./staff";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
-import { spawnGroup, groupSize } from "./guests";
+import { spawnGroup, groupSize, isGone } from "./guests";
 import { INCIDENTS } from "../data/incidents";
 
 export function checkInvariants(g: Game): string[] {
@@ -144,7 +144,7 @@ export function checkInvariants(g: Game): string[] {
       if (!(gd.drink >= 0 && gd.drink <= 1)) p.push(`guest ${a.id} drink out of range`);
       if (gd.intox < 0 || gd.intox > INTOX_CAP + 1e-9 || gd.intend < 0 || gd.intend > INTOX_CAP + 1e-9) p.push(`guest ${a.id} intoxication out of range`);
       if (gd.withdrawn > gd.withdrawCap + 1e-9) p.push(`guest ${a.id} drew more than they have`);
-      if (gd.pid >= 0) {
+      if (gd.pid >= 0 && !isGone(g, a.id)) {
         const per = s.pool.find((q) => q.id === gd.pid);
         if (!per) p.push(`guest ${a.id} is a missing person ${gd.pid}`);
         else if (!per.here) p.push(`guest ${a.id} on the floor but their person isn't marked here`);

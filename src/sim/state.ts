@@ -5,7 +5,7 @@ import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 22;
+export const SCHEMA_VERSION = 23;
 
 export interface MapState {
   w: number;
@@ -675,7 +675,8 @@ export interface YourPlay {
 export interface CalEvent { id: string; start: number; end: number; len: number; told: number }
 
 /** Research (docs/spec/research.md): monthly funding, the project, points put into each, and what's done. */
-export interface ResearchState { funding: number; project: string; points: Record<string, number>; done: string[] }
+/** (Batch A) `queue`: projects to research next, in order. */
+export interface ResearchState { funding: number; project: string; queue: string[]; points: Record<string, number>; done: string[] }
 
 /** Pay per role (multiple of the market wage) and what went missing this month, per area, found at the count. */
 export interface Crew {

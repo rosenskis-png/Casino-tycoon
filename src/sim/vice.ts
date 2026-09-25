@@ -13,8 +13,9 @@ import { ENF_REASONS } from "../data/cheats";
 import { begin, buildGrid, leaveFloor, patrol, spawnVisitor } from "./incidents";
 import { sendHome, think } from "./guests";
 import { post } from "./finance";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { TICKS_PER_SECOND } from "./clock";
+const news = newsFor("incidents");
 
 const SEC = TICKS_PER_SECOND;
 /** Escorts arriving per real second per 100 guests on the floor, by the vice rule (Ignore … Strict). */

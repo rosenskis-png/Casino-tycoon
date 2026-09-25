@@ -6,7 +6,7 @@ export type SimEvent =
   | { type: "objectPlaced"; id: number; kind: string; x: number; y: number }
   | { type: "objectRemoved"; id: number; x: number; y: number }
   | { type: "roomsChanged" }
-  | { type: "news"; level: NewsLevel; text: string; ref?: NewsRef }
+  | { type: "news"; level: NewsLevel; text: string; ref?: NewsRef; cat?: string }
   | { type: "sound"; id: string; x?: number; y?: number }
   | { type: "day"; day: number }
   | { type: "month"; month: number; year: number }

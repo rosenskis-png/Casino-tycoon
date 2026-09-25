@@ -269,7 +269,7 @@ export const OBJECTS: Record<string, ObjectDef> = {
   restroom: {
     id: "restroom", name: "Restrooms", cat: "amenity", w: 2, h: 2, cost: 450, upkeep: 7.5, blocks: true, opaque: true, place: "indoor",
     emits: [], sprite: "restroom", art: "zone",
-    seats: [], serves: "bladder", use: [5, 9],
+    seats: [], serves: "bladder", use: [4, 7], // (Batch A) was 5-9 s
     sized: { layout: "restroom", min: [2, 2], max: [8, 5], cost: [150, 75], upkeep: [3.5, 2, 0], tiers: ["Restrooms", "Lounge restrooms"], tierAt: [6], staffEvery: 0 },
     desc: "A stall for every two tiles. The doors face the front.",
   },

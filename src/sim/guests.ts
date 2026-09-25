@@ -24,7 +24,7 @@ import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRI
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
 import { tagGuest, guestName, hash01, deterOf } from "./cheats";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
 import { gradeOf, offers, pickIntent, priceFor, priceTolerance, purposeAt, servingCost, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
@@ -40,6 +40,7 @@ import { judged } from "./design/appeal";
 import { SLOT_TASTES } from "../data/slotTastes";
 import { gameKey, noteSessionEnd, noteThought } from "./opinions";
 import { fanOf, marketFactor, marketSession, marketVersion, personalPull } from "./design/market";
+const news = newsFor("guests");
 
 declare module "./commands" {
   interface CommandTypes {
@@ -850,6 +851,21 @@ function lookAround(g: Game, a: Agent) {
  * Walk to the nearest free seat of an amenity serving `what` that the guest can see or knows the way to.
  * "full" when every one they know of is taken; "unknown" when they don't know of any.
  */
+/** (Batch A) Waiting for a restroom: stand near the nearest one they know (a short hop there, then idle). */
+function queueFor(g: Game, a: Agent, r: Rng) {
+  const w = g.state.map.w, gd = a.g!;
+  let best = -1, bd = Infinity;
+  for (const o of g.amenities.bladder) {
+    if (!gd.seen.includes(o.id) && !knowsRoute(gd, o)) continue;
+    const t = faceTile(g, o), d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+    if (d < bd) { bd = d; best = t; }
+  }
+  if (best < 0 || bd <= 2) return standBy(g, a);
+  const paths = g.pathsFor(a), here = a.y * w + a.x;
+  if (!paths.reachable(here, best)) return wander(g, a, r);
+  go(a, best, "idle");
+}
+
 function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
   const gd = a.g!, w = g.state.map.w, here = a.y * w + a.x;
   let best = -1, bestSeat = -1, bd = Infinity, known = false;
@@ -871,7 +887,7 @@ function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
     if (ds < bd) { bd = ds; best = o.id; bestSeat = k; }
   }
   if (best < 0) return known ? "full" : "unknown";
-  if (gd.seek === what) { gd.seek = ""; gd.lost = 0; }
+  if (gd.seek === what || (gd.seek === "line" && what === "bladder")) { gd.seek = ""; gd.lost = 0; }
   claim(g, a, best, bestSeat);
   go(a, seatTile(g, best, bestSeat), ACT_OF[what]);
   return "ok";
@@ -1382,7 +1398,16 @@ function decide(g: Game, a: Agent) {
     } else {
       const use = goUse(g, a, "bladder");
       if (use === "ok") return;
-      if (use === "full") { think(g, a, "restroomLine"); gd.annoy += 3; return wander(g, a, r); }
+      // (Batch A, owner: "everyone's complaining about lines") Every restroom they know is full. Before, they
+      // complained and wandered off at every decision (thousands of complaints for a few dozen real waits). Now: go
+      // look for one they haven't found while it isn't urgent; else wait by the nearest, grumbling once per wait.
+      if (use === "full") {
+        if (n.bladder < 85 && gd.seek !== "line" && !(gd.seek === "bladder" && gd.lost >= 2) && g.amenities.bladder.some((o) => !gd.seen.includes(o.id) && !knowsRoute(gd, o)) && seekNeed(g, a, r, "bladder", n.bladder / 40)) return;
+        if (gd.seek !== "line") { gd.seek = "line"; gd.lost = 0; }
+        if (++gd.lost === 3) { think(g, a, "restroomLine"); gd.annoy += 3; }
+        if (gd.lost >= 12 && n.bladder >= 95) { think(g, a, "restroomLine"); gd.mem.unmet++; return startLeaving(g, a, "restroom"); }
+        return queueFor(g, a, r);
+      }
       // The more urgent, the more single-minded the search.
       if (seekNeed(g, a, r, "bladder", n.bladder / 40)) return;
     }

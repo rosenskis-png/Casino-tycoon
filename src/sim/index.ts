@@ -17,6 +17,7 @@ export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult, gradeOf, s
 export type { Gate } from "./state";
 export { LEDGER_LABELS, ledgerLabel, monthlyCosts, worth, meterDebt } from "./finance";
 export { goalStatus, describeGoals } from "./goals";
+export { seatHolders } from "./guests";
 export { thoughtRates, guestCount, engagement, engageParts, floorDraw, capacity } from "./guests";
 export { newcomerRates, poolSummary, person } from "./pool";
 export { pedSpot, curbAppeal } from "./street";
@@ -56,3 +57,4 @@ export type { YourPlay, YourFam } from "./state";
 export { SCENARIOS } from "../data/scenarios";
 export { bribeChance, bribePrice } from "./regulator";
 export { GUEST_TYPES } from "../data/guests";
+export { NEWS_CATS, type NewsCat } from "./news";

@@ -22,9 +22,10 @@ import { cutoff, handsFull, serveDrink, DRINK_PRICE } from "./drinks";
 import { post } from "./finance";
 import { scaled } from "./bank";
 import { inZone, skillOf } from "./crew";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { deterOf } from "./cheats";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
+const news = newsFor("incidents");
 
 declare module "./commands" {
   interface CommandTypes {

@@ -16,16 +16,17 @@ import { judged } from "./design/appeal";
 import { rng, type Rng } from "./rng";
 import { post } from "./finance";
 import { TICKS_PER_SECOND } from "./clock";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { compSeeking } from "./drinks";
 import { payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
 import { earnComps, ensureCash, expectedExcess, insured, stiff } from "./bank";
 import { engagement, savvyNow, showOff } from "./guests";
+const news = newsFor("wins");
 
-/** Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
-const TICKER_JACKPOT = 1000;
-const TICKER_JACKPOT_X = 500;
+/** (Batch A: raised from $1,000 / 500×, owner) Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
+const TICKER_JACKPOT = 10_000;
+const TICKER_JACKPOT_X = 1000;
 
 /** Any game object: a slot, video poker, a table or a draw game. */
 export const isGame = (kind: string) => !!(OBJECTS[kind]?.slot || OBJECTS[kind]?.game);

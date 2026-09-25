@@ -28,6 +28,7 @@ import {
   priceOf, dims, seatCount, objStaff, tierName, priceFor, gradeOf, servingCost, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules, type NewsRef,
   cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST,
+  NEWS_CATS,
 } from "../sim";
 import { play } from "../platform/audio";
 import { SoundSettings } from "./title";
@@ -35,7 +36,8 @@ import { CLUB_TRACKS, TRACKS } from "../data/music";
 import type { Host } from "./host";
 import type { Tool } from "./input";
 import { money } from "./format";
-import { AUTO_KEY, MANUAL_KEY, exportSave, hasSave, importSave, load, newGame, save } from "./saves";
+import { AUTO_KEY, MANUAL_KEY, exportSave, hasSave, importSave, load, newGame, save, savedNote } from "./saves";
+import { noticeOn, setNotice } from "./notices";
 import { perfTest, type PerfResult } from "./perf";
 import { BankSignCard, Opinions, SlotLive } from "./designer/Opinions";
 import { DesignMarket } from "./designer/Market";
@@ -1228,12 +1230,13 @@ export function GamePanel({ host, onMenu }: { host: Host; onMenu?: (keep: boolea
   return (
     <>
       <div className="grid">
-        <button className="btn" onClick={() => { save(g, MANUAL_KEY); setNote("Saved."); }}>Save</button>
+        <button className="btn" onClick={() => { play("click"); setNote(savedNote(save(g, MANUAL_KEY), g)); }}>Save</button>
         <button className="btn" disabled={!hasSave(MANUAL_KEY)} onClick={() => { const r = load(MANUAL_KEY); replace(r.game, r.error); }}>Load save</button>
         <button className="btn" onClick={() => exportSave(g)}>Export<small>backup file</small></button>
         <button className="btn" onClick={async () => { const r = await importSave(); replace(r.game, r.error, "Imported."); }}>Import<small>backup file</small></button>
         {onMenu && <button className="btn" onClick={() => setMenuAsk(!menuAsk)}>Main menu<small>scenarios, sound</small></button>}
       </div>
+      {note && <p className={note.startsWith("⚠") ? "lv-urgent" : "lv-good"} style={{ margin: "6px 0" }}>{note}</p>}
       {onMenu && menuAsk && (
         <div className="row">
           <span className="muted" style={{ flex: "1 0 100%" }}>Save your progress before going to the main menu?</span>
@@ -1247,9 +1250,14 @@ export function GamePanel({ host, onMenu }: { host: Host; onMenu?: (keep: boolea
         <select value={scenario} onChange={(e) => setScenario(e.target.value)} style={{ flex: 1 }}>
           {Object.values(SCENARIOS).filter((s) => !s.hidden).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <button className="btn danger" onClick={() => { if (confirm("Start a new game? The autosave will be replaced.")) { const n = newGame(Date.now(), scenario); host.setGame(n); save(n, AUTO_KEY); } }}>New game</button>
+        <button className="btn danger" onClick={() => { if (confirm("Start a new game? The autosave will be replaced.")) { const n = newGame(Date.now(), scenario); host.setGame(n); host.setSpeed(0); save(n, AUTO_KEY); setNote("New game, paused: build, then press 1×."); } }}>New game</button>
       </div>
-      {note && <p className="muted">{note}</p>}
+      <p className="muted" style={{ margin: "12px 0 6px" }}>Notices on the ticker (hidden ones still go to the log; urgent ones always show)</p>
+      <div className="checks">
+        {NEWS_CATS.map((c) => (
+          <label key={c.id}><input type="checkbox" checked={noticeOn(c.id)} onChange={(e) => { setNotice(c.id, e.target.checked); refresh(); }} /> {c.name}</label>
+        ))}
+      </div>
       <p className="muted" style={{ margin: "12px 0 6px" }}>Engine test tools</p>
       <div className="grid">
         <button className="btn" onClick={() => g.dispatch({ type: "spawnGuests", n: 100 })}>+100 guests</button>

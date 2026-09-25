@@ -23,7 +23,9 @@ export interface ResearchDef {
   desc: string;
 }
 
-const R = (d: ResearchDef) => d;
+/** (Batch A, owner) Every cost halved again (the table in docs/spec/research.md lists the M11.2 costs). */
+export const COST_SCALE = 0.5;
+const R = (d: ResearchDef): ResearchDef => ({ ...d, cost: d.cost * COST_SCALE });
 export const RESEARCH: Record<string, ResearchDef> = Object.fromEntries([
   R({ id: "tables", name: "Table games", cat: "games", cost: 1500, objects: ["blackjack", "roulette"], desc: "Blackjack and roulette tables." }),
   R({ id: "tables2", name: "Craps and baccarat", cat: "games", cost: 2500, needs: ["tables"], objects: ["craps", "baccarat"], desc: "The loud table and the quiet one." }),

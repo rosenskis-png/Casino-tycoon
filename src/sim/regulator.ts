@@ -10,13 +10,14 @@ import type { Agent, RegulatorState } from "./state";
 import { rng } from "./rng";
 import { isWalking } from "./agents";
 import { post } from "./finance";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { hitReputation } from "./pool";
 import { adjustPolice, close, leaveFloor, patrol, spawnVisitor, LADDER, STEP_GAP_DAYS } from "./incidents";
 import { GAMING, scaled } from "./bank";
 import { TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { canSee } from "./wayfinding";
 import { machinesOf, minRtpOf } from "./design";
+const news = newsFor("authorities");
 
 /**
  * (M8) Uncertified slot designs: the base fine and the standing lost when seized. (M11) The inspector has to see a

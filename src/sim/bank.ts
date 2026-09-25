@@ -13,13 +13,14 @@ import type { CommandTable } from "./commands";
 import type { System } from "./registry";
 import type { Agent, Bank, GuestData } from "./state";
 import { post, assetsOf } from "./finance";
-import { fmtMoney, news } from "./news";
+import { fmtMoney, newsFor } from "./news";
 import { hitReputation, person } from "./pool";
 import { adjustRegulator } from "./regulator";
 import { think } from "./guests";
 import { hasClub } from "./research";
 import { OBJECTS } from "../data/objects";
 import { TICKS_PER_DAY, dateOfDay, daysInMonth } from "./clock";
+const news = newsFor("money");
 
 declare module "./commands" {
   interface CommandTypes {

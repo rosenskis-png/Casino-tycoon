@@ -294,6 +294,13 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.lowPolice = s.auth.police.standing;
     return s;
   },
+  // 22 → 23 (Batch A): a research queue; nobody is lucky or unlucky any more; a maker's offer waits until answered.
+  22: (s) => {
+    s.research.queue = [];
+    for (const a of s.agents) if (a.g) a.g.luck = 0;
+    for (const p of s.pool) p.luck = 0;
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

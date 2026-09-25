@@ -9,6 +9,7 @@ import { PlayScreen } from "./play";
 import { reveal } from "./reveal";
 import { Designer } from "./designer/Designer";
 import { SlotsPanel } from "./designer/SlotsPanel";
+import { OfferLetter } from "./designer/Market";
 import type { SlotDesign } from "../data/designer";
 import { SCENARIOS } from "../data/scenarios";
 import { onHidden } from "../platform/lifecycle";
@@ -17,6 +18,7 @@ import { WorldInput, type Tool } from "./input";
 import { Ticker, type TickerItem } from "./ticker";
 import { money } from "./format";
 import { AUTO_KEY, load, newGame, save } from "./saves";
+import { noticeOn } from "./notices";
 import { newDesign } from "../data/designer";
 import { placeTool } from "./panels";
 import { Letter, AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
@@ -55,6 +57,10 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const [toast, setToast] = useState<string | null>(null);
   /** (M12) A new game's letter (the scenario's intro), shown until dismissed. */
   const [letter, setLetter] = useState(false);
+  /** (Batch A) A pop-up that paused the game: the scenario won or lost, or a slot maker's offer. */
+  const [alert, setAlert] = useState<"won" | "lost" | "offer" | null>(null);
+  /** What the pop-ups have already shown for the game in play (a loaded game's standing outcome isn't news). */
+  const seen = useRef({ outcome: initial.state.outcome as string, offer: !!initial.state.offer });
   const toastTimer = useRef(0);
   const showToast = (t: string) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 2200); };
   /** (M8) The slot designer, open on a design. */
@@ -95,7 +101,9 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         else if (e.type === "jackpot") sound("jackpot", e.x, e.y);
         else if (e.type === "broken") { const o = g.objById.get(e.obj); sound("broken", o?.x, o?.y); }
         else if (e.type === "incident" && INCIDENT_SOUND[e.kind]) sound(INCIDENT_SOUND[e.kind], e.x, e.y);
-        else if (e.type === "news") { ticker.push({ level: e.level, text: e.text, ref: e.ref }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
+        else if (e.type === "news") {
+          if (e.level !== "urgent" && e.cat && !noticeOn(e.cat)) return;
+          ticker.push({ level: e.level, text: e.text, ref: e.ref }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
         else if (e.type === "commandRejected") {
           setToast(e.reason);
           clearTimeout(toastTimer);
@@ -104,7 +112,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       });
     };
     attach(initial);
-    const offGame = h.onGame((g) => { attach(g); setSel(null); });
+    const offGame = h.onGame((g) => { attach(g); setSel(null); setAlert(null); seen.current = { outcome: g.state.outcome, offer: !!g.state.offer }; });
     if (bootNote) ticker.push(bootNote, performance.now());
     else ticker.push({ level: "info", text: initial.state.log.at(-1)?.text ?? "Welcome." }, performance.now());
     const input = new WorldInput(h, canvasRef.current!, {
@@ -123,7 +131,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       },
     });
     const tickT = setInterval(() => { if (ticker.update(performance.now())) force((n) => n + 1); }, 100);
-    const autosave = setInterval(() => { if (h.speed > 0) save(h.game); }, 30_000);
+    const autosave = setInterval(() => { if (!titleRef.current) save(h.game); }, 30_000); // paused building counts too
     const offHidden = onHidden(() => save(h.game));
     const unlock = () => unlockAudio();
     // iPhone Safari only starts audio from these (not pointerdown): try on every one until it's running.
@@ -141,6 +149,18 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const sub = host?.subscribe ?? noopSub;
   useSyncExternalStore(sub, () => (host ? `${host.game.state.tick}|${host.game.state.cash}|${host.speed}|${host.camera.level}` : ""));
 
+  // (Batch A, owner) Winning, losing and a maker's offer pause the game for a pop-up.
+  useEffect(() => {
+    if (!host || title) return;
+    const s = host.game.state, sn = seen.current;
+    let pop: typeof alert = null;
+    if (s.outcome && s.outcome !== sn.outcome) pop = s.outcome;
+    else if (s.offer && !sn.offer) pop = "offer";
+    sn.outcome = s.outcome;
+    sn.offer = !!s.offer;
+    if (pop && !alert) { host.setSpeed(0); setAlert(pop); play(pop === "lost" ? "urgent" : "news"); }
+  });
+
   // Keep selection highlight in the renderer.
   if (host) {
     host.drawOptions.selectedTile = sel?.kind === "tile" ? sel.tile : undefined;
@@ -154,7 +174,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   /** Back to the title screen (Game tab): save first, or go back to the last save. */
   const toMenu = (keep: boolean) => {
     if (!host) return;
-    if (keep) save(host.game, AUTO_KEY);
+    if (keep && !save(host.game, AUTO_KEY)) showToast("Saved for this session only: this browser blocked storage.");
     else { const r = load(AUTO_KEY); if (r.game) host.setGame(r.game); }
     host.setSpeed(0);
     if (floorRef.current) floorRef.current.enabled = false;
@@ -163,11 +183,12 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     titleAwake.current = true;
     setTitle(true);
   };
-  const leaveTitle = () => {
+  /** (Batch A, owner) A new scenario starts paused; a continued game picks up at 1×. */
+  const leaveTitle = (paused = false) => {
     titleAwake.current = true;
     setTitle(false);
     if (floorRef.current) floorRef.current.enabled = true;
-    host?.setSpeed(1);
+    host?.setSpeed(paused ? 0 : 1);
   };
   /** Pick up a slot design to place from the Build tab. */
   const placeDesign = (id: string) => {
@@ -212,7 +233,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   return (
     <div className="ct">
       <div className="top">
-        <span className="cash num">{g ? money(playing && reveal.cash !== null ? reveal.cash : g.state.cash) : ""}</span>
+        <span className="cash num">{g ? (SCENARIOS[g.state.scenario]?.unlimited ? "Unlimited" : money(playing && reveal.cash !== null ? reveal.cash : g.state.cash)) : ""}</span>
         <span className="date num">{g ? formatDate(Math.floor(g.state.tick / TICKS_PER_DAY)) : ""}</span>
         {!playing && <div className="speeds">
           {SPEEDS.map((s) => (
@@ -240,7 +261,25 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         {host && letter && SCENARIOS[host.game.state.scenario].intro && (
           <div className="letter-wrap">
             <Letter intro={SCENARIOS[host.game.state.scenario].intro!} />
-            <button className="btn big" onClick={() => setLetter(false)}>Understood</button>
+            <button className="btn big" onClick={() => { setLetter(false); showToast("Paused: build as much as you like, then press 1× to open."); }}>Understood</button>
+          </div>
+        )}
+        {host && !letter && alert && alert !== "offer" && (
+          <div className="letter-wrap">
+            <div className="letter">
+              <p><b>{alert === "won" ? "Scenario complete!" : "Scenario lost."}</b></p>
+              <p>{alert === "won" ? "You met every goal. Keep playing as long as you like." : host.game.state.log.filter((l) => l.level === "urgent").at(-1)?.text ?? "The goals weren't met."}</p>
+            </div>
+            <div className="row" style={{ justifyContent: "center" }}>
+              <button className="btn big" onClick={() => { setAlert(null); setTab("goals"); }}>See goals</button>
+              <button className="btn big" onClick={() => setAlert(null)}>Keep playing</button>
+            </div>
+          </div>
+        )}
+        {host && !letter && alert === "offer" && host.game.state.offer && (
+          <div className="letter-wrap">
+            <OfferLetter g={host.game} onAnswer={() => setAlert(null)} />
+            <button className="btn big" onClick={() => setAlert(null)}>Decide later<small>it waits in the Slots tab</small></button>
           </div>
         )}
       </div>
@@ -269,8 +308,8 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
           </button>
         ))}
       </nav>}
-      {host && title && <TitleScreen awake={titleAwake.current} hasGame={host.game.state.tick > 0} scenario={host.game.state.scenario} onContinue={leaveTitle}
-        onNew={(id) => { const n = newGame(Date.now(), id); host.setGame(n); save(n, AUTO_KEY); leaveTitle(); setLetter(!!SCENARIOS[id].intro); }} />}
+      {host && title && <TitleScreen awake={titleAwake.current} hasGame={host.game.state.tick > 0} scenario={host.game.state.scenario} onContinue={() => leaveTitle()}
+        onNew={(id) => { const n = newGame(Date.now(), id); host.setGame(n); save(n, AUTO_KEY); leaveTitle(true); setLetter(!!SCENARIOS[id].intro); }} />}
     </div>
   );
 }

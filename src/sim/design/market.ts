@@ -14,7 +14,7 @@ import type { Agent, DesignStats, GameState, GuestData, PlacedObject, Sale } fro
 import { rng } from "../rng";
 import { gauss } from "../dist";
 import { post } from "../finance";
-import { fmtMoney, news } from "../news";
+import { fmtMoney, newsFor } from "../news";
 import { researched } from "../research";
 import { person } from "../pool";
 import { TICKS_PER_DAY } from "../clock";
@@ -22,6 +22,7 @@ import { judged, feelOf, sessionOf } from "./appeal";
 import { panel } from "./lab";
 import { designById, designIdOf, isStock, designPrice } from "./lookup";
 import { compiledById, machinesOf, panelMix, perfIndex, statsOf } from "./index";
+const news = newsFor("slots");
 
 declare module "../commands" {
   interface CommandTypes {
@@ -387,7 +388,11 @@ function monthlyRecords(g: Game) {
 // ---------------------------------------------------------------------------------------------------------
 // Selling a design (docs/spec/designer.md "Selling a design to a slot maker").
 
-export const SALE_RULES = { months: 6, excitement: 6, index: 1.2, fans: 50, rtp: 0.97 };
+/**
+ * (Batch A, owner) Fans alone decide: a chance of an offer from `fans` fans, one for sure at `sure`. The other numbers
+ * only shape how good the offer is (saleScore).
+ */
+export const SALE_RULES = { fans: 20, sure: 50, excitement: 6, index: 1.2, rtp: 0.97 };
 
 /** Why a design can't get an offer (empty: it qualifies). */
 export function saleBlocks(g: Game, id: string): string[] {
@@ -396,20 +401,16 @@ export function saleBlocks(g: Game, id: string): string[] {
   if (rec.sale) return ["already sold"];
   if (rec.rigged) out.push("uncertified");
   const st = s.dstats[id];
-  if (!machinesOf(s, id).length) out.push("not on the floor");
-  if (ageDays(s, st) < SALE_RULES.months * 30) out.push(`on the floor ${SALE_RULES.months} months`);
-  const c = compiledById(s, id);
-  if (!c || panel(c, panelMix(s)).ratings.excitement < SALE_RULES.excitement) out.push(`Excitement ${SALE_RULES.excitement}+`);
-  if ((perfIndex(s, id) ?? 0) < SALE_RULES.index) out.push(`performance index ${SALE_RULES.index}+`);
+  if (!machinesOf(s, id).length || !st) out.push("not on the floor");
+  if (!compiledById(s, id)) out.push("a working design");
   if (fanCount(g, id) < SALE_RULES.fans) out.push(`${SALE_RULES.fans} fans`);
-  if (rec.d.rtp > SALE_RULES.rtp + 1e-9) out.push(`payback ${Math.round(SALE_RULES.rtp * 100)}% or less`);
   return out;
 }
 /** How good a qualifying design looks to a maker, 0-1: Excitement, performance, fans and hold. */
 export function saleScore(g: Game, id: string): number {
   const s = g.state, c = compiledById(s, id)!, ex = panel(c, panelMix(s)).ratings.excitement;
   return clamp01(0.3 * clamp01((ex - 6) / 4) + 0.3 * clamp01(((perfIndex(s, id) ?? 1.2) - 1.2) / 1.3)
-    + 0.25 * clamp01(Math.log2(fanCount(g, id) / 50) / 3) + 0.15 * clamp01((0.97 - c.d.rtp) / 0.07));
+    + 0.25 * clamp01(Math.log2(fanCount(g, id) / 20) / 4) + 0.15 * clamp01((0.97 - c.d.rtp) / 0.07));
 }
 
 function makeOffer(g: Game, id: string, sc: number) {
@@ -417,12 +418,13 @@ function makeOffer(g: Game, id: string, sc: number) {
   const j = () => clamp01(sc + (r.next() - 0.5) * 0.4);
   const cash = Math.round((designPrice(d).cost * (10 + 90 * j())) / 100) * 100;
   const share = Math.round((0.25 + 0.5 * j()) * 20) / 20, roy = Math.round((0.01 + 0.02 * j()) * 1000) / 1000;
-  s.offer = { id, maker: r.pick(MAKERS), cash, share, roy, until: s.tick + 30 * DAY, s: sc };
-  news(g, "good", `A letter from ${s.offer.maker}: they want to buy ${d.name}. Answer in the Slots tab within 30 days.`, { tab: "slots" });
+  // (Batch A, owner) The offer waits until answered (`until` is kept for old saves, unused); the UI pauses for it.
+  s.offer = { id, maker: r.pick(MAKERS), cash, share, roy, until: s.tick, s: sc };
+  news(g, "good", `A letter from ${s.offer.maker}: they want to buy ${d.name}. Answer it in the Slots tab.`, { tab: "slots" });
 }
 
 /** Declined or let lapse: maybe another offer in 3-12 months, less likely each time. */
-function decline(g: Game, lapsed: boolean) {
+function decline(g: Game, lapsed = false) {
   const s = g.state, o = s.offer!, rec = s.designs[o.id];
   s.offer = null;
   if (!rec) return;
@@ -514,8 +516,9 @@ function offers(g: Game) {
   for (const [id, rec] of Object.entries(s.designs)) {
     if (rec.reAt === -1 || saleBlocks(g, id).length) continue;
     if (rec.reAt && rec.reAt > 0) { if (s.tick >= rec.reAt) { rec.reAt = 0; makeOffer(g, id, saleScore(g, id)); return; } continue; }
-    const sc = saleScore(g, id);
-    if (r.chance(0.005 + 0.03 * sc)) { makeOffer(g, id, sc); return; }
+    // Checked daily: from 20 fans about 5% a month, rising to 45% a month by 49; at 50, today.
+    const sc = saleScore(g, id), f = fanCount(g, id);
+    if (f >= SALE_RULES.sure || r.chance(0.0017 + 0.018 * (f - SALE_RULES.fans) / (SALE_RULES.sure - SALE_RULES.fans))) { makeOffer(g, id, sc); return; }
   }
 }
 
@@ -552,7 +555,7 @@ export const marketSystem: System = {
     spread(g);
     // Days are short: appeal follows awareness weekly (and at once when the floor changes).
     if (Math.floor(s.tick / DAY) % 7 === 0) marketChanged(g);
-    if (s.offer && s.tick >= s.offer.until) decline(g, true);
+    offers(g);
     outsidePlay(g);
   },
   closeMonth(g) { royalties(g); },
@@ -575,6 +578,5 @@ export const marketSystem: System = {
     }
     marketChanged(g);
     monthlyRecords(g);
-    offers(g);
   },
 };

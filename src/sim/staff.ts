@@ -276,7 +276,7 @@ function serverTick(g: Game, a: Agent) {
         if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
         const comped = rollComp(g, gd, pol);
         gd.mem.offerAt = tick + OFFER_AGAIN;
-        if (!r.chance(acceptChance(gd, pol, comped))) continue;
+        if (!r.chance(acceptChance(gd, pol, comped, bar.grade ?? 1))) continue;
         a.tray!.push(b.id * 2 + (comped ? 1 : 0));
         taken.add(b.id);
         if (a.tray!.length === 1) a.due = tick + COLLECT_TICKS;

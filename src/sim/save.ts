@@ -272,6 +272,14 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const a of s.agents) if (a.g) { a.g.sight = 0; if (a.g.intent === "gamble" || a.g.intent === "drink") a.g.todo |= 1 << 12; }
     return s;
   },
+  // 20 → 21 (M11.4): the nightclub has its own research project ("nightclub"); before, the player's club's entry
+  // shadowed it and a nightclub needed no research. Saves that could build one keep that: every scenario that
+  // starts with building projects, and any save with a nightclub already placed.
+  20: (s) => {
+    const open = SCENARIOS[s.scenario]?.research === "build";
+    if ((open || s.objects.some((o: { kind: string }) => o.kind === "club")) && !s.research.done.includes("nightclub")) s.research.done.push("nightclub");
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

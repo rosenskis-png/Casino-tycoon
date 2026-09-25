@@ -13,6 +13,7 @@ import { EVENTS, CAMPAIGNS, CAMPAIGN_MONTHS } from "../data/events";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
+import { GRADES } from "../data/grades";
 import { WAGERS_PER_ROUND } from "../data/games";
 import { STOCK_DESIGNS } from "../data/designs";
 import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
@@ -24,7 +25,7 @@ import {
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
   locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
-  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
+  priceOf, dims, seatCount, objStaff, tierName, priceFor, gradeOf, servingCost, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules, type NewsRef,
   cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST,
 } from "../sim";
@@ -212,7 +213,7 @@ const moodFace = (m: number) => (m > 75 ? "😀" : m > 55 ? "🙂" : m > 40 ? "�
 
 const PAYS: number[] = [];
 for (let p = PAY_MIN; p <= PAY_MAX + 1e-9; p += PAY_STEP) PAYS.push(Math.round(p * 10) / 10);
-const moraleWord = (m: number) => (m >= 75 ? "happy" : m >= 50 ? "content" : m >= 30 ? "unhappy" : "miserable");
+const moraleWord = (m: number) => (m >= 70 ? "happy" : m >= 50 ? "content" : m >= 30 ? "unhappy" : "miserable");
 
 export function StaffPanel({ host }: { host: Host }) {
   const g = host.game;
@@ -283,6 +284,25 @@ const barName = (g: Game, id: number) => {
 };
 
 /** Drink policy for one bar and its servers (in the bar's inspector). */
+/** (M11.4, owner) What a place serves, cheap to fancy, and what each serving earns at its price. */
+function Serving({ g, id, price }: { g: Game; id: number; price: number }) {
+  const o = g.objById.get(id);
+  if (!o) return null;
+  const cost = servingCost(o), margin = price - cost;
+  return (
+    <>
+      <b>Grade</b>
+      <span><select value={gradeOf(o)} onChange={(e) => g.dispatch({ type: "setGrade", id, grade: Number(e.target.value) })}>
+        {GRADES.map((n, k) => <option key={n} value={k}>{n}</option>)}
+      </select></span>
+      <b>Margin</b>
+      <span className={`num${margin < 0 ? " neg" : ""}`}>
+        {price > 0 ? `${money(margin)} each (${Math.round((100 * margin) / price)}%)` : `free: ${money(-cost)} each`}
+      </span>
+    </>
+  );
+}
+
 function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
   const o = g.objById.get(id);
   if (!o?.bar) return null;
@@ -297,7 +317,8 @@ function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
       <p className="muted" style={{ margin: "10px 0 6px" }}>{barName(g, id)}: drinks here and from its servers ({servers} assigned)</p>
       <div className="kv">
         <b>Price</b>
-        <span className="num"><input type="range" min={0} max={3} step={0.25} value={d.price} onChange={(e) => set({ price: Number(e.target.value) })} /> {d.price.toFixed(2)}× ({money(DRINK_PRICE * d.price)})</span>
+        <span className="num"><input type="range" min={0} max={3} step={0.25} value={d.price} onChange={(e) => set({ price: Number(e.target.value) })} /> {money(DRINK_PRICE * d.price)}</span>
+        <Serving g={g} id={id} price={DRINK_PRICE * d.price} />
         <b>Comped</b>
         <span className="num"><input type="range" min={0} max={1} step={0.05} value={d.comp} onChange={(e) => set({ comp: Number(e.target.value) })} /> {Math.round(d.comp * 100)}% free to players</span>
         <b>Strength</b>
@@ -1081,6 +1102,7 @@ function AmenityCard({ g, id }: { g: Game; id: number }) {
             <input type="range" min={pr[0]} max={pr[1]} step={def.serves === "hunger" ? 0.25 : 1} value={o.price ?? pr[0]} onChange={(e) => g.dispatch({ type: "setPrice", id, price: Number(e.target.value) })} />
             {" "}{money(priceFor(o))}
           </span>
+          <Serving g={g} id={id} price={priceFor(o)} />
         </div>
       )}
     </>

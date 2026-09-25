@@ -142,7 +142,7 @@ console.log(`reports ${totals._reports ?? 0}, police calls ${totals._calls ?? 0}
 const uses = {};
 for (const o of s.objects) uses[o.kind] = (uses[o.kind] ?? 0) + o.st.uses;
 const L = s.finance.total, m = (k) => usd(L[k] ?? 0);
-console.log(`amenities: meals ${(uses.restaurant ?? 0) + (uses.patiorestaurant ?? 0)}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}, pool ${uses.pool ?? 0}, garden ${uses.garden ?? 0}; food ${m("food")} (cost ${m("foodCost")}), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
+console.log(`amenities: meals ${(uses.restaurant ?? 0) + (uses.patiorestaurant ?? 0)}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}, pool ${uses.pool ?? 0}, garden ${uses.garden ?? 0}; food ${m("food")} (net of costs), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
 // Tables (M7): hold per game, by what was bet and paid.
 const hold = {};
 for (const o of s.objects) {

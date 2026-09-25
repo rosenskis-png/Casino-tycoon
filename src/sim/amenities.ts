@@ -1,5 +1,6 @@
 // Amenities as places (docs/spec/construction.md): tiers, prices, the show schedule, room purposes, and what the
 // casino's amenities do to who comes and why. Pure functions of state; the guest system acts on them.
+import { GRADE_DEFAULT, gradeWorth, unitCost } from "../data/grades";
 import { OBJECTS } from "../data/objects";
 import { GUEST_TYPES, type GuestTypeDef, type Reason } from "../data/guests";
 import { capacity, floorDraw, sightsDraw } from "./guests";
@@ -68,10 +69,14 @@ export const DRAWS: { intent: "dine" | "show" | "club" | "pool" | "golf"; serves
 export const priceDraw = (price: number, worth: number) => 1.5 * Math.exp(-price / Math.max(1, worth));
 
 /** (M11.2) What a place is worth to a type: a show ticket's worth, 30% of it for mini golf, the pool or a cover, 80% for a meal; a finer place is worth more. */
-export function worthTo(type: GuestTypeDef, serves: Serves, tier: number): number {
+export function worthTo(type: GuestTypeDef, serves: Serves, tier: number, grade = GRADE_DEFAULT): number {
   const k = serves === "show" ? 1 : serves === "hunger" ? 0.8 : 0.3;
-  return type.ticket * k * (1 + 0.25 * tier);
+  return type.ticket * k * (1 + 0.25 * tier) * gradeWorth(type.luxe, grade);
 }
+/** (M11.4) What a priced place or bar serves: 0 cheap, 1 standard, 2 fancy. */
+export const gradeOf = (o: PlacedObject | undefined) => o?.grade ?? GRADE_DEFAULT;
+/** (M11.4) What one serving here costs the house (a drink, a meal, a show seat, a club entry, a swim, a round). */
+export const servingCost = (o: PlacedObject) => unitCost(OBJECTS[o.kind].serves ?? "", gradeOf(o));
 
 /**
  * (M11.2, owner) How well the casino offers each reason a type has to come: the gambling floor (seats, sublinearly,
@@ -88,7 +93,7 @@ export function offers(g: Game, type: GuestTypeDef): Record<Reason, number> {
     let best = 0;
     for (const o of g.amenities[d.serves]) {
       const tier = tierOf(g, o);
-      best = Math.max(best, REASON_K * (1 + 0.25 * tier) * priceDraw(priceFor(o), worthTo(type, d.serves, tier)) / 1.5);
+      best = Math.max(best, REASON_K * (1 + 0.25 * tier) * priceDraw(priceFor(o), worthTo(type, d.serves, tier, gradeOf(o))) / 1.5);
     }
     out[d.intent] = best;
   }

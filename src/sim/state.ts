@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 
 export interface MapState {
   w: number;
@@ -41,6 +41,8 @@ export interface PlacedObject {
   w?: number; h?: number;
   /** Player-set price: a restaurant's multiplier, a show ticket or a club's cover (dollars). */
   price?: number;
+  /** (M11.4) Priced places and bars: what they serve, 0 cheap, 1 standard (missing), 2 fancy (data/grades.ts). */
+  grade?: number;
   /** 1 while broken down (slots), waiting for a tech. */
   broken: number;
   /** Last round shown on the cabinet: tick it resolved and result (0 loss, 1 win, 2 jackpot). */

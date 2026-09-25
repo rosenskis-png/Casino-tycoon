@@ -27,7 +27,8 @@ import { tagGuest, guestName, hash01 } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
-import { offers, pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
+import { gradeOf, offers, pickIntent, priceFor, priceTolerance, purposeAt, servingCost, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
+import { gradeWorth } from "../data/grades";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
@@ -122,7 +123,6 @@ const SMOKE_PREF = { smoker: { tol: 4, w: 0.1 }, other: { tol: 0.8, w: 0.8 } };
 const URGE_PER_SEC = 100 / 270;
 const SMOKE_SECS = 20;
 /** What a meal costs the house, and the ticket and cover guests find fair at a first-tier place (dollars). */
-const FOOD_COST = 6;
 const COVER_FAIR = 15;
 /** Seconds trapped before staff let a guest out (docs/spec/construction.md). */
 const LET_OUT = 90;
@@ -1768,8 +1768,11 @@ function guestTick(g: Game, a: Agent) {
         const free = useComp(gd, "meal"), price = free ? 0 : priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "food");
-        post(g, "foodCost", -FOOD_COST);
-        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steepFood"); gd.annoy += 4; }
+        post(g, "food", -servingCost(o));
+        // (M11.4) Fair is the standard meal at this tier, worth more or less to them by its grade.
+        const fair = (OBJECTS[o.kind].price ?? 0) * priceTolerance(g, o) * gradeWorth(GUEST_TYPES[gd.type].luxe, gradeOf(o));
+        if (price > 1.2 * fair) { think(g, a, "steepFood"); gd.annoy += 4; }
+        else if (!free && price < 0.5 * fair && r.chance(0.3)) think(g, a, "bargain");
         a.timer = useTicks(g, a, r);
         return;
       }
@@ -1779,7 +1782,7 @@ function guestTick(g: Game, a: Agent) {
       gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 20);
       gd.floorTime += 2 * TICKS_PER_MIN;
       // (M11.2) Crowds used to finer places notice a plain one (a snack bar); the rest just enjoy it.
-      if ((GUEST_TYPES[gd.type].prefs.PRS?.ideal ?? 0) >= 5 && tierOf(g, o) === 0 && r.chance(0.5)) think(g, a, "plainFood");
+      if ((((GUEST_TYPES[gd.type].prefs.PRS?.ideal ?? 0) >= 5 && tierOf(g, o) === 0) || (GUEST_TYPES[gd.type].luxe >= 0.6 && gradeOf(o) === 0)) && r.chance(0.5)) think(g, a, "plainFood");
       else if (r.chance(0.4)) think(g, a, "goodMeal");
       if (r.chance(0.08)) litter(g, a.y * g.state.map.w + a.x, a);
       return doneWith(g, a, r);
@@ -1795,7 +1798,10 @@ function guestTick(g: Game, a: Agent) {
           const free = useComp(gd, "show"), price = free ? 0 : priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "shows");
-          if (price > worthTo(GUEST_TYPES[gd.type], "show", tierOf(g, o))) { think(g, a, "steepShow"); gd.annoy += 4; }
+          post(g, "shows", -servingCost(o));
+          const worth = worthTo(GUEST_TYPES[gd.type], "show", tierOf(g, o), gradeOf(o));
+          if (price > worth) { think(g, a, "steepShow"); gd.annoy += 4; }
+          else if (!free && price < 0.4 * worth && rng(g.state, "guests").chance(0.3)) think(g, a, "bargain");
           a.timer = 2;
         }
         gd.mem.fun++;
@@ -1822,8 +1828,9 @@ function guestTick(g: Game, a: Agent) {
           const price = priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.club; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "cover");
+          post(g, "cover", -servingCost(o));
           gd.paid |= 1;
-          if (price > COVER_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+          if (price > COVER_FAIR * priceTolerance(g, o) * gradeWorth(GUEST_TYPES[gd.type].luxe, gradeOf(o))) { think(g, a, "steep"); gd.annoy += 4; }
         }
         a.timer = useTicks(g, a, r);
         return;
@@ -1844,6 +1851,7 @@ function guestTick(g: Game, a: Agent) {
           const price = priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.pool; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "poolFees");
+          post(g, "poolFees", -servingCost(o));
           gd.paid |= 2;
         }
         a.timer = useTicks(g, a, r);
@@ -1876,7 +1884,8 @@ function guestTick(g: Game, a: Agent) {
         const price = priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.golf; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "golfFees");
-        if (price > worthTo(GUEST_TYPES[gd.type], "golf", tierOf(g, o))) { think(g, a, "steepGolf"); gd.annoy += 4; }
+        post(g, "golfFees", -servingCost(o));
+        if (price > worthTo(GUEST_TYPES[gd.type], "golf", tierOf(g, o), gradeOf(o))) { think(g, a, "steepGolf"); gd.annoy += 4; }
         a.timer = useTicks(g, a, r);
         return;
       }

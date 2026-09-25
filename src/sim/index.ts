@@ -13,7 +13,7 @@ export { MAX_RADIUS } from "./fields";
 export { idx } from "./map";
 export { objSeats, objSize, objCells, objStaff, objFootprint, covers, dims, priceOf, sizeTier, seatCount, type Placed } from "./geometry";
 export { placement, landForSale, MOVE_COST } from "./build";
-export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult } from "./amenities";
+export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult, gradeOf, servingCost } from "./amenities";
 export type { Gate } from "./state";
 export { LEDGER_LABELS, ledgerLabel, monthlyCosts, worth, meterDebt } from "./finance";
 export { goalStatus, describeGoals } from "./goals";

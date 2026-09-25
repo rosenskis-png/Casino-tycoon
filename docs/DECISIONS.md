@@ -457,4 +457,4 @@ Replaces the same-day "time and population" decision, which kept time of day.
 - v0.2 prototype archived verbatim under `reference/v0.2/` as reference only.
 
 ## Open (need the owner)
-- M11.2's scenario ladder (early, core, challenge scenarios as real maps with goals) is still unbuilt: part of v0.8, or after it?
+- Teaching scenarios (owner asked 2026-09-25: each built like the tutorial, where not embracing the lesson fails and embracing it wins): Claude's draft in docs/spec/scenarios.md (four scenarios, their lessons, wrong moves, goals and a script-proved shipping bar). Needs the owner's yes, changes or cuts before the build chat.

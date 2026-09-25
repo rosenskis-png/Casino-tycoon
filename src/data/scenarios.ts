@@ -108,7 +108,7 @@ function movedLot(dx: number, dy: number) {
 const row = (kind: string, x0: number, y: number, n: number, rot = 0) => Array.from({ length: n }, (_, k) => ({ kind, x: x0 + k, y, rot }));
 /** (M11.2) A tutorial bank: two rows of n facing each other across a two-tile aisle of seats (rows y and y + 3), the gentle classics mixed. */
 const tutorialBank = (x0: number, y: number, n: number): ScenarioDef["objects"] => [0, 3].flatMap((dy) =>
-  Array.from({ length: n }, (_, k) => (k + dy) % 3 === 0
+  Array.from({ length: n }, (_, k) => (k + dy) % 2 === 0
     ? { kind: "slot_stepper", design: "bells", x: x0 + k, y: y + dy, rot: dy ? 2 : 0 }
     : { kind: "slot_upright", design: "cherries", x: x0 + k, y: y + dy, rot: dy ? 2 : 0 }));
 
@@ -280,9 +280,10 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     rules: { intox: 0, disorder: 0 },
     staff: { tech: 1 },
     footfall: 0.15,
-    street: { tourist: 1, party: 0.6, local: 0.4, retiree: 0.3, family: 0.8 },
-    market: { local: { size: 90, regulars: 0.5 }, retiree: { size: 45, regulars: 0.2 } },
-    population: { local: 1, retiree: 0.6, tourist: 1, family: 1, party: 0.2 },
+    street: { tourist: 1.5, party: 0.6, local: 0.4, retiree: 0.3, family: 1.5 },
+    market: { local: { size: 35, regulars: 0.4 }, retiree: { size: 30, regulars: 0.2 } },
+    // (M11.2) Tourists and families are the market to win: plenty of them nearby, coming only for reasons you give them.
+    population: { local: 1, retiree: 0.6, tourist: 2, family: 4, party: 0.4 },
     rep: { local: 55, retiree: 45, tourist: 35, family: 30, party: 45 },
     arrivals: 0.16,
     maxGuests: 300,

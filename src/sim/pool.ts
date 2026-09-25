@@ -11,8 +11,8 @@ import { demand } from "./calendar";
 import { rng, type Rng } from "./rng";
 import { logNormal, range } from "./dist";
 import { TICKS_PER_DAY, dateOfDay } from "./clock";
-import { capacity, floorDraw, groupSize, guestCount, repFactor, room } from "./guests";
-import { amenityPull } from "./amenities";
+import { groupSize, guestCount, repFactor, room } from "./guests";
+import { reasonPull } from "./amenities";
 import { comeIn } from "./street";
 import { lifeTags, guestName } from "./cheats";
 import { news } from "./news";
@@ -173,15 +173,16 @@ function send(g: Game, p: Person, r: Rng) {
 export function newcomerRates(g: Game): Record<string, number> {
   const s = g.state, sc = SCENARIOS[s.scenario];
   const month = dateOfDay(Math.floor(s.tick / TICKS_PER_DAY)).month;
-  const cap = capacity(g), rm = room(g);
+  const rm = room(g);
   let total = 0;
   for (const [t, w] of Object.entries(sc.population)) total += w * (GUEST_TYPES[t]?.arrival.base ?? 0);
   const out: Record<string, number> = {};
   for (const [t, w] of Object.entries(sc.population)) {
     const type = GUEST_TYPES[t];
     if (!type || !total) continue;
-    // What the casino has (a restaurant, shows, a club) draws extra people who come for it (M6).
-    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * cap * floorDraw(g, t) * rm * amenityPull(g, t) * demand(s, t) * (1 + fanDraw(g, t));
+    // (M11.2, owner) People come for reasons: to gamble, for a drink, a meal, a show, the club, the pool, mini golf,
+    // the sights. Arrivals follow how well the casino offers what each crowd comes for (sim/amenities.ts offers).
+    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * rm * reasonPull(g, t) * demand(s, t) * (1 + fanDraw(g, t));
   }
   return out;
 }

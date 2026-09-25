@@ -1,10 +1,11 @@
 // Amenities as places (docs/spec/construction.md): tiers, prices, the show schedule, room purposes, and what the
 // casino's amenities do to who comes and why. Pure functions of state; the guest system acts on them.
 import { OBJECTS } from "../data/objects";
-import { GUEST_TYPES, type GuestTypeDef } from "../data/guests";
+import { GUEST_TYPES, type GuestTypeDef, type Reason } from "../data/guests";
+import { capacity, floorDraw, sightsDraw } from "./guests";
 import type { RoomPurpose } from "../data/rooms";
 import type { Game, Serves } from "./game";
-import type { PlacedObject } from "./state";
+import type { GuestData, PlacedObject } from "./state";
 import type { Rng } from "./rng";
 import { sizeTier } from "./geometry";
 import { TICKS_PER_SECOND } from "./clock";
@@ -63,21 +64,48 @@ export const DRAWS: { intent: "dine" | "show" | "club" | "pool" | "golf"; serves
   { intent: "golf", serves: "golf" },
 ];
 
-/** Each kind the casino has pulls its share of a type (more for a finer one): comeFor × (1 + 0.25 × best tier). */
-function pulls(g: Game, type: GuestTypeDef): number[] {
-  return DRAWS.map((d) => {
-    const list = g.amenities[d.serves];
-    if (!list.length || !type.comeFor[d.intent]) return 0;
-    let best = 0;
-    for (const o of list) best = Math.max(best, tierOf(g, o));
-    return type.comeFor[d.intent] * (1 + 0.25 * best);
-  });
+/** (M11.2) A price against what it's worth to them: 1.5 when free, 0.55 at its worth, 0.2 at twice it. */
+export const priceDraw = (price: number, worth: number) => 1.5 * Math.exp(-price / Math.max(1, worth));
+
+/** (M11.2) What a place is worth to a type: a show ticket's worth, 30% of it for mini golf, the pool or a cover, 80% for a meal; a finer place is worth more. */
+export function worthTo(type: GuestTypeDef, serves: Serves, tier: number): number {
+  const k = serves === "show" ? 1 : serves === "hunger" ? 0.8 : 0.3;
+  return type.ticket * k * (1 + 0.25 * tier);
 }
 
-/** Extra arrivals a type makes because of what the casino has (a multiplier: 1 + pull), and its tables (M7). */
-export function amenityPull(g: Game, typeId: string): number {
+/**
+ * (M11.2, owner) How well the casino offers each reason a type has to come: the gambling floor (seats, sublinearly,
+ * times how well they suit the type, and tables for those who want them), a bar (more if the drinks are free), each
+ * kind of place (finer is better, and the best price-for-worth one counts), and the sights (theming they like).
+ */
+export function offers(g: Game, type: GuestTypeDef): Record<Reason, number> {
+  const out = { gamble: 0, drink: 0, dine: 0, show: 0, club: 0, pool: 0, golf: 0, sights: 0 } as Record<Reason, number>;
+  out.gamble = g.gameSeats ? capacity(g) * floorDraw(g, type.id) * tablePull(g, type) : 0;
+  let comp = 0;
+  for (const o of g.amenities.thirst) comp = Math.max(comp, o.bar?.comp ?? 0);
+  out.drink = g.amenities.thirst.length ? REASON_K * (1 + comp) / 2 : 0;
+  for (const d of DRAWS) {
+    let best = 0;
+    for (const o of g.amenities[d.serves]) {
+      const tier = tierOf(g, o);
+      best = Math.max(best, REASON_K * (1 + 0.25 * tier) * priceDraw(priceFor(o), worthTo(type, d.serves, tier)) / 1.5);
+    }
+    out[d.intent] = best;
+  }
+  out.sights = REASON_K * sightsDraw(g, type.id);
+  return out;
+}
+/** (M11.2) How much a good place, a bar or good theming draws next to the gambling floor (whose pull is its seats, about 1-2.5). */
+const REASON_K = 3;
+
+/** (M11.2) The casino's pull for a type: its reasons weighted by how well each is offered. Multiplies arrivals. */
+export function reasonPull(g: Game, typeId: string): number {
   const type = GUEST_TYPES[typeId];
-  return type ? (1 + pulls(g, type).reduce((a, b) => a + b, 0)) * tablePull(g, type) : 1;
+  if (!type) return 0;
+  const o = offers(g, type);
+  let sum = 0;
+  for (const k of Object.keys(type.reasons) as Reason[]) sum += type.reasons[k] * o[k];
+  return sum;
 }
 
 /**
@@ -92,15 +120,17 @@ function tablePull(g: Game, type: GuestTypeDef): number {
   return 1 - d + d * (hl ? 1.5 : 1);
 }
 
-/** Why an arriving group came: a meal, a show, the club (at the share of arrivals those pulls account for), or undefined. */
-export function pickIntent(g: Game, typeId: string, r: Rng): "dine" | "show" | "club" | "pool" | "golf" | undefined {
+/** (M11.2) Why an arriving group came: a reason, in proportion to how much it draws them here (gambling if nothing does). */
+export function pickIntent(g: Game, typeId: string, r: Rng): GuestData["intent"] {
   const type = GUEST_TYPES[typeId];
-  if (!type) return undefined;
-  const p = pulls(g, type), total = 1 + p.reduce((a, b) => a + b, 0);
-  if (total === 1) return undefined;
+  if (!type) return "gamble";
+  const o = offers(g, type), keys = Object.keys(type.reasons) as Reason[];
+  let total = 0;
+  for (const k of keys) total += type.reasons[k] * o[k];
+  if (total <= 0) return "gamble";
   let u = r.next() * total;
-  for (let k = 0; k < p.length; k++) { if (u < p[k]) return DRAWS[k].intent; u -= p[k]; }
-  return undefined;
+  for (const k of keys) { const w = type.reasons[k] * o[k]; if (u < w) return k === "gamble" ? "gamble" : k === "dine" ? "dine" : k; u -= w; }
+  return "gamble";
 }
 
 /**

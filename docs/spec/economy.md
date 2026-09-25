@@ -58,4 +58,10 @@ money tuned to that:
   Moderate rules, the bar at standard, the junk out, Medieval decor, a restaurant, a family campaign, a show
   lounge) wins in month 13–18 (seeds 1, 2) or by month 24 (seed 3); its slots take $1.5–2.1K a month by then
   against ~$1K idle.
+  **The owner's "why they come" pass (M11.2, third):** guests come for reasons, gambling is planned only by those who
+  came for it (docs/spec/guests.md "Why they come"). The tutorial's locals market shrank to 35 (regulars 40%),
+  tourists and families are the big market (population 2 and 4), and its banks alternate Cherries and Bells. Measured
+  (`npm run economy <s> 24 1,2,3`): idle is mostly locals, 40–54% of seats in use, slots $500–$760 a month, Families
+  stay at 30 (lost); "good" and "big" draw 40–60 tourists and 11–19 family adults on the floor, 16–25% and 9–14% of them
+  playing, slots $1.3–$1.6K a month, and win between month 12 and month 24 (worth $45–54K at month 24).
 - **Free Play Lot**: empty building, $50K, no goals, a guest cap of 1,500. Old M1 saves load into it.

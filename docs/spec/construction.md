@@ -182,6 +182,10 @@ and go only on outdoor ground.
 - Saves: schema 9 adds `parcels` (ids bought).
 - **Deferred to M9:** Families (they bring minors and underage incidents) and the hotel elevator, with vice.
 
+## Show tickets (M11.2)
+Ticket $0–$100 (was $0–$40). How much a crowd wants to come for the show falls with the price against what a show is
+worth to them (docs/spec/guests.md "Why they come").
+
 ## Mini golf (M11.2, owner)
 - A sized amenity, indoors or out (4×3 to 12×10; $600 + $40 a tile; upkeep $10 + $0.50 a hole): putting greens
   round a windmill, a hole (a player's spot) every third tile. Tiers Putt-putt and Adventure golf (12 holes).

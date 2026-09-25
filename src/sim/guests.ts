@@ -2,7 +2,7 @@
 // drinking, choosing what to do, and leaving. Every guest is one real person (docs/spec/clock.md); pool
 // regulars are the same person each visit (sim/pool.ts). What a visit felt like becomes that person's
 // disposition, or word of mouth for one-off types (§15).
-import { GUEST_TYPES, FIRST_NAMES, type GuestTypeDef, type Pref, type QuitRule, type Taste } from "../data/guests";
+import { GUEST_TYPES, FIRST_NAMES, type GuestTypeDef, type Pref, type QuitRule, type Reason, type Taste } from "../data/guests";
 import { OBJECTS } from "../data/objects";
 import { T } from "../data/terrain";
 import { SCENARIOS } from "../data/scenarios";
@@ -27,7 +27,7 @@ import { tagGuest, guestName, hash01 } from "./cheats";
 import { news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
-import { pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult, tierOf } from "./amenities";
+import { offers, pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
@@ -78,12 +78,28 @@ const NEED_BIT: Record<Need, number> = { thirst: 1, bladder: 2, cage: 4, atm: 8,
 const TODO: Need[] = ["show", "golf", "pool", "club", "hunger"];
 /** Set once a guest stayed on past their time to finish their list (once a visit). */
 const TODO_EXT = 1 << 14;
+/**
+ * (M11.2, owner) Other to-do bits: came for drinks, plans to gamble (who came for it, or drew it as an extra; the rest
+ * gamble only if tempted), wants to look around. A place done this visit is its need bit << DONE_SHIFT.
+ */
+const DRINK_BIT = 1 << 11, GAMBLE_BIT = 1 << 12, SIGHTS_BIT = 1 << 13, DONE_SHIFT = 16;
+/** Chance per decision, × the type's urge, that a guest who didn't plan to gamble looks for a game they like on the way past. */
+const TEMPT = 0.15;
+/** × the type's urge: chance another adult in a group that came for something else goes to gamble instead. */
+const SPLIT = 0.6;
+/** The least appeal a game needs to tempt someone. */
+const TEMPT_APPEAL = 0.4;
+/** Chance per decision, × the type's reason weight, that a place they've seen gets added to the list. */
+const IMPULSE = 0.08;
+/** Legs of looking around that satisfy "the sights"; strolls on the way out once the list is done. */
+const SIGHT_LEGS = 8;
+const STROLL_LEGS = 3;
+/** (M11.2) The least a visit scores when they leave up. */
+const WINNER_SCORE = 0.8;
 /** A wish that isn't why they came waits until this share of the visit has gone. */
 const TODO_LATER = 0.25;
 /** Seconds a guest stays on past their time to finish their list. */
 const TODO_STAY = 120;
-/** (M11.2) A mini golf round guests call fair (dollars; a finer course takes more). */
-const GOLF_FAIR = 10;
 const WHERE: Record<Need, string> = {
   thirst: "whereBar", bladder: "whereRestroom", cage: "whereCage", atm: "noAtm", hunger: "whereFood", show: "whereShow", club: "whereClub", pool: "wherePool", garden: "whereSit", golf: "whereGolf",
 };
@@ -98,7 +114,6 @@ const URGE_PER_SEC = 100 / 270;
 const SMOKE_SECS = 20;
 /** What a meal costs the house, and the ticket and cover guests find fair at a first-tier place (dollars). */
 const FOOD_COST = 6;
-const SHOW_FAIR = 15;
 const COVER_FAIR = 15;
 /** Seconds trapped before staff let a guest out (docs/spec/construction.md). */
 const LET_OUT = 90;
@@ -369,7 +384,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   const x = at % w, y = (at - x) / w;
   const quit = pickKey(r, type.play.quit);
   const gd: GuestData = {
-    type: typeId, pid: person?.id ?? -1, group: 0, lead: leader ? 0 : 1, sex, intent: came, card, todo: lead ? lead.todo & ~TODO_EXT : 0,
+    type: typeId, pid: person?.id ?? -1, group: 0, lead: leader ? 0 : 1, sex, intent: came, card, todo: 0,
     smoker: 0, urge: 0, trapAt: -1, esc: 0, paid: 0,
     name: person?.name ?? r.int(0, FIRST_NAMES.length * 26 - 1),
     bankroll, wallet: bankroll, withdrawn: 0,
@@ -398,7 +413,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     memDate: person ? person.last : lead ? lead.memDate : -1,
     door: at, seen: [], trail: [], seek: "", lost: 0, gaveUp: 0, trapped: 0, skill: 1, counter: 0, vip: 0, comp: 0, unpaid: 0, minor: 0, drugs: 0, high: 0,
     // Set later in a visit; made here so every guest has the same shape (hot loops stay fast).
-    extra: 0, game: "", sf: 0, voided: 0, hunter: 0, sfk: "", look: 0,
+    extra: 0, game: "", sf: 0, voided: 0, hunter: 0, sfk: "", look: 0, sight: 0,
   };
   // (M8.5) A share of Locals are advantage players: always the same people (from their seed), never an extra draw.
   if (typeId === "local" && gd.kseed % 10 === 3) gd.hunter = 1;
@@ -422,7 +437,13 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
   if (rs.chance(type.smokers)) { gd.smoker = 1; gd.urge = rs.int(0, 60); }
   // People who came for a meal, a show or the club don't sightsee first.
   if (INTENT_NEED[came]) gd.browse = 0;
-  if (!lead) gd.todo = todoFor(g, type, came);
+  if (!gd.minor) gd.todo = todoFor(g, type, came);
+  // (M11.2, owner) In a group that came for something else, another adult may peel off to the games instead
+  // (dad plays while mom takes the kids to the show): by the type's urge.
+  if (lead && !gd.minor && came !== "gamble" && rng(s, "todo").chance(type.urge * SPLIT)) {
+    const primary = INTENT_NEED[came] ? NEED_BIT[INTENT_NEED[came]] : 0;
+    gd.todo = (gd.todo & ~primary) | GAMBLE_BIT;
+  }
   s.agents.push(a);
   s.visits.today.arrived++;
   return a;
@@ -468,15 +489,17 @@ export function groupSize(r: Rng, type: GuestTypeDef): number {
 }
 
 /**
- * (M11.2) What a visit means to do besides gambling: whatever drew them, plus now and then another place the
- * casino has that their type likes (1.5 × its pull, at most 60%). Drawn on its own stream.
+ * (M11.2, owner) The visit's to-do list: what drew them, plus a chance at each other reason their type has that the
+ * casino offers (1.5 × its weight, at most 60%). Gambling is on it only for those who came to gamble or drew it as an
+ * extra; anyone else gambles only if something tempts them. Each adult draws their own extras. On its own stream.
  */
 function todoFor(g: Game, type: GuestTypeDef, came: GuestData["intent"]): number {
-  const r = rng(g.state, "todo");
-  let t = INTENT_NEED[came] ? NEED_BIT[INTENT_NEED[came]] : 0;
-  for (const what of TODO) {
-    const k = COME_FOR[what]!;
-    if (INTENT_NEED[came] !== what && g.has(what) && r.chance(Math.min(0.6, 1.5 * type.comeFor[k]))) t |= NEED_BIT[what];
+  const r = rng(g.state, "todo"), off = offers(g, type);
+  const bit = (k: string) => (k === "gamble" ? GAMBLE_BIT : k === "drink" ? DRINK_BIT : k === "sights" ? SIGHTS_BIT : INTENT_NEED[k] ? NEED_BIT[INTENT_NEED[k]] : 0);
+  let t = bit(came);
+  for (const k of Object.keys(type.reasons) as Reason[]) {
+    if (k === came || off[k] <= 0) continue;
+    if (r.chance(Math.min(0.6, 1.5 * type.reasons[k]))) t |= bit(k);
   }
   return t;
 }
@@ -486,6 +509,64 @@ function pendingTodo(g: Game, gd: GuestData): Need[] {
   if (!gd.todo) return [];
   return TODO.filter((w) => gd.todo & NEED_BIT[w] && g.has(w) && !(gd.gaveUp & NEED_BIT[w]));
 }
+
+/**
+ * (M11.2, owner) Someone who didn't come to gamble: temptation first (a game they like on the way past, likelier the
+ * more they're enjoying themselves, the drunker, the higher), a place they've seen that they'd like to try, then
+ * looking around if they came for the sights, waiting on their list, a last stroll past the games, and home.
+ */
+function notGambling(g: Game, a: Agent, type: GuestTypeDef, r: Rng): void {
+  const gd = a.g!;
+  if (tempted(g, a, type, r)) return;
+  impulse(g, a, type, r);
+  if (gd.todo & SIGHTS_BIT) return sightsee(g, a, r);
+  const drinking = gd.todo & DRINK_BIT && gd.intend > 0 && gd.intox < 0.8 * gd.intend && gd.mem.drinks < 4;
+  if (drinking || pendingTodo(g, gd).length) return wander(g, a, r);
+  if (gd.frus < STROLL_LEGS) { gd.frus++; return wander(g, a, r); }
+  wantToLeave(g, a, "done");
+}
+
+/** A game they like, in view, wins over someone who didn't plan to play: now they're gambling. */
+function tempted(g: Game, a: Agent, type: GuestTypeDef, r: Rng): boolean {
+  const gd = a.g!;
+  if (!canAffordAnything(g, gd)) return false;
+  const p = TEMPT * type.urge * (0.5 + gd.mood / 100) * (1 + 2 * gd.intox + gd.high) * (1 + gd.buzz / 20);
+  if (!r.chance(Math.min(0.9, p))) return false;
+  if (!chooseMachine(g, a, type, r, TEMPT_APPEAL, candidates(g, a, type, BROWSE_LOOKS))) return false;
+  gd.todo |= GAMBLE_BIT;
+  think(g, a, "tempted");
+  return true;
+}
+
+/** A place they've seen this visit that their type likes (and they haven't done yet) may go on the list. */
+function impulse(g: Game, a: Agent, type: GuestTypeDef, r: Rng) {
+  const gd = a.g!;
+  for (const id of gd.seen) {
+    const serves = OBJECTS[g.objById.get(id)?.kind ?? ""]?.serves as Need | undefined;
+    if (!serves || !TODO.includes(serves)) continue;
+    const bit = NEED_BIT[serves], k = COME_FOR[serves]!;
+    if (gd.todo & (bit | (bit << DONE_SHIFT))) continue;
+    if (serves === "hunger" && gd.needs.hunger < 40) continue;
+    if (r.chance(IMPULSE * type.reasons[k])) { gd.todo |= bit; return; }
+  }
+}
+
+/** Looking around: legs of wandering that are fun where the theming suits them; after SIGHT_LEGS, done. */
+function sightsee(g: Game, a: Agent, r: Rng) {
+  const gd = a.g!, type = GUEST_TYPES[gd.type], i = a.y * g.state.map.w + a.x;
+  const sc = g.fields.themes.at(i), d = sc > 0 ? g.fields.themes.domAt(i) : -1;
+  const like = sc > 0 ? sc * Math.max(0, 0.25 + THEME_TASTE * (d >= 0 ? type.themes[THEME_IDS[d]] ?? 0 : 0)) : 0;
+  gd.mem.fun += Math.round(Math.min(2, like) * 3 * TICKS_PER_SECOND);
+  gd.sight += like;
+  if (++gd.frus >= SIGHT_LEGS) {
+    gd.todo &= ~SIGHTS_BIT;
+    gd.frus = 0;
+    think(g, a, gd.sight >= 3 ? "niceSights" : "nothingToSee");
+    if (gd.sight < 1) gd.mem.unmet++;
+  }
+  wander(g, a, r);
+}
+
 
 // ---------------------------------------------------------------------------------------------------------
 // The visit score and departure.
@@ -501,13 +582,16 @@ export function visitScore(a: Agent): VisitScore {
   const playSec = (gd.mem.playTicks + gd.mem.fun + Math.max(-0.5 * gd.mem.playTicks, gd.mem.thrill ?? 0)) / TICKS_PER_SECOND;
   // A trip with (almost) nothing done was wasted, whatever the money did.
   const value = playSec < 30 ? 0 : lost <= 0 ? 1 : Math.min(1, playSec / lost / type.secPerDollar);
-  const feel = gd.mem.rounds ? Math.min(1, 0.2 + (1.6 * gd.mem.feel) / gd.mem.rounds + 0.3 * Math.min(1, gd.mem.bigWin)) : 0.3;
+  // (M11.2) Someone who never gambled judges the visit by the fun they had (a show, golf, the sights).
+  const feel = gd.mem.rounds ? Math.min(1, 0.2 + (1.6 * gd.mem.feel) / gd.mem.rounds + 0.3 * Math.min(1, gd.mem.bigWin)) : Math.min(1, 0.3 + gd.mem.fun / (120 * TICKS_PER_SECOND));
   const mood = (gd.mem.moodN ? gd.mem.moodSum / gd.mem.moodN : gd.mood) / 100;
   const needs = Math.max(0, 1 - gd.mem.unmet / 3);
   // Thrown out by security: whatever else happened, the visit ended badly.
   // Beaten up: nothing else about the visit counts.
   // Stiffed on their winnings (M9): little else matters.
-  const score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.hurt ? 0 : gd.mem.ejected ? 0.4 : 1) * (gd.unpaid ? 0.2 : 1);
+  let score = Math.max(0, Math.min(1, 0.35 * mood + 0.3 * value + 0.15 * feel + 0.2 * needs)) * (gd.hurt ? 0 : gd.mem.ejected ? 0.4 : 1) * (gd.unpaid ? 0.2 : 1);
+  // (M11.2, owner) Leaving up is a good night, whatever else happened (unless they were hurt, thrown out or stiffed).
+  if (gd.mem.won > gd.mem.wagered && !gd.hurt && !gd.mem.ejected && !gd.unpaid) score = Math.max(score, WINNER_SCORE);
   return { score, value, feel, needs, mood };
 }
 
@@ -571,6 +655,8 @@ function wantToLeave(g: Game, a: Agent, why: string) {
   // (M11.2) Not before they've done what they came to do: they stay on a while for it (once a visit).
   if (!urgent && why !== "broke" && !(gd.todo & TODO_EXT) && !gd.minor && pendingTodo(g, gd).length) {
     gd.todo |= TODO_EXT;
+    // Done at the games (a quit rule): on to the rest of the list.
+    if (why === "done") gd.todo &= ~GAMBLE_BIT;
     gd.floorTime = Math.max(gd.floorTime, g.state.tick - gd.mem.arrived + TODO_STAY * TICKS_PER_SECOND);
     think(g, a, "notYet");
     a.act = "idle";
@@ -589,7 +675,9 @@ function wantToLeave(g: Game, a: Agent, why: string) {
 function standBy(g: Game, a: Agent) {
   const r = rng(g.state, "guests");
   release(g, a);
-  const lead = groups(g).get(a.g!.group)?.leader;
+  // (M11.2) Children stay with an adult who isn't gambling (at the show with mom while dad plays), if there is one.
+  const gi = groups(g).get(a.g!.group);
+  const lead = a.g!.minor ? gi?.members.find((m) => !m.g!.minor && m.act !== "play") ?? gi?.leader : gi?.leader;
   const near = lead ? nearbyTile(g, "guests", lead.x, lead.y, 3, a) : -1;
   if (near >= 0 && near !== a.y * g.state.map.w + a.x) return go(a, near, "wait");
   a.act = "wait";
@@ -703,7 +791,8 @@ function goUse(g: Game, a: Agent, what: Need): "ok" | "full" | "unknown" {
     const t = faceTile(g, o);
     const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
     // (M11.2) One they saw earlier this visit counts as known: they remember where it was.
-    if (!knowsRoute(gd, o) && !gd.seen.includes(o.id) && (d > SIGHT || !canSee(g, here, t))) continue;
+    // (M11.2, owner) Somewhere on their to-do list: they know where it is (it's why they came, or on the plan).
+    if (!knowsRoute(gd, o) && !gd.seen.includes(o.id) && !(gd.todo & NEED_BIT[what]) && (d > SIGHT || !canSee(g, here, t))) continue;
     if (!paths.reachable(here, t)) continue;
     known = true;
     // Priced places (a meal, a show, a club's cover): only if they can pay.
@@ -917,7 +1006,8 @@ function groupSeats(g: Game, a: Agent): number[] {
 }
 
 /** Pick a machine and walk to it. `liked` only considers machines in view they really like (drink-first guests). */
-function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = false, found?: Candidate[]): boolean {
+/** `liked`: only one in view they really like (true: appeal 0.9+; a number: at least that appeal) in a spot they don't mind. */
+function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked: boolean | number = false, found?: Candidate[]): boolean {
   const w = g.state.map.w, gd = a.g!, tick = g.state.tick;
   const mates = groupSeats(g, a);
   const cheap = compSeeking(g, gd), fan = fanOf(g, gd);
@@ -931,7 +1021,7 @@ function chooseMachine(g: Game, a: Agent, type: GuestTypeDef, r: Rng, liked = fa
     // The spot matters as much as the machine: guests settle where they like the surroundings.
     const fit = fitAt(g, type, t, gd).score;
     let score = c.appeal * 2 + fit * 0.8 - d / 25 + (c.seen ? 0.3 : 0) + r.next() * 0.6;
-    if (liked && (c.appeal < 0.9 || fit < 0)) continue;
+    if (liked !== false && (c.appeal < (liked === true ? 0.9 : liked) || fit < 0)) continue;
     // Hot machine belief: one they just saw pay out.
     // M8: a machine seen in a free spins feature looks hot too.
     const isHot = c.seen && (o.last.win === 2 || o.last.win === 3) && tick - o.last.tick < HOT_SECONDS * TICKS_PER_SECOND;
@@ -1140,13 +1230,13 @@ function amenityFirst(g: Game, a: Agent, r: Rng): boolean {
 }
 
 /** Finished a meal, a show or dancing: whatever they came for is done; some go on to gamble. */
-function doneWith(g: Game, a: Agent, r: Rng) {
+function doneWith(g: Game, a: Agent, _r: Rng) {
   const gd = a.g!;
   const o = g.objById.get(a.target);
   // (M11.2) Off the list.
   const serves = o && OBJECTS[o.kind].serves;
-  if (serves && serves in NEED_BIT) gd.todo &= ~NEED_BIT[serves as Need];
-  if (INTENT_NEED[gd.intent] && !pendingTodo(g, gd).length) { gd.intent = "gamble"; if (r.chance(0.3)) think(g, a, "mightAsWell"); }
+  if (serves && serves in NEED_BIT) { gd.todo &= ~NEED_BIT[serves as Need]; gd.todo |= NEED_BIT[serves as Need] << DONE_SHIFT; }
+  // (M11.2) A good time makes a game look tempting on the way out (buzz and mood feed `tempted`).
   if (o) o.st.uses++;
   release(g, a);
   a.act = "idle";
@@ -1182,7 +1272,7 @@ function decide(g: Game, a: Agent) {
   if (amenityFirst(g, a, r)) return;
   const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0 && gd.drink === 0 && gd.wallet >= DRINK_PRICE;
   // Came for a drink, but a machine they like catches their eye: "just one quick spin".
-  if (firstDrink && r.chance(0.25) && chooseMachine(g, a, type, r, true)) { gd.intent = "gamble"; think(g, a, "quickSpin"); return; }
+  if (firstDrink && r.chance(0.25 * type.urge) && chooseMachine(g, a, type, r, true)) { gd.todo |= GAMBLE_BIT; think(g, a, "quickSpin"); return; }
   if (wantsDrink(g, gd) || firstDrink) {
     const use = g.has("thirst") && !(gd.gaveUp & NEED_BIT.thirst) ? goUse(g, a, "thirst") : "none";
     if (use === "ok") return;
@@ -1190,7 +1280,6 @@ function decide(g: Game, a: Agent) {
     if (use === "none") { if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; } gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
     else if (use === "full") { think(g, a, "barLine"); gd.annoy += 2; gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
     else gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND;
-    gd.intent = "gamble";
   }
   if (!canAffordAnything(g, gd)) {
     if (wantsAtm(g, a, r)) {
@@ -1202,6 +1291,9 @@ function decide(g: Game, a: Agent) {
   }
   // Wandered outside: back in through the door.
   if (headInside(g, a)) return;
+  // (M11.2, owner) Not here to gamble: they gamble only if something tempts them.
+  if (!(gd.todo & GAMBLE_BIT)) return notGambling(g, a, type, r);
+  impulse(g, a, type, r);
   // Sightseeing first: get a feel for the place, noting machines they like; a real standout can win them over early.
   if (gd.browse > 0) {
     // A lighter glance while sightseeing; one look serves both noting machines and spotting a standout.
@@ -1214,11 +1306,33 @@ function decide(g: Game, a: Agent) {
   if (chooseMachine(g, a, type, r)) { gd.frus = Math.max(0, gd.frus - 3); return; }
   // Regulars check their favorite spots one by one.
   if (goToFavorite(g, a)) return;
+  // (M11.2) Nothing free in view: walk down the nearest aisle with a free game, as anyone does in a casino.
+  if (r.chance(AISLE_LOOK) && walkTheAisles(g, a)) return;
   gd.frus += gd.mood < 40 ? 1.5 : gd.mood > 65 ? 0.5 : 1;
   if (gd.frus >= FRUSTRATED) { gd.mem.unmet++; return wantToLeave(g, a, "nothing"); }
   if (gd.frus >= 4 && gd.frus - 1.5 < 4) think(g, a, "cantFind");
   if (gd.frus >= 4) gd.annoy += 1;
   wander(g, a, r);
+}
+
+/** (M11.2) Chance a gambler with nothing free in view walks toward the nearest free game instead of wandering; how far they look (tiles). */
+const AISLE_LOOK = 0.7;
+const AISLE_REACH = 30;
+
+/** Heads for the nearest free game seat within AISLE_REACH they can walk to (they'll see it when they get there). */
+function walkTheAisles(g: Game, a: Agent): boolean {
+  const w = g.state.map.w, here = a.y * w + a.x, paths = g.pathsFor(a);
+  let best = -1, bd = AISLE_REACH + 1;
+  for (const [id, tiles] of g.seatTiles) {
+    const o = g.objById.get(id);
+    if (!o || o.broken || !isGame(o.kind)) continue;
+    const t = tiles[0], d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+    if (d >= bd || freeSeat(g, id) < 0 || !paths.reachable(here, t)) continue;
+    best = t; bd = d;
+  }
+  if (best < 0 || best === here) return false;
+  go(a, best, "idle");
+  return true;
 }
 
 /** Seconds onlookers watch a craps table; players it takes to draw them; chance a passer-by stops to look. */
@@ -1568,7 +1682,7 @@ function guestTick(g: Game, a: Agent) {
           const free = useComp(gd, "show"), price = free ? 0 : priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "shows");
-          if (price > SHOW_FAIR * priceTolerance(g, o)) { think(g, a, "steepShow"); gd.annoy += 4; }
+          if (price > worthTo(GUEST_TYPES[gd.type], "show", tierOf(g, o))) { think(g, a, "steepShow"); gd.annoy += 4; }
           a.timer = 2;
         }
         gd.mem.fun++;
@@ -1649,7 +1763,7 @@ function guestTick(g: Game, a: Agent) {
         const price = priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.golf; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "golfFees");
-        if (price > GOLF_FAIR * priceTolerance(g, o)) { think(g, a, "steepGolf"); gd.annoy += 4; }
+        if (price > worthTo(GUEST_TYPES[gd.type], "golf", tierOf(g, o))) { think(g, a, "steepGolf"); gd.annoy += 4; }
         a.timer = useTicks(g, a, r);
         return;
       }
@@ -1826,6 +1940,37 @@ export function floorDraw(g: Game, typeId: string): number {
   }
   return f.drawCache[typeId] ?? 1;
 }
+
+
+/**
+ * (M11.2) The sights: how much a crowd would come just to look around. The average over the open floor of the
+ * theming they like (a theme's score × their taste for it; bad theming counts against it), × SIGHTS_K, 0-2.
+ * Cached with the draw until the layout changes.
+ */
+export function sightsDraw(g: Game, typeId: string): number {
+  const f = g.fields;
+  floorDraw(g, typeId);
+  const key = `sights:${typeId}`;
+  if (f.drawCache![key] === undefined) {
+    const { terrain } = g.state.map, th = f.themes, types = Object.values(GUEST_TYPES), sums = new Float64Array(types.length);
+    let n = 0;
+    for (let i = 0; i < terrain.length; i++) {
+      if (terrain[i] !== T.FLOOR || g.occ[i] || g.objAt[i]) continue;
+      n++;
+      const sc = th.at(i);
+      if (!sc) continue;
+      const d = sc > 0 ? th.domAt(i) : -1;
+      for (let k = 0; k < types.length; k++) {
+        const taste = d >= 0 ? types[k].themes[THEME_IDS[d]] ?? 0 : 0;
+        sums[k] += sc > 0 ? sc * Math.max(0, 0.25 + THEME_TASTE * taste) : 0.5 * sc;
+      }
+    }
+    types.forEach((t, k) => { f.drawCache![`sights:${t.id}`] = n ? Math.max(0, Math.min(2, (SIGHTS_K * sums[k]) / n)) : 0; });
+  }
+  return f.drawCache![key];
+}
+/** (M11.2) Scales the average liked theming on the floor into the sights' pull (a well-themed floor ≈ 1). */
+const SIGHTS_K = 3.5;
 
 /** (M11.1) A type's standing taste for the game at an object: its design's judged appeal, or the table game's. Static. */
 function seatWeight(g: Game, type: string, o: PlacedObject): number {

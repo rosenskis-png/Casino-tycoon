@@ -55,3 +55,4 @@ export { cantPlay, yourFam, yourMoves, bjTotal, rankOf, vpHand, vpX, VP_HANDS, b
 export type { YourPlay, YourFam } from "./state";
 export { SCENARIOS } from "../data/scenarios";
 export { bribeChance, bribePrice } from "./regulator";
+export { GUEST_TYPES } from "../data/guests";

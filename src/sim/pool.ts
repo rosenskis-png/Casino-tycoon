@@ -119,7 +119,7 @@ export function afterVisit(g: Game, a: Agent, score: number) {
     Object.assign(p, { luck: gd.luck, cheat: gd.cheat, caught: gd.caught, mark: gd.mark });
     s.pool.push(p);
   }
-  if (!recurring(type)) {
+  if (!recurring(type) && !type.noRep) {
     const cur = s.rep[gd.type] ?? 50;
     s.rep[gd.type] = Math.max(0, Math.min(100, cur + (score * 100 - cur) * WOM_RATE));
   }
@@ -182,7 +182,7 @@ export function newcomerRates(g: Game): Record<string, number> {
     if (!type || !total) continue;
     // (M11.2, owner) People come for reasons: to gamble, for a drink, a meal, a show, the club, the pool, mini golf,
     // the sights. Arrivals follow how well the casino offers what each crowd comes for (sim/amenities.ts offers).
-    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(s.rep[t] ?? 50) * rm * reasonPull(g, t) * demand(s, t) * (1 + fanDraw(g, t));
+    out[t] = sc.arrivals * ((w * type.arrival.base) / total) * type.arrival.season[month] * repFactor(type.noRep ? 50 : s.rep[t] ?? 50) * rm * reasonPull(g, t) * demand(s, t) * (1 + fanDraw(g, t));
   }
   return out;
 }

@@ -68,12 +68,42 @@ Party 0.1. The seasoned seek out thin edges and walk away; novices play whatever
   + 0.5 × how good the session feels), the win goal by looseness × intox; bets swing with a win or a loss × looseness;
   out of money, the ATM pull from being down is 0.1 + 0.4 × (1 − savvy). A local stops near their limit and bets flat;
   a tourist, drunk and on a game they love, plays well past it.
+- **Substances override experience:** savvy as it stands = savvy × (1 − 0.8 × intox − 0.5 × high) (`savvyNow`), used
+  for edge-seeking, discipline and the ATM. Drink and drugs are how you loosen a high roller or a local.
+- **Showing off:** bets × (1 + 0.25 × `hooks.social` × (friends within 4 tiles, up to 2) ÷ 2) (`showOff`, slots and
+  tables); party groups most.
 - So the crowds that come on their own give thin margins, and the ones you have to earn give rich ones.
 - `npm run targets` reports "house edge faced" and "came for else / of them played", and flags locals facing as big an
   edge as tourists or party guests, or a crowd whose non-gamblers almost never gamble.
 
 
 Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.ts` (sidewalk and entrance), `drinks.ts` (drink policy and serving), `dist.ts` (distribution draws), with types in `src/data/guests.ts` and thoughts in `src/data/thoughts.ts`. Design agreed with the owner 2026-09-23 (history in DECISIONS.md); wayfinding is in `navigation.md`.
+
+## The roster (M11.3, owner)
+Each crowd comes for its own reasons and is worked in its own way:
+- **Locals:** thin house edges, favorite machines, smoking, cheap food and drinks (savvy 0.8, smokers 40%).
+- **Retirees:** cheap long-lasting games (penny slots, bingo, keno), smoking, quiet (smokers 35%).
+- **Tourists:** sightseeing, flashy spectacle and entertainment, approachable games.
+- **Families:** non-gambling attractions and cheap food; opportunistic, undisciplined gamblers (savvy 0.2); dislike
+  nuisance and incidents.
+- **Party groups:** drink, drugs (25%), dancing, hookups, fun; enjoy incidents (disorder and misconduct tolerance 1+).
+- **High rollers** (the business crowd): luxury, big tables, vice, drugs (20%), escorts; want lenient rules except on
+  fights (vice, drugs and drink tolerated; disorder not).
+- **Conventioneers** are an event crowd: they come with conventions and no reputation is tracked for them (`noRep`).
+
+## Crowd parity (M11.3, owner)
+**Goal:** whichever crowd a casino is built for, catering to it well should earn roughly the same from gambling; only
+the method differs (locals: volume on thin edges; retirees: long cheap sessions; tourists: spectacle; families:
+temptation between attractions; party: drink and friends; high rollers: big tables and vice).
+- **Crowd floors** (`crowd_*` in `src/data/scenarios.ts`, hidden): six mini-casinos on the tutorial lot, each designed
+  for one crowd in games, amenities, decor, rooms and house rules. Never judge parity on a mixed floor (theming
+  clashes and a layout built for no one decide it). Every piece is placed through the real build checks.
+- `npm run parity [days] [seeds]` plays each with only its crowd and reports **take** (theoretical gaming win ÷ the
+  money the crowd brought, wallets and ATM draws), so wealth and market size don't decide it; flags a spread over 2×.
+- Measured (120 days, seeds 1–2): take Locals 10.1%, Retirees 10.8%, Tourists 13.1%, Families 17.0%, Party 7.0%,
+  High rollers 4.1%. Families on their own floor: 72% of adults gamble ($22 a visit). The party floor's first draft
+  walled the club off from the games (take 5.2%, 38% gambled); games at the club exit raised it to 7.0% and 57%.
+  **Open (owner):** high rollers lose ~4% of a $2,400 bankroll: thin edges and a 10-minute visit cap them.
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.

@@ -947,8 +947,30 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
   if (gd.vip) return isTable(o.kind) && def.game === g.state.whale.game && tableOpen(g, o) && canSit(g, gd, o) ? 3 : 0;
   const v = tasteFor(g, type, gd, o);
   // (M11.3, owner) The seasoned look for the thinnest house edge; novices hardly notice it.
-  return v > 0.05 ? v + SAVVY_EDGE * type.savvy * Math.max(-1.5, Math.min(1, (EDGE_REF - edgeOf(g, gd, o)) / EDGE_REF)) : v;
+  return v > 0.05 ? v + SAVVY_EDGE * savvyNow(gd) * Math.max(-1.5, Math.min(1, (EDGE_REF - edgeOf(g, gd, o)) / EDGE_REF)) : v;
 }
+
+/**
+ * (M11.3, owner) Savvy as it stands now: drink and drugs override experience. A high roller on their third drink
+ * with an escort on their arm stops picking thin edges and holding their limit.
+ */
+export function savvyNow(gd: GuestData): number {
+  return GUEST_TYPES[gd.type].savvy * Math.max(0, 1 - SAVVY_INTOX * gd.intox - SAVVY_HIGH * gd.high);
+}
+const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5;
+
+/**
+ * (M11.3, owner) Showing off: with friends around, a guest bets bigger, by their crowd's `social` hook (party groups
+ * most). Up to SHOW_OFF × the hook with two or more of the group within SHOW_REACH tiles.
+ */
+export function showOff(g: Game, a: Agent): number {
+  const gd = a.g!, h = GUEST_TYPES[gd.type].hooks.social;
+  if (!h) return 1;
+  let n = 0;
+  for (const m of companions(g, a)) if (!m.g!.minor && Math.abs(m.x - a.x) + Math.abs(m.y - a.y) <= SHOW_REACH && ++n >= 2) break;
+  return 1 + SHOW_OFF * h * (n / 2);
+}
+const SHOW_OFF = 0.25, SHOW_REACH = 4;
 
 /** (M11.3) How much a savvy guest's eye for the house edge moves appeal, and the edge they call fair. */
 const SAVVY_EDGE = 0.6, EDGE_REF = 0.06;
@@ -1175,7 +1197,7 @@ function wantsAtm(g: Game, a: Agent, r: Rng): boolean {
   if (gd.mem.atmYes === gd.trips + 1) return true;
   const down = Math.max(0, Math.min(1, -net(gd) / staked(gd)));
   // (M11.3) Novices go back for more; the disciplined rarely do.
-  let p = type.atm.again + (0.1 + 0.4 * (1 - type.savvy)) * down + 0.5 * gd.intox + 0.6 * gd.chase + (gd.mood < 40 ? 0.1 : 0) - (net(gd) > 0 ? 0.3 : 0);
+  let p = type.atm.again + (0.1 + 0.4 * (1 - savvyNow(gd))) * down + 0.5 * gd.intox + 0.6 * gd.chase + (gd.mood < 40 ? 0.1 : 0) - (net(gd) > 0 ? 0.3 : 0);
   p *= gd.trips === 0 ? 1 : Math.pow(0.6, gd.trips) * (1 + 2 * gd.chase);
   if (!r.chance(Math.max(0.01, Math.min(0.97, p)))) return false;
   gd.mem.atmYes = gd.trips + 1;
@@ -1528,7 +1550,7 @@ function slotRemark(g: Game, a: Agent, o: import("./state").PlacedObject, secs: 
 export function limits(gd: GuestData, eng = 1): { loss: number; win: number } {
   // (M11.3, owner) Discipline: seasoned players hold their limit; novices get carried away by drink, a game they
   // love and a good session (up to twice the old stretch for the least disciplined).
-  const loose = 2 * (1 - GUEST_TYPES[gd.type].savvy);
+  const loose = 2 * (1 - savvyNow(gd));
   const fun = Math.min(1, gd.mem.rounds ? (1.6 * gd.mem.feel) / gd.mem.rounds : 0);
   const stretch = 1 + loose * (Math.max(0, eng - 1) + 1.5 * gd.intox + 0.5 * fun);
   return { loss: gd.lossLimit * Math.min(1, eng) * stretch * (1 + 2 * gd.chase), win: gd.winGoal * (1 + loose * gd.intox) * (1 + gd.chase) };

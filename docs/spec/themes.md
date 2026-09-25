@@ -39,6 +39,11 @@ energy). Costs $200–$900; upkeep about 0.5% of cost a month.
   weakens it ×0.5 (e.g. a Suit of Armor outdoors or in a club, a Glass Panel outside, a parasol indoors).
 
 ## The math (`src/sim/themes.ts`)
+- **(M11.3, owner) Decor is a wide, mild, stacking field**, not one intense piece beside a couple of slots: themed
+  pieces theme 11 tiles at 0.4× the strength (THEME_RADIUS, THEME_PEAK: each piece 1.2 at its tile, fading linearly),
+  so a room's pieces add up at every seat and a well-dressed room is what saturates. All theme sources (designed
+  slots, general items, clashes, junk) scale by the same 0.4. Decor's prestige and energy reach 2.2× as far at 0.4×
+  the strength (DECOR_REACH, DECOR_PEAK in data/objects.ts; a statue's prestige 3 over 3 tiles is now 1.2 over 7).
 - One field per theme from themed pieces (strength 3, radius 7 (M11.1; was 4), fading with distance, cut 35% per
   wall crossed (M11.1; was 60%)), a second for general items' suited themes, and a third for clashes.
 - At each tile: a theme's value = themed + (general, where themed > 0.2) − clash. The dominant theme's value

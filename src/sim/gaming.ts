@@ -3,7 +3,6 @@
 // starts rounds (sets the timer) and decides between them; this system only runs the math. Slots and video
 // poker are machines; tables deal their own rounds (sim/tables.ts) and book them through `settle` here.
 import { OBJECTS } from "../data/objects";
-import { GUEST_TYPES } from "../data/guests";
 import { WAGERS_PER_ROUND, type SlotModel } from "../data/games";
 import { TABLE_GAMES, ruleOf, vpModel, type TableDef } from "../data/tables";
 import type { Game } from "./game";
@@ -22,7 +21,7 @@ import { compSeeking } from "./drinks";
 import { payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
 import { earnComps, ensureCash, expectedExcess, stiff } from "./bank";
-import { engagement } from "./guests";
+import { engagement, savvyNow, showOff } from "./guests";
 
 /** Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
 const TICKER_JACKPOT = 1000;
@@ -44,20 +43,20 @@ export const limitsOf = (o: PlacedObject): [number, number] => {
  * Credits a guest bets per wager on this model: their usual stake, raised by drink, by winning (house money)
  * and by losing (chasing it back to even), then fitted to the machine. Comp-seekers bet the minimum.
  */
-export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1, eng = 1): number {
+export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1, eng = 1, show = 1): number {
   // A cheat mid-spell bets the most the machine takes.
   if (gd.spell > 0) return m.maxCredits;
   const lo = m.minCredits ?? 1;
   if (compSeeking(g, gd)) return lo;
   // (M11.1) Engaged players bet more (by the square root of their engagement).
-  return Math.max(lo, Math.min(m.maxCredits, Math.round((wantBet(gd) * Math.sqrt(eng)) / (m.denom * mult))));
+  return Math.max(lo, Math.min(m.maxCredits, Math.round((wantBet(gd) * Math.sqrt(eng) * show) / (m.denom * mult))));
 }
 
 /** What a guest would like to bet per wager now: their stake, loosened by drink and swung by how it's going. */
 export function wantBet(gd: GuestData): number {
   const rel = (gd.mem.won - gd.mem.wagered) / Math.max(1, gd.bankroll + gd.withdrawn);
   // (M11.3) The disciplined bet flat; novices ride a win and chase a loss (up to 1.8× the old swing).
-  const loose = 2 * (1 - GUEST_TYPES[gd.type].savvy);
+  const loose = 2 * (1 - savvyNow(gd));
   const swing = rel > 0 ? 1 + 0.8 * loose * Math.min(1, rel) : 1 + 0.5 * loose * Math.min(1, -rel) * (0.5 + gd.chase);
   // High (M9.6): up to 40% more.
   return gd.stake * (1 + 0.6 * gd.intox) * (1 + 0.4 * gd.high) * swing;
@@ -176,7 +175,7 @@ function resolve(g: Game, a: Agent) {
   const r = rng(g.state, "gaming");
   // Bet what they'd like to, or less when that's all the wallet covers. A high-limit room multiplies the stakes.
   const mult = stakeMult(g, o);
-  const bet = betOf(m, Math.min(creditsFor(g, gd, m, mult, engagement(g, a)), Math.floor(gd.wallet / (m.denom * mult * WAGERS_PER_ROUND) + 1e-9))) * mult;
+  const bet = betOf(m, Math.min(creditsFor(g, gd, m, mult, engagement(g, a), showOff(g, a)), Math.floor(gd.wallet / (m.denom * mult * WAGERS_PER_ROUND) + 1e-9))) * mult;
   if (bet * WAGERS_PER_ROUND > gd.wallet + 1e-9) return;
   // Luck and cheating bend what each wager pays (docs/spec/cheats.md); the suspicion tools compare against the math.
   // (M8.5) A designed slot's progressive meters and collector are live: each wager feeds them and can win them.

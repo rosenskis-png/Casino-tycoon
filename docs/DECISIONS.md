@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · M11.1 balance direction (owner + Claude's review)
+- **Dominant strategy (owner):** "build a thoughtful layout, theming and non-gambling attractions to draw lots of the guests you want, then use casino psychology to get the most out of the games in each place." Spamming slots must still be able to win the tutorial, but no scenario after it.
+- **Why it isn't today (measured):** arrivals scale with game seats (`capacity()` in guests.ts, up to 2.5×), so seats summon guests. Surroundings reach guests only through mood (capped at +12, down to −30), and mood moves money only slowly, through reputation. They never touch stake, pace or session length.
+- **Threats scale with the casino (owner agreed to Claude's proposal):** cheat takes, fines, bribes and jackpot risk get sized to the floor's stakes and earnings, not flat dollars. Staff theft belongs to big organizations, not small family ones (owner).
+- **Tutorial too hard (owner):** too much variance (one $1K jackpot wrecks it). Start with many more machines and more cash, and raise the goal to match.
+- **Too slow (owner):** building a good casino can take 10+ in-game years. Scale must make a meaningful casino reachable in 1–3 years.
+- Also to fix (Claude's review, owner agreed): the tutorial's expected profit is about zero; the Test Floor piles up cash with nothing to spend it on; lucky guests (+20%) are a money leak; tourists and the party crowd lose far below their targets and play about 20% of their visit; groups end most visits; whales can't threaten a big floor; theming has no downside (0 bad thoughts); no dark-lever run exists.
+
 ## 2026-09-25 · Road to alpha: M11 → M11.1 → M11.2 = v0.8 (owner)
 - Owner: what's left is **M11** (missing features), **M11.1** (general balance pass) and **M11.2** (scenario build and level redesign). After those the game is an alpha build, **Casino Tycoon v0.8**.
 - Cut (owner): scenario goals that ask for slot designs; scenario goals that exclude royalties; the flagged "cheats win faster at high-limit baccarat" item (M6.5), which is no longer a tuning target.

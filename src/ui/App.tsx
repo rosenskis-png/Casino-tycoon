@@ -10,6 +10,7 @@ import { reveal } from "./reveal";
 import { Designer } from "./designer/Designer";
 import { SlotsPanel } from "./designer/SlotsPanel";
 import type { SlotDesign } from "../data/designer";
+import { SCENARIOS } from "../data/scenarios";
 import { onHidden } from "../platform/lifecycle";
 import { Host } from "./host";
 import { WorldInput, type Tool } from "./input";
@@ -18,7 +19,7 @@ import { money } from "./format";
 import { AUTO_KEY, load, newGame, save } from "./saves";
 import { newDesign } from "../data/designer";
 import { placeTool } from "./panels";
-import { AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
+import { Letter, AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
 
 const TABS = [
   { id: "build", icon: "🔨", label: "Build" },
@@ -52,6 +53,8 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const [sel, setSel] = useState<Selection>(null);
   const [showLog, setShowLog] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** (M12) A new game's letter (the scenario's intro), shown until dismissed. */
+  const [letter, setLetter] = useState(false);
   const toastTimer = useRef(0);
   const showToast = (t: string) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(null), 2200); };
   /** (M8) The slot designer, open on a design. */
@@ -234,6 +237,12 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         {host && designing && !playing && <Designer g={host.game} start={designing} toast={showToast} onClose={() => setDesigning(null)}
           onPlace={(id) => { setDesigning(null); placeDesign(id); }} />}
         {toast && <div className="toast">{toast}</div>}
+        {host && letter && SCENARIOS[host.game.state.scenario].intro && (
+          <div className="letter-wrap">
+            <Letter intro={SCENARIOS[host.game.state.scenario].intro!} />
+            <button className="btn big" onClick={() => setLetter(false)}>Understood</button>
+          </div>
+        )}
       </div>
       {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} onGo={focus} />}
       {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} onMove={(id, r) => { setRot(r); setTool(`move:${id}`); }} />}
@@ -261,7 +270,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         ))}
       </nav>}
       {host && title && <TitleScreen awake={titleAwake.current} hasGame={host.game.state.tick > 0} scenario={host.game.state.scenario} onContinue={leaveTitle}
-        onNew={(id) => { const n = newGame(Date.now(), id); host.setGame(n); save(n, AUTO_KEY); leaveTitle(); }} />}
+        onNew={(id) => { const n = newGame(Date.now(), id); host.setGame(n); save(n, AUTO_KEY); leaveTitle(); setLetter(!!SCENARIOS[id].intro); }} />}
     </div>
   );
 }

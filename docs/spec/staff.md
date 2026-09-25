@@ -8,6 +8,12 @@
 > tourists 1.2, party 1, conventioneers 0.8, retirees 0.7, locals 0.6, high rollers 0.2; skill scales it. Can be
 > kept to a room. A bright jacket, a bow tie and a shock of curls.
 
+> **M12 (The Outfit): Casino host** ($70). Walks to the nearest guest at a game in their zone whose crowd likes the
+> finer things (luxury taste 0.5+: High rollers, Conventioneers, Tourists) or a whale, not yet looked after this
+> visit, and spends 6 s with them: a drink on the house (served like a server's, comped), mood +12, a lift (buzz +6)
+> and 25% more time on the floor, each × the crowd's taste for luxury × skill. "The host here knows my name."
+> A gold dinner jacket, a bow tie and a name badge. Can be kept to a room (the salon).
+
 `src/sim/crew.ts` (pay, skill, morale, honesty, theft, audits, zones), `src/data/staff.ts` (roles and numbers). Roles and their jobs are in docs/spec/floor.md, incidents.md, cheats.md and tables.md. All numbers are starting values, checked only against sanity flags until M11.
 
 ## Pay and skill

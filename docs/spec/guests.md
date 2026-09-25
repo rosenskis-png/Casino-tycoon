@@ -147,6 +147,15 @@ tilt × (intoxication + high) × the share of their money lost. On tilt:
   home. The ticker says when a high roller goes on tilt (tap to go to them). Whales don't tilt.
 - Measured (Test Floor, 240 days, seeds 1–8): 3 tilts in 364 high-roller visits (about 1 in 120) on an ordinary
   floor. The chance scales with intoxication and highs, so pushing drink and drugs raises it (The Outfit, scenarios.md).
+- **(M12, owner) Inhibition compounds:** the chance is tilt × loose² / 0.3 × the share lost, where loose =
+  intoxication + high + 0.3 with an escort on their arm: the same as before at loose 0.3 (a few drinks), less for one
+  drink, far more for a drunk, high player with company.
+- **(M12, owner) A fair edge per crowd (`edgeRef`):** savvy guests like games under the edge their crowd calls fair
+  and shun games over it (appeal ± 0.6 × savvy now). Everyone 6%, except High rollers 3%: sober, they walk from
+  double zero and $5 slots and crowd the baccarat and good-rules blackjack; loosened up (drink, drugs, company) they
+  don't notice. This is what makes an honest luxury floor thin and a squeezed one rich (The Outfit, scenarios.md).
+- **(M12) Comped drinks nudge:** each drink on the house raises how drunk a guest means to get by 0.1 × their crowd's
+  taste for luxury (High rollers 0.1, Tourists 0.05, Locals 0.01). A drink on the house is hard to refuse.
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.

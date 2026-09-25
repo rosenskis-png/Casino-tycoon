@@ -207,7 +207,9 @@ export const streetSystem: System = {
         p.glanced |= 1 << (gate.ent % 31);
         if (p.goal === gate.ent || (p.goal === -1 && r.chance(walkInChance(g, p.type, gate.ent)))) {
           if (enter(g, p.type, p.pid, p.n, gate.ent)) { p.n = 0; removed = true; break; }
-          if (p.goal >= 0) { turnAway(g, p.pid); p.goal = -2; }
+          // (M12 fix) Turned away: the person has gone home (and may come back tomorrow, by the hotel even while this
+          // figure is still walking off), so the figure is just for show now.
+          if (p.goal >= 0) { turnAway(g, p.pid); p.goal = -2; p.pid = -1; }
         }
       }
       if (p.n && (p.s < 0 || p.s > wk.len)) {

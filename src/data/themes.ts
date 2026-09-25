@@ -16,6 +16,8 @@ export const THEMES = {
   tiki: "Tropical Tiki",
   pirate: "Pirate Cove",
   dragon: "Lucky Dragon",
+  // (M12) Belle Époque grandeur for the big money: crystal, red velvet, gilt and a grand piano.
+  monaco: "Monte Carlo",
 } as const;
 export type ThemeId = keyof typeof THEMES;
 export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
@@ -29,6 +31,8 @@ const PAIRS: [ThemeId, ThemeId, number][] = [
   ["tiki", "atomic", 0.4], ["rock", "atomic", 0.4], ["dragon", "luxe", 0.4], ["dragon", "deco", 0.3],
   ["egypt", "medieval", -0.5], ["rock", "luxe", -0.5], ["goldrush", "riviera", -0.4], ["medieval", "atomic", -0.5],
   ["dragon", "goldrush", -0.4], ["dragon", "medieval", -0.4],
+  ["monaco", "deco", 0.4], ["monaco", "riviera", 0.5], ["monaco", "ratpack", 0.2], ["monaco", "rock", -0.5], ["monaco", "tiki", -0.5],
+  ["monaco", "pirate", -0.4], ["monaco", "goldrush", -0.4], ["monaco", "atomic", -0.3],
 ];
 export const SYNERGY: number[][] = THEME_IDS.map((a) => THEME_IDS.map((b) => {
   const p = PAIRS.find(([x, y]) => (x === a && y === b) || (x === b && y === a));

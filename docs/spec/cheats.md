@@ -86,13 +86,38 @@ leave, alert when they come back (pool people keep the mark between visits). Mar
 
 | Action | What happens (animation) | To the guest |
 |---|---|---|
-| Warning | a word in their ear (2 s) | mood −, stops cheating this visit, their group minds a little |
+| Warning | a word in their ear (2 s) | mood −, stops doing it this visit, their group minds a little |
+| Kicked out (M12) | walked to the exit | visit over; can come back; their group minds |
 | Lifetime ban | walked to the exit | turned away at the door on future visits; covers the whole group (the leader's person) |
 | Beating | the enforcer shoves and punches 3 times (2 s): the guest recoils with each hit, then doubles over and limps out slowly | visit ruined, disposition −40 |
 | Disappearance | a small gun flashes once, the guest drops, is zipped into a black bag and carried to the dumpster (or out the nearest exit) (3 s + the carry) | gone for good; removed from the pool |
 
+## Reasons and the ladder (M12, owner)
+- **The ladder**, mildest first: Warn → Kick out = Beat up → Lifetime ban → Disappear. The guest card lists the
+  buttons in that order; the house treatment for caught cheats can be any of the five.
+- **A reason** goes with every order (guest card, above the buttons): Cheating, Card counting, Drunkenness, Fighting
+  and trouble, Misconduct, Vice, Drugs, or **Just because**. Caught cheats are dealt with for cheating.
+- **What it teaches** (whether or not they were doing it; the sim knows):
+  - **Warn, kick out, ban: this guest only.** They do that behavior a quarter as often (`PERSONAL_DETER`) for the
+    rest of the visit, and a pool person remembers it on later visits (`person.dt`). A warning also stops it now: a
+    cheat stops cheating, a drunk stops drinking, a counter stops counting.
+  - **Beat up, disappear: everyone.** A global **chill** on the behavior (beating +0.2, disappearance +0.4, at most
+    0.8, fading 2% a game day): every guest does it (1 − chill) as often. And the target's crowd loses reputation
+    whether they were guilty or not (beating 1.5, disappearance 3, × the crowd's `repSensitivity` × the heat factor).
+    The Authorities tab shows each fear ("Fear: drunkenness · 30% less of it").
+  - **Just because** teaches nothing, and always counts as innocent (a rumor: "your security beat a guest up for no
+    reason").
+- **What each behavior is**: cheating (a cheat thinks twice before each spell: one who loses their nerve quits for
+  the night), counting (a counter doesn't count this visit), drunkenness (they mean to drink less), and the policed
+  incident categories (fewer incidents of that kind started, and escorts turned down for vice).
+- **Guilty or innocent** (for the rumor): a cheat, a counter, drunk past 0.5 this visit, or started (or was in) an
+  incident of that category this visit (`gd.did`); an escort's pitch is the escort's doing, not the mark's.
+- **Scenario discount** (`violence`, The Outfit 0.25): beatings and disappearances add that share of the usual heat,
+  base police cost, rumor cost and reputation cost. Witnesses and missing-person reports are unchanged.
+- **Cheats per scenario** (`cheatRate`, `cheatTake`; The Outfit 3× as many, taking 2× as much).
+
 ## Consequences
-Each action adds to a rolling **enforcement heat** (warning 0.3, ban 0.5, beating 1.5, disappearance 3;
+Each action adds to a rolling **enforcement heat** (warning 0.3, kick out 0.4, ban 0.5, beating 1.5, disappearance 3;
 ×0.97 a day). Every cost below is × (1 + heat / 4).
 - **Base** (a lone guilty cheat, unseen): beating −0.5 police standing, disappearance −1. Warnings and bans: nothing.
 - **Witnesses**: guests who see it (in view, 8 tiles): a beating −12 mood, a disappearance −20 ("They dragged

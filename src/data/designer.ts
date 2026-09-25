@@ -175,6 +175,14 @@ export const SLOT_THEMES: Record<SlotTheme, SlotThemeDef> = {
       set("Penthouse", ["🍾", "💎", "🗝️", "🥂"], CARDS, "#wild", "🌃", "💍", ["🍾", "💎", "🗝️", "🥂", "🍓"]),
     ],
   },
+  // (M12) Monte Carlo: chandeliers, roulette and champagne.
+  monaco: {
+    id: "monaco", name: "Monte Carlo", bg: ["#4a0a14", "#14020a"], accent: "#f2d27a", logo: ["#fff4c8", "#3a0610"], call: "call_deco",
+    sets: [
+      set("Belle Époque", ["👑", "🍾", "💎", "🎩"], CARDS, "#wild", "🥂", "💎", ["👑", "🍾", "💎", "🎩", "🍒"]),
+      set("Casino Royale", ["🎰", "🃏", "🌹", "💍"], CARDS, "#wild", "🥂", "👑", ["🃏", "🌹", "💍", "🎰", "🍓"]),
+    ],
+  },
   riviera: {
     id: "riviera", name: "Riviera", bg: ["#0a4a8a", "#021a3a"], accent: "#ffe07a", logo: ["#fff0a0", "#0a2a5a"], call: "call_riviera",
     sets: [

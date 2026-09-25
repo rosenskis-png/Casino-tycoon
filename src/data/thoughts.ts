@@ -47,6 +47,8 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   getARoom: { text: "Get a room, you two.", alt: ["Right here? Really?"], voice: { retiree: ["Well, I never."] }, bad: true },
   drugsSeen: { text: "Did that guy just do a line?", alt: ["Someone's on something."], bad: true },
   leftWithEscort: { text: "I'm calling it a night. With company.", alt: ["Going upstairs. Don't wait up."] },
+  escortCompany: { text: "Lady Luck's sitting right next to me tonight.", alt: ["Blow on the dice for me, sweetheart.", "Watch this. Double or nothing."] },
+  hosted: { text: "The host here knows my name. That's class.", alt: ["They sent over a bottle. Nice touch.", "Now this is how you treat a player."] },
   high: { text: "I feel amazing.", alt: ["I could play all night."] },
   // Families (M9.5).
   underageSeen: { text: "Is that kid playing a slot?", alt: ["Where are that child's parents?"], bad: true },

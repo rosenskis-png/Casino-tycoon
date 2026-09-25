@@ -14,7 +14,8 @@ import { canSee, faceTile } from "./wayfinding";
 import { think } from "./guests";
 import { acceptChance, barPolicy, cutoff, handsFull, leastServedBar, rollComp, serveDrink } from "./drinks";
 import { OBJECTS } from "../data/objects";
-import { ACT_REACH, ACT_SECS, ENTERTAIN, THEFT } from "../data/staff";
+import { ACT_REACH, ACT_SECS, ENTERTAIN, HOST, THEFT } from "../data/staff";
+import { GUEST_TYPES } from "../data/guests";
 import { firedWorker, greed, inZone, newStaffData, setPace, skillOf, steal } from "./crew";
 
 declare module "./commands" {
@@ -382,6 +383,7 @@ export const staffSystem: System = {
     for (const a of g.state.agents) {
       if (a.role === "janitor" || a.role === "tech" || a.role === "server") staffTick(g, a);
       else if (a.role === "entertainer") entertainerTick(g, a);
+      else if (a.role === "host") hostTick(g, a);
     }
   },
 };
@@ -416,6 +418,68 @@ function entertainerTick(g: Game, a: Agent) {
   a.timer = r.int(ACT_SECS[0], ACT_SECS[1]) * TICKS_PER_SECOND;
   if (spot >= 0 && spot !== a.y * w + a.x) go(a, spot, "perform");
   else a.act = "perform";
+}
+
+/**
+ * (M12) A casino host looks after the big players: the nearest guest at a game in their zone whose crowd has a taste
+ * for luxury (or a whale), not yet looked after this visit. A few seconds' attention: a drink on the house, a lift,
+ * and more time on the floor (data/staff.ts HOST), by the crowd's taste for luxury and the host's skill.
+ */
+function hostTick(g: Game, a: Agent) {
+  if (isWalking(a)) return;
+  const s = g.state, w = s.map.w;
+  if (a.act === "host") {
+    if (a.timer > 0) { a.timer--; return; }
+    const b = s.agents.find((q) => q.id === a.target), gd = b?.g;
+    a.act = "idle";
+    a.target = -1;
+    if (!b || !gd || gd.why || Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > 2) return;
+    // The first visit makes them feel at home; every visit keeps their glass full, poured at the nearest bar's policy.
+    if (!gd.hosted) {
+      const like = (gd.vip ? 1 : GUEST_TYPES[gd.type].luxe) * skillOf(g, a);
+      gd.mood = Math.min(100, gd.mood + HOST.mood * like);
+      gd.buzz = Math.min(20, gd.buzz + HOST.buzz * like);
+      gd.floorTime += Math.round(HOST.stay * like * gd.floorTime);
+      if (rng(s, "host").chance(0.6)) think(g, b, "hosted");
+    }
+    gd.hosted = s.tick;
+    if (gd.intend > 0 && !handsFull(gd)) serveDrink(g, b, nearestBar(g, b), "server", true, a);
+    return;
+  }
+  if ((s.tick + a.id) % TICKS_PER_SECOND) return;
+  let best: Agent | null = null, bd = Infinity;
+  for (const b of s.agents) {
+    const gd = b.g;
+    if (!gd || gd.minor || gd.why || gd.held || b.act !== "play" || (gd.hosted && s.tick - gd.hosted < HOST.again * TICKS_PER_SECOND)) continue;
+    if (!gd.vip && GUEST_TYPES[gd.type].luxe < HOST.luxe) continue;
+    if (!inZone(g, a, b.y * w + b.x)) continue;
+    const d = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    if (d < bd) { bd = d; best = b; }
+  }
+  if (best) {
+    const spot = nearbyTile(g, "host", best.x, best.y, 1, a);
+    a.target = best.id;
+    a.timer = HOST.secs * TICKS_PER_SECOND;
+    if (spot >= 0 && spot !== a.y * w + a.x) go(a, spot, "host");
+    else a.act = "host";
+    return;
+  }
+  // Nobody to look after: drift around the floor now and then.
+  if (a.act === "idle" && rng(s, "host").chance(0.1)) {
+    const t = nearbyTile(g, "host", a.x, a.y, 6, a);
+    if (t >= 0) go(a, t, "idle");
+  }
+}
+
+/** The bar nearest a guest (a host pours by its policy), if any. */
+function nearestBar(g: Game, b: Agent): PlacedObject | undefined {
+  let best: PlacedObject | undefined, bd = Infinity;
+  for (const o of g.state.objects) {
+    if (!o.bar) continue;
+    const d = Math.abs(o.x - b.x) + Math.abs(o.y - b.y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
 }
 
 /** On the payroll (not a guest, and not a visiting officer or paramedic). */

@@ -32,6 +32,8 @@ export const DRINK_COST = 1.5;
 export const DRINK_UNIT = 0.25;
 export const INTOX_CAP = 1.3;
 export const STRENGTHS = [0.6, 1, 1.4];
+/** (M12) How much each comped drink raises a guest's intended intoxication, × their crowd's taste for luxury. */
+export const COMP_NUDGE = 0.1;
 export const DEFAULT_BAR: BarPolicy = { price: 1, comp: 0, strength: 1, area: -1 };
 /** A guest down to this much of their drink will order the next one ("another?"); the last of the old one goes down when it arrives. */
 export const NEXT_AT = 0.25;
@@ -102,7 +104,12 @@ export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: 
   gd.dStr = gd.intend > 0 ? pol.strength : 0;
   gd.mem.drinks++;
   if (via === "server") gd.mem.served++;
-  if (comped) gd.mem.comped++;
+  if (comped) {
+    gd.mem.comped++;
+    // (M12, owner) A drink on the house is hard to refuse, most of all for a crowd that likes the finer things:
+    // each one nudges how drunk they mean to get.
+    if (gd.intend > 0) gd.intend = Math.min(GUEST_TYPES[gd.type].drinking.cap, gd.intend + COMP_NUDGE * GUEST_TYPES[gd.type].luxe);
+  }
   if (o) o.st.uses++;
   if (comped && r.chance(0.3)) think(g, a, "freeDrink");
   else if (via === "server" && r.chance(0.25)) think(g, a, "served");

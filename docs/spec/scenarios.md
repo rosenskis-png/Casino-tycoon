@@ -198,6 +198,44 @@ consequences; a hold on police standing (shared with rung 4). **Escorts as a lev
 on their arm loses savvy like a drink or two (M11.3's comment promised it; the code doesn't do it yet). Measure tilt
 under heavy drink and drugs: it must rise enough (target ~1 visit in 10) to carry the goal.
 
+#### As built (M12, 2026-09-25; the owner asked for this rung first, before rungs 1–4)
+- **Scenario** `outfit` (in the New game list after the tutorial): a 96×64 lot, an empty 72×40 building shell with
+  front doors, a hotel elevator on the back wall, $250K, every building project, Vice and Drugs on Moderate. Market:
+  400 high rollers (none regulars yet, reputation 30), a few party groups and tourists off the street; whales on;
+  tax 6%. **The letter** opens the game (and stays in the Goals tab).
+- **Town settings** (new scenario fields): police standing starts at 70 (`police`), the town takes 40% of any loss
+  of standing (`policeCost` 0.4), officers and inspectors take a bribe 95% of the time, beatings and disappearances
+  cost a quarter (`violence` 0.25), cheats 3× as common taking 1.5× as much (`cheatRate`, `cheatTake`).
+- **Goal:** the take from high rollers averaging **$30K a month over 3 months**, with **police standing never below
+  25**, by the end of Year 2. **The take** = each wager's edge as it's played (luck and whales don't count), less what
+  cheats' rigged wins took. Big tables swing ±$40K a month on actual wins, far more than any lever moves them; the
+  take is what the player can steer by. Police below 25 (or the license lost) loses on the spot.
+- **What makes the lesson work:** High rollers call a 3% edge fair (`edgeRef`, guests.md): sober, they shun double
+  zero, 6:5 blackjack and $5 slots and crowd the thin-edge tables; loosened by drink (comped drinks nudge luxury
+  crowds to drink more), drugs and an escort on their arm, they stop noticing. Tilt compounds with looseness.
+- **New levers built for it:** enforcement reasons and the kick-out (cheats.md), escorts on the arm (vice.md), the
+  casino host (staff.md), the Monte Carlo theme (themes.md).
+- **The proof** (`npm run outfit`, hidden scenario `outfit_built`: the same lot built as a Salon Privé with a main
+  floor pit, dining room and cabaret; 24 months, seeds 1–3): see the table below. Honest (best rules, strict) and
+  greedy (the house's rules, sober guests) fall short on every seed; the free-for-all loses its license; the squeeze
+  (house rules, comped strong drinks in the salon, Moderate on drink, Lenient on vice and drugs, Strict on fights,
+  more servers, hosts and security, caught cheats beaten, officials paid off) meets it.
+
+| Strategy (24 months) | Best 3-month take, seeds 1/2/3 | Police low | Result |
+|---|---|---|---|
+| Honest: best rules, strict, sober | $19K / $20K / $21K | 71 | missed on every seed |
+| Greedy: house rules, strict, sober | $24K / $22K / $27K | 71 | missed on every seed |
+| Free-for-all: all Ignore, free strong drinks | $28K / $30K / $23K | 1 (license revoked) | lost on every seed |
+| **Squeeze** | **$39K / $34K / $36K** | 2 / 46 / 11 (after the goal) | **met in months 12 / 16 / 11** |
+
+Theoretical win a month: honest ~$18K, greedy ~$26K, squeeze ~$35K. Cheats kept $90K–$190K over two years in every
+strategy (cameras, an operator and pit bosses in all of them). Tilt: 1 in ~120 visits honest, 1 in ~55 squeezed.
+
+- **Flagged for the owner:** the scripted squeeze still runs into the police in Year 2 on some seeds (more guests,
+  more incidents, bribe scandals): a player has to keep managing it after the goal. Tilt under the squeeze is about
+  1 visit in 55 (target was 1 in 10): it chases back to even more often than not, so its take is mostly the extra
+  play (about $2K a tilt). The winning lever is edge plus looseness, not tilt.
+
 ---
 
 ## Engine work for the ladder (one build chat)

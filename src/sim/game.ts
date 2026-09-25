@@ -123,7 +123,11 @@ export class Game {
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
       cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {}, meters: {}, ohist: {}, offer: null, records: {}, survey: {},
+      crowdWin: { month: {}, hist: [] }, lowPolice: 100,
     };
+    // (M12) A town that starts out friendlier (or warier) with the police.
+    if (def.police !== undefined) state.auth.police.standing = def.police;
+    state.lowPolice = state.auth.police.standing;
     for (const o of def.objects) {
       const obj = newObject(state.nextId++, o.kind, o.x, o.y, o.rot, 0, o.w, o.h);
       if (o.design) obj.design = o.design;

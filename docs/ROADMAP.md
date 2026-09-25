@@ -150,4 +150,12 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 
 - **M11.4 quick fixes ☑** (owner, after an outside review): nightclub research id, happy staff on market pay, serving grades and margins, richer guests at 8 wagers a round, high rollers who tilt, jackpot insurance scaled to the casino (bought by the report scripts), parity per seat / build dollar / guest slot. Save schema 21.
 
+## M12 · The Outfit (rung 5, first) ☑  (owner 2026-09-25; see DECISIONS, docs/spec/scenarios.md)
+- The Outfit: an empty lot, $250K of the family's money, a letter that opens the game, rich New Yorkers; goal: the
+  high rollers' take averaging $30K a month over 3 months with police standing never below 25, by the end of Year 2.
+- Goals by crowd (the take) and a held police line; scenario settings for police, bribes, violence and cheats.
+- Enforcement reasons ("just because" too), the kick-out, personal lessons and a global chill (owner).
+- Luxury: the Monte Carlo theme and slot theme, the casino host, escorts on the arm; high rollers' fair edge 3%.
+- `npm run outfit` proves the lesson (3 seeds × 24 months). Save schema 22.
+
 **After M11.2: alpha build, Casino Tycoon v0.8.**

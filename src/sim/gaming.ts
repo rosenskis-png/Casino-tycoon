@@ -116,11 +116,14 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
   const gd = a.g!, bank = g.state.bank;
   // M9: jackpot insurance covers each payout above the line (not pool prizes: those are other players' money).
   const pool = !!tableDefOf(o.kind)?.pool, cover = insured(o.kind), over = cover ? bank.insure : 0;
-  let won = 0, wagered = 0, top = 0, topBet = 0, topM: SlotModel | null = null, claim = 0;
+  let won = 0, wagered = 0, top = 0, topBet = 0, topM: SlotModel | null = null, claim = 0, take = 0;
   for (const w of ws) {
     const pay = Math.abs(w.x) * w.bet;
     won += pay;
     wagered += w.bet;
+    // (M12) The take: what the math says each wager earns the house (its edge), except a rigged win, which is what
+    // the cheat took off the table.
+    take += w.x < 0 ? w.bet - pay : w.bet - (w.ev ?? w.bet * w.m.rtp);
     // (M8.6) A wide-area jackpot on a sold design is the maker's to pay (posted before this), not the insurer's.
     if (over) {
       bank.insExp += expectedExcess(w.m, w.bet, over);
@@ -145,6 +148,9 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
   if (gd.wallet < 0 && gd.wallet > -1e-6) gd.wallet = 0;
   gd.mem.wagered += wagered;
   gd.mem.won += won;
+  // (M12) The take by crowd this month, for goals by crowd: pool games pay other players, not the house; a whale is a
+  // variance event of their own, not the crowd's; luck doesn't count (the math does), cheats' rigged wins do.
+  if (!pool && !gd.vip) { const cw = g.state.crowdWin.month; cw[gd.type] = (cw[gd.type] ?? 0) + take; }
   gd.mem.rounds++;
   o.st.rounds++;
   o.st.coinIn += wagered;

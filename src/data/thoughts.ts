@@ -131,6 +131,7 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   steepGolf: { text: "Mini golf costs how much?", bad: true },
   plainFood: { text: "Just a snack bar? I hoped for a real restaurant.", alt: ["I expected something finer to eat."], bad: true },
   tempted: { text: "Ooh, that one looks fun. Just a few spins.", alt: ["Might as well try my luck while I'm here.", "One little bet won't hurt."], voice: { family: ["You go ahead, I'll just play a few minutes."], party: ["Let's hit the slots!"] } },
+  freeTime: { text: "They're busy for a while. I've got time to kill.", alt: ["Some time to myself at last."], voice: { family: ["The kids are at the show. I'll look around."], conventioneer: ["No sessions for an hour. Let's see this place."] } },
   niceSights: { text: "What a place! Worth the trip just to look around.", alt: ["Look at this decor!"], voice: { family: ["The kids love all the decorations."] } },
   nothingToSee: { text: "Not much to see here.", alt: ["Thought there'd be more to look at."], bad: true },
   entertained: { text: "That magician was amazing!", alt: ["Look, a balloon dog!", "What a juggler!"], voice: { family: ["The kids can't stop laughing."] } },

@@ -3,6 +3,7 @@
 // starts rounds (sets the timer) and decides between them; this system only runs the math. Slots and video
 // poker are machines; tables deal their own rounds (sim/tables.ts) and book them through `settle` here.
 import { OBJECTS } from "../data/objects";
+import { GUEST_TYPES } from "../data/guests";
 import { WAGERS_PER_ROUND, type SlotModel } from "../data/games";
 import { TABLE_GAMES, ruleOf, vpModel, type TableDef } from "../data/tables";
 import type { Game } from "./game";
@@ -55,7 +56,9 @@ export function creditsFor(g: Game, gd: GuestData, m: SlotModel, mult = 1, eng =
 /** What a guest would like to bet per wager now: their stake, loosened by drink and swung by how it's going. */
 export function wantBet(gd: GuestData): number {
   const rel = (gd.mem.won - gd.mem.wagered) / Math.max(1, gd.bankroll + gd.withdrawn);
-  const swing = rel > 0 ? 1 + 0.8 * Math.min(1, rel) : 1 + 0.5 * Math.min(1, -rel) * (0.5 + gd.chase);
+  // (M11.3) The disciplined bet flat; novices ride a win and chase a loss (up to 1.8× the old swing).
+  const loose = 2 * (1 - GUEST_TYPES[gd.type].savvy);
+  const swing = rel > 0 ? 1 + 0.8 * loose * Math.min(1, rel) : 1 + 0.5 * loose * Math.min(1, -rel) * (0.5 + gd.chase);
   // High (M9.6): up to 40% more.
   return gd.stake * (1 + 0.6 * gd.intox) * (1 + 0.4 * gd.high) * swing;
 }

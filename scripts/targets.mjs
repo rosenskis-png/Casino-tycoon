@@ -105,6 +105,10 @@ row("visit score", (d) => f2(med(d.map((e) => e.score))));
 row("came for meal/show/club/pool", (_d, a) => a.length ? ["dine", "show", "club", "pool"].map((k) => pct(share(a, (e) => e.intent === k))).join("/") : "–");
 row("had fun (share, min)", (d) => { const f = d.filter((e) => e.fun > 0); return `${pct(f.length / Math.max(1, d.length))}, ${f1(med(f.map((e) => e.fun)))}`; });
 row("spent on amenities", (d) => usd(med(d.filter((e) => e.spent > 0).map((e) => e.spent))));
+// M11.3: who gambled without coming for it (tempted, or a group member with time to themselves), and the house edge
+// each crowd faced (1 − expected return ÷ wagered): seasoned crowds should find the thinner edges.
+row("came for else / of them played", (d) => { const o = d.filter((e) => e.came !== "gamble"); return `${pct(o.length / Math.max(1, d.length))} / ${pct(share(o, (e) => e.wagered > 0))}`; });
+row("house edge faced", (d) => { const w = d.reduce((a, e) => a + e.wagered, 0); return w ? `${(100 * (1 - d.reduce((a, e) => a + e.ev, 0) / w)).toFixed(1)}%` : "–"; });
 row("warned / thrown out", (d) => `${pct(share(d, (e) => e.warned > 0))} / ${pct(share(d, (e) => e.ejected))}`);
 const CATS = { intox: ["loud", "stumble", "spill", "vomit", "passout"], disorder: ["argument", "fight", "yell", "breakdown"], misconduct: ["urinate"], celebration: ["cheer", "round"], social: ["flirt", "recruit"] };
 for (const [cat, kinds] of Object.entries(CATS))
@@ -162,6 +166,9 @@ for (const t of types) {
   if (d.length < 20) { flags.push(`${t}: only ${d.length} visits`); continue; }
   // (M11.2) Only crowds that come to gamble should mostly play; the rest gamble when tempted.
   if (sim.GUEST_TYPES[t].reasons.gamble >= 0.5 && med(d.map((e) => e.play)) < 0.2) flags.push(`${t}: most guests barely play`);
+  // (M11.3) Every crowd can be tempted on a floor with every kind of game: one that never is means the hooks are broken.
+  const other = d.filter((e) => e.came !== "gamble");
+  if (other.length >= 20 && share(other, (e) => e.wagered > 0) < 0.05) flags.push(`${t}: under 5% of those who came for something else ever gamble`);
   if (share(d, (e) => e.why === "nothing") > 0.25) flags.push(`${t}: over a quarter give up finding a machine`);
   const drinkers = d.filter((e) => e.intend > 0);
   if (drinkers.length && share(drinkers, (e) => e.drinks > 0) < 0.3) flags.push(`${t}: under 30% of drinkers get a drink`);
@@ -169,6 +176,9 @@ for (const t of types) {
   if (d.some((e) => ![e.minutes, e.lost, e.peak, e.score].every(Number.isFinite))) flags.push(`${t}: non-finite numbers`);
 }
 // Incidents: every M4 category fires, guards do something, and the police notice anything at all.
+// (M11.3) Discipline and taste: seasoned locals should face a thinner edge than tourists and party guests.
+const edge = (t) => { const d = dep[t] ?? [], w = d.reduce((a, e) => a + e.wagered, 0); return w ? 1 - d.reduce((a, e) => a + e.ev, 0) / w : NaN; };
+for (const t of ["tourist", "party"]) if (edge("local") >= edge(t)) flags.push(`locals face as big a house edge as ${t} (${(100 * edge("local")).toFixed(1)}% vs ${(100 * edge(t)).toFixed(1)}%)`);
 for (const [cat, kinds] of Object.entries(CATS)) if (!kinds.some((k) => incAll[k])) flags.push(`no ${cat} incidents at all`);
 if (!totals._ejected && !Object.values(dep).flat().some((e) => e.warned)) flags.push("guards never warned or threw anyone out");
 if (policeHigh - policeLow < 0.5) flags.push("police standing never moved");

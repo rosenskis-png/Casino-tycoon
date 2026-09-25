@@ -17,6 +17,13 @@ export interface Normal { mean: number; sd: number; min?: number; max?: number }
 
 export type Reason = "gamble" | "drink" | "dine" | "show" | "club" | "pool" | "golf" | "sights";
 export type Reasons = Record<Reason, number>;
+/**
+ * (M11.3, owner) What tempts someone who didn't plan to gamble: drink, a good time (a show, the club, a win nearby),
+ * flash (a hot machine, a big meter, a craps table roaring), time to themselves (the family's at the show), and
+ * company already playing. Every crowd can be tempted as far as any other; they differ in what does it.
+ */
+export type Hook = "drink" | "buzz" | "flash" | "free" | "social";
+export type Hooks = Record<Hook, number>;
 
 export interface GuestTypeDef {
   id: string;
@@ -118,8 +125,18 @@ export interface GuestTypeDef {
    * a chance of an extra item. Gambling is planned only by those who came for it, or drew it as an extra.
    */
   reasons: Reasons;
-  /** (M11.2) How easily a guest who didn't plan to gamble is tempted by a game they like on the way past (0-1). */
-  urge: number;
+  /**
+   * (M11.3, owner) What tempts them, as weights on each hook (0 = does nothing for them). There is no ceiling per
+   * crowd: a family adult with the family at the show, walking past a themed machine they love, is as tempted as a local.
+   */
+  hooks: Hooks;
+  /**
+   * (M11.3, owner) How seasoned a gambler they are, 0-1. The seasoned (locals, high rollers) seek out the games with
+   * the thinnest house edge, stop at their limit and bet flat whatever drink and a hot streak say; novices play
+   * whatever catches their eye and get carried away: drink, a game they love, a win or a loss stretch their limit,
+   * swing their bets and send them back to the ATM. It's what makes the easy crowds thin and the hard-won ones rich.
+   */
+  savvy: number;
   /** (M11.2) What a show ticket is worth to them (dollars; mini golf, the pool and a club's cover at 30%, a meal at 80%). Pricier than this puts them off. */
   ticket: number;
   /** (M9.6, docs/spec/vice.md) Share who use drugs; share of visits that come by the hotel elevator. */
@@ -164,7 +181,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.005, 0.012], pace: [0.9, 1.2], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.2], lossLimit: [0.6, 1], compSeek: 0.2 },
     needs: { bladder: 0.3, hunger: 0.1, thirst: 0.32, fatigue: 0.13 },
     secPerDollar: 6,
-    reasons: { gamble: 0.8, drink: 0.12, dine: 0.05, show: 0.02, club: 0.01, pool: 0, golf: 0, sights: 0 }, urge: 1, ticket: 20, drugs: 0.03, hotel: 0, smokers: 0.25, theming: 0.3,
+    reasons: { gamble: 0.8, drink: 0.12, dine: 0.05, show: 0.02, club: 0.01, pool: 0, golf: 0, sights: 0 }, hooks: { drink: 0.5, buzz: 0.3, flash: 0.3, free: 0.3, social: 0.5 }, savvy: 0.8, ticket: 20, drugs: 0.03, hotel: 0, smokers: 0.25, theming: 0.3,
     themes: { goldrush: 0.6, ratpack: 0.4, rock: 0.3, dragon: 0.2, luxe: -0.3, egypt: -0.1 },
   },
   retiree: {
@@ -191,7 +208,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.004, 0.009], pace: [0.7, 1], quit: { winGoal: 3, lossLimit: 4, broke: 0.5, jackpot: 1 }, winGoal: [0.3, 0.8], lossLimit: [0.5, 0.9], compSeek: 0.4 },
     needs: { bladder: 0.36, hunger: 0.12, thirst: 0.25, fatigue: 0.1 },
     secPerDollar: 12,
-    reasons: { gamble: 0.55, drink: 0.02, dine: 0.2, show: 0.18, club: 0, pool: 0, golf: 0, sights: 0.05 }, urge: 0.8, ticket: 35, drugs: 0, hotel: 0.1, smokers: 0.15, theming: 0.5,
+    reasons: { gamble: 0.55, drink: 0.02, dine: 0.2, show: 0.18, club: 0, pool: 0, golf: 0, sights: 0.05 }, hooks: { drink: 0.2, buzz: 0.5, flash: 0.6, free: 0.5, social: 1 }, savvy: 0.4, ticket: 35, drugs: 0, hotel: 0.1, smokers: 0.15, theming: 0.5,
     themes: { ratpack: 0.9, deco: 0.6, riviera: 0.4, rome: 0.2, rock: -0.4, atomic: -0.6, pirate: -0.2, tiki: -0.2 },
   },
   tourist: {
@@ -218,7 +235,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.01, 0.022], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.05 },
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.36, fatigue: 0.18 },
     secPerDollar: 2.2,
-    reasons: { gamble: 0.25, drink: 0.05, dine: 0.15, show: 0.2, club: 0.05, pool: 0.05, golf: 0.05, sights: 0.2 }, urge: 0.6, ticket: 45, drugs: 0.03, hotel: 0.5, smokers: 0.15, theming: 1,
+    reasons: { gamble: 0.25, drink: 0.05, dine: 0.15, show: 0.2, club: 0.05, pool: 0.05, golf: 0.05, sights: 0.2 }, hooks: { drink: 0.8, buzz: 1, flash: 1.5, free: 0.5, social: 1 }, savvy: 0.25, ticket: 45, drugs: 0.03, hotel: 0.5, smokers: 0.15, theming: 1,
     themes: { rome: 0.7, egypt: 0.7, pirate: 0.5, tiki: 0.5, medieval: 0.4, riviera: 0.3, goldrush: 0.3, dragon: 0.3 },
   },
   party: {
@@ -245,7 +262,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.009, 0.02], pace: [1, 1.4], quit: { winGoal: 1, lossLimit: 2, broke: 2, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.7, 1], compSeek: 0.02 },
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.4, fatigue: 0.15 },
     secPerDollar: 3.3,
-    reasons: { gamble: 0.08, drink: 0.3, dine: 0.02, show: 0.05, club: 0.45, pool: 0.08, golf: 0.02, sights: 0 }, urge: 0.5, ticket: 25, drugs: 0.15, hotel: 0.3, smokers: 0.35, theming: 0.6,
+    reasons: { gamble: 0.08, drink: 0.3, dine: 0.02, show: 0.05, club: 0.45, pool: 0.08, golf: 0.02, sights: 0 }, hooks: { drink: 1.5, buzz: 1.5, flash: 1, free: 0.2, social: 1.5 }, savvy: 0.1, ticket: 25, drugs: 0.15, hotel: 0.3, smokers: 0.35, theming: 0.6,
     themes: { atomic: 0.9, rock: 0.8, tiki: 0.5, pirate: 0.2, ratpack: -0.3, deco: -0.3, medieval: -0.2, riviera: -0.2 },
   },
   highroller: {
@@ -272,7 +289,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.01, 0.025], pace: [0.9, 1.1], quit: { winGoal: 2, lossLimit: 3, broke: 0.5, jackpot: 0.5 }, winGoal: [0.5, 1.5], lossLimit: [0.5, 0.9], compSeek: 0 },
     needs: { bladder: 0.3, hunger: 0.12, thirst: 0.3, fatigue: 0.12 },
     secPerDollar: 1.5,
-    reasons: { gamble: 0.8, drink: 0.02, dine: 0.1, show: 0.08, club: 0, pool: 0, golf: 0, sights: 0 }, urge: 1, ticket: 120, drugs: 0.05, hotel: 0.6, smokers: 0.2, theming: 0.8,
+    reasons: { gamble: 0.8, drink: 0.02, dine: 0.1, show: 0.08, club: 0, pool: 0, golf: 0, sights: 0 }, hooks: { drink: 0.3, buzz: 0.3, flash: 0.3, free: 0.3, social: 0.3 }, savvy: 0.85, ticket: 120, drugs: 0.05, hotel: 0.6, smokers: 0.2, theming: 0.8,
     themes: { luxe: 0.9, deco: 0.8, dragon: 0.7, riviera: 0.3, ratpack: 0.2, goldrush: -0.5, pirate: -0.6, tiki: -0.4, rock: -0.3 },
   },
   // M9.5 (docs/spec/calendar.md): business visitors who come in waves with conventions.
@@ -300,7 +317,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.01, 0.025], pace: [1, 1.3], quit: { winGoal: 1, lossLimit: 2, broke: 1, jackpot: 1 }, winGoal: [0.8, 2], lossLimit: [0.6, 1], compSeek: 0.05 },
     needs: { bladder: 0.3, hunger: 0.14, thirst: 0.4, fatigue: 0.18 },
     secPerDollar: 2,
-    reasons: { gamble: 0.2, drink: 0.15, dine: 0.25, show: 0.2, club: 0.1, pool: 0, golf: 0, sights: 0.1 }, urge: 0.5, ticket: 60, drugs: 0.04, hotel: 0.8, smokers: 0.15, theming: 0.6,
+    reasons: { gamble: 0.2, drink: 0.15, dine: 0.25, show: 0.2, club: 0.1, pool: 0, golf: 0, sights: 0.1 }, hooks: { drink: 1, buzz: 0.5, flash: 0.5, free: 1.5, social: 1.5 }, savvy: 0.45, ticket: 60, drugs: 0.04, hotel: 0.8, smokers: 0.15, theming: 0.6,
     themes: { luxe: 0.4, rome: 0.4, riviera: 0.4, atomic: 0.3, rock: 0.3, goldrush: 0.1 },
   },
   // M9.5 (docs/spec/guests.md §Families): parents with children. The children never gamble or drink.
@@ -329,7 +346,7 @@ export const GUEST_TYPES: Record<string, GuestTypeDef> = {
     play: { stake: [0.01, 0.02], pace: [0.8, 1.1], quit: { winGoal: 2, lossLimit: 3, broke: 1, jackpot: 1 }, winGoal: [0.5, 1.5], lossLimit: [0.5, 0.8], compSeek: 0 },
     needs: { bladder: 0.25, hunger: 0.2, thirst: 0.3, fatigue: 0.22 },
     secPerDollar: 2.5,
-    reasons: { gamble: 0, drink: 0, dine: 0.25, show: 0.2, club: 0, pool: 0.15, golf: 0.2, sights: 0.2 }, urge: 0.45, ticket: 30, drugs: 0, hotel: 0.5, smokers: 0.05, theming: 1,
+    reasons: { gamble: 0, drink: 0, dine: 0.25, show: 0.2, club: 0, pool: 0.15, golf: 0.2, sights: 0.2 }, hooks: { drink: 0.5, buzz: 1, flash: 1.5, free: 2.5, social: 0.5 }, savvy: 0.3, ticket: 30, drugs: 0, hotel: 0.5, smokers: 0.05, theming: 1,
     themes: { pirate: 0.9, tiki: 0.7, medieval: 0.6, egypt: 0.4, rome: 0.2, rock: -0.2, ratpack: -0.3, luxe: -0.2 },
   },
 };

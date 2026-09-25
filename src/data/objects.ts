@@ -403,6 +403,17 @@ export const OBJECTS: Record<string, ObjectDef> = {
   },
 };
 
+/**
+ * (M11.3, owner) Decor works as a wide, mild, stacking field: a room's decor adds up at every seat, fading slowly
+ * with distance, instead of one piece next to a couple of slots doing everything. Decor's prestige and energy reach
+ * DECOR_REACH × as far at DECOR_PEAK × the strength (docs/spec/themes.md). Litter bins and signs emit nothing.
+ */
+export const DECOR_REACH = 2.2, DECOR_PEAK = 0.4;
+for (const o of Object.values(OBJECTS)) {
+  if (o.cat !== "decor") continue;
+  o.emits = o.emits.map((e) => (e.channel === "CLN" ? e : { ...e, strength: +(e.strength * DECOR_PEAK).toFixed(2), radius: Math.round(e.radius * DECOR_REACH) }));
+}
+
 export const OBJECT_CATS: { id: ObjectDef["cat"]; label: string }[] = [
   { id: "game", label: "Games" },
   { id: "table", label: "Tables" },

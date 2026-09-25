@@ -2,12 +2,27 @@
 // worth, the monthly books, guests and reputation every 6 months, over several seeds. "idle" does nothing,
 // "janitor" only hires janitors, "big" spends freely on everything, "good" fixes what the tutorial is about (janitors, a guard and moderate rules,
 // no free strong drinks, the broken theming out, Medieval decor, a restaurant, a family campaign, a show lounge
-// once researched). Doing nothing must never win; "good" should win before the deadline. For balancing, not a check.
+// once researched), "tempt" is "good" plus the families' favorite machines moved by the attractions (M11.3). Doing nothing must never win; "good" should win before the deadline. For balancing, not a check.
 // Usage: node scripts/economy.mjs [strategy] [months] [seeds]
 import { loadSim } from "./sim-bundle.mjs";
 const [strat = "good", months = "24", seeds = "1,2,3"] = process.argv.slice(2);
 const sim = await loadSim();
 const P = (kind, x, y, extra = {}) => ({ type: "place", kind, x, y, rot: 0, ...extra });
+// (M11.3) Moves up to `n` machines of `design` (farthest first) next to an attraction, where the guests it draws walk
+// past them on the way in and out: temptation's layout lever. Dispatches directly (each move is validated).
+const nearMoves = (g, kind, design, n) => {
+  const at = g.state.objects.find((o) => o.kind === kind);
+  if (!at) return [];
+  const d = (o) => Math.abs(o.x - at.x) + Math.abs(o.y - at.y);
+  const ms = g.state.objects.filter((o) => o.design === design && d(o) > 10).sort((a, b) => d(b) - d(a));
+  let moved = 0;
+  for (let r = 2; r <= 9 && moved < n; r++)
+    for (let dy = -r; dy <= r && moved < n; dy++) for (let dx = -r; dx <= r && moved < n; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || !ms.length) continue;
+      if (!g.dispatch({ type: "move", id: ms[0].id, x: at.x + dx, y: at.y + dy, rot: 0 })) { g.flushCommands(); ms.shift(); moved++; }
+    }
+  return [];
+};
 const plan = {
   idle: [],
   janitor: [[0, (g) => [{ type: "hire", role: "janitor" }, { type: "hire", role: "janitor" }]]],
@@ -44,6 +59,11 @@ const plan = {
     [-1, (g) => sim.researched(g.state, "shows") && !g.state.objects.some((o) => o.kind === "showlounge") ? [P("showlounge", 38, 18, { w: 5, h: 5 }), { type: "setFunding", amount: 0 }] : []],
   ],
 };
+// (M11.3) "good" plus temptation by layout: the families' favorite machines by the restaurant, mini golf and the show.
+plan.tempt = [...plan.good,
+  [21, (g) => nearMoves(g, "restaurant", "cherries", 6)], [61, (g) => nearMoves(g, "minigolf", "cherries", 6)],
+  [-1, (g) => { if (g.state.objects.some((o) => o.kind === "showlounge") && !g.moved) { g.moved = 1; nearMoves(g, "showlounge", "cherries", 6); } return []; }],
+];
 for (const seed of seeds.split(",").map(Number)) {
   const g = sim.Game.create("horseshoe", seed);
   const out = [];

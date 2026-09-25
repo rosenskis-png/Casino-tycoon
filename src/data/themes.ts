@@ -54,5 +54,9 @@ export interface ThemeTags {
   junk?: number;
 }
 
-/** Radius a decor item themes, in tiles. M11.1: 7 (was 4): theming carries into neighboring rooms, so a floor of clashing rooms reads as disjointed. */
-export const THEME_RADIUS = 7;
+/**
+ * Radius a decor item themes, in tiles. M11.1: 7 (was 4): theming carries into neighboring rooms, so a floor of
+ * clashing rooms reads as disjointed. M11.3 (owner): 11, at THEME_PEAK × the strength, so a room's pieces stack
+ * into its theming instead of one piece saturating the seats beside it.
+ */
+export const THEME_RADIUS = 11, THEME_PEAK = 0.4;

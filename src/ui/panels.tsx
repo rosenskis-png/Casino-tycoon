@@ -26,7 +26,7 @@ import {
   locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
   priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules, type NewsRef,
-  cantPlay, yourFam, uniformOf, bribeChance, bribePrice,
+  cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST,
 } from "../sim";
 import { play } from "../platform/audio";
 import { SoundSettings } from "./title";
@@ -55,7 +55,7 @@ export function placeTool(s: Game["state"], id: string): string | null {
 
 export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner }: { host: Host; tool: Tool; setTool: (t: Tool) => void; rot: number; setRot: (r: number) => void; thumb?: (kind: string, design?: string) => { url: string; w: number; h: number }; onDesigner?: () => void }) {
   const [theme, setTheme] = useState<ThemeId | "general">("general");
-  const g = host.game, land = landForSale(g);
+  const g = host.game, land = landForSale(g), noGames = !!SCENARIOS[g.state.scenario]?.noGames;
   const b = (t: Tool, label: string, sub?: string, img?: { url: string; w: number; h: number }) => (
     <button key={t} className={`btn ${tool === t ? "on" : ""}`} onClick={() => setTool(tool === t ? "inspect" : t)}>
       {img && <img className="thumb" src={img.url} width={img.w * 2} height={img.h * 2} alt="" />}{label}{sub && <small>{sub}</small>}
@@ -81,10 +81,11 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
               </select>
             )}
           </p>
+          {noGames && (c.id === "game" || c.id === "table") ? <p className="muted">{c.id === "game" ? "No new games here: these machines are all you get. Move them, theme around them and fill them." : ""}</p> : <>
           {c.id === "game" && <SlotPicks g={g} tool={tool} setTool={setTool} onDesigner={onDesigner} thumb={thumb} />}
-          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && !o.slot && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
+          <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && !o.slot && !o.scenarioOnly && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
             ? <button key={o.id} className="btn" disabled>{o.name}<small>Research: {RESEARCH[projectFor(o.id)].name}</small></button>
-            : b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div>
+            : b(`place:${o.id}`, o.name, `${o.sized ? "from " : ""}${money(o.sized ? priceOf({ kind: o.id, x: 0, y: 0, rot: 0, w: o.sized.min[0], h: o.sized.min[1] }).cost : o.cost)} · ${money(o.upkeep)}/mo`, thumb?.(o.id)))}</div></>}
         </Fragment>
       ))}
       {land.length > 0 && (
@@ -571,7 +572,8 @@ export function GoalsPanel({ host }: { host: Host }) {
           <p style={{ margin: "10px 0" }}>{describeGoals(st.goals)}</p>
           <div className="kv">
             <b>Worth</b><span className="num">{money(st.worth)} of {money(st.goals.worth)} {st.worthOk ? "✅" : ""}</span>
-            <b>Reputation</b><span className="num">{Math.round(st.rep)} of {st.goals.rep.min} {st.repOk ? "✅" : ""}</span>
+            <b>Reputation{st.goals.rep.type ? `: ${GUEST_TYPES[st.goals.rep.type]?.name ?? ""}` : ""}</b><span className="num">{Math.round(st.rep)} of {st.goals.rep.min} {st.rep >= st.goals.rep.min ? "✅" : ""}</span>
+            {st.reps.map((r) => <Fragment key={r.type}><b>Reputation: {GUEST_TYPES[r.type]?.name ?? r.type}</b><span className="num">{Math.round(r.rep)} of {st.goals.reps!.min} {r.ok ? "✅" : ""}</span></Fragment>)}
           </div>
           <p className="muted" style={{ marginTop: 8 }}>Checked at the end of each month.</p>
         </>
@@ -921,7 +923,7 @@ function TypeBreakdown({ g, id }: { g: Game; id: number }) {
   );
 }
 
-export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable<Selection>; onClose: () => void }) {
+export function Inspector({ host, sel, onClose, onMove }: { host: Host; sel: NonNullable<Selection>; onClose: () => void; onMove?: (id: number, rot: number) => void }) {
   const g = host.game;
   const s = g.state;
   const w = s.map.w;
@@ -954,7 +956,9 @@ export function Inspector({ host, sel, onClose }: { host: Host; sel: NonNullable
           <TypeBreakdown g={g} id={obj.id} />
           <BarPolicyEditor g={g} id={obj.id} />
           <div className="row">
-            <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(priceOf(obj).cost / 2)} back</small></button>
+            {onMove && !OBJECTS[obj.kind].sized && <button className="btn" onClick={() => { onMove(obj.id, obj.rot); onClose(); }}>Move <small>{money(MOVE_COST)}</small></button>}
+            {!OBJECTS[obj.kind].scenarioOnly && <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Sell <small>{money(priceOf(obj).cost / 2)} back</small></button>}
+            {OBJECTS[obj.kind].scenarioOnly && <button className="btn danger" onClick={() => { g.dispatch({ type: "remove", id: obj.id }); onClose(); }}>Throw out <small>free</small></button>}
           </div>
         </>
       )}

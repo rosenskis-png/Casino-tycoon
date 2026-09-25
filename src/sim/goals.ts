@@ -8,7 +8,7 @@ import type { System } from "./registry";
 import { worth } from "./finance";
 import { fmtMoney, news } from "./news";
 
-export interface GoalStatus { worth: number; rep: number; worthOk: boolean; repOk: boolean; goals: Goals }
+export interface GoalStatus { worth: number; rep: number; worthOk: boolean; repOk: boolean; goals: Goals; reps: { type: string; rep: number; ok: boolean }[] }
 
 export function goalStatus(g: Game): GoalStatus | null {
   const goals = SCENARIOS[g.state.scenario].goals;
@@ -16,12 +16,14 @@ export function goalStatus(g: Game): GoalStatus | null {
   const w = worth(g);
   const types = goals.rep.type ? [goals.rep.type] : Object.keys(g.state.rep);
   const rep = Math.min(...types.map((t) => g.state.rep[t] ?? 0));
-  return { worth: w, rep, worthOk: w >= goals.worth, repOk: rep >= goals.rep.min, goals };
+  const reps = (goals.reps?.types ?? []).map((t) => ({ type: t, rep: g.state.rep[t] ?? 0, ok: (g.state.rep[t] ?? 0) >= goals.reps!.min }));
+  return { worth: w, rep, worthOk: w >= goals.worth, repOk: rep >= goals.rep.min && reps.every((r) => r.ok), goals, reps };
 }
 
 export function describeGoals(goals: Goals): string {
   const who = goals.rep.type ? GUEST_TYPES[goals.rep.type]?.name ?? goals.rep.type : "every kind of guest";
-  return `Worth ${fmtMoney(goals.worth)} and a reputation of ${goals.rep.min} with ${who} by the end of ${MONTH_NAMES[goals.by.month]}, Year ${goals.by.year}.`;
+  const also = goals.reps ? `, and ${goals.reps.min} with ${goals.reps.types.map((t) => GUEST_TYPES[t]?.name ?? t).join(" and ")},` : "";
+  return `Worth ${fmtMoney(goals.worth)} and a reputation of ${goals.rep.min} with ${who}${also} by the end of ${MONTH_NAMES[goals.by.month]}, Year ${goals.by.year}.`;
 }
 
 export const goalSystem: System = {

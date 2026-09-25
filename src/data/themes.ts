@@ -50,6 +50,8 @@ export interface ThemeTags {
   clashesTheme?: Partial<Record<ThemeId, number>>;
   suitsPlace?: Place[];
   clashesPlace?: Place[];
+  /** (M11.2) Broken theming: this much bad theming at the item, fading like a theme; it spoils any theme there too. */
+  junk?: number;
 }
 
 /** Radius a decor item themes, in tiles. M11.1: 7 (was 4): theming carries into neighboring rooms, so a floor of clashing rooms reads as disjointed. */

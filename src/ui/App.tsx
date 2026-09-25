@@ -107,7 +107,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     const input = new WorldInput(h, canvasRef.current!, {
       tool: () => toolRef.current,
       rot: () => rotRef.current,
-      command: (c: Command) => h.game.dispatch(c),
+      command: (c: Command) => { h.game.dispatch(c); if (c.type === "move") setTool("inspect"); },
       tap: (tile, fx, fy) => {
         const g = h.game;
         let best: number | null = null, bd = 0.7;
@@ -236,7 +236,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         {toast && <div className="toast">{toast}</div>}
       </div>
       {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} onGo={focus} />}
-      {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} />}
+      {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} onMove={(id, r) => { setRot(r); setTool(`move:${id}`); }} />}
       {host && !showLog && !playing && !designing && !sel && tab && (
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>
@@ -274,5 +274,6 @@ function toolHint(t: Tool): string {
   if (t === "demolish") return "Drag over walls or doors to remove them";
   if (t === "entrance") return "Tap your land beside the sidewalk to open a way in";
   if (t === "remove") return "Tap an object to sell it (half price back)";
+  if (t.startsWith("move:")) return "Tap where it should go · Rotate in the Build tab";
   return "Tap to place · drag to position · Rotate in the Build tab";
 }

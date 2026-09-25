@@ -72,6 +72,8 @@ export interface ObjectDef {
   price?: number;
   /** Player-set price range per use (tickets, cover charges, the restaurant's multiplier). */
   priceRange?: [number, number];
+  /** (M11.2) Only a scenario places it (the tutorial's broken theming): never in the Build list; thrown out for free. */
+  scenarioOnly?: boolean;
   desc: string;
 }
 
@@ -372,6 +374,18 @@ export const OBJECTS: Record<string, ObjectDef> = {
     id: "camera", name: "Camera", cat: "security", w: 1, h: 1, cost: 400, upkeep: 3, blocks: false, place: "indoor",
     emits: [{ channel: "SRVH", strength: 3, radius: 6 }], sprite: "camera", art: "whole", seats: [],
     desc: "A ceiling dome. Catches cheats in the act, but only while a surveillance operator watches from a Back office.",
+  },
+  // (M11.2) Broken theming (the tutorial): bad theming around it, and it spoils any theme nearby, so new decor
+  // there barely registers until it's thrown out (sim/themes.ts).
+  junk_cutout: {
+    id: "junk_cutout", name: "Faded Cowboy Cutout", cat: "decor", w: 1, h: 1, cost: 0, upkeep: 0, blocks: true, place: "any", scenarioOnly: true,
+    emits: [], sprite: "junk_cutout", art: "whole", seats: [], tags: { junk: 3 },
+    desc: "The old owner's idea of theming. Peeling, chipped and a little sad. Throw it out before theming around it.",
+  },
+  junk_neon: {
+    id: "junk_neon", name: "Dead Neon Sign", cat: "decor", w: 1, h: 1, cost: 0, upkeep: 0, blocks: true, place: "any", scenarioOnly: true,
+    emits: [], sprite: "junk_neon", art: "whole", seats: [], tags: { junk: 3 },
+    desc: "Cracked tubes, half of them dangling. It hasn't lit since the nineties. Throw it out before theming around it.",
   },
   dumpster: {
     id: "dumpster", name: "Dumpster", cat: "security", w: 2, h: 1, cost: 300, upkeep: 1, blocks: true, place: "outdoor",

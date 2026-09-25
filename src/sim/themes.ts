@@ -20,7 +20,7 @@ const PRESENT = 0.2;
 /** How much each unit of an unrelated theme muddles the dominant one. */
 const MUDDLE = 0.8;
 
-interface Src { k: number; kind: 0 | 1 | 2; cx: number; cy: number; s: number }
+interface Src { k: number; kind: 0 | 1 | 2 | 3; cx: number; cy: number; s: number }
 
 export class ThemeField {
   /** True once any themed decor exists; until then every score is 0 and nothing is allocated. */
@@ -28,6 +28,8 @@ export class ThemeField {
   themed: Float32Array[] = [];
   gen: Float32Array[] = [];
   clash: Float32Array[] = [];
+  /** (M11.2) Broken theming (one field for every theme). */
+  junk = new Float32Array(0);
   /** Per-tile quality from the tile's own mix, and the final score guests read (tile + room coherence). */
   q = new Float32Array(0);
   score = new Float32Array(0);
@@ -43,6 +45,7 @@ export class ThemeField {
     const n = this.g.state.map.w * this.g.state.map.h;
     const mk = () => Array.from({ length: K }, () => new Float32Array(n));
     this.themed = mk(); this.gen = mk(); this.clash = mk();
+    this.junk = new Float32Array(n);
     this.q = new Float32Array(n);
     this.score = new Float32Array(n);
     this.dom = new Int8Array(n).fill(-1);
@@ -76,6 +79,7 @@ export class ThemeField {
       const tags = OBJECTS[o.kind].tags;
       if (!tags) continue;
       const { w, h } = objSize(o), cx = o.x + (w - 1) / 2, cy = o.y + (h - 1) / 2;
+      if (tags.junk) { themedAny = true; this.sources.push({ k: 0, kind: 3, cx, cy, s: tags.junk }); continue; }
       const at = this.placesOf(Math.round(cx), Math.round(cy));
       // Hidden place fit: suited places strengthen an item, clashing ones weaken it.
       let mult = 1;
@@ -89,7 +93,7 @@ export class ThemeField {
       for (const [t, wgt] of Object.entries(tags.clashesTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 2, cx, cy, s: 1.5 * (wgt ?? 0) });
     }
     if (themedAny && !this.active) { this.active = true; this.alloc(); }
-    if (!themedAny && this.active) { this.active = false; this.themed = []; this.gen = []; this.clash = []; this.q = new Float32Array(0); this.score = new Float32Array(0); this.dom = new Int8Array(0); this.rooms = []; }
+    if (!themedAny && this.active) { this.active = false; this.themed = []; this.gen = []; this.clash = []; this.junk = new Float32Array(0); this.q = new Float32Array(0); this.score = new Float32Array(0); this.dom = new Int8Array(0); this.rooms = []; }
   }
 
   /** Recompute everything a change in this box can reach (or the whole map). */
@@ -98,13 +102,13 @@ export class ThemeField {
     if (!this.active) return;
     const { w, h, terrain } = this.g.state.map, R = THEME_RADIUS + 1;
     x0 = Math.max(0, x0 - R); y0 = Math.max(0, y0 - R); x1 = Math.min(w - 1, x1 + R); y1 = Math.min(h - 1, y1 + R);
-    for (const set of [this.themed, this.gen, this.clash]) for (const v of set) for (let y = y0; y <= y1; y++) v.fill(0, y * w + x0, y * w + x1 + 1);
+    for (const set of [this.themed, this.gen, this.clash, [this.junk]]) for (const v of set) for (let y = y0; y <= y1; y++) v.fill(0, y * w + x0, y * w + x1 + 1);
     const keep = 1 - WALL_CUT, r = THEME_RADIUS;
     for (const src of this.sources) {
       const sx0 = Math.max(x0, Math.ceil(src.cx - r)), sx1 = Math.min(x1, Math.floor(src.cx + r));
       const sy0 = Math.max(y0, Math.ceil(src.cy - r)), sy1 = Math.min(y1, Math.floor(src.cy + r));
       if (sx0 > sx1 || sy0 > sy1 || src.k < 0) continue;
-      const v = (src.kind === 0 ? this.themed : src.kind === 1 ? this.gen : this.clash)[src.k];
+      const v = src.kind === 3 ? this.junk : (src.kind === 0 ? this.themed : src.kind === 1 ? this.gen : this.clash)[src.k];
       const ox = Math.round(src.cx), oy = Math.round(src.cy);
       for (let y = sy0; y <= sy1; y++) for (let x = sx0; x <= sx1; x++) {
         const d = Math.hypot(x - src.cx, y - src.cy);
@@ -126,7 +130,8 @@ export class ThemeField {
       v[k] = Math.max(0, t + (t > PRESENT ? this.gen[k][i] : 0) - this.clash[k][i]);
       if (v[k] > s) { s = v[k]; d = k; }
     }
-    if (d < 0 || s < 0.05) return { dom: -1, q: 0, v };
+    const junk = this.junk[i];
+    if (d < 0 || s < 0.05) return { dom: -1, q: junk > 0.05 ? -3 * Math.tanh(junk / 3) : 0, v };
     let bonus = 0, muddle = 0;
     for (let k = 0; k < K; k++) {
       if (k === d || !v[k]) continue;
@@ -138,7 +143,7 @@ export class ThemeField {
     // Curated: general items reinforcing the dominant theme alongside themed pieces.
     const gen = this.themed[d][i] > PRESENT ? this.gen[d][i] : 0;
     const curated = 0.3 * Math.min(gen, this.themed[d][i]);
-    const Q = s + bonus + curated - muddle - 0.5 * this.clash[d][i];
+    const Q = s + bonus + curated - muddle - 0.5 * this.clash[d][i] - 1.5 * junk;
     return { dom: d, q: 3 * Math.tanh(Q / 3), v };
   }
 

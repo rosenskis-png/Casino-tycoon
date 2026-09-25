@@ -449,7 +449,7 @@ Information is a resource: the player starts with symptoms only.
   - goals
 - **Size and length:** tutorial-size maps are about 3× the v0.2 lot, with about 3× the guests. The largest maps are about 20× that or more. Scenarios last from about 6 months to about 3 years.
 - **Working titles carried over from v0.2 [LATER]:**
-  - The Lucky Horseshoe (tutorial, a locals casino)
+  - The Lucky Horseshoe (tutorial: a run-down locals casino to turn into a place for tourists and families, with no new games; M11.2)
   - Boardwalk Frontage
   - Sundowner Club
   - The River Belle (boat, no outdoor space)

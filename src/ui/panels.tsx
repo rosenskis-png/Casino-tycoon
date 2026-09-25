@@ -71,7 +71,7 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
         {b("remove", "Sell object")}
         <button className="btn" onClick={() => setRot((rot + 1) & 3)}>Rotate<small>faces {FACING[rot & 3]}</small></button>
       </div>
-      {OBJECT_CATS.map((c) => (
+      {OBJECT_CATS.filter((c) => !(noGames && c.id === "table")).map((c) => (
         <Fragment key={c.id}>
           <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}
             {c.id === "decor" && (
@@ -81,7 +81,7 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
               </select>
             )}
           </p>
-          {noGames && (c.id === "game" || c.id === "table") ? <p className="muted">{c.id === "game" ? "No new games here: these machines are all you get. Move them, theme around them and fill them." : ""}</p> : <>
+          {noGames && c.id === "game" ? <p className="muted">No new games or tables here: these machines are all you get. Move them, theme around them and fill them.</p> : <>
           {c.id === "game" && <SlotPicks g={g} tool={tool} setTool={setTool} onDesigner={onDesigner} thumb={thumb} />}
           <div className="grid">{Object.values(OBJECTS).filter((o) => o.cat === c.id && !o.slot && !o.scenarioOnly && (c.id !== "decor" || (o.tags?.theme ?? "general") === theme)).map((o) => locked(g.state, o.id)
             ? <button key={o.id} className="btn" disabled>{o.name}<small>Research: {RESEARCH[projectFor(o.id)].name}</small></button>

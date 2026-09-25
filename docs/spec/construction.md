@@ -11,9 +11,13 @@ parcels (below; themes in docs/spec/themes.md).
   land, the sidewalk and the map edge runs through everything but walls and doors (`recomputeOutdoor` in
   `src/sim/map.ts`); what it reaches is outdoors. Walling in lot ground makes an extension (indoors, carpet); a hole
   from a room to the lot makes that room outdoors until it's closed again. Doors count as closed.
-- **Entrance** (Build, $500 a tile): a new way in from the street on owned outdoor ground beside the sidewalk.
+- **Entrance** (Build, $250 a tile; M11.2 halved every build price, docs/spec/economy.md): a new way in from the street on owned outdoor ground beside the sidewalk.
   Passers-by glance in there and regulars may use it. Entrances can't be removed. They draw as a paved apron.
 - The hotel elevator, water, the sidewalk and unowned land stay fixed.
+- **Move (M11.2):** any fixed-size object (not a sized amenity) can be picked up and put down elsewhere from its
+  card, for $50: its footprint follows the finger, Rotate turns it. It keeps its record (stats, design, meters) under
+  a new id, so anyone playing or walking to it treats it as gone, as when it's sold. Built for the tutorial, where
+  the machines can't be replaced.
 
 ## Doors (`setDoor`)
 Tap a door to open its card. Entrances (street and elevator) can't be changed.
@@ -172,7 +176,7 @@ and go only on outdoor ground.
   show a faint gold border and a For Sale sign.
 - **Buy** from Build → Land, or by tapping the land: its unowned tiles become owned outdoor ground (buildable,
   not fixed); "Land" in the books. Land counts toward worth at what was paid.
-- Free Play Lot has two: East lot (12×108, $12K) and Far east lot (12×108, $9K). Since the hotfix of 2026-09-24
+- Free Play Lot has two: East lot (12×108, $6K) and Far east lot (12×108, $4.5K; M11.2 halved). Since the hotfix of 2026-09-24
   the Free Play map is 184×112 with 156×108 of owned lot (about 8× the old one) around the same building. Saves
   from before keep their own map and street; lots that don't fit a save's map aren't offered.
 - Saves: schema 9 adds `parcels` (ids bought).

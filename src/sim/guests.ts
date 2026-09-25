@@ -515,7 +515,8 @@ function wantToLeave(g: Game, a: Agent, why: string) {
   // everyone home mid-game). The group goes once everyone is ready, or half have waited WAIT_LONG.
   const waits = !urgent;
   const others = companions(g, a);
-  if (waits && others.length && others.some((m) => m.g!.wait < 0 && !m.g!.why)) {
+  // Children follow the adults: only an adult still playing is worth waiting for.
+  if (waits && others.length && others.some((m) => !m.g!.minor && m.g!.wait < 0 && !m.g!.why)) {
     if (gd.wait < 0) { gd.wait = g.state.tick; think(g, a, "waiting"); }
     return standBy(g, a);
   }
@@ -1677,7 +1678,7 @@ function groupsBeat(g: Game) {
     const leaderGone = !gi.leader || !!gi.leader.g!.why;
     let long = 0, ready = 0;
     for (const m of gi.members) {
-      if (m.g!.wait >= 0 || m.g!.why) ready++;
+      if (m.g!.wait >= 0 || m.g!.why || m.g!.minor) ready++;
       if (m.g!.wait >= 0 && tick - m.g!.wait >= WAIT_LONG * TICKS_PER_SECOND) long++;
     }
     if (!leaderGone && long * 2 < gi.members.length && ready < gi.members.length) continue;

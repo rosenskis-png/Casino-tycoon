@@ -278,6 +278,11 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
   20: (s) => {
     const open = SCENARIOS[s.scenario]?.research === "build";
     if ((open || s.objects.some((o: { kind: string }) => o.kind === "club")) && !s.research.done.includes("nightclub")) s.research.done.push("nightclub");
+    // Insurance lines follow the casino's machine win now: the old $1K / $5K / $25K lines become the three levels.
+    const b = s.bank;
+    b.insLvl = b.insure >= 25000 ? 3 : b.insure >= 5000 ? 2 : b.insure > 0 ? 1 : 0;
+    b.theoM = 0;
+    b.theoLast = 0;
     return s;
   },
 };

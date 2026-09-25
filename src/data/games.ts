@@ -42,7 +42,7 @@ export interface SlotModel {
 }
 
 /** Wagers resolved per visible round: the main money-scale knob (docs/spec/clock.md). */
-export const WAGERS_PER_ROUND = 4;
+export const WAGERS_PER_ROUND = 8;
 
 // The original slot models (Cherry Parade, Liberty Bell, Thunder Jackpot) are stock designs since M8
 // (data/designs.ts); the slot designer compiles every slot's model (sim/design/compile.ts).

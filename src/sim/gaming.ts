@@ -20,7 +20,7 @@ import { fmtMoney, news } from "./news";
 import { compSeeking } from "./drinks";
 import { payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
-import { earnComps, ensureCash, expectedExcess, stiff } from "./bank";
+import { earnComps, ensureCash, expectedExcess, insured, stiff } from "./bank";
 import { engagement, savvyNow, showOff } from "./guests";
 
 /** Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
@@ -111,7 +111,7 @@ export interface Wager { m: SlotModel; bet: number; x: number; ev?: number; v?: 
 export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: string): { won: number; wagered: number; jackpot: boolean } {
   const gd = a.g!, bank = g.state.bank;
   // M9: jackpot insurance covers each payout above the line (not pool prizes: those are other players' money).
-  const pool = !!tableDefOf(o.kind)?.pool, over = pool ? 0 : bank.insure;
+  const pool = !!tableDefOf(o.kind)?.pool, cover = insured(o.kind), over = cover ? bank.insure : 0;
   let won = 0, wagered = 0, top = 0, topBet = 0, topM: SlotModel | null = null, claim = 0;
   for (const w of ws) {
     const pay = Math.abs(w.x) * w.bet;
@@ -124,6 +124,7 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
     }
     const st = w.h === undefined ? payStats(w.m) : { v: w.v!, h: w.h };
     gd.mem.ev += w.ev ?? w.bet * w.m.rtp;
+    if (cover) bank.theoM += w.bet - (w.ev ?? w.bet * w.m.rtp);
     gd.mem.v += w.v !== undefined ? w.v : w.bet * w.bet * st.v;
     gd.mem.hits += w.x !== 0 ? 1 : 0;
     gd.mem.hexp += st.h;

@@ -66,6 +66,7 @@ plan.tempt = [...plan.good,
 ];
 for (const seed of seeds.split(",").map(Number)) {
   const g = sim.Game.create("horseshoe", seed);
+  g.dispatch({ type: "setInsurance", level: 1 }); // (M11.4, owner) insured like a sensible player: big payouts over half a month's machine win
   const out = [];
   let rejects = [];
   let occ = { play: 0, seats: 0, here: 0, by: {} };

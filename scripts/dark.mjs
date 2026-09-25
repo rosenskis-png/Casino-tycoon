@@ -17,6 +17,7 @@ for (const dark of [false, true]) {
   const rows = [];
   for (const seed of seeds) {
     const g = sim.Game.create("testfloor", seed);
+    g.dispatch({ type: "setInsurance", level: 1 }); // (M11.4, owner) insured like a sensible player: big payouts over half a month's machine win
     if (dark) {
       const cmds = [{ type: "setSkim", share: 0.3 }, ...g.state.objects.filter((o) => o.bar).map((o) => ({ type: "setBar", id: o.id, comp: 1, strength: 1.4 })),
         ...["intox", "disorder", "misconduct", "vice", "drugs"].map((cat) => ({ type: "setRule", cat, level: 0 }))];

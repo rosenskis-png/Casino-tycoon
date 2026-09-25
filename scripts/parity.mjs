@@ -15,6 +15,7 @@ for (const t of crowds) {
   const acc = { brought: 0, theo: 0, win: 0, wag: 0, visits: 0, other: 0, otherPlayed: 0, planned: 0, spent: 0, score: 0, rep: 0, n: 0 };
   for (const seed of String(seeds).split(",").map(Number)) {
     const g = sim.Game.create(`crowd_${t}`, seed);
+    g.dispatch({ type: "setInsurance", level: 1 }); // (M11.4, owner) insured like a sensible player: big payouts over half a month's machine win
     const warm = Math.floor(days / 3);
     let counting = false;
     g.bus.on((e) => {

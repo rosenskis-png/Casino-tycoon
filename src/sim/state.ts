@@ -657,9 +657,13 @@ export interface Bank {
   /** Share of the gaming win skimmed; back taxes owed (hidden). */
   skim: number;
   evaded: number;
-  /** Insurance: cover above this payout (0 = off); expected excess of this month's wagers. */
+  /** Insurance: cover above this payout (0 = off); expected excess of this month's wagers. (M11.4) The level chosen
+   * (INSURE_SHARE) and the expected machine win this month and last, which set the line at each month's close. */
   insure: number;
   insExp: number;
+  insLvl: number;
+  theoM: number;
+  theoLast: number;
   /** Emergency loans this month; months in a row closed below zero; unpaid winnings since the last audit. */
   emergencies: number;
   broke: number;

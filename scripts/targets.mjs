@@ -8,6 +8,7 @@ const days = Number(process.argv[2] || 300);
 const seed = Number(process.argv[3] || 1);
 const sim = await loadSim();
 const g = sim.Game.create("testfloor", seed);
+g.dispatch({ type: "setInsurance", level: 1 }); // (M11.4, owner) insured like a sensible player: big payouts over half a month's machine win
 
 const dep = {}, arr = {}, inc = {}, incAll = {};
 // M9: staff, whales and the regulator, from the ticker.
@@ -89,6 +90,9 @@ row("visit length (min)", (d) => f1(med(d.map((e) => e.minutes))));
 row("playing (min)", (d) => f1(med(d.map((e) => e.play))));
 row("visit budget", (d) => usd(med(d.map((e) => e.budget))));
 row("loss per visit", (d) => usd(med(d.map((e) => e.lost))));
+// (M11.4) Expected loss (wagered − expected return): what the visit cost them before luck, and for those who played.
+row("expected loss", (d) => usd(med(d.map((e) => e.wagered - e.ev))));
+row("exp. loss, players", (d) => { const p = d.filter((e) => e.wagered > 0); return p.length ? usd(med(p.map((e) => e.wagered - e.ev))) : "–"; });
 row("sober share", (d) => pct(share(d, (e) => e.intend === 0)));
 row("drinkers' intent (median)", (d) => f2(med(d.filter((e) => e.intend > 0).map((e) => e.intend))));
 row("drinkers' drinks (median)", (d) => f1(med(d.filter((e) => e.intend > 0).map((e) => e.drinks))));

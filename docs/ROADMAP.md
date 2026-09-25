@@ -124,4 +124,17 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 - Novelty and ageing, boredom and favorites, floor variety, fans who come for a design; guests' wishes; records and Evergreens; research projects; Test Floor and sanity flags per design. (Slot Expo and rival releases dropped by the owner.)
 - Owner's notes (designer.md, "M8.6 additions"): word of mouth (awareness curve, novelty bump, fans, steady state); slot makers' offers to buy your own designs (cash, a share of the edge, royalties with a long tail, wide-area progressives).
 - Built: awareness by guest type, novelty, boredom, fans (visitors count too) and their draw, variety, wishes, records, Evergreens, Game launches and Market research, the life curve, offers and sales, Lucky Dragon decor. Save schema 17.
-## M11 · Scenarios, tutorial, balance ☐
+## M11 · Missing features ☑  (owner's notes, 2026-09-25; see DECISIONS)
+- Litter halved and litter bins; janitors take the nearest mess; staff of a job spread out; uniform colors per job and a distinct silhouette and prop for every job.
+- Dealers come with the tables (in the price, no wages).
+- Tap a notice to go to the person or place (or tab) it's about.
+- Gentler authorities: faster recovery, one ladder step a week, the license lost only from the top. Uncertified machines found only by sight, warned first; bribes for inspectors and officers where a scenario allows. Save schema 18.
+- Cut (owner): design goals, royalty-excluding goals, the high-limit baccarat cheat flag.
+
+## M11.1 · General balance pass ☐
+Guest numbers become tuning goals (docs/spec/guests.md "design intent"); money scale, running costs, staff, cheats, authorities, research and marketing numbers; the Test Floor and the tutorial economy.
+
+## M11.2 · Scenario build and level redesign ☐
+The scenario ladder (FOUNDATIONS §20: early, core, challenge, free play; unlocks), the working titles as real maps with goals, and a tutorial that teaches symptom-reading through its setup.
+
+**After M11.2: alpha build, Casino Tycoon v0.8.**

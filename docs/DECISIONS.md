@@ -2,6 +2,21 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · Road to alpha: M11 → M11.1 → M11.2 = v0.8 (owner)
+- Owner: what's left is **M11** (missing features), **M11.1** (general balance pass) and **M11.2** (scenario build and level redesign). After those the game is an alpha build, **Casino Tycoon v0.8**.
+- Cut (owner): scenario goals that ask for slot designs; scenario goals that exclude royalties; the flagged "cheats win faster at high-limit baccarat" item (M6.5), which is no longer a tuning target.
+
+## 2026-09-25 · M11 built: the owner's feature notes (see the specs named)
+- **Litter** (floor.md): every litter chance halved, and a **litter bin** (1×1, $60) that sober guests within 6 tiles use. Janitors go to the **nearest** mess (they used to prefer the dirtiest, across the floor) and leave mess a free colleague is closer to.
+- **Staff spread out** (staff.md): a soft repel between colleagues of the same job when picking where to patrol (janitors, techs, guards, pit bosses).
+- **Uniforms** (staff.md, art.md): a color per job set in the Staff tab, and a distinct head silhouette and prop for every job (hard hat, peaked cap and badge, visor, headset, dark glasses, clipboard, a bucket while sweeping).
+- **Dealers come with the tables** (staff.md): $800 per dealer added to each table's price, no wages, no hiring; one dealer per dealer spot, kept in step with the tables.
+- **Tap a notice** (engine.md): the ticker and the Log go to the person or place a notice is about and open its card (or its tab).
+- **Punishment slower and gentler** (incidents.md, money.md): police and regulator standing recover 0.5 a day (was 0.2); the ladders climb at most one step a week; the license goes only from the top step.
+- **Uncertified machines viable, at a risk** (money.md, designer.md §10): the inspector must see a machine to find it (sight lines, so a maze hides it); the first find is a warning with 30 days to fix it and a follow-up visit, the second seizes and fines.
+- **Bribes** (money.md; bribery was deferred to M11 in M4): a scenario flag (Free Play and the Test Floor 60%, the tutorial none). Offer an inspector $2,000 or an officer $500 from their card: taken, they look away this visit; refused, a fine of 2× and −20 standing; bribes taken can come out as a scandal (4% a month each, fading).
+- Claude's calls: the numbers above; bins need no research; the check harness now skips random breakdowns when it plays games itself (the M11 changes shifted RNG draws enough to break a slot mid-test). Save schema 18 (migration from 17).
+
 ## 2026-09-24 · M8.6 built: the market (Claude's calls; see docs/spec/designer.md "As built in M8.6")
 - Word of mouth (awareness by guest type on a Bass curve), a novelty bump by how different a design is from the floor, boredom and favorites per regular, fans who come for their game and draw more of their type, floor variety, wishes, records and Evergreens, Game launches and Market research projects, the life curve on each design's card, and slot makers' offers with everything after a sale (fees on theoretical edge, hidden units on an S-curve, royalties, wide-area meters the maker pays, math locked, its own budget line, the library remembers).
 - **Flagged for the owner: fans.** A scenario's whole pool of regulars is 100–400 people, so "50 fans" from regulars alone was out of reach. Visitors who fall for a game now count as fans too (they fade as they forget). The 50-fan bar is unchanged.

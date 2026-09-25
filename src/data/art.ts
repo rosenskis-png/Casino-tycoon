@@ -465,6 +465,12 @@ const SIGN = [
 ];
 const SIGN_PAL = { L: "#2f7a52", G: "#1e5a3c", g: "#123a26" };
 
+// (M11) Litter bin (16×14): a walnut urn with a brass lid and band, a dark slot to drop things in.
+const BIN = mir([
+  "......98", "....9888", "...98888", "..877777", "...yyyyy", "..766666",
+  "..345555", "..345555", "..788888", "..345555", "..345555", "..345555", "...23333", "....2222",
+], { 9: "8", 8: "7", 5: "4", 3: "2" });
+
 // (M8.5) Bank sign (32×24): a gold marquee on two posts with a dark board; the renderer writes the game's name and
 // its live meters on it.
 const BANK_SIGN = [
@@ -1084,6 +1090,7 @@ export const OBJECT_SPRITES: Record<string, SpriteDef> = {
   plant: S(PALM), "plant~1": S(shift(PALM, 1, 0, 6)),
   neon: S(NEON, NEON_PAL), "neon~1": S(recolor(NEON, { x: "H" }, 0, 10), NEON_PAL),
   sign: S(SIGN, SIGN_PAL),
+  bin: S(BIN),
   bank_sign: S(BANK_SIGN),
   fountain: S(FOUNTAIN, FOUNTAIN_PAL), "fountain~1": S(FOUNTAIN_1, FOUNTAIN_PAL), "fountain~2": S(FOUNTAIN_2, FOUNTAIN_PAL),
   "atm:front": S(ATM_FRONT, ATM_PAL), "atm:back": S(ATM_BACK, ATM_PAL), "atm:side": S(ATM_SIDE, ATM_PAL),
@@ -1147,6 +1154,9 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
   mop: S(["...4", "...4", "..4.", "..4.", "..4.", ".4..", ".4..", "pPpP"]),
   "mop~1": S(["4...", "4...", ".4..", ".4..", ".4..", "..4.", "..4.", "PpPp"]),
   toolbox: S([".mm.", "RRRR", "rrrr"]),
+  // (M11) A pit boss's clipboard; a janitor's bucket, set down while they sweep.
+  clipboard: S([".nn.", "pppp", "pPPp", "pppp", "pPPp"]),
+  bucket: S(["q..q", "qqqq", "Q99Q", ".QQ."]),
   spark: S(["..q..", "q.q.q", ".qwq.", "q.q.q", "..q.."], undefined, false),
   "spark~1": S([".q.q.", "..q..", "qqwqq", "..q..", ".q.q."], undefined, false),
   // Security's radio, worn at the hip.
@@ -1336,6 +1346,17 @@ export const HAIR: Record<string, Over> = {
     up: { y: 1, rows: ["..qqqq..", ".qqqqqQ.", ".qqqqQQ.", ".hhhhHH.", "..hhH..."] },
     side: { y: 1, rows: ["..qqqq..", ".qqqqqQ.", ".hqqqqqq", ".hh.....", ".h......"] },
   },
+  // (M11) Staff hats: a tech's hard hat (taller than any cap), security's peaked cap with a badge.
+  hardhat: {
+    down: { y: 0, rows: ["..qqqq..", ".qqqqqQ.", "qqqqqqQQ", ".h....H."] },
+    up: { y: 0, rows: ["..qqqq..", ".qqqqqQ.", "qqqqqqQQ", ".hhhhhH.", ".hhhhHH.", "..hhH..."] },
+    side: { y: 0, rows: ["..qqqq..", ".qqqqqQ.", "qqqqqqqQ", ".hh.....", ".h......"] },
+  },
+  peak: {
+    down: { y: 1, rows: [".kkkkkk.", ".kkyykK.", "kkkkkkkk", ".h....H."] },
+    up: { y: 1, rows: [".kkkkkk.", ".kkkkkK.", ".kkkkkK.", ".hhhhHH.", "..hhH..."] },
+    side: { y: 1, rows: [".kkkkkk.", ".kkkkyk.", ".hkkkkkk", ".hh.....", ".h......"] },
+  },
   sunhat: {
     down: { y: 0, rows: ["..qqqq..", "..jjjJ..", "qqqqqqQQ", ".h....H."] },
     up: { y: 0, rows: ["..qqqq..", "..jjjJ..", "qqqqqqQQ", ".hhhhhH.", ".hhhhHH.", "..hhH..."] },
@@ -1349,6 +1370,10 @@ export const ACCESSORIES: Record<string, Over> = {
   camera: { down: { y: 8, rows: ["..ee....", "..eo...."] }, up: { y: 7, rows: ["......e.", ".....e.."] }, side: { y: 8, rows: [".....ee.", ".....oe."] } },
   bowtie: { down: { y: 7, rows: ["...yy..."] } },
   badge: { down: { y: 8, rows: ["......w.", "......y."] }, side: { y: 8, rows: [".....w..", ".....y.."] } },
+  // (M11) Enforcers' dark glasses, operators' headsets, and a dealer's green visor.
+  shades: { down: { y: 4, rows: [".kkkkkk."] }, side: { y: 4, rows: ["...kkkk."] } },
+  headset: { down: { y: 3, rows: ["m......m", "m......m", ".m......"] }, up: { y: 3, rows: ["m......m", "m......m"] }, side: { y: 3, rows: ["..m.....", ".mm.....", "..mmm..."] } },
+  visor: { down: { y: 2, rows: [".vvvvvv."] }, side: { y: 2, rows: [".vvvvvvv"] } },
   belt: { down: { y: 10, rows: [".yqqqqy."] }, up: { y: 10, rows: [".yqqqqy."] }, side: { y: 10, rows: ["..yqqy.."] } },
 };
 
@@ -1412,24 +1437,24 @@ export const PEOPLE: Record<string, LookSet> = {
     ],
   },
   dealer: {
-    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#7a1a2c"], bottom: ["#141418"], accent: ["#f6f1e6"], hat: ["#141418"],
-    styles: [[{ o: "blazer", h: "crop", x: ["bowtie"] }], [{ o: "blazer", h: "bun", x: ["bowtie"] }]],
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#f6f1e6"], bottom: ["#141418"], accent: ["#7a1a2c"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "crop", x: ["bowtie", "visor"] }], [{ o: "blazer", h: "bun", x: ["bowtie", "visor"] }]],
   },
   pitboss: {
-    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#1c1c22"], bottom: ["#1c1c22"], accent: ["#e8e4dc"], hat: ["#141418"],
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#f6f1e6"], bottom: ["#1c1c22"], accent: ["#2e3440"], hat: ["#141418"],
     styles: [[{ o: "blazer", h: "short" }], [{ o: "blazer", h: "bob" }]],
   },
   janitor: {
-    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#5f7a8c"], bottom: ["#5f7a8c"], accent: ["#e8e0cc"], hat: ["#34485a"],
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#1f8a80"], bottom: ["#1f8a80"], accent: ["#e8e0cc"], hat: ["#1f8a80"],
     styles: [[{ o: "coverall", h: "cap" }], [{ o: "coverall", h: "cap" }]],
   },
   tech: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#2e3440"], bottom: ["#2e3440"], accent: ["#f08c1e"], hat: ["#f08c1e"],
-    styles: [[{ o: "techvest", h: "cap" }], [{ o: "techvest", h: "cap" }]],
+    styles: [[{ o: "techvest", h: "hardhat" }], [{ o: "techvest", h: "hardhat" }]],
   },
   guard: {
-    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#e8e4dc"], bottom: ["#141418"], accent: ["#141418"], hat: ["#141418"],
-    styles: [[{ o: "blazer", h: "crop" }], [{ o: "blazer", h: "bun" }]],
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#e8e4dc"], bottom: ["#141418"], accent: ["#c0283c"], hat: ["#141418"],
+    styles: [[{ o: "blazer", h: "peak", x: ["badge"] }], [{ o: "blazer", h: "peak", x: ["badge"] }]],
   },
   officer: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#2a3a6a"], bottom: ["#1e2438"], accent: ["#2a3a6a"], hat: ["#1e2438"],
@@ -1440,12 +1465,12 @@ export const PEOPLE: Record<string, LookSet> = {
     styles: [[{ o: "coverall", h: "crop", x: ["belt"] }], [{ o: "coverall", h: "bun", x: ["belt"] }]],
   },
   enforcer: {
-    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#3e2a22"], bottom: ["#1e1e24"], accent: ["#141418"], hat: ["#141418"],
-    styles: [[{ o: "longsleeve", h: "crop" }], [{ o: "longsleeve", h: "bun" }]],
+    variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#101014"], top: ["#1c1820"], bottom: ["#1e1e24"], accent: ["#141418"], hat: ["#141418"],
+    styles: [[{ o: "longsleeve", h: "bald", x: ["shades"] }], [{ o: "longsleeve", h: "bun", x: ["shades"] }]],
   },
   operator: {
     variants: 6, skin: SKINS, hair: HAIRS, shoes: ["#1a1a20"], top: ["#7a808c"], bottom: ["#2a2e38"], accent: ["#1c2030"], hat: ["#1c2030"],
-    styles: [[{ o: "polo", h: "short", x: ["glasses"] }], [{ o: "polo", h: "bob", x: ["glasses"] }]],
+    styles: [[{ o: "polo", h: "short", x: ["headset"] }], [{ o: "polo", h: "bob", x: ["headset"] }]],
   },
   // M9.5: families (casual, bright), their children (a row shorter, loud colors, caps), conventioneers (suits and badges).
   family: {
@@ -1484,4 +1509,4 @@ export const PEOPLE: Record<string, LookSet> = {
   },
 };
 /** Fixed person colors: eyes, lenses, white and its shade, red (bow ties, belts). */
-export const PERSON_FIXED: Record<string, string> = { e: "#1e1218", o: "#cfe8f0", w: "#f6f1e6", P: "#c8c0b0", y: "#b0283c" };
+export const PERSON_FIXED: Record<string, string> = { e: "#1e1218", o: "#cfe8f0", w: "#f6f1e6", P: "#c8c0b0", y: "#b0283c", k: "#141418", K: "#2a2a30", m: "#353846", v: "#2e9a5a" };

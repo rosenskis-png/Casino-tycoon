@@ -25,6 +25,7 @@ import { greed, inZone, skillOf, steal } from "./crew";
 import { hash01, sharedPay, wagerPay } from "./cheats";
 import { stakeMult, purposeOf } from "./amenities";
 import { seatHolders } from "./guests";
+import { colleaguesNear, hireStaff, spreadTile } from "./staff";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -125,8 +126,13 @@ function pitTick(g: Game, a: Agent) {
   const r = rng(g.state, "staff");
   // M9: a pit boss kept to a room watches only the tables in it.
   const w = g.state.map.w, mine = a.st && a.st.zone >= 0 ? g.tables.filter((t) => inZone(g, a, t.y * w + t.x)) : g.tables;
-  const o = mine.length ? mine[r.int(0, mine.length - 1)] : null;
-  const t = o ? spotNear(g, a, o, r) : nearbyTile(g, "staff", a.x, a.y, 10, a);
+  // M11: of two tables, the one fewer other pit bosses are watching.
+  let o = mine.length ? mine[r.int(0, mine.length - 1)] : null;
+  if (mine.length > 1) {
+    const o2 = mine[r.int(0, mine.length - 1)];
+    if (colleaguesNear(g, a, o2.y * w + o2.x) < colleaguesNear(g, a, o!.y * w + o!.x)) o = o2;
+  }
+  const t = o ? spotNear(g, a, o, r) : spreadTile(g, a, "staff", a.x, a.y, 10);
   if (t >= 0) go(a, t, "wait");
   else { a.act = "wait"; a.timer = RECHECK * SEC; }
 }
@@ -403,14 +409,52 @@ const commands: CommandTable<"setTable"> = {
   },
 };
 
+/**
+ * (M11) Dealers come with the tables: one per dealer spot, starting at their spot when a table is built, and gone
+ * with it when it's sold. A dealer fired for stealing is replaced the same way.
+ */
+function syncDealers(g: Game) {
+  const s = g.state, w = s.map.w;
+  let need = 0;
+  for (const o of g.tables) need += dealerSeats(o).length;
+  const dealers = s.agents.filter((a) => a.role === "dealer");
+  if (dealers.length > need) {
+    // Let go of the ones not at a table first.
+    const out = new Set([...dealers].sort((a, b) => Number(a.act === "deal") - Number(b.act === "deal")).slice(0, dealers.length - need));
+    s.agents = s.agents.filter((a) => !out.has(a));
+    return;
+  }
+  if (dealers.length === need) return;
+  const taken = new Set<number>();
+  for (const a of dealers) if (a.target >= 0) taken.add(a.target * 64 + a.seat);
+  let missing = need - dealers.length;
+  for (const o of g.tables) {
+    const seats = objSeats(o);
+    for (const k of dealerSeats(o)) {
+      if (!missing) return;
+      if (taken.has(o.id * 64 + k)) continue;
+      const t = seats[k].y * w + seats[k].x;
+      if (!g.walkable(t)) continue;
+      const a = hireStaff(g, "dealer", t);
+      if (!a) continue;
+      a.target = o.id; a.seat = k; a.act = "deal";
+      taken.add(o.id * 64 + k);
+      missing--;
+    }
+  }
+}
+
 export const tableSystem: System = {
   id: "tables",
   deps: ["gaming"],
   commands,
+  init(g) { syncDealers(g); },
   layout(g) {
     // A dealer's table may have gone or moved.
     for (const a of g.state.agents) if (a.role === "dealer" && a.target >= 0 && !g.objById.has(a.target)) { a.act = "idle"; a.target = -1; a.seat = -1; }
+    syncDealers(g);
   },
+  day(g) { syncDealers(g); },
   tick(g) {
     const s = g.state;
     for (const a of s.agents) {

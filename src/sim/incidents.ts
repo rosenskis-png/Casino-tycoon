@@ -12,7 +12,8 @@ import type { CommandTable } from "./commands";
 import type { System } from "./registry";
 import type { Agent, GameState, HouseRules, Incident } from "./state";
 import { rng, type Rng } from "./rng";
-import { go, isWalking, nearbyTile } from "./agents";
+import { go, isWalking } from "./agents";
+import { spreadPoint, spreadTile } from "./staff";
 import { canSee } from "./wayfinding";
 import { companions, depart, release, sendHome, think, THOUGHT_DAYS } from "./guests";
 import { cutoff, handsFull, serveDrink, DRINK_PRICE } from "./drinks";
@@ -51,7 +52,9 @@ const TREAT_SECS = 4;
 const WASTED = 0.8;
 /** Police standing: what each thing costs, the recovery per day, the ladder, fines and closures. */
 const COST_CALL = 6, COST_MEDIC = 5, COST_FIGHT = 3;
-const RECOVER_PER_DAY = 0.2;
+/** (M11) Standing comes back faster (was 0.2 a day), and the ladder climbs at most one step a week. */
+const RECOVER_PER_DAY = 0.5;
+export const STEP_GAP_DAYS = 7;
 /** Standing below which each step of the ladder is reached; a step is left again 5 points above it. */
 export const LADDER = [60, 45, 30, 15];
 export const LADDER_NAMES = ["Good standing", "Warned", "Fined", "Under inspection", "Raided"];
@@ -61,9 +64,9 @@ const OFFICER_SECS = 90;
 
 export const DEFAULT_RULES: HouseRules = { intox: 2, disorder: 2, misconduct: 2, vice: 2, drugs: 2 };
 export const newAuthorities = (): GameState["auth"] => ({
-  police: { standing: 75, stage: 0, calls: 0, raidAt: -1e9, inspectAt: -1 },
-  regulator: { standing: 100, stage: 0 },
-  closedUntil: -1, revoked: 0,
+  police: { standing: 75, stage: 0, calls: 0, raidAt: -1e9, inspectAt: -1, stepAt: -1e9 },
+  regulator: { standing: 100, stage: 0, stepAt: -1e9 },
+  bribed: 0, closedUntil: -1, revoked: 0,
 });
 
 // ---------------------------------------------------------------------------------------------------------
@@ -140,7 +143,7 @@ export function begin(g: Game, grid: Grid, kind: string, a: Agent, other: Agent 
     a.g!.drink = 0;
   }
   if (kind === "fight" || kind === "passout" || kind === "vomit" || kind === "urinate")
-    news(g, "info", def.text.replace("{name}", "A guest") + roomLabel(g, inc.tile), true);
+    news(g, "info", def.text.replace("{name}", "A guest") + roomLabel(g, inc.tile), true, { a: a.id });
   witnesses(g, grid, inc, def, r);
   g.bus.emit({ type: "incident", kind, x: a.x, y: a.y, guestType: a.g?.type ?? a.role });
   return inc;
@@ -168,7 +171,7 @@ function witnesses(g: Game, grid: Grid, inc: Incident, def: IncidentDef, r: Rng)
       inc.reporters.push(b.id);
       think(g, b, "reported");
       count(s, "_reports");
-      if (!reported) news(g, "warn", `A guest reported ${def.name.toLowerCase()}${roomLabel(g, inc.tile)}.`);
+      if (!reported) news(g, "warn", `A guest reported ${def.name.toLowerCase()}${roomLabel(g, inc.tile)}.`, { a: inc.actor });
       reported = true;
     }
   });
@@ -430,13 +433,14 @@ export function patrol(g: Game, a: Agent, r: Rng) {
   if (zone >= 0) {
     const w = g.state.map.w;
     if (!inZone(g, a, a.y * w + a.x)) { if (g.walkable(zone)) go(a, zone, "idle"); return; }
-    const t = nearbyTile(g, "police", a.x, a.y, 6, a);
-    if (t >= 0 && inZone(g, a, t)) go(a, t, "idle");
+    const t = spreadTile(g, a, "police", a.x, a.y, 6, (q) => inZone(g, a, q));
+    if (t >= 0) go(a, t, "idle");
     return;
   }
-  const t = r.chance(0.6) ? nearbyTile(g, "police", a.x, a.y, 10, a) : -1;
+  // M11: guards spread out (visitors don't care where each other are, but it does them no harm).
+  const t = r.chance(0.6) ? spreadTile(g, a, "police", a.x, a.y, 10) : -1;
   if (t >= 0) go(a, t, "idle");
-  else if (pts.length) go(a, r.pick(pts), "idle");
+  else if (pts.length) { const p = spreadPoint(g, a, "police"); if (p >= 0) go(a, p, "idle"); }
 }
 
 /** A free guard picks the nearest incident that needs security, or shows a wasted guest out under a strict rule. */
@@ -516,7 +520,7 @@ function callMedic(g: Game, inc: Incident) {
   post(g, "medical", -MEDIC_COST);
   count(g.state, "_medic");
   adjustPolice(g, -COST_MEDIC);
-  news(g, "bad", `Paramedics came for a guest who passed out (${fmtMoney(MEDIC_COST)}).`);
+  news(g, "bad", `Paramedics came for a guest who passed out (${fmtMoney(MEDIC_COST)}).`, { a: inc.actor });
 }
 
 function sendOfficer(g: Game) {
@@ -531,10 +535,11 @@ function officersWatch(g: Game, officers: Agent[]) {
     const def = INCIDENTS[inc.kind];
     if (def.hidden || def.mood >= 0 || inc.seen) continue;
     for (const o of officers) {
-      if (o.act === "leave" || Math.abs((inc.tile % w) - o.x) + Math.abs(Math.floor(inc.tile / w) - o.y) > 8 || !canSee(g, o.y * w + o.x, inc.tile)) continue;
+      // M11: a paid-off officer sees nothing.
+      if (o.act === "leave" || o.paid === 1 || Math.abs((inc.tile % w) - o.x) + Math.abs(Math.floor(inc.tile / w) - o.y) > 8 || !canSee(g, o.y * w + o.x, inc.tile)) continue;
       inc.seen = 1;
       adjustPolice(g, -def.police * 2);
-      if (def.police >= 1) { post(g, "fines", -FINE_SEEN); news(g, "bad", `An officer saw ${def.name.toLowerCase()} on the floor: ${fmtMoney(FINE_SEEN)} fine.`); }
+      if (def.police >= 1) { post(g, "fines", -FINE_SEEN); news(g, "bad", `An officer saw ${def.name.toLowerCase()} on the floor: ${fmtMoney(FINE_SEEN)} fine.`, { a: o.id }); }
       break;
     }
   }
@@ -549,7 +554,7 @@ function policeCall(g: Game, q: Agent) {
   think(g, q, "calledPolice");
   count(s, "_calls");
   s.auth.police.calls++;
-  news(g, "bad", "A guest called the police: nobody answered their reports.");
+  news(g, "bad", "A guest called the police: nobody answered their reports.", { a: q.id });
   if (s.auth.police.stage >= 2) { post(g, "fines", -FINE_CALL); news(g, "bad", `Police fine for disorder: ${fmtMoney(FINE_CALL)}.`); }
   adjustPolice(g, -COST_CALL);
   sendOfficer(g);
@@ -563,16 +568,22 @@ export function adjustPolice(g: Game, delta: number) {
 
 function ladder(g: Game) {
   const s = g.state, p = s.auth.police;
-  if (p.standing <= 0 && s.auth.closedUntil <= s.tick) return revoke(g);
-  while (p.stage < LADDER.length && p.standing < LADDER[p.stage]) { p.stage++; stepUp(g, p.stage); }
+  // M11: the license goes only from the top of the ladder, and the ladder climbs one step a week at most, so a
+  // bad day is a warning, not a closure.
+  if (p.standing <= 0 && p.stage >= LADDER.length && s.auth.closedUntil <= s.tick) return revoke(g);
+  if (p.stage < LADDER.length && p.standing < LADDER[p.stage] && s.tick - p.stepAt >= STEP_GAP_DAYS * TICKS_PER_DAY) {
+    p.stage++;
+    p.stepAt = s.tick;
+    stepUp(g, p.stage);
+  }
   while (p.stage > 0 && p.standing >= LADDER[p.stage - 1] + 5) p.stage--;
 }
 
 function stepUp(g: Game, stage: number) {
   const s = g.state, p = s.auth.police;
-  if (stage === 1) news(g, "bad", "Police warning: too much trouble at the casino. Keep order, or expect fines.");
-  if (stage === 2) { post(g, "fines", -FINE_STAGE); news(g, "bad", `The police fined the casino ${fmtMoney(FINE_STAGE)} for disorder.`); }
-  if (stage === 3) { news(g, "bad", "The police will now inspect the floor regularly."); p.inspectAt = s.tick + INSPECT_EVERY_DAYS * TICKS_PER_DAY; sendOfficer(g); }
+  if (stage === 1) news(g, "bad", "Police warning: too much trouble at the casino. Keep order, or expect fines.", { tab: "authorities" });
+  if (stage === 2) { post(g, "fines", -FINE_STAGE); news(g, "bad", `The police fined the casino ${fmtMoney(FINE_STAGE)} for disorder.`, { tab: "authorities" }); }
+  if (stage === 3) { news(g, "bad", "The police will now inspect the floor regularly.", { tab: "authorities" }); p.inspectAt = s.tick + INSPECT_EVERY_DAYS * TICKS_PER_DAY; sendOfficer(g); }
   if (stage === 4 && s.tick - p.raidAt >= RAID_EVERY_DAYS * TICKS_PER_DAY) {
     p.raidAt = s.tick;
     post(g, "fines", -FINE_RAID);
@@ -672,7 +683,7 @@ export const incidentSystem: System = {
     ladder(g);
     if (p.stage >= 3 && p.inspectAt >= 0 && s.tick >= p.inspectAt && s.auth.closedUntil < 0) {
       p.inspectAt = s.tick + INSPECT_EVERY_DAYS * TICKS_PER_DAY;
-      news(g, "info", "A police officer is inspecting the floor.");
+      news(g, "info", "A police officer is inspecting the floor.", { tab: "authorities" });
       sendOfficer(g);
     }
   },

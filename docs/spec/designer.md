@@ -154,7 +154,7 @@ The goal is RCT's pull: always one more tweak, one more idea, never "solved".
 - **Unlocks:** research opens new layouts, features, jackpot kinds and cabinets through a scenario (like new coaster types).
 - **Hidden pairings (§7)** reward knowing real slots and experimenting.
 - **Wishes:** guests say what's missing from the floor ("Nothing exciting enough here", "Everything here is too wild for me", "Wish there were more penny games"), like RCT's "I want something more intense".
-- **Goals** (M11): scenarios can ask for designs ("a machine Retirees keep coming back for", "a floor of your own games").
+- ~~**Goals** (M11): scenarios can ask for designs~~: cut by the owner on 2026-09-25.
 
 ## 7. Hidden pairings (never listed in game)
 Like theme pairings (docs/spec/themes.md), each strong pairing adds to Excitement; a clash takes away; a design with more than two features and no pairing between them reads as cluttered. Starting table (each based on a real hit):
@@ -185,7 +185,7 @@ The M10 slot screen is replaced by one built from the design, meant to look and 
 ## 10. Money, the law and the regulator
 - **Certification:** a new design, or a change to its math or features, goes to the lab for 7 days and $1,500 before it can be placed (research can halve both). Cosmetic changes (name, colors, lights, sound) are free and instant. The library keeps certified versions per scenario.
 - **Legal limits per scenario:** minimum payback (80% by default) and near misses no more often than the design's natural rate. A design outside them can't be certified.
-- **Uncertified (dark lever):** the player can place a design without certifying it, instantly, with any settings (payback down to 50%, near misses above chance). It works. The regulator's inspector (M9) now also tests machines on each visit; an uncertified machine found is seized (removed, no refund), a large standing hit and a fine that grows with how rigged it was; repeat finds climb the ladder quickly.
+- **Uncertified (dark lever):** the player can place a design without certifying it, instantly, with any settings (payback down to 50%, near misses above chance). It works. The regulator's inspector (M9) now also tests machines on each visit. M11: only machines the inspector sees; the first find is a warning with 30 days to fix it, and a second find seizes them (removed, no refund) with a standing hit and a fine that grows with how rigged it was. Hiding them, or bribing the inspector where a scenario allows it, is the way to get away with it (docs/spec/money.md).
 - **Progressives in the books:** meters are liabilities (shown in Finance), seeds are posted when a meter resets, and a jackpot the casino can't cover uses the M9 credit rules. Jackpot insurance covers payouts above its line, as now.
 
 ## 11. Stats, records and the library
@@ -308,7 +308,7 @@ The rare jackpot of design: a game good enough that a maker buys it.
   - **Progressives become wide-area** and the maker's liability: you no longer pay its jackpots (not from cash, not through insurance), and the increment from your machines goes to the maker as a fee. The meters also grow from outside play (in proportion to reach) and can be hit outside (chance in proportion to outside coin-in), reset to seed, with a news line ("The Grand on Stampede Gold hit in Laughlin"). A huge meter pulls guests (§B above).
   - The design's math and features are locked (the maker owns them); cosmetics stay free. You can still place more of it; all fall under the deal.
 - Each sold design is its own line in the budget (royalties in, fees out); the monthly statement lists its installs; the library records "Sold to …" and peak installs.
-- Scenario goals (M11) may exclude royalties where a scenario wants the casino itself to earn the win.
+- ~~Scenario goals (M11) may exclude royalties~~: cut by the owner on 2026-09-25.
 
 ## As built in M8.6 (differences from the plan above)
 Code: `src/sim/design/market.ts` (sim), `src/ui/designer/Market.tsx` (panels). Tuning in `MARKET` and `SALE_RULES`.

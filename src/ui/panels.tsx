@@ -5,7 +5,7 @@ import { BUILD_COST, DOOR_RULES, DOOR_STATE, MAX_DOOR_FEE, T } from "../data/ter
 import { ROOM_HELP, ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { THEMES, THEME_IDS, type ThemeId } from "../data/themes";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
-import { STAFF_ROLES, PAY_MIN, PAY_MAX, PAY_STEP, ZONED_ROLES } from "../data/staff";
+import { STAFF_ROLES, PAY_MIN, PAY_MAX, PAY_STEP, ZONED_ROLES, UNIFORMS, UNIFORM_COLORS } from "../data/staff";
 import { COMP_AT, COMP_KINDS, COMP_NAMES, INSURE_OVER, LOAN_RATE, EMERGENCY_RATE, SKIM_LEVELS, REG_LADDER_NAMES } from "../data/money";
 import { TABLE_GAMES } from "../data/tables";
 import { RESEARCH, RESEARCH_CATS, FUNDING, type ResearchCat } from "../data/research";
@@ -25,8 +25,8 @@ import {
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
   locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
   priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
-  type Agent, type Ledger, type HouseRules,
-  cantPlay, yourFam,
+  type Agent, type Ledger, type HouseRules, type NewsRef,
+  cantPlay, yourFam, uniformOf, bribeChance, bribePrice,
 } from "../sim";
 import { play } from "../platform/audio";
 import { SoundSettings } from "./title";
@@ -216,23 +216,32 @@ const moraleWord = (m: number) => (m >= 75 ? "happy" : m >= 50 ? "content" : m >
 export function StaffPanel({ host }: { host: Host }) {
   const g = host.game;
   const staff = g.state.agents.filter(isStaff);
+  // (M11) The job whose uniform swatches are open.
+  const [dye, setDye] = useState<string | null>(null);
   return (
     <>
       {Object.values(STAFF_ROLES).map((r) => {
-        const n = staff.filter((a) => a.role === r.id).length, m = roleMorale(g, r.id);
+        const n = staff.filter((a) => a.role === r.id).length, m = roleMorale(g, r.id), u = UNIFORMS[r.id] ? uniformOf(g.state, r.id) : -1;
         return (
-          <div className="row" key={r.id} style={{ alignItems: "center" }}>
-            <span style={{ flex: 1 }}>{r.name}<br /><small className="muted">{n} on staff · {money(wageFor(g, r.id))}/mo each{m >= 0 ? ` · ${moraleWord(m)}` : ""}</small></span>
-            <select value={payOf(g, r.id)} onChange={(e) => g.dispatch({ type: "setPay", role: r.id, pay: Number(e.target.value) })}>
-              {PAYS.map((p) => <option key={p} value={p}>{Math.round(p * 100)}% pay</option>)}
-            </select>
-            <button className="btn" onClick={() => g.dispatch({ type: "hire", role: r.id })}>Hire</button>
+          <div key={r.id}>
+            <div className="row" style={{ alignItems: "center" }}>
+              {u >= 0 && <button className="swatch" style={{ background: UNIFORM_COLORS[u].hex, marginRight: 8 }} aria-label={`${r.name} uniform`} onClick={() => setDye(dye === r.id ? null : r.id)} />}
+              <span style={{ flex: 1 }}>{r.name}<br /><small className="muted">{n} on staff · {r.builtIn ? "come with the tables, no wages" : `${money(wageFor(g, r.id))}/mo each`}{m >= 0 ? ` · ${moraleWord(m)}` : ""}</small></span>
+              {!r.builtIn && <select value={payOf(g, r.id)} onChange={(e) => g.dispatch({ type: "setPay", role: r.id, pay: Number(e.target.value) })}>
+                {PAYS.map((p) => <option key={p} value={p}>{Math.round(p * 100)}% pay</option>)}
+              </select>}
+              {!r.builtIn && <button className="btn" onClick={() => g.dispatch({ type: "hire", role: r.id })}>Hire</button>}
+            </div>
+            {dye === r.id && <div className="swatches">
+              {UNIFORM_COLORS.map((c, k) => <button key={k} className={`swatch${k === u ? " on" : ""}`} style={{ background: c.hex }} aria-label={c.name}
+                onClick={() => { g.dispatch({ type: "setUniform", role: r.id, color: k }); setDye(null); }} />)}
+            </div>}
           </div>
         );
       })}
       <p className="muted" style={{ margin: "8px 0" }}>Pay is set per job, against the going rate. Better pay buys more skilled, happier staff, and fewer who steal. Overwork and trouble on the floor wear morale down; miserable staff quit.</p>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
-      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to one room.</p>
+      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to one room. Tap a job's color to change its uniform.</p>
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
@@ -644,15 +653,15 @@ export function Placeholder({ when }: { when: string }) {
   return <p className="muted">Arrives in {when}.</p>;
 }
 
-export function LogSheet({ game, onClose }: { game: Game; onClose: () => void }) {
+export function LogSheet({ game, onClose, onGo }: { game: Game; onClose: () => void; onGo: (ref?: NewsRef) => void }) {
   const items = [...game.state.log].reverse();
   return (
     <div className="sheet">
       <h3>Log · last 30 days<button className="x" onClick={onClose}>✕</button></h3>
       {items.length === 0 && <p className="muted">Nothing yet.</p>}
       {items.map((it, k) => (
-        <div className="logitem" key={k}>
-          <div className="d">{formatDate(Math.floor(it.tick / TICKS_PER_DAY))}</div>
+        <div className={`logitem${it.ref ? " go" : ""}`} key={k} onClick={() => it.ref && onGo(it.ref)}>
+          <div className="d">{formatDate(Math.floor(it.tick / TICKS_PER_DAY))}{it.ref ? " · tap to see" : ""}</div>
           <div className={`lv-${it.level}`}>{it.text}</div>
         </div>
       ))}
@@ -669,6 +678,11 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       <div className="sheet">
         <h3>{a.role === "officer" ? "Police officer" : a.role === "medic" ? "Paramedic" : a.role === "escort" ? "Escort" : "Gaming inspector"}<button className="x" onClick={onClose}>✕</button></h3>
         <p>{roleDoing(g, a)}</p>
+        {(a.role === "officer" || a.role === "inspector") && bribeChance(g) > 0 && (
+          a.paid ? <p className={a.paid === 1 ? "lv-good" : "lv-urgent"}>{a.paid === 1 ? "Took your money: they're looking the other way." : "Refused your bribe, and reported it."}</p> :
+          <p><button className="btn danger" disabled={g.state.cash < bribePrice(a) || a.act === "leave"} onClick={() => g.dispatch({ type: "bribe", id: a.id })}>Offer a bribe ({money(bribePrice(a))})</button>
+            <br /><small className="muted">Illegal. Some officials here take money; one who doesn't reports it (a fine and lost standing). Bribes can come out later.</small></p>
+        )}
         <p className="muted">{a.role === "officer" ? "Anything they see going wrong on the floor costs you standing with the police." : a.role === "medic" ? "Here for a guest who passed out." : a.role === "escort" ? "Working the floor. Your vice rule decides whether security shows them out." : "From the gaming regulator: they audit the books and the games, and report when they leave."}</p>
       </div>
     );

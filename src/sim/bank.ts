@@ -61,7 +61,7 @@ export function ensureCash(g: Game, need: number): number {
     post(g, "borrowed", take);
     post(g, "loanFees", -take * EMERGENCY_FEE);
     if (b.emergencies++ === 0) {
-      news(g, "urgent", `Emergency loan of ${fmtMoney(take)} to cover what the casino owes. It's in the papers.`);
+      news(g, "urgent", `Emergency loan of ${fmtMoney(take)} to cover what the casino owes. It's in the papers.`, { tab: "finance" });
       for (const t of Object.keys(s.rep)) hitReputation(g, t, SCANDAL_REP * (GUEST_TYPES[t]?.repSensitivity ?? 1));
     }
   }
@@ -194,7 +194,7 @@ export const bankSystem: System = {
     const s = g.state;
     if (s.cash >= 0) return;
     ensureCash(g, 0);
-    if (s.cash < 0 && !s.bank.low) { s.bank.low = 1; news(g, "urgent", "Cash is below zero and the bank won't lend more. Nothing can be built until it recovers."); }
+    if (s.cash < 0 && !s.bank.low) { s.bank.low = 1; news(g, "urgent", "Cash is below zero and the bank won't lend more. Nothing can be built until it recovers.", { tab: "finance" }); }
   },
   closeMonth(g) {
     const s = g.state, b = s.bank, f = s.finance.month;
@@ -220,7 +220,7 @@ export const bankSystem: System = {
       news(g, "urgent", `The casino closed the month unable to pay its debts${b.broke <= INSOLVENT_MONTHS ? ` (${b.broke} of ${INSOLVENT_MONTHS})` : ""}.`);
       if (b.broke >= INSOLVENT_MONTHS && !s.outcome) {
         s.outcome = "lost";
-        news(g, "urgent", "The casino is insolvent. The scenario is lost; keep playing if you like.");
+        news(g, "urgent", "The casino is insolvent. The scenario is lost; keep playing if you like.", { tab: "finance" });
       }
     } else b.broke = 0;
   },

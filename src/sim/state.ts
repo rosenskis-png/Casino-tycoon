@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 export interface MapState {
   w: number;
@@ -377,6 +377,8 @@ export interface Agent {
   due?: number;
   /** Enforcers: 1 while carrying a bag. */
   bag?: number;
+  /** (M11) A police officer or gaming inspector offered a bribe: 1 took it, 2 refused. */
+  paid?: number;
   g?: GuestData;
   /** (M9) Staff only. */
   st?: StaffData;
@@ -416,8 +418,12 @@ export interface Authorities {
     calls: number;
     raidAt: number;
     inspectAt: number;
+    /** (M11) When the ladder last went up a step: it climbs at most one step a week. */
+    stepAt: number;
   };
-  regulator: { standing: number; stage: number };
+  regulator: { standing: number; stage: number; stepAt: number };
+  /** (M11) Bribes taken lately (fades monthly): each makes a scandal likelier. */
+  bribed: number;
   /** Closed by the authorities until this tick (-1 open); `revoked` once the license was lost. */
   closedUntil: number;
   revoked: number;
@@ -454,7 +460,9 @@ export const isClosed = (s: GameState) => s.auth.closedUntil > s.tick;
 
 export interface RoomMeta { anchor: number; name: string; purpose: RoomPurpose }
 
-export interface NewsItem { tick: number; level: NewsLevel; text: string }
+/** (M11) What a notice is about: a person (agent id), a place (tile), or a tab to open. Tapping it goes there. */
+export interface NewsRef { a?: number; t?: number; tab?: string }
+export interface NewsItem { tick: number; level: NewsLevel; text: string; ref?: NewsRef }
 
 /** Money by category (positive = in). */
 export type Ledger = Record<string, number>;
@@ -585,6 +593,8 @@ export interface DesignRec {
   d: SlotDesign;
   cert: number;
   rigged: number;
+  /** (M11) When the inspector first found it running uncertified (a warning); found again, it's seized. */
+  warned?: number;
   /** (M8.6) Sold to a maker; offers declined, and when the next offer may come (0 the usual monthly chance, -1 never). */
   sale?: Sale;
   declined?: number;
@@ -621,7 +631,11 @@ export interface CalEvent { id: string; start: number; end: number; len: number;
 export interface ResearchState { funding: number; project: string; points: Record<string, number>; done: string[] }
 
 /** Pay per role (multiple of the market wage) and what went missing this month, per area, found at the count. */
-export interface Crew { pay: Record<string, number>; shrink: Record<string, number>; hist: number[] }
+export interface Crew {
+  pay: Record<string, number>; shrink: Record<string, number>; hist: number[];
+  /** (M11) Uniform color per job (an index into data/staff UNIFORM_COLORS; missing = the job's default). */
+  uniform: Record<string, number>;
+}
 
 /** Credit, tax, insurance and comps (docs/spec/money.md). */
 export interface Bank {
@@ -646,7 +660,11 @@ export interface Bank {
 }
 
 /** The regulator's inspector: next routine visit, the one on the floor (agent id or -1), and the last suspension. */
-export interface RegulatorState { next: number; here: number; suspendAt: number }
+export interface RegulatorState {
+  next: number; here: number; suspendAt: number;
+  /** (M11) Uncertified machines (object ids) the inspector on the floor has seen; 1 when they took a bribe this visit. */
+  seen: number[]; paid: number;
+}
 
 /** A whale announced (arriving at `at`) or on the floor (`id`), and when the next is announced. */
 export interface WhaleState {

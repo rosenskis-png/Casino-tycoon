@@ -10,9 +10,12 @@
 
 ## Staff (`src/sim/staff.ts`)
 - Hired from the Staff tab; they walk in from the street entrance. Fired staff leave at once. Wages are monthly.
-- Janitor: goes to the dirtiest reachable litter (weighed against distance), sweeps a 3×3 area in 2 s, else patrols.
+- Janitor: goes to the nearest reachable litter (M11; a bigger pile only breaks a near tie, and mess a free janitor is closer to is left to them), sweeps a 3×3 area in 1 s ÷ skill, else patrols. A bucket stands by them while they sweep.
 - Slot tech: goes to the nearest broken machine, fixes it in 6 s, else patrols.
-- Pay, skill, morale, honesty, theft and patrol zones (M9): docs/spec/staff.md.
+- Pay, skill, morale, honesty, theft and patrol zones (M9), uniforms and spreading out (M11): docs/spec/staff.md.
 
 ## Litter
 Saved integer per tile (`state.dirt`, capped at 9), drawn as cups and spills. Guests feel it within 2 tiles (the DIRT taste).
+- **Dropping it (M11, owner: "too much litter, too many janitors"):** every chance halved: a finished drink 5%, a bar drink 10%, a meal 8%, a cigarette outside a smoking room 15%, and walking 0.15% a beat (0.3% after drinking).
+- **Litter bins (M11):** a 1×1 decor object ($60, $1/mo, no research). A guest with a bin within 6 tiles (Manhattan) uses it instead of the floor, unless their intoxication is 0.5 or more. Spills, vomit and planters are incidents, not litter, and bins don't help with them.
+- Measured (60 days, 2 seeds, vs M8.6): Test Floor (4 janitors, 4 bins) average litter on the floor 46–57 → 10–16 units, janitors busy 96–99% → 68–92%; the tutorial (1 janitor, no bins) 9–16 → 3–7.

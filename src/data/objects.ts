@@ -148,6 +148,8 @@ const FRONT: SeatDef[] = [{ dx: 0, dy: 1, kind: "stool" }];
 
 /** Seats in a row along the front (dy), facing up at the table, from dx a to b. */
 const front = (a: number, b: number, dy: number, kind: SeatDef["kind"]): SeatDef[] => Array.from({ length: b - a + 1 }, (_, k) => ({ dx: a + k, dy, kind, f: 2 }));
+/** A dealer's spot. (M11) Dealers come with the table: its cost below includes DEALER_COST per dealer, and there are no wages. */
+export const DEALER_COST = 800;
 const dealer = (dx: number, dy = -1): SeatDef => ({ dx, dy, kind: "dealer", f: 0 });
 const sides = (w: number, dy: number, kind: SeatDef["kind"]): SeatDef[] => [{ dx: -1, dy, kind, f: 3 }, { dx: w, dy, kind, f: 1 }];
 
@@ -159,49 +161,49 @@ const TABLES: Record<string, ObjectDef> = {
     desc: "Jacks or Better. The best payback in the house for a player who knows the game; mistakes cost them.",
   },
   blackjack: {
-    id: "blackjack", name: "Blackjack", cat: "table", w: 3, h: 1, cost: 1500, upkeep: 10, blocks: true, place: "indoor",
+    id: "blackjack", name: "Blackjack", cat: "table", w: 3, h: 1, cost: 2300, upkeep: 10, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1, radius: 2 }, { channel: "PRS", strength: 1, radius: 3 }], sprite: "felt", art: "whole",
     seats: [...front(0, 2, 1, "stool"), ...sides(3, 0, "stool"), dealer(1)], game: "blackjack",
     desc: "Five stools and a dealer. A low edge, if the players know what they're doing.",
   },
   roulette: {
-    id: "roulette", name: "Roulette", cat: "table", w: 4, h: 1, cost: 2500, upkeep: 12, blocks: true, place: "indoor",
+    id: "roulette", name: "Roulette", cat: "table", w: 4, h: 1, cost: 3300, upkeep: 12, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }, { channel: "PRS", strength: 1.5, radius: 3 }], sprite: "felt", art: "whole",
     seats: [...front(0, 3, 1, "stool"), { dx: 4, dy: 0, kind: "stool", f: 1 }, dealer(1)], game: "roulette",
     desc: "A wheel and five stools. Slow, social, and every bet carries the same edge.",
   },
   craps: {
-    id: "craps", name: "Craps", cat: "table", w: 5, h: 2, cost: 3500, upkeep: 15, blocks: true, place: "indoor",
+    id: "craps", name: "Craps", cat: "table", w: 5, h: 2, cost: 5100, upkeep: 15, blocks: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 4, radius: 5 }], sprite: "felt", art: "whole",
     seats: [...front(0, 4, 2, "stand"), ...sides(5, 0, "stand"), ...sides(5, 1, "stand"), dealer(1), dealer(3)], game: "craps",
     desc: "Nine players standing and two dealers. Loud: the whole table wins together, and a crowd gathers.",
   },
   baccarat: {
-    id: "baccarat", name: "Baccarat", cat: "table", w: 4, h: 2, cost: 3000, upkeep: 12, blocks: true, place: "indoor",
+    id: "baccarat", name: "Baccarat", cat: "table", w: 4, h: 2, cost: 3800, upkeep: 12, blocks: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 2.5, radius: 3 }], sprite: "felt", art: "whole",
     seats: [...front(0, 3, 2, "chair"), ...sides(4, 1, "chair"), dealer(1)], game: "baccarat",
     desc: "Six chairs and big bets. A low edge and large swings; its players like privacy.",
   },
   poker: {
-    id: "poker", name: "Poker Table", cat: "table", w: 4, h: 2, cost: 1800, upkeep: 8, blocks: true, place: "indoor",
+    id: "poker", name: "Poker Table", cat: "table", w: 4, h: 2, cost: 2600, upkeep: 8, blocks: true, place: "indoor",
     emits: [{ channel: "PRS", strength: 1, radius: 2 }], sprite: "felt", art: "whole",
     seats: [...front(0, 3, 2, "chair"), ...sides(4, 1, "chair"), dealer(1)], game: "poker",
     desc: "Players against each other; the house takes a rake from every pot. Needs two players.",
   },
   keno: {
-    id: "keno", name: "Keno Lounge", cat: "table", w: 4, h: 1, cost: 2000, upkeep: 10, blocks: true, opaque: true, place: "indoor",
+    id: "keno", name: "Keno Lounge", cat: "table", w: 4, h: 1, cost: 2800, upkeep: 10, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 0.5, radius: 3 }], sprite: "keno", art: "facing",
     seats: [...front(0, 3, 1, "chair"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "keno",
     desc: "A board of 80 numbers and eight chairs. A draw every so often; cheap tickets, a steep edge.",
   },
   sportsbook: {
-    id: "sportsbook", name: "Sportsbook", cat: "table", w: 4, h: 1, cost: 2500, upkeep: 12, blocks: true, opaque: true, place: "indoor",
+    id: "sportsbook", name: "Sportsbook", cat: "table", w: 4, h: 1, cost: 3300, upkeep: 12, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 1.5, radius: 3 }], sprite: "sports", art: "facing",
     seats: [...front(0, 3, 1, "stool"), ...front(0, 3, 2, "chair"), dealer(-1, 0)], game: "sports",
     desc: "A wall of screens and a writer taking bets on the games: a small, steady edge, and a crowd on big nights.",
   },
   bingo: {
-    id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 3500, upkeep: 15, blocks: true, opaque: true, place: "indoor",
+    id: "bingo", name: "Bingo Hall", cat: "table", w: 6, h: 1, cost: 4300, upkeep: 15, blocks: true, opaque: true, place: "indoor",
     emits: [{ channel: "NRG", strength: 2, radius: 4 }], sprite: "bingo", art: "facing",
     seats: [...front(0, 5, 1, "chair"), ...front(0, 5, 2, "chair"), ...front(0, 5, 3, "chair"), dealer(-1, 0)], game: "bingo",
     desc: "A caller and eighteen chairs. The prize is the cards sold less the house's hold: the fuller the room, the bigger it gets.",
@@ -315,6 +317,11 @@ export const OBJECTS: Record<string, ObjectDef> = {
     id: "sign", name: "Sign", cat: "decor", w: 1, h: 1, cost: 80, upkeep: 0, blocks: true, guide: true, place: "any",
     emits: [], sprite: "sign", art: "whole", seats: [],
     desc: "Points guests toward whatever they're looking for, roughly. Guests have to see it.",
+  },
+  bin: {
+    id: "bin", name: "Litter Bin", cat: "decor", w: 1, h: 1, cost: 60, upkeep: 1, blocks: true, place: "any",
+    emits: [], sprite: "bin", art: "whole", seats: [],
+    desc: "Guests nearby drop their rubbish in it instead of on the floor (unless they're drunk). Fewer janitors needed.",
   },
   bank_sign: {
     id: "bank_sign", name: "Bank sign", cat: "decor", w: 2, h: 1, cost: 1000, upkeep: 6, blocks: true, place: "indoor",

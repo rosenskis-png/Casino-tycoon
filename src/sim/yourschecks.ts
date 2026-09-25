@@ -91,7 +91,7 @@ export function yoursPlayChecks(seed = 3): string[] {
   const seen = new Set<string>();
   for (const o of g.state.objects) {
     const fam = yourFam(o.kind);
-    if (!fam || seen.has(fam) || cantPlay(g, o)) continue;
+    if (!fam || seen.has(fam) || o.broken || cantPlay(g, o)) continue;
     seen.add(fam);
     const cash0 = g.state.cash, led0 = g.state.finance.total.yours ?? 0;
     const u = OBJECTS[o.kind].game ? limitsNow(g, o)[0] : 1;
@@ -99,6 +99,8 @@ export function yoursPlayChecks(seed = 3): string[] {
     if (run({ type: "yours", act: "open", id: o.id })) { p.push(`${o.kind}: couldn't sit down`); continue; }
     for (let k = 0; k < 40; k++) {
       const y = g.state.yours!;
+      // Breakdowns are random and not what this checks: keep the machine running.
+      o.broken = 0;
       const e = (() => {
         switch (fam) {
           case "slot": return run({ type: "yours", act: "spin", bet: 1 });

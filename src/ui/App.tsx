@@ -1,7 +1,7 @@
 // App shell (FOUNDATIONS §21): top bar, ticker + log, world, tab bar, panels, inspector.
 // Changes the game only through host.game.dispatch(command).
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { formatDate, SPEEDS, TICKS_PER_DAY, type Command, type Game, type Speed } from "../sim";
+import { formatDate, SPEEDS, TICKS_PER_DAY, type Command, type Game, type NewsRef, type Speed } from "../sim";
 import { play, unlockAudio } from "../platform/audio";
 import { FloorAudio } from "./floorAudio";
 import { TitleScreen } from "./title";
@@ -92,7 +92,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         else if (e.type === "jackpot") sound("jackpot", e.x, e.y);
         else if (e.type === "broken") { const o = g.objById.get(e.obj); sound("broken", o?.x, o?.y); }
         else if (e.type === "incident" && INCIDENT_SOUND[e.kind]) sound(INCIDENT_SOUND[e.kind], e.x, e.y);
-        else if (e.type === "news") { ticker.push({ level: e.level, text: e.text }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
+        else if (e.type === "news") { ticker.push({ level: e.level, text: e.text, ref: e.ref }, performance.now()); sound(e.level === "urgent" ? "urgent" : "news"); }
         else if (e.type === "commandRejected") {
           setToast(e.reason);
           clearTimeout(toastTimer);
@@ -180,6 +180,25 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     setTab((t) => (t === id ? null : id));
     if (id !== "build") setTool("inspect");
   };
+  /** (M11) Tapping a notice: go to what it's about (the person, else the place) and open its card, or open its tab. */
+  const focus = (ref?: NewsRef) => {
+    if (!host || !ref) return;
+    play("click");
+    setShowLog(false);
+    const g = host.game, w = g.state.map.w;
+    if (ref.tab && TABS.some((t) => t.id === ref.tab)) { setSel(null); setTool("inspect"); setTab(ref.tab as TabId); return; }
+    const a = ref.a !== undefined ? g.state.agents.find((b) => b.id === ref.a && !b.hidden) : undefined;
+    const tile = a ? a.y * w + a.x : ref.t;
+    if (tile === undefined) return;
+    const cam = host.camera;
+    cam.cx = (tile % w) + 0.5;
+    cam.cy = Math.floor(tile / w) + 0.5;
+    if (cam.level > 1) cam.level = 1;
+    host.notify();
+    setTab(null);
+    setTool("inspect");
+    setSel(a ? { kind: "agent", id: a.id } : { kind: "tile", tile });
+  };
   const zoom = (d: number) => {
     if (!host) return;
     const r = canvasRef.current!.getBoundingClientRect();
@@ -201,7 +220,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         </div>}
       </div>
       <div className="ticker">
-        <span className={`msg lv-${cur?.level ?? "info"}`}>{cur?.text ?? ""}</span>
+        <span className={`msg lv-${cur?.level ?? "info"}${cur?.ref ? " go" : ""}`} onClick={() => focus(cur?.ref)}>{cur?.text ?? ""}</span>
         <button className="log" onClick={() => { setShowLog(true); tickerRef.current.clearQueue(); }}>Log</button>
       </div>
       <div className="world">
@@ -216,7 +235,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
           onPlace={(id) => { setDesigning(null); placeDesign(id); }} />}
         {toast && <div className="toast">{toast}</div>}
       </div>
-      {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} />}
+      {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} onGo={focus} />}
       {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} />}
       {host && !showLog && !playing && !designing && !sel && tab && (
         <div className="sheet">

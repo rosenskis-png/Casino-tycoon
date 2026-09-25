@@ -154,7 +154,7 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
     const amount = top * topBet;
     g.bus.emit({ type: "jackpot", obj: o.id, amount, x: o.x, y: o.y });
     // Jackpots are bad news for the house: red, and only the big ones interrupt.
-    news(g, "bad", `${OBJECTS[o.kind].cat === "game" ? "Jackpot" : "Big win"}! ${fmtMoney(amount)} paid out on ${topM!.name}.`, amount < TICKER_JACKPOT && top < TICKER_JACKPOT_X);
+    news(g, "bad", `${OBJECTS[o.kind].cat === "game" ? "Jackpot" : "Big win"}! ${fmtMoney(amount)} paid out on ${topM!.name}.`, amount < TICKER_JACKPOT && top < TICKER_JACKPOT_X, { t: o.y * g.state.map.w + o.x });
   }
   return { won, wagered, jackpot };
 }

@@ -407,7 +407,7 @@ function makeOffer(g: Game, id: string, sc: number) {
   const cash = Math.round((designPrice(d).cost * (10 + 90 * j())) / 100) * 100;
   const share = Math.round((0.25 + 0.5 * j()) * 20) / 20, roy = Math.round((0.01 + 0.02 * j()) * 1000) / 1000;
   s.offer = { id, maker: r.pick(MAKERS), cash, share, roy, until: s.tick + 30 * DAY, s: sc };
-  news(g, "good", `A letter from ${s.offer.maker}: they want to buy ${d.name}. Answer in the Slots tab within 30 days.`);
+  news(g, "good", `A letter from ${s.offer.maker}: they want to buy ${d.name}. Answer in the Slots tab within 30 days.`, { tab: "slots" });
 }
 
 /** Declined or let lapse: maybe another offer in 3-12 months, less likely each time. */

@@ -1,8 +1,9 @@
 // Ticker display rules (FOUNDATIONS §21): each item shows 1–10 s; a new item replaces the current one after its
 // 1 s minimum; backlog shows 1 s each; red (urgent) jumps the queue and holds its full 10 s.
-import type { NewsLevel } from "../sim";
+import type { NewsLevel, NewsRef } from "../sim";
 
-export interface TickerItem { level: NewsLevel; text: string }
+/** (M11) `ref`: what the item is about; tapping it goes there. */
+export interface TickerItem { level: NewsLevel; text: string; ref?: NewsRef }
 const MIN_MS = 1000, MAX_MS = 10_000;
 
 export class Ticker {

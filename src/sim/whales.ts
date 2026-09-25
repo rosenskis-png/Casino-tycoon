@@ -80,7 +80,7 @@ function arrive(g: Game) {
     floorTime: Math.round(range(r, WHALE.minutes) * 60 * TICKS_PER_SECOND * Math.pow(WHALE.unmetCut, due.reqs.length - met)),
   });
   Object.assign(w, { id: lead.id, game: due.game, bankroll: due.bankroll, name: due.name, bet });
-  news(g, "info", `The whale ${guestName(due.name)} has arrived${group.length > 1 ? ` with ${group.length - 1} companion${group.length > 2 ? "s" : ""}` : ""}. Requests met: ${met} of ${due.reqs.length}.`);
+  news(g, "info", `The whale ${guestName(due.name)} has arrived${group.length > 1 ? ` with ${group.length - 1} companion${group.length > 2 ? "s" : ""}` : ""}. Requests met: ${met} of ${due.reqs.length}.`, { a: lead.id });
 }
 
 /** The whale walks out: what the house won or lost. */

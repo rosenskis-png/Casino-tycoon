@@ -75,6 +75,7 @@ if (sim.SCHEMA_VERSION >= 10) {
   // M7: blackjack and craps with dealers and a pit boss; house rules on the blackjack table.
   g.dispatch({ type: "place", kind: "blackjack", x: 30, y: 12, rot: 0 });
   g.dispatch({ type: "place", kind: "craps", x: 12, y: 6, rot: 0 });
+  // M11: dealers come with the tables (hiring one is refused from schema 18).
   for (const role of ["dealer", "dealer", "dealer", "pitboss"]) g.dispatch({ type: "hire", role });
   for (let t = 0; t < 2; t++) g.step();
   const bj = g.state.objects.find((o) => o.kind === "blackjack");
@@ -82,7 +83,7 @@ if (sim.SCHEMA_VERSION >= 10) {
 }
 if (sim.SCHEMA_VERSION >= 11) {
   // M9: pay, a zoned janitor, a loan, insurance, a skim and comps.
-  g.dispatch({ type: "setPay", role: "dealer", pay: 1.3 });
+  g.dispatch({ type: "setPay", role: sim.SCHEMA_VERSION >= 18 ? "server" : "dealer", pay: 1.3 });
   g.dispatch({ type: "setPay", role: "janitor", pay: 0.8 });
   const jan = g.state.agents.find((a) => a.role === "janitor");
   if (jan) g.dispatch({ type: "setZone", id: jan.id, tile: 10 * w + 20 });
@@ -103,6 +104,11 @@ if (sim.SCHEMA_VERSION >= 12) {
   g.dispatch({ type: "setFunding", amount: 500 });
   g.dispatch({ type: "setProject", id: "club" });
   g.dispatch({ type: "advertise", id: "radio", months: 3 });
+}
+if (sim.SCHEMA_VERSION >= 18) {
+  // M11: a litter bin, a dyed uniform.
+  g.dispatch({ type: "place", kind: "bin", x: 22, y: 20, rot: 0 });
+  g.dispatch({ type: "setUniform", role: "janitor", color: 8 });
 }
 for (let t = 0; t < 200 * (sim.SCHEMA_VERSION >= 4 ? 40 : 4) + 37; t++) g.step();
 if (sim.SCHEMA_VERSION >= 14) {

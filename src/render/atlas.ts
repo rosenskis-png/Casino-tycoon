@@ -6,6 +6,7 @@ import {
   SLOT_COLORS, SLOT_ROWS, TILES, cabinetRows, recolor, type CabShape, type SpriteDef,
 } from "../data/art";
 import { BODY_COLORS, LIGHT_COLORS } from "../data/designer";
+import { UNIFORMS } from "../data/staff";
 
 /**
  * (M8) A designed cabinet's look: "cabinet.body.light.topper" (docs/spec/designer.md §8). Each look in use is
@@ -43,10 +44,15 @@ export const warmShade = (hex: string) => { const [r, g, b] = rgbOf(hex); return
 /** Deterministic scramble so look variants don't march through color lists in lockstep. */
 const pick = <T>(arr: T[], v: number, salt: number): T => arr[(((v + 1) * 2654435761 + salt * 40503) >>> 7) % arr.length];
 
-export function lookPalette(set: string, sex: number, v: number): Record<string, string> {
+/** (M11) A job's uniform: the color its parts are dyed (data/staff UNIFORMS), or none. */
+export type Uniforms = Record<string, string>;
+
+export function lookPalette(set: string, sex: number, v: number, uni: Uniforms = {}): Record<string, string> {
   const L = PEOPLE[set];
-  const skin = pick(L.skin, v, 1), hair = pick(L.hair, v + sex * 5, 2), top = pick(L.top, v, 3), bottom = pick(L.bottom, v, 4);
-  const accent = pick(L.accent, v, 5), hat = pick(L.hat, v, 6), shoes = pick(L.shoes, v, 7);
+  const dye = UNIFORMS[set] && uni[set] ? new Set(UNIFORMS[set].parts) : null, u = uni[set];
+  const pk = (arr: string[], vv: number, salt: number, part: string) => (dye?.has(part) ? u : pick(arr, vv, salt));
+  const skin = pick(L.skin, v, 1), hair = pick(L.hair, v + sex * 5, 2), top = pk(L.top, v, 3, "t"), bottom = pk(L.bottom, v, 4, "n");
+  const accent = pk(L.accent, v, 5, "j"), hat = pk(L.hat, v, 6, "q"), shoes = pick(L.shoes, v, 7);
   return {
     ...PERSON_FIXED,
     s: skin, S: warmShade(skin), h: hair, H: coolShade(hair), t: top, T: coolShade(top), n: bottom, N: coolShade(bottom),
@@ -69,7 +75,9 @@ function composePerson(set: string, sex: number, v: number, pose: string): strin
     if (outfit.pattern && (ch === "u" || ch === "U" || ch === "c") && (x * 2 + y) % 3 === 0) return outfit.pattern;
     return outfit.map[ch] ?? ch;
   }));
-  const layers = [...(outfit.over ?? []).map((n) => ACCESSORIES[n]), ...(style.x ?? []).map((n) => ACCESSORIES[n]), HAIR[style.h]];
+  // (M11) Things worn on the head (a visor, a headset, dark glasses) go over the hair.
+  const x = style.x ?? [], onHead = (n: string) => n === "visor" || n === "headset" || n === "shades";
+  const layers = [...(outfit.over ?? []), ...x.filter((n) => !onHead(n))].map((n) => ACCESSORIES[n]).concat(HAIR[style.h], x.filter(onHead).map((n) => ACCESSORIES[n]));
   for (const layer of layers) {
     const o = layer?.[dir];
     if (!o) continue;
@@ -80,7 +88,7 @@ function composePerson(set: string, sex: number, v: number, pose: string): strin
   return rows;
 }
 
-export function buildAtlas(looks: string[] = []): Atlas {
+export function buildAtlas(looks: string[] = [], uni: Uniforms = {}): Atlas {
   const items: Pending[] = [];
   const add = (key: string, def: SpriteDef, pal: Record<string, string>, flip = false) =>
     items.push({ key, rows: def.rows, pal, flip, outline: flip ? flipSides(sides(def.outline)) : sides(def.outline) });
@@ -129,7 +137,7 @@ export function buildAtlas(looks: string[] = []): Atlas {
   for (const [set, L] of Object.entries(PEOPLE)) {
     lookColor[set] = [[], []];
     for (let sex = 0; sex < 2; sex++) for (let v = 0; v < L.variants; v++) {
-      const pal = lookPalette(set, sex, v);
+      const pal = lookPalette(set, sex, v, uni);
       const top = OUTFITS[lookStyle(set, sex, v).o].map.u;
       lookColor[set][sex].push(pal[top] ?? pal.t);
       for (const pose of Object.keys(POSES)) {

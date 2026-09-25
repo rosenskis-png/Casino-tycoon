@@ -1,5 +1,9 @@
 // Staff roles (FOUNDATIONS §9). M2 carries janitors and slot techs; M3 adds drink servers; M4 security guards; M5 surveillance operators and enforcers; M7 dealers and pit bosses; wages are monthly game money.
-export interface StaffRole { id: string; name: string; wage: number; desc: string }
+export interface StaffRole {
+  id: string; name: string; wage: number; desc: string;
+  /** (M11) Comes with an object instead of being hired: no wage, no pay setting, not in the hire list. */
+  builtIn?: boolean;
+}
 
 export const STAFF_ROLES: Record<string, StaffRole> = {
   janitor: { id: "janitor", name: "Janitor", wage: 70, desc: "Sweeps up litter and spills." },
@@ -7,7 +11,7 @@ export const STAFF_ROLES: Record<string, StaffRole> = {
   server: { id: "server", name: "Drink server", wage: 90, desc: "Brings drinks from the bar to players at their machines." },
   guard: { id: "guard", name: "Security guard", wage: 100, desc: "Patrols, answers reports, and enforces the house rules." },
   operator: { id: "operator", name: "Surveillance operator", wage: 120, desc: "Watches up to 8 cameras from a desk in a Back office room." },
-  dealer: { id: "dealer", name: "Dealer", wage: 100, desc: "Runs a table, the keno board or the bingo calls. A table opens only with its dealers (craps needs two)." },
+  dealer: { id: "dealer", name: "Dealer", wage: 0, builtIn: true, desc: "Comes with every table (its price includes them, no wages): runs the table, the keno board or the bingo calls." },
   pitboss: { id: "pitboss", name: "Pit boss", wage: 140, desc: "Watches the tables: cheats at a table in view are caught far more often, and card counters get noticed." },
   enforcer: { id: "enforcer", name: "Enforcer", wage: 150, desc: "Warns, bans, beats or disappears guests: on your orders, or as the house treatment for caught cheats." },
 };
@@ -34,3 +38,22 @@ export type ShrinkArea = (typeof SHRINK_AREAS)[number];
 /** Roles that can be kept to one room. */
 export const ZONED_ROLES = ["janitor", "tech", "guard", "pitboss"];
 export const SKILL_WORDS: [number, string][] = [[0.8, "Poor"], [0.95, "Fair"], [1.1, "Good"], [1.3, "Great"], [Infinity, "Excellent"]];
+
+// (M11) Uniforms: a color per job the player can change (Staff tab). `parts` are the look's color slots the uniform
+// dyes (t top, n bottoms, j jacket or vest, q hat); every job also has its own silhouette and prop (docs/spec/art.md).
+export const UNIFORM_COLORS: { name: string; hex: string }[] = [
+  { name: "Slate", hex: "#5f7a8c" }, { name: "Orange", hex: "#f08c1e" }, { name: "Black", hex: "#1c1820" }, { name: "Cream", hex: "#efe6d0" },
+  { name: "Wine", hex: "#7a1a2c" }, { name: "Charcoal", hex: "#2e3440" }, { name: "Grey", hex: "#7a808c" }, { name: "Brown", hex: "#3e2a22" },
+  { name: "Royal blue", hex: "#2f4fb0" }, { name: "Teal", hex: "#1f8a80" }, { name: "Green", hex: "#2f7a3a" }, { name: "Gold", hex: "#c99a3e" },
+  { name: "Purple", hex: "#6a3a9a" }, { name: "Red", hex: "#c0283c" }, { name: "Pink", hex: "#e05a9a" }, { name: "Sky", hex: "#5aa8e0" },
+];
+export const UNIFORMS: Record<string, { parts: string[]; color: number }> = {
+  janitor: { parts: ["t", "n", "q"], color: 9 },
+  tech: { parts: ["j", "q"], color: 1 },
+  server: { parts: ["j"], color: 2 },
+  guard: { parts: ["j"], color: 13 },
+  operator: { parts: ["t"], color: 6 },
+  dealer: { parts: ["j"], color: 4 },
+  pitboss: { parts: ["j"], color: 5 },
+  enforcer: { parts: ["t"], color: 2 },
+};

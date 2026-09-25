@@ -59,15 +59,16 @@ Each entry: category, witness mood effect, duration, reach (tiles, in view; half
 - **Passed out and nobody comes** within 45 s: someone calls the paramedics. A paramedic walks in and carries them out ($200, −5 police standing).
 
 ## Police
-- Standing 0–100, starts at 75, recovers 0.2 a day. Costs: a police call −6, a paramedic −5, a fight −3, and anything an officer on the floor sees −2 × its police weight (plus a $100 fine for the serious ones).
-- **Ladder** (a step is reached below its line, and left again 5 points above it):
+- Standing 0–100, starts at 75, recovers 0.5 a day (M11; was 0.2). Costs: a police call −6, a paramedic −5, a fight −3, and anything an officer on the floor sees −2 × its police weight (plus a $100 fine for the serious ones).
+- **Ladder** (a step is reached below its line, and left again 5 points above it). M11 (owner: punishment too fast and brutal): it climbs **at most one step a week**, so one bad day is a warning, not a raid; the license can go only from the top step.
   - below 60: a warning.
   - below 45: a $500 fine, and every police call from then on costs $400.
   - below 30: an officer inspects the floor every 4 days.
   - below 15: a raid. Three officers come in, the casino is fined $1,500 and closed for 3 days (at most once every 30 days).
-  - at 0: the license is revoked and the scenario is lost. The casino closes for 30 days, then reopens with standing 30 if you keep playing.
+  - at 0, once raided: the license is revoked and the scenario is lost. The casino closes for 30 days, then reopens with standing 30 if you keep playing.
 - **Officers** walk the floor for 90 s after a call or an inspection. **Closed**: everyone is sent home (anyone passed out is carried out) and nobody comes in until it reopens, while costs keep running.
 - **Regulator**: its own ladder and inspector since M9 (docs/spec/money.md); rigged machines join in M8.
+- **Bribes (M11):** where the scenario allows them, an officer on the floor can be offered $500 (docs/spec/money.md). One who takes it sees nothing for the rest of their visit.
 
 ## On the floor and in the UI
 - Marks over heads: a music note (loud), red "!!" (arguments, yelling, fights), a scuffle cloud at fighters' feet, tears (breakdown), a green face (vomiting), confetti (cheering, a round), a heart (flirting), a raised glass (another round). Passed-out guests lie on the floor with a "Z". Vomit and spills stay on the floor until swept. Guards wear black suits with a radio, officers navy with a cap, paramedics white.

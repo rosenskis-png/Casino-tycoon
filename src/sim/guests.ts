@@ -10,7 +10,7 @@ import { WAGERS_PER_ROUND } from "../data/games";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
-import type { Agent, GuestData, Person } from "./state";
+import type { Agent, GuestData, Person, PlacedObject } from "./state";
 import { rng, type Rng } from "./rng";
 import { logNormal, normal, pickIndex, pickKey, range, skewed } from "./dist";
 import { go, isWalking, nearbyTile, randomWalkable, MAX_AGENTS } from "./agents";
@@ -410,7 +410,7 @@ export function spawnGroup(g: Game, typeId: string, at: number, person: Person |
     out.push(m);
   }
   g.bus.emit({ type: "arrived", guestType: typeId, n: out.length, regular: person ? 1 : 0, intent: leader.g!.intent });
-  if (person && person.mark & 4) news(g, "warn", `Marked guest ${guestName(person.name)} is back.`);
+  if (person && person.mark & 4) news(g, "warn", `Marked guest ${guestName(person.name)} is back.`, { a: leader.id });
   if (out.length > 1) groupMaps.delete(g);
   return out;
 }
@@ -472,7 +472,7 @@ export function depart(g: Game, a: Agent, vanished = false) {
   else if (vs.value >= 1 && gd.why !== "broke" && gd.mem.wagered > gd.mem.won) think(g, a, "goodValue");
   if (!vanished) { afterVisit(g, a, vs.score); comeBack(g, a); }
   if (gd.vip) whaleLeft(g, a);
-  if (gd.mark & 2 && !vanished) news(g, "warn", `Marked guest ${guestName(gd.name)} is leaving.`);
+  if (gd.mark & 2 && !vanished) news(g, "warn", `Marked guest ${guestName(gd.name)} is leaving.`, { a: a.id });
   g.bus.emit({ type: "departed", ...departedFields(g, a, vs.score), minor: 0 });
   if (!vanished) walkAway(g, a);
   gone(g).add(a.id);
@@ -934,7 +934,7 @@ function orderAtBar(g: Game, a: Agent): boolean {
   const pol = barPolicy(o);
   const ok = serveDrink(g, a, o, "bar", rollComp(g, gd, pol));
   if (!ok) gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND;
-  if (ok && rng(g.state, "guests").chance(0.2)) litter(g, a.y * g.state.map.w + a.x);
+  if (ok && rng(g.state, "guests").chance(0.1)) litter(g, a.y * g.state.map.w + a.x, a);
   return ok;
 }
 
@@ -1305,7 +1305,26 @@ function finishUse(g: Game, a: Agent, r: Rng) {
   a.act = "idle";
 }
 
-function litter(g: Game, i: number) {
+// (M11) Litter bins: a guest with a bin this close (Manhattan tiles) uses it, unless they're drunk.
+const BIN_REACH = 6;
+const BIN_DRUNK = 0.5;
+const bins = new WeakMap<Game, { objs: PlacedObject[]; n: number; at: number[] }>();
+function binTiles(g: Game): number[] {
+  const objs = g.state.objects;
+  let c = bins.get(g);
+  if (!c || c.objs !== objs || c.n !== objs.length) {
+    c = { objs, n: objs.length, at: objs.filter((o) => o.kind === "bin").map((o) => o.y * g.state.map.w + o.x) };
+    bins.set(g, c);
+  }
+  return c.at;
+}
+
+/** A guest drops rubbish at tile i: in a bin if one is near (and they're sober enough to care), else on the floor. */
+function litter(g: Game, i: number, a?: Agent) {
+  if (a?.g && a.g.intox < BIN_DRUNK) {
+    const w = g.state.map.w, x = i % w, y = (i - x) / w;
+    for (const b of binTiles(g)) if (Math.abs((b % w) - x) + Math.abs(Math.floor(b / w) - y) <= BIN_REACH) return;
+  }
   const d = g.state.dirt;
   if (d[i] < DIRT_CAP) d[i]++;
 }
@@ -1424,7 +1443,7 @@ function guestTick(g: Game, a: Agent) {
       gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 20);
       gd.floorTime += 2 * TICKS_PER_MIN;
       if (r.chance(0.4)) think(g, a, "goodMeal");
-      if (r.chance(0.15)) litter(g, a.y * g.state.map.w + a.x);
+      if (r.chance(0.08)) litter(g, a.y * g.state.map.w + a.x, a);
       return doneWith(g, a, r);
     }
     case "show": {
@@ -1530,7 +1549,7 @@ function guestTick(g: Game, a: Agent) {
       if (--a.timer > 0) return;
       gd.urge = 0;
       const here = a.y * g.state.map.w + a.x;
-      if (purposeAt(g, here) !== "smoking" && rng(g.state, "guests").chance(0.3)) litter(g, here);
+      if (purposeAt(g, here) !== "smoking" && rng(g.state, "guests").chance(0.15)) litter(g, here, a);
       a.act = "idle";
       return;
     }
@@ -1571,7 +1590,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
     if (gd.drink < 1e-9) gd.drink = 0;
     gd.intox = Math.min(INTOX_CAP, gd.intox + sip * gd.dStr * DRINK_UNIT);
     n.thirst = Math.max(0, n.thirst - sip * 90);
-    if (!gd.drink && a.act !== "drink" && r.chance(0.1)) litter(g, a.y * g.state.map.w + a.x);
+    if (!gd.drink && a.act !== "drink" && r.chance(0.05)) litter(g, a.y * g.state.map.w + a.x, a);
   }
   // Drink wears off; being drunk nudges the intended level up (inhibition is what drinking erodes).
   if (gd.intox > 0) {
@@ -1605,7 +1624,7 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   gd.mood = Math.max(0, Math.min(100, gd.mood + (target - gd.mood) * (1 - Math.pow(0.9, span))));
   gd.mem.moodSum += gd.mood * span;
   gd.mem.moodN += span;
-  if (walking && r.chance(gd.mem.drinks ? 0.006 : 0.003)) litter(g, here);
+  if (walking && r.chance(gd.mem.drinks ? 0.003 : 0.0015)) litter(g, here, a);
   thinkIfDue(g, a, type, r);
 }
 

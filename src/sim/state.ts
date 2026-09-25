@@ -5,7 +5,7 @@ import type { EnfAction } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 
 export interface MapState {
   w: number;
@@ -41,6 +41,8 @@ export interface PlacedObject {
   w?: number; h?: number;
   /** Player-set price: a restaurant's multiplier, a show ticket or a club's cover (dollars). */
   price?: number;
+  /** (M11.4) Priced places and bars: what they serve, 0 cheap, 1 standard (missing), 2 fancy (data/grades.ts). */
+  grade?: number;
   /** 1 while broken down (slots), waiting for a tech. */
   broken: number;
   /** Last round shown on the cabinet: tick it resolved and result (0 loss, 1 win, 2 jackpot). */
@@ -259,6 +261,8 @@ export interface GuestData {
   /** (M9.6) 0 never uses drugs, else uses this visit + 1; how high they are now (1 just used, fading to 0). */
   drugs: number;
   high: number;
+  /** (M11.4, owner) 1 once on tilt: drink or drugs and a heavy loss broke their discipline (docs/spec/guests.md "Tilt"). */
+  tilt?: number;
 }
 
 /**
@@ -655,9 +659,13 @@ export interface Bank {
   /** Share of the gaming win skimmed; back taxes owed (hidden). */
   skim: number;
   evaded: number;
-  /** Insurance: cover above this payout (0 = off); expected excess of this month's wagers. */
+  /** Insurance: cover above this payout (0 = off); expected excess of this month's wagers. (M11.4) The level chosen
+   * (INSURE_SHARE) and the expected machine win this month and last, which set the line at each month's close. */
   insure: number;
   insExp: number;
+  insLvl: number;
+  theoM: number;
+  theoLast: number;
   /** Emergency loans this month; months in a row closed below zero; unpaid winnings since the last audit. */
   emergencies: number;
   broke: number;

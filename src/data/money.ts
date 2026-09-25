@@ -20,8 +20,14 @@ export const EMERGENCY_RATE = 0.06;
 export const SCANDAL_REP = 3;
 /** Months in a row closing below zero that lose the scenario. */
 export const INSOLVENT_MONTHS = 3;
-/** Jackpot insurance: the lines a policy can cover above (0 = off), and the insurer's loading on expected claims. */
-export const INSURE_OVER = [0, 1000, 5000, 25000];
+/**
+ * (M11.4) Jackpot insurance on the machines (slots, video poker, keno): cover any single payout above a line set as a
+ * share of the casino's expected monthly machine win (so it fits a small joint and a big floor alike), never below
+ * INSURE_MIN; the insurer's loading on expected claims. Level 0 is off.
+ */
+export const INSURE_SHARE = [0, 0.5, 1, 2];
+export const INSURE_NAMES = ["None", "Big payouts", "Huge payouts", "Disasters only"];
+export const INSURE_MIN = 250;
 export const INSURE_LOAD = 1.3;
 
 /** The gaming regulator (docs/spec/money.md): costs to standing, the ladder's money, and the inspector's schedule. */

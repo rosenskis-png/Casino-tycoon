@@ -148,4 +148,6 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 - **Balance ☑:** build prices halved (machines pay back in about a year or less), Free Play guest cap 1,500 (a strong casino in about 2 years), groups wait for each other, luck ±10, restroom search, dark-lever and tutorial reports, multi-seed measurement.
 - **Scenario ladder ◐** (FOUNDATIONS §20). **Design drafted** (docs/spec/scenarios.md): four teaching scenarios after the tutorial, each one lesson where the obvious wrong move fails and the lesson wins, proved by script on 3 seeds: Boardwalk Frontage (curb appeal), Big Top Family Resort (temptation by layout), Sundowner Club (savvy crowds, edge vs time), The River Belle (drink and its price). Awaiting the owner; then one build chat (new goals, unlocks, `npm run ladder`).
 
+- **M11.4 quick fixes ☑** (owner, after an outside review): nightclub research id, happy staff on market pay, serving grades and margins, richer guests at 8 wagers a round, high rollers who tilt, jackpot insurance scaled to the casino (bought by the report scripts), parity per seat / build dollar / guest slot. Save schema 21.
+
 **After M11.2: alpha build, Casino Tycoon v0.8.**

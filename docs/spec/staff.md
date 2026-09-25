@@ -12,20 +12,20 @@
 
 ## Pay and skill
 - **Pay is set per role** in the Staff tab, from 60% to 160% of the market wage in 10% steps (default 100%). Everyone in the role earns it. There is no hiring screen: a hire walks in at once, as before.
-- Each hire has a hidden personal knack (0.8–1.2, uniform). **Skill = knack × pay^0.6 × morale factor** (0.8 at morale 0, 1 at 50, 1.2 at 100), held to 0.4–1.8. The staff card shows it as a word: Poor, Fair, Good, Great, Excellent.
+- Each hire has a hidden personal knack (0.8–1.2, uniform). **Skill = knack × pay^0.6 × morale factor** (0.7 at morale 0, 1 at 75, 1.1 at 100; M11.4), held to 0.4–1.8. The staff card shows it as a word: Poor, Fair, Good, Great, Excellent.
 - A janitor sweeps a spot in 1 s at skill 1 (halved by the owner, 2026-09-24).
 - What skill does: walking pace (steps ÷ √skill), work time ÷ skill (sweeping, repairs, taking and serving drinks, a guard dealing with an incident), a dealer's round length ÷ √skill, and how likely guards, pit bosses and surveillance operators are to catch someone (× skill; an operator watches 8 × skill cameras).
 
 ## Morale (0–100, shown on the card and as a role average)
-- Each day it moves a quarter of the way toward its target: **50 + 50 × (pay − 1)**, less overwork and trouble. A new hire starts at the target.
-- **Overwork:** the share of the day spent working (not idle, waiting or patrolling) above 85% costs up to 20 points: −(share − 0.85) × 100. Dealing is a dealer's whole job, so dealers aren't worn down by a busy table.
+- Each day it moves a quarter of the way toward its target: **75 + 100 × (pay − 1)**, less overwork and trouble. A new hire starts at the target. (M11.4, owner: staff on market pay with a normal workload are happy; 60% pay is unhappy, 80% content.) Card words: happy 70+, content 50+, unhappy 30+, miserable.
+- **Overwork:** the share of the day spent working (not idle, waiting or patrolling) above 90% costs up to 15 points: −(share − 0.9) × 100. Dealing is a dealer's whole job, so dealers aren't worn down by a busy table.
 - **Trouble:** guards lose 2 points per fight on the floor that day, divided among the guards (at most 15).
 - **Firing someone honest** frightens everyone: −8 morale to all staff at once. Firing a crook costs nothing.
 - Below 20, a worker quits with a 5% chance each day (on the ticker).
 
 ## Honesty and theft
 - A hidden trait drawn at hire, for life: **crooked with chance 5% ÷ pay^1.5** (11% at 60% pay, 2.5% at 160%). Bartenders and cage tellers come with their bar or cage (in its upkeep): each bar and cage is crewed by a crook 5% of the time, re-rolled when one is caught.
-- Crooks steal when they get the chance, more when unhappy (× 1.5 − morale / 100):
+- Crooks steal when they get the chance, more when unhappy (× 1.75 − morale / 100):
   - **Slot tech:** 40% of repairs, pockets $20–60 from the machine (machines).
   - **Drink server:** 30% of paid drinks, pockets the price (bar).
   - **Dealer:** half of all rounds, palms 2% of the round's bets, at least $1 (tables). A crooked dealer never catches a cheat at their table.

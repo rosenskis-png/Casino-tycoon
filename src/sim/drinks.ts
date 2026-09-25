@@ -13,7 +13,8 @@ import { post } from "./finance";
 import { THEFT } from "../data/staff";
 import { greed, steal } from "./crew";
 import { think } from "./guests";
-import { priceTolerance } from "./amenities";
+import { gradeOf, priceTolerance, servingCost } from "./amenities";
+import { gradeWorth } from "../data/grades";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -64,14 +65,15 @@ export function rollComp(g: Game, gd: GuestData, pol: BarPolicy): boolean {
  * the level they mean to drink to, when it's free, and the more they've already had; less when pricey.
  * Sober guests only take soft drinks when thirsty. Nobody takes a second while holding one.
  */
-export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean): number {
+export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean, grade = 1): number {
   if (handsFull(gd) || gd.why) return 0;
   const type = GUEST_TYPES[gd.type];
   const thirst = 0.4 + gd.needs.thirst / 100;
   if (!gd.intend) return Math.min(0.9, type.drinking.accept * 0.5 * thirst * (gd.needs.thirst >= 50 ? 1.5 : 0.4) * (comped ? 1.5 : 1));
   // The further below the level they mean to reach, the readier they are; past it, reluctant.
   const want = gd.intox < gd.intend ? 1 + 2 * (gd.intend - gd.intox) : 0.6;
-  const price = comped ? 1.8 : Math.max(0.2, 1.3 - 0.3 * pol.price);
+  // (M11.4) A price feels steep against what this grade of drink is worth to them.
+  const price = comped ? 1.8 : Math.max(0.2, 1.3 - (0.3 * pol.price) / gradeWorth(GUEST_TYPES[gd.type].luxe, grade));
   return Math.min(0.95, type.drinking.accept * thirst * want * price * (1 + gd.intox));
 }
 
@@ -80,7 +82,7 @@ export function acceptChance(gd: GuestData, pol: BarPolicy, comped: boolean): nu
  * false when they can't pay (or already hold one).
  */
 export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: "bar" | "server", comped: boolean, server?: Agent): boolean {
-  const gd = a.g!, pol = barPolicy(o), r = rng(g.state, "drinks");
+  const gd = a.g!, pol = barPolicy(o), r = rng(g.state, "drinks"), gw = gradeWorth(GUEST_TYPES[gd.type].luxe, gradeOf(o));
   if (handsFull(gd)) return false;
   if (gd.intox >= cutoff(g)) { if (r.chance(0.5)) think(g, a, "cutOff"); return false; }
   const price = comped ? 0 : priceAt(pol, gd);
@@ -95,7 +97,7 @@ export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: 
     if (thief?.st?.crook && cr.chance(greed(g, thief, THEFT.server.p))) steal(g, "bar", price, thief.y * w + thief.x, "pocketing drink money", thief);
     else if (via === "bar" && o?.crook && cr.chance(greed(g, null, THEFT.bartender.p))) steal(g, "bar", price, a.y * w + a.x, "pocketing drink money", null, o);
   }
-  post(g, "drinks", -DRINK_COST);
+  post(g, "bar", -(o ? servingCost(o) : DRINK_COST));
   gd.drink = 1;
   gd.dStr = gd.intend > 0 ? pol.strength : 0;
   gd.mem.drinks++;
@@ -106,7 +108,8 @@ export function serveDrink(g: Game, a: Agent, o: PlacedObject | undefined, via: 
   else if (via === "server" && r.chance(0.25)) think(g, a, "served");
   else if (gd.intend > 0 && pol.strength < 1 && r.chance(0.3)) think(g, a, "weak");
   // A finer bar (a lounge, a grand bar) can charge more before guests grumble.
-  else if (pol.price > 1.5 * (o ? priceTolerance(g, o) : 1) && r.chance(0.3)) think(g, a, "pricey");
+  else if (pol.price > 1.5 * (o ? priceTolerance(g, o) : 1) * gw && r.chance(0.3)) think(g, a, "pricey");
+  else if (!comped && price > 0 && pol.price < 0.5 * gw && r.chance(0.3)) think(g, a, "bargain");
   else if (r.chance(0.2)) think(g, a, "goodDrink");
   return true;
 }

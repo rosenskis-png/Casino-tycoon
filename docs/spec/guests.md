@@ -59,7 +59,7 @@
   came for the club gambled 39% of visits (54% with them) and wagered $92 a visit ($217); with every hook at 0, 27%.
 
 ## Savvy (M11.3, owner: locals aren't an easy win)
-`savvy` per type, 0–1: Locals 0.8, High rollers 0.85, Conventioneers 0.45, Retirees 0.4, Families 0.3, Tourists 0.25,
+`savvy` per type, 0–1: Locals 0.8, High rollers 0.95 (M11.4: the most disciplined, until they tilt), Conventioneers 0.45, Retirees 0.4, Families 0.3, Tourists 0.25,
 Party 0.1. The seasoned seek out thin edges and walk away; novices play whatever catches their eye and get carried away.
 - **Game choice:** appeal + 0.6 × savvy × (6% − the game's edge against them) ÷ 6%, clamped −1.5..1 (`edgeOf`: a slot's
   or video poker's payback, blackjack by its rules and their skill, roulette by its zeros, fixed edges for the rest),
@@ -104,6 +104,36 @@ temptation between attractions; party: drink and friends; high rollers: big tabl
   High rollers 4.1%. Families on their own floor: 72% of adults gamble ($22 a visit). The party floor's first draft
   walled the club off from the games (take 5.2%, 38% gambled); games at the club exit raised it to 7.0% and 57%.
   **Open (owner):** high rollers lose ~4% of a $2,400 bankroll: thin edges and a 10-minute visit cap them.
+- **(M11.4, owner, after an outside review) Measured on what the player runs short of**: gaming win (theoretical) per
+  game seat per day, per $1K of build cost a month, and per guest on the floor a day (the guest cap binds). Take is
+  still shown. Measured (150 days, seeds 1–2):
+
+| | per seat/day | per $1K built/mo | per guest slot/day | take |
+|---|---|---|---|---|
+| Locals | $0.76 | $78 | $0.53 | 11.3% |
+| Retirees | $0.57 | $47 | $0.35 | 14.3% |
+| Tourists | $2.44 | $122 | $1.54 | 13.4% |
+| Families | $1.46 | $53 | $1.15 | 17.6% |
+| Party | $0.91 | $48 | $0.52 | 5.9% |
+| High rollers | $18.46 | $991 | $4.35 | 4.8% |
+
+  The "high roller problem" reverses: per seat they earn 32× what retirees do, per guest slot 12×. By take they looked
+  worst; by what the player spends (seats, build money, room on the floor) they are by far the best. Retirees and
+  locals trail. Not tuned: whether parity should hold per seat, per guest slot or per build dollar is the owner's call
+  (DECISIONS, Open), and the crowd floors' markets and layouts are only rough.
+
+## Tilt (M11.4, owner)
+High rollers are the most disciplined crowd (savvy 0.95: they find the thinnest edges and hold their limits), until
+they aren't. `tilt` per type (High rollers 0.35, others 0): each round while drunk or high and down, the chance is
+tilt × (intoxication + high) × the share of their money lost. On tilt:
+- savvy is 0: no edge-seeking, every limit stretched as far as it goes;
+- each bet is at least a quarter of what they're down (doubling down to claw it back), up to the game's limits;
+- they ignore their loss limit and the clock, and go back to the ATM every time, drawing a quarter of what's left of
+  their savings at once (a regular's life savings; High rollers' savings are $25K median, sized to game money);
+- they stop when back to even ("Back to even. Never again.") or when the money's gone, or when their group drags them
+  home. The ticker says when a high roller goes on tilt (tap to go to them). Whales don't tilt.
+- Measured (Test Floor, 180 days, seeds 1–4): about 1 high-roller visit in 11 tips over (noisy: 1–8 a run); some win
+  it back, some draw $10K–$35K from the ATM and lose it, and a broke regular stops coming.
 
 ## Types and the population
 - **A type is who someone is**: tastes, budget, seasons, drinking. Group size, play style and chasing are drawn per person from ranges the type sets, so types overlap at the edges. One guest proves nothing; a crowd is the signal.
@@ -212,7 +242,9 @@ Jackpots are red ("bad" news level: red but queued normally). Only jackpots of $
 - Measured (Test Floor, day 40, seed 1): engagement median 0.94 locals, 0.67 retirees (a loud mixed floor), 1.14 tourists, 1.01 party, 0.74 high rollers; draw 0.86–1.0 for most crowds, retirees and high rollers lower. Tutorial: engagement about 1.1 for locals and retirees.
 
 ## Money scale (changed in M3)
-`WAGERS_PER_ROUND` is 4 (was 10): at 10, a $90 budget lasted under a minute of play, far from the agreed visit lengths and losses. Running costs were scaled down about 40% to match what a seat now earns (wages $70 / $110 / $90; slot upkeep $2–4; bar $50, cage $35, restroom $15). The tutorial with a tech and a bar ends year 1 at about $7K–$15K (M2: $12K–$17K), with ~60 guests on the floor (M2: ~33, because visits are longer).
+**(M11.4, owner: "having $50 and losing $17 is pretty lame") `WAGERS_PER_ROUND` is 8, and guests are twice as rich**: budgets, ATM draws, trip caps, savings and income ×2, stake fractions ×½, so bets look the same ($0.25–$3) while each visit cycles twice the coin (and a month's results swing relatively less). Measured (Test Floor, 300 days, seed 1), expected loss per visit for those who played (`exp. loss, players` in `npm run targets`): Locals $28, Retirees $23, Tourists $62, Party $36, Families $36, High rollers $341 (was about half). Locals and retirees stay lower by design: thin edges and penny games, and they leave with their group. A slot's dream (its top award against a visit's budget) is judged against the old scale (`MONEY_X` in design/appeal.ts), so stock games keep their appeal.
+
+(M3) `WAGERS_PER_ROUND` was 4 (was 10): at 10, a $90 budget lasted under a minute of play, far from the agreed visit lengths and losses. Running costs were scaled down about 40% to match what a seat now earns (wages $70 / $110 / $90; slot upkeep $2–4; bar $50, cage $35, restroom $15). The tutorial with a tech and a bar ends year 1 at about $7K–$15K (M2: $12K–$17K), with ~60 guests on the floor (M2: ~33, because visits are longer).
 
 ## Reference numbers and levers (sanity checks)
 Until the game is near v1.0 these numbers are **sanity checks, not tuning goals** (owner, 2026-09-23): mechanics still to come will move them. Use them to catch logic errors: a type that never plays, never drinks, always gives up, or a number that jumps for no reason after a change. The "design intent" column is the agreed M3 starting target, kept for the eventual tuning pass.

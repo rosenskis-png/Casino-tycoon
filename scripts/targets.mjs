@@ -8,6 +8,7 @@ const days = Number(process.argv[2] || 300);
 const seed = Number(process.argv[3] || 1);
 const sim = await loadSim();
 const g = sim.Game.create("testfloor", seed);
+g.dispatch({ type: "setInsurance", level: 1 }); // (M11.4, owner) insured like a sensible player: big payouts over half a month's machine win
 
 const dep = {}, arr = {}, inc = {}, incAll = {};
 // M9: staff, whales and the regulator, from the ticker.
@@ -89,6 +90,9 @@ row("visit length (min)", (d) => f1(med(d.map((e) => e.minutes))));
 row("playing (min)", (d) => f1(med(d.map((e) => e.play))));
 row("visit budget", (d) => usd(med(d.map((e) => e.budget))));
 row("loss per visit", (d) => usd(med(d.map((e) => e.lost))));
+// (M11.4) Expected loss (wagered − expected return): what the visit cost them before luck, and for those who played.
+row("expected loss", (d) => usd(med(d.map((e) => e.wagered - e.ev))));
+row("exp. loss, players", (d) => { const p = d.filter((e) => e.wagered > 0); return p.length ? usd(med(p.map((e) => e.wagered - e.ev))) : "–"; });
 row("sober share", (d) => pct(share(d, (e) => e.intend === 0)));
 row("drinkers' intent (median)", (d) => f2(med(d.filter((e) => e.intend > 0).map((e) => e.intend))));
 row("drinkers' drinks (median)", (d) => f1(med(d.filter((e) => e.intend > 0).map((e) => e.drinks))));
@@ -142,7 +146,7 @@ console.log(`reports ${totals._reports ?? 0}, police calls ${totals._calls ?? 0}
 const uses = {};
 for (const o of s.objects) uses[o.kind] = (uses[o.kind] ?? 0) + o.st.uses;
 const L = s.finance.total, m = (k) => usd(L[k] ?? 0);
-console.log(`amenities: meals ${(uses.restaurant ?? 0) + (uses.patiorestaurant ?? 0)}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}, pool ${uses.pool ?? 0}, garden ${uses.garden ?? 0}; food ${m("food")} (cost ${m("foodCost")}), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
+console.log(`amenities: meals ${(uses.restaurant ?? 0) + (uses.patiorestaurant ?? 0)}, shows seen ${uses.showlounge ?? 0}, dances ${uses.club ?? 0}, pool ${uses.pool ?? 0}, garden ${uses.garden ?? 0}; food ${m("food")} (net of costs), tickets ${m("shows")}, cover ${m("cover")}, door fees ${m("doors")}; smokers ${pct(share(all, (e) => e.smoker))}`);
 // Tables (M7): hold per game, by what was bet and paid.
 const hold = {};
 for (const o of s.objects) {

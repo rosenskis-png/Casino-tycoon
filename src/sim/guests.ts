@@ -24,10 +24,11 @@ import { serveDrink, compSeeking, rollComp, barPolicy, priceAt, DRINK_PRICE, DRI
 import { afterVisit, reconcilePool, person as personOf } from "./pool";
 import { walkAway } from "./street";
 import { tagGuest, guestName, hash01 } from "./cheats";
-import { news } from "./news";
+import { fmtMoney, news } from "./news";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
-import { offers, pickIntent, priceFor, priceTolerance, purposeAt, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
+import { gradeOf, offers, pickIntent, priceFor, priceTolerance, purposeAt, servingCost, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
+import { gradeWorth } from "../data/grades";
 import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
@@ -122,7 +123,6 @@ const SMOKE_PREF = { smoker: { tol: 4, w: 0.1 }, other: { tol: 0.8, w: 0.8 } };
 const URGE_PER_SEC = 100 / 270;
 const SMOKE_SECS = 20;
 /** What a meal costs the house, and the ticket and cover guests find fair at a first-tier place (dollars). */
-const FOOD_COST = 6;
 const COVER_FAIR = 15;
 /** Seconds trapped before staff let a guest out (docs/spec/construction.md). */
 const LET_OUT = 90;
@@ -955,6 +955,7 @@ function gameAppeal(g: Game, type: GuestTypeDef, gd: GuestData, o: import("./sta
  * with an escort on their arm stops picking thin edges and holding their limit.
  */
 export function savvyNow(gd: GuestData): number {
+  if (gd.tilt) return 0;
   return GUEST_TYPES[gd.type].savvy * Math.max(0, 1 - SAVVY_INTOX * gd.intox - SAVVY_HIGH * gd.high);
 }
 const SAVVY_INTOX = 0.8, SAVVY_HIGH = 0.5;
@@ -1195,6 +1196,8 @@ function wantsAtm(g: Game, a: Agent, r: Rng): boolean {
   const gd = a.g!, type = GUEST_TYPES[gd.type];
   if (!gd.atm || gd.withdrawn >= gd.withdrawCap - 1 || !g.has("atm")) return false;
   if (gd.mem.atmYes === gd.trips + 1) return true;
+  // (M11.4) On tilt: back to the machine for more, every time, until it's gone.
+  if (gd.tilt) { gd.mem.atmYes = gd.trips + 1; return true; }
   const down = Math.max(0, Math.min(1, -net(gd) / staked(gd)));
   // (M11.3) Novices go back for more; the disciplined rarely do.
   let p = type.atm.again + (0.1 + 0.4 * (1 - savvyNow(gd))) * down + 0.5 * gd.intox + 0.6 * gd.chase + (gd.mood < 40 ? 0.1 : 0) - (net(gd) > 0 ? 0.3 : 0);
@@ -1376,7 +1379,7 @@ function decide(g: Game, a: Agent) {
     if (!gd.mem.rounds && gd.why !== "broke" && !gd.minor && tempted(g, a, type, r)) return;
     return standBy(g, a);
   }
-  if (g.state.tick - gd.mem.arrived >= gd.floorTime) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
+  if (g.state.tick - gd.mem.arrived >= gd.floorTime && !gd.tilt) { think(g, a, "timeToGo"); return wantToLeave(g, a, "time"); }
   if (amenityFirst(g, a, r)) return;
   const firstDrink = gd.intent === "drink" && gd.mem.drinks === 0 && gd.drink === 0 && gd.wallet >= DRINK_PRICE;
   // Came for a drink, but a machine they like catches their eye: "just one quick spin".
@@ -1587,6 +1590,21 @@ function quitReason(g: Game, a: Agent): string | null {
   // (M8.5) A hunter stops the moment the edge is gone (the meter hit, the collector paid).
   if (gd.hunter && OBJECTS[o.kind].slot && huntEdge(g.state, o) <= 0 && gd.mem.rounds > 0) { think(g, a, "slotHunted"); return "hunted"; }
   const nt = net(gd);
+  // (M11.4, owner) Tilt: drunk or high and deep in the hole, a disciplined player snaps. From then on they ignore
+  // their limit and the clock, and play until they're back to even or out of money.
+  const tt = GUEST_TYPES[gd.type].tilt ?? 0;
+  if (tt && !gd.tilt && !gd.vip && nt < 0 && gd.intox + gd.high > 0.1 && rng(g.state, "guests").chance(tt * (gd.intox + gd.high) * Math.min(1, -nt / staked(gd)))) {
+    gd.tilt = 1;
+    if (!gd.atm) gd.atm = 500;
+    think(g, a, "tilt");
+    news(g, "warn", `A high roller is on tilt, chasing ${fmtMoney(-nt)} back.`, { a: a.id });
+  }
+  if (gd.tilt) {
+    if (nt >= 0) { gd.tilt = 0; think(g, a, "backEven"); return "done"; }
+    if (minRoundOf(g.state, o) * stakeMult(g, o) > gd.wallet + 1e-9) return "money";
+    if (n.bladder >= 95) return "need";
+    return null;
+  }
   // A cheat still after their take ignores the usual quit rules.
   const rule = (gd.take ? "broke" : gd.quit) as QuitRule;
   const lim = limits(gd, rule === "lossLimit" ? engagement(g, a) : 1);
@@ -1626,7 +1644,9 @@ function finishUse(g: Game, a: Agent, r: Rng) {
       gd.mem.cashed = 1;
     } else if (def.serves === "cage" || def.serves === "atm") {
       // A withdrawal: about their usual draw, never more than they have.
-      const want = Math.round(logNormal(r, { median: gd.atm || 40, sigma: 0.4, min: 20 }) / 10) * 10;
+      let want = Math.round(logNormal(r, { median: gd.atm || 40, sigma: 0.4, min: 20 }) / 10) * 10;
+      // (M11.4) On tilt: big draws, a quarter of what's left of their savings at a time.
+      if (gd.tilt) want = Math.max(want, Math.round((gd.withdrawCap - gd.withdrawn) / 40) * 10);
       const amt = Math.max(0, Math.min(gd.withdrawCap - gd.withdrawn, want));
       if (amt > 0) { gd.wallet += amt; gd.withdrawn += amt; gd.trips++; think(g, a, "atm"); }
       else gd.withdrawn = gd.withdrawCap;
@@ -1768,8 +1788,11 @@ function guestTick(g: Game, a: Agent) {
         const free = useComp(gd, "meal"), price = free ? 0 : priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "food");
-        post(g, "foodCost", -FOOD_COST);
-        if (price > (OBJECTS[o.kind].price ?? 0) * 1.2 * priceTolerance(g, o)) { think(g, a, "steepFood"); gd.annoy += 4; }
+        post(g, "food", -servingCost(o));
+        // (M11.4) Fair is the standard meal at this tier, worth more or less to them by its grade.
+        const fair = (OBJECTS[o.kind].price ?? 0) * priceTolerance(g, o) * gradeWorth(GUEST_TYPES[gd.type].luxe, gradeOf(o));
+        if (price > 1.2 * fair) { think(g, a, "steepFood"); gd.annoy += 4; }
+        else if (!free && price < 0.5 * fair && r.chance(0.3)) think(g, a, "bargain");
         a.timer = useTicks(g, a, r);
         return;
       }
@@ -1779,7 +1802,7 @@ function guestTick(g: Game, a: Agent) {
       gd.needs.fatigue = Math.max(0, gd.needs.fatigue - 20);
       gd.floorTime += 2 * TICKS_PER_MIN;
       // (M11.2) Crowds used to finer places notice a plain one (a snack bar); the rest just enjoy it.
-      if ((GUEST_TYPES[gd.type].prefs.PRS?.ideal ?? 0) >= 5 && tierOf(g, o) === 0 && r.chance(0.5)) think(g, a, "plainFood");
+      if ((((GUEST_TYPES[gd.type].prefs.PRS?.ideal ?? 0) >= 5 && tierOf(g, o) === 0) || (GUEST_TYPES[gd.type].luxe >= 0.6 && gradeOf(o) === 0)) && r.chance(0.5)) think(g, a, "plainFood");
       else if (r.chance(0.4)) think(g, a, "goodMeal");
       if (r.chance(0.08)) litter(g, a.y * g.state.map.w + a.x, a);
       return doneWith(g, a, r);
@@ -1795,7 +1818,10 @@ function guestTick(g: Game, a: Agent) {
           const free = useComp(gd, "show"), price = free ? 0 : priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.mem.eatAt = g.state.tick + 60 * TICKS_PER_SECOND; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "shows");
-          if (price > worthTo(GUEST_TYPES[gd.type], "show", tierOf(g, o))) { think(g, a, "steepShow"); gd.annoy += 4; }
+          post(g, "shows", -servingCost(o));
+          const worth = worthTo(GUEST_TYPES[gd.type], "show", tierOf(g, o), gradeOf(o));
+          if (price > worth) { think(g, a, "steepShow"); gd.annoy += 4; }
+          else if (!free && price < 0.4 * worth && rng(g.state, "guests").chance(0.3)) think(g, a, "bargain");
           a.timer = 2;
         }
         gd.mem.fun++;
@@ -1822,8 +1848,9 @@ function guestTick(g: Game, a: Agent) {
           const price = priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.club; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "cover");
+          post(g, "cover", -servingCost(o));
           gd.paid |= 1;
-          if (price > COVER_FAIR * priceTolerance(g, o)) { think(g, a, "steep"); gd.annoy += 4; }
+          if (price > COVER_FAIR * priceTolerance(g, o) * gradeWorth(GUEST_TYPES[gd.type].luxe, gradeOf(o))) { think(g, a, "steep"); gd.annoy += 4; }
         }
         a.timer = useTicks(g, a, r);
         return;
@@ -1844,6 +1871,7 @@ function guestTick(g: Game, a: Agent) {
           const price = priceFor(o);
           if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.pool; release(g, a); a.act = "idle"; return; }
           pay(g, gd, price, "poolFees");
+          post(g, "poolFees", -servingCost(o));
           gd.paid |= 2;
         }
         a.timer = useTicks(g, a, r);
@@ -1876,7 +1904,8 @@ function guestTick(g: Game, a: Agent) {
         const price = priceFor(o);
         if (gd.wallet + 1e-9 < price) { gd.gaveUp |= NEED_BIT.golf; release(g, a); a.act = "idle"; return; }
         pay(g, gd, price, "golfFees");
-        if (price > worthTo(GUEST_TYPES[gd.type], "golf", tierOf(g, o))) { think(g, a, "steepGolf"); gd.annoy += 4; }
+        post(g, "golfFees", -servingCost(o));
+        if (price > worthTo(GUEST_TYPES[gd.type], "golf", tierOf(g, o), gradeOf(o))) { think(g, a, "steepGolf"); gd.annoy += 4; }
         a.timer = useTicks(g, a, r);
         return;
       }

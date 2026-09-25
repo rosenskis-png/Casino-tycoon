@@ -1,4 +1,5 @@
 // Construction (FOUNDATIONS §3): walls, doors, demolition, placing and selling objects, naming rooms.
+import { GRADES } from "../data/grades";
 import { BUILD_COST, T } from "../data/terrain";
 import { OBJECTS } from "../data/objects";
 import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
@@ -29,6 +30,7 @@ declare module "./commands" {
     setRoom: { tile: number; name?: string; purpose?: RoomPurpose };
     /** A restaurant's price multiplier, a show's ticket or a club's cover charge. */
     setPrice: { id: number; price: number };
+    setGrade: { id: number; grade: number };
     /** Buy a land parcel the scenario offers (M6.5). */
     buyParcel: { id: string };
     /** (M10) The track a nightclub plays (data/music.ts CLUB_TRACKS). */
@@ -143,7 +145,7 @@ function movedPlacement(g: Game, o: PlacedObject, x: number, y: number, rot: num
   return { p, f };
 }
 
-const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" | "setPrice" | "buyParcel" | "setTrack"> = {
+const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" | "setPrice" | "setGrade" | "buyParcel" | "setTrack"> = {
   build: {
     validate(g, c) {
       const ok = c.tiles.filter((i) => buildable(g, c.what, i));
@@ -276,6 +278,14 @@ const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" |
       return c.price >= range[0] && c.price <= range[1] ? null : "Price out of range";
     },
     apply(g, c) { g.objById.get(c.id)!.price = Math.round(c.price * 100) / 100; },
+  },
+  setGrade: {
+    validate(g, c) {
+      const o = g.objById.get(c.id);
+      if (!o || !(OBJECTS[o.kind].priceRange || o.bar)) return "Nothing served here";
+      return c.grade >= 0 && c.grade < GRADES.length && c.grade % 1 === 0 ? null : "No such grade";
+    },
+    apply(g, c) { g.objById.get(c.id)!.grade = c.grade; },
   },
   setTrack: {
     validate(g, c) {

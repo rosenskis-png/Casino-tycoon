@@ -90,7 +90,7 @@ if (sim.SCHEMA_VERSION >= 11) {
   const jan = g.state.agents.find((a) => a.role === "janitor");
   if (jan) g.dispatch({ type: "setZone", id: jan.id, tile: 10 * w + 20 });
   g.dispatch({ type: "borrow", amount: 2000 });
-  g.dispatch({ type: "setInsurance", over: 1000 });
+  g.dispatch(sim.SCHEMA_VERSION >= 21 ? { type: "setInsurance", level: 2 } : { type: "setInsurance", over: 1000 });
   g.dispatch({ type: "setSkim", share: 0.1 });
   g.dispatch({ type: "setComp", kind: "meal", at: 20 });
   g.dispatch({ type: "setComp", kind: "back", at: 5 });

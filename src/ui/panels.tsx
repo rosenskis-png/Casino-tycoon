@@ -6,13 +6,14 @@ import { ROOM_HELP, ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { THEMES, THEME_IDS, type ThemeId } from "../data/themes";
 import { CHANNELS, CHANNEL_DEFS, type Channel } from "../data/fields";
 import { STAFF_ROLES, PAY_MIN, PAY_MAX, PAY_STEP, ZONED_ROLES, UNIFORMS, UNIFORM_COLORS } from "../data/staff";
-import { COMP_AT, COMP_KINDS, COMP_NAMES, INSURE_OVER, LOAN_RATE, EMERGENCY_RATE, SKIM_LEVELS, REG_LADDER_NAMES } from "../data/money";
+import { COMP_AT, COMP_KINDS, COMP_NAMES, INSURE_NAMES, INSURE_SHARE, INSURE_LOAD, LOAN_RATE, EMERGENCY_RATE, SKIM_LEVELS, REG_LADDER_NAMES } from "../data/money";
 import { TABLE_GAMES } from "../data/tables";
 import { RESEARCH, RESEARCH_CATS, FUNDING, type ResearchCat } from "../data/research";
 import { EVENTS, CAMPAIGNS, CAMPAIGN_MONTHS } from "../data/events";
 import { GUEST_TYPES, FIRST_NAMES } from "../data/guests";
 import { THOUGHTS, wording } from "../data/thoughts";
 import { SCENARIOS } from "../data/scenarios";
+import { GRADES } from "../data/grades";
 import { WAGERS_PER_ROUND } from "../data/games";
 import { STOCK_DESIGNS } from "../data/designs";
 import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayback, oddsAllowed, type Family } from "../data/tables";
@@ -24,7 +25,7 @@ import {
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
   locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
-  priceOf, dims, seatCount, objStaff, tierName, priceFor, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
+  priceOf, dims, seatCount, objStaff, tierName, priceFor, gradeOf, servingCost, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules, type NewsRef,
   cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST,
 } from "../sim";
@@ -212,7 +213,7 @@ const moodFace = (m: number) => (m > 75 ? "😀" : m > 55 ? "🙂" : m > 40 ? "�
 
 const PAYS: number[] = [];
 for (let p = PAY_MIN; p <= PAY_MAX + 1e-9; p += PAY_STEP) PAYS.push(Math.round(p * 10) / 10);
-const moraleWord = (m: number) => (m >= 75 ? "happy" : m >= 50 ? "content" : m >= 30 ? "unhappy" : "miserable");
+const moraleWord = (m: number) => (m >= 70 ? "happy" : m >= 50 ? "content" : m >= 30 ? "unhappy" : "miserable");
 
 export function StaffPanel({ host }: { host: Host }) {
   const g = host.game;
@@ -283,6 +284,25 @@ const barName = (g: Game, id: number) => {
 };
 
 /** Drink policy for one bar and its servers (in the bar's inspector). */
+/** (M11.4, owner) What a place serves, cheap to fancy, and what each serving earns at its price. */
+function Serving({ g, id, price }: { g: Game; id: number; price: number }) {
+  const o = g.objById.get(id);
+  if (!o) return null;
+  const cost = servingCost(o), margin = price - cost;
+  return (
+    <>
+      <b>Grade</b>
+      <span><select value={gradeOf(o)} onChange={(e) => g.dispatch({ type: "setGrade", id, grade: Number(e.target.value) })}>
+        {GRADES.map((n, k) => <option key={n} value={k}>{n}</option>)}
+      </select></span>
+      <b>Margin</b>
+      <span className={`num${margin < 0 ? " neg" : ""}`}>
+        {price > 0 ? `${money(margin)} each (${Math.round((100 * margin) / price)}%)` : `free: ${money(-cost)} each`}
+      </span>
+    </>
+  );
+}
+
 function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
   const o = g.objById.get(id);
   if (!o?.bar) return null;
@@ -297,7 +317,8 @@ function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
       <p className="muted" style={{ margin: "10px 0 6px" }}>{barName(g, id)}: drinks here and from its servers ({servers} assigned)</p>
       <div className="kv">
         <b>Price</b>
-        <span className="num"><input type="range" min={0} max={3} step={0.25} value={d.price} onChange={(e) => set({ price: Number(e.target.value) })} /> {d.price.toFixed(2)}× ({money(DRINK_PRICE * d.price)})</span>
+        <span className="num"><input type="range" min={0} max={3} step={0.25} value={d.price} onChange={(e) => set({ price: Number(e.target.value) })} /> {money(DRINK_PRICE * d.price)}</span>
+        <Serving g={g} id={id} price={DRINK_PRICE * d.price} />
         <b>Comped</b>
         <span className="num"><input type="range" min={0} max={1} step={0.05} value={d.comp} onChange={(e) => set({ comp: Number(e.target.value) })} /> {Math.round(d.comp * 100)}% free to players</span>
         <b>Strength</b>
@@ -558,10 +579,11 @@ export function PoliciesPanel({ host }: { host: Host }) {
       <div className="kv">
         <b>Jackpot insurance</b>
         <span>
-          <select value={b.insure} onChange={(e) => g.dispatch({ type: "setInsurance", over: Number(e.target.value) })}>
-            {INSURE_OVER.map((v) => <option key={v} value={v}>{v ? `Cover payouts over ${money(v)}` : "None"}</option>)}
+          <select value={b.insLvl} onChange={(e) => g.dispatch({ type: "setInsurance", level: Number(e.target.value) })}>
+            {INSURE_NAMES.map((n, k) => <option key={n} value={k}>{k ? `${n}: over ${INSURE_SHARE[k] === 0.5 ? "half a month's" : INSURE_SHARE[k] === 1 ? "a month's" : `${INSURE_SHARE[k]} months'`} machine win` : n}</option>)}
           </select>
         </span>
+        {b.insLvl > 0 && <><b>Covered</b><span className="num">each machine payout over {money(b.insure)} · premium so far {money(INSURE_LOAD * b.insExp)}</span></>}
         <b>Gaming tax</b><span className="num">{Math.round((sc?.tax ?? 0) * 100)}% of the gaming win, monthly</span>
         <b>Skim</b>
         <span>
@@ -580,7 +602,7 @@ export function PoliciesPanel({ host }: { host: Host }) {
           </Fragment>
         ))}
       </div>
-      <p className="muted" style={{ margin: "4px 0" }}>Insurance pays the part of any single payout above the line; the premium is charged monthly on what was played. Skimmed money dodges the tax until an inspector finds it. Comps go to guests once their play is expected to have cost them that much this visit (the come-back offer, $10 of free play, brings regulars back sooner). {b.given ? `${b.given} comps given this month.` : ""}</p>
+      <p className="muted" style={{ margin: "4px 0" }}>Insurance pays the part of any single machine payout above the line, which follows how much your machines win in a month; the premium, charged monthly, is 30% more than the claims it expects. Tables are covered by their limits instead. Skimmed money dodges the tax until an inspector finds it. Comps go to guests once their play is expected to have cost them that much this visit (the come-back offer, $10 of free play, brings regulars back sooner). {b.given ? `${b.given} comps given this month.` : ""}</p>
       {hasClub(s) && (
         <div className="kv">
           <b>Comps for</b>
@@ -1081,6 +1103,7 @@ function AmenityCard({ g, id }: { g: Game; id: number }) {
             <input type="range" min={pr[0]} max={pr[1]} step={def.serves === "hunger" ? 0.25 : 1} value={o.price ?? pr[0]} onChange={(e) => g.dispatch({ type: "setPrice", id, price: Number(e.target.value) })} />
             {" "}{money(priceFor(o))}
           </span>
+          <Serving g={g} id={id} price={priceFor(o)} />
         </div>
       )}
     </>

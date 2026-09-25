@@ -45,7 +45,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export function skillOf(g: Game, a: Agent): number {
   const st = a.st;
   if (!st) return 1;
-  return clamp(st.q * Math.pow(payOf(g, a.role), STAFF.payPow) * (0.8 + (0.4 * st.morale) / 100), STAFF.skill[0], STAFF.skill[1]);
+  return clamp(st.q * Math.pow(payOf(g, a.role), STAFF.payPow) * (1 + (0.4 * (st.morale - 75)) / 100), STAFF.skill[0], STAFF.skill[1]);
 }
 export const skillWord = (v: number) => SKILL_WORDS.find(([at]) => v < at)![1];
 
@@ -91,8 +91,8 @@ export function inZone(g: Game, a: Agent, tile: number): boolean {
 
 /** Crooks steal more when they're unhappy: the chance of taking an opportunity, scaled. */
 export function greed(g: Game, a: Agent | null, p: number): number {
-  const m = a?.st?.morale ?? 50;
-  return p * (1.5 - m / 100) * orgFactor(g);
+  const m = a?.st?.morale ?? 75;
+  return p * (1.75 - m / 100) * orgFactor(g);
 }
 
 /**

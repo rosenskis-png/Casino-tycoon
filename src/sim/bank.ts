@@ -2,7 +2,7 @@
 // loans, unpaid winnings, insolvency, jackpot insurance, and comps by theoretical loss.
 import {
   COMEBACK_COST, COMEBACK_SCORE, COMEBACK_SOONER, COMP_AT, COMP_KINDS, EMERGENCY_FEE, EMERGENCY_MIN, EMERGENCY_RATE, EMERGENCY_SHARE, EMERGENCY_STEP,
-  EVADED_FADE, INSOLVENT_MONTHS, ROOM_COST, ROOM_STAY, INSURE_LOAD, INSURE_OVER, LOAN_RATE, LOAN_SHARE, LOAN_STEP, REG, SCANDAL_REP, SKIM_LEVELS, type CompKind,
+  EVADED_FADE, INSOLVENT_MONTHS, ROOM_COST, ROOM_STAY, INSURE_LOAD, INSURE_MIN, INSURE_SHARE, LOAN_RATE, LOAN_SHARE, LOAN_STEP, REG, SCANDAL_REP, SKIM_LEVELS, type CompKind,
 } from "../data/money";
 import { GUEST_TYPES } from "../data/guests";
 import { SCENARIOS } from "../data/scenarios";
@@ -18,13 +18,15 @@ import { hitReputation, person } from "./pool";
 import { adjustRegulator } from "./regulator";
 import { think } from "./guests";
 import { hasClub } from "./research";
+import { OBJECTS } from "../data/objects";
+import { TICKS_PER_DAY, dateOfDay, daysInMonth } from "./clock";
 
 declare module "./commands" {
   interface CommandTypes {
     borrow: { amount: number };
     repay: { amount: number };
     setSkim: { share: number };
-    setInsurance: { over: number };
+    setInsurance: { level: number };
     setComp: { kind: CompKind; at: number };
     /** With the player's club: comps for one guest type only ("" = everyone). */
     targetComps: { who: string };
@@ -32,7 +34,7 @@ declare module "./commands" {
 }
 
 export const newBank = (): Bank => ({
-  loan: 0, emergency: 0, skim: 0, evaded: 0, insure: 0, insExp: 0, emergencies: 0, broke: 0, unpaid: 0, low: 0,
+  loan: 0, emergency: 0, skim: 0, evaded: 0, insure: 0, insExp: 0, insLvl: 0, theoM: 0, theoLast: 0, emergencies: 0, broke: 0, unpaid: 0, low: 0,
   comps: { meal: 0, show: 0, back: 0 }, given: 0,
 });
 
@@ -101,6 +103,21 @@ export function stiff(g: Game, a: Agent, amount: number) {
 
 // ---------------------------------------------------------------------------------------------------------
 // Jackpot insurance.
+
+/**
+ * (M11.4) The payout line for the chosen level: a share of the expected machine win for a month (last month's, or
+ * this month's so far over a full month when that's more, counting at least a week), at least INSURE_MIN. Set
+ * daily, so it grows with the casino.
+ */
+export function insureLine(g: Game): number {
+  const b = g.state.bank, k = INSURE_SHARE[b.insLvl] ?? 0;
+  if (!k) return 0;
+  const d = dateOfDay(Math.floor(g.state.tick / TICKS_PER_DAY));
+  const month = Math.max(b.theoLast, (b.theoM * daysInMonth(d.month)) / Math.max(7, d.day));
+  return Math.max(INSURE_MIN, Math.round((k * month) / 50) * 50);
+}
+/** Machines the insurance covers: slots, video poker and keno (tables have their limits; bingo pays players' money). */
+export const insured = (kind: string) => !!OBJECTS[kind]?.slot || kind === "vpoker" || kind === "keno";
 
 const excessCache = new Map<string, number>();
 /** Expected payout above `over` for one wager of `bet` on this paytable. */
@@ -194,8 +211,8 @@ const commands: CommandTable<"borrow" | "repay" | "setSkim" | "setInsurance" | "
     apply(g, c) { g.state.bank.skim = c.share; },
   },
   setInsurance: {
-    validate: (_g, c) => (INSURE_OVER.includes(c.over) ? null : "Unknown cover"),
-    apply(g, c) { g.state.bank.insure = c.over; },
+    validate: (_g, c) => (c.level >= 0 && c.level < INSURE_SHARE.length && c.level % 1 === 0 ? null : "Unknown cover"),
+    apply(g, c) { g.state.bank.insLvl = c.level; g.state.bank.insure = insureLine(g); },
   },
   setComp: {
     validate: (_g, c) => (!COMP_KINDS.includes(c.kind) ? "Unknown comp" : COMP_AT.includes(c.at) ? null : "Unknown level"),
@@ -214,6 +231,7 @@ export const bankSystem: System = {
     ensureCash(g, 0);
     if (s.cash < 0 && !s.bank.low) { s.bank.low = 1; news(g, "urgent", "Cash is below zero and the bank won't lend more. Nothing can be built until it recovers.", { tab: "finance" }); }
   },
+  day(g) { g.state.bank.insure = insureLine(g); },
   closeMonth(g) {
     const s = g.state, b = s.bank, f = s.finance.month;
     // Gaming tax on the month's win; a skim hides part of it (the dodged tax is owed, and fades slowly).
@@ -228,6 +246,9 @@ export const bankSystem: System = {
     if (interest > 0) post(g, "interest", -interest);
     if (b.insExp > 0) post(g, "premium", -INSURE_LOAD * b.insExp);
     b.insExp = 0;
+    b.theoLast = b.theoM;
+    b.theoM = 0;
+    b.insure = insureLine(g);
     b.emergencies = 0;
     b.low = 0;
     b.given = 0;

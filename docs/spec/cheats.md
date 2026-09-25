@@ -33,6 +33,9 @@ frame; this is what was built. Numbers are starting values, tuned headless.
   (win goal, loss limit, a jackpot) and plan on 1.5× their type's usual floor time. Their group can still take them home.
 - A cheat who was warned stops cheating for the rest of that visit.
 
+## Sized to the casino (M11.1)
+A cheat's take is the log-normal draw above (median $400) sized to the casino (docs/spec/money.md "Sized to the casino"), never under $20: at a small locals casino a cheat is after tens of dollars, at a big one thousands. Measured on the tutorial (3 seeds, a year): cheats took $620–$830 (was $1,500–$5,000, up to 80% of the slot win).
+
 ## Getting caught in the act
 Checked once a second during a spell. Chance per second:
 - 0.001 by chance (a teller, another player noticing),

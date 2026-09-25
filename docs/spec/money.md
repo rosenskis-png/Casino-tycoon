@@ -7,6 +7,10 @@
 - **Skimming** (a dark lever, Policies tab): 0, 10, 20, 30 or 50% of the win kept off the books, so no tax is paid on it. The tax dodged builds up as back taxes owed (hidden), fading 5% a month.
 - The gaming inspector finds it with chance 25% + the skim share (while anything is owed). Found: a fine of 3× the back taxes, −(20 + 40 × skim share) regulator standing, and a scandal (−3 reputation with every type).
 
+## Sized to the casino (M11.1)
+- `monthlyWin(g)` (sim/bank.ts) = the average monthly gaming win of the last 3 closed months (before any has closed: $30 × game seats). `scaled(g, $)` = the amount × monthlyWin / $10,000, clamped to ×0.1–×10: every flat dollar figure here was tuned for a casino winning about $10K a month.
+- Scaled: the regulator's fine and suspension fine, the uncertified-machine fine, bribes (and so the refusal fine), the police fines (stage, call, seen, raid) and cheats' takes (docs/spec/cheats.md). A $1,000 fine is $100 at a small locals casino and $10,000 at a big one.
+
 ## Credit
 - **Loans:** borrow in $1K steps while total debt stays under half of gross worth (cash, resale value and land). Interest 2% a month. Repay any time, emergency debt first.
 - **Emergency loans:** when cash falls below zero (a payout, wages), the bank covers it in $500 steps with a 10% fee and 6% a month interest, up to a quarter of gross worth (at least $2K). The first one each month is a scandal: −3 reputation with every type, on the ticker.
@@ -24,7 +28,7 @@
 - **Uncertified machines (M11):** the inspector has to see a machine to find it: once a second they note every uncertified machine within sight (walls, slot banks and other opaque objects block it; docs/spec/navigation.md). So one hidden in a maze of banks, or behind walls away from where people walk, can go unnoticed. At the audit, a design seen for the first time gets a **warning**: certify it or take it off the floor within 30 days, −3 standing (× the rigging severity), and the inspector comes back when the deadline is up. Seen again while still uncertified: every machine of it is seized, −10 × (1 + severity) standing, and a fine of $2,000 × (1 + 4 × severity). (M8 seized on the first find, 70% of the time, sight or not, at −15.)
 
 ## Bribes (M11)
-- A scenario says whether officials can be bought (`bribe`: the chance one takes it; Free Play and the Test Floor 60%, the tutorial none). Then the gaming inspector's and a police officer's cards have **Offer a bribe**: $2,000 for the inspector, $500 for an officer.
+- A scenario says whether officials can be bought (`bribe`: the chance one takes it; Free Play and the Test Floor 60%, the tutorial none). Then the gaming inspector's and a police officer's cards have **Offer a bribe**: $2,000 for the inspector, $500 for an officer (M11.1: sized to the casino, above).
 - Taken: booked as "Bribes"; the inspector's audit finds nothing this visit (and says so, knowingly); an officer sees nothing for the rest of their visit. Each bribe taken adds 1 to a hidden tally.
 - Refused: reported, a fine of twice the bribe and −20 standing with that authority.
 - Each month, a chance of 4% × the tally (at most 50%) that it comes out: a scandal, −10 standing with both authorities and a reputation hit with every type (like skimming exposed); the tally then resets. Otherwise the tally fades 15% a month.

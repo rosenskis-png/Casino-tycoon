@@ -2,6 +2,16 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-25 · M11.1 part 1 built: the functions (owner's caveats; Claude's calls)
+- **Green light** for M11.1 (owner). Two chats: this one changes functions, the next tunes numbers.
+- **One correct casino per crowd, not one room per crowd (owner):** a casino of differently themed rooms for each crowd should read as disjointed, and crowds next door annoy each other unless far enough apart. Built as: theming reaches 7 tiles and loses 35% per wall (was 4 and 60%), so clashing neighbors muddle each other; crowd noise per room carries to rooms within 10 tiles; the casino's draw for a crowd averages its fit over every seat, so a split floor suits each crowd less.
+- **Hidden theme tastes per crowd** (Claude): the theming score used to be the same for everyone, so theming was pure upside (0 bad thoughts). Now each type loves some themes and dislikes others (docs/spec/themes.md).
+- **Engagement** (Claude): the fit of the spot and the taste for the game move pace, stake, loss limit and time on the floor. Mood from surroundings reaches +25 (was +12).
+- **Draw** (Claude): seats draw sublinearly (square root; was linear), times each crowd's draw from the layout.
+- **Sized to the casino** (owner agreed): fines, bribes and cheats' takes × the monthly gaming win / $10K (×0.1–×10). **Staff theft by organization size** (owner): none up to 8 staff, full at 40.
+- **Whale bets stay capped by the table maximum** (Claude): table limits are one of the North Star's variance tools, so whales stay a threat the player chooses to take on. Flagged for the owner.
+- Measurement note for the numbers pass: slot results swing far more than expected on every floor, including the Test Floor (120 days: $0.1K and $33.6K won against about $14K expected), so single-seed comparisons of money mean little. Compare theoretical win (coin-in × edge) or several seeds.
+
 ## 2026-09-25 · M11.1 balance direction (owner + Claude's review)
 - **Dominant strategy (owner):** "build a thoughtful layout, theming and non-gambling attractions to draw lots of the guests you want, then use casino psychology to get the most out of the games in each place." Spamming slots must still be able to win the tutorial, but no scenario after it.
 - **Why it isn't today (measured):** arrivals scale with game seats (`capacity()` in guests.ts, up to 2.5×), so seats summon guests. Surroundings reach guests only through mood (capped at +12, down to −30), and mood moves money only slowly, through reputation. They never touch stake, pace or session length.

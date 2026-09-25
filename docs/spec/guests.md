@@ -27,6 +27,21 @@ Built in `src/sim/guests.ts` (behavior), `pool.ts` (returning people), `street.t
 - On the lot, a new arrival first heads for the open door in view, and wandering prefers indoor spots, so guests don't drift onto the grass.
 
 ## Groups
+- **(M11.2) The visit's to-do list** (`todo`): what drew them (a meal, the show, the club, the pool, mini golf), plus,
+  for each other such place the casino has, a chance of wanting it too (1.5 × their type's pull for it, at most 60%;
+  drawn on the `todo` stream; a group shares the leader's list). What drew them comes first; the rest wait until a
+  quarter of the visit has gone (a meal until they're a bit hungry). A full place or a line keeps the item for
+  later; a place that's gone comes off. Time up or done with a list left: they stay up to 2 more minutes for it,
+  once ("Not leaving till I've done what I came for"). Leaving with items undone (given up finding it included)
+  counts each as an unmet need and a "Never got to…" thought.
+- **(M11.2) Remembered places count as known:** an amenity a guest saw earlier this visit is one they can walk
+  back to (21 of 25 restroom exits on the Test Floor were guests who had seen a restroom and couldn't find it again).
+- **(M11.2) Crowd survey** (`state.survey`, Guests tab): per crowd, visits and their scores, every thought had,
+  and the theme where each good or bad theming thought was had; halved monthly. Thoughts say which place was full
+  or pricey (bar, restroom, restaurant, show, mini golf) and whether a crowd used to finer places found only a
+  snack bar ("plainFood": crowds whose prestige ideal is 5+).
+- **(M11.2) Word of mouth:** a departing one-off guest moves their crowd's reputation 4% toward their visit (was 2%).
+
 - One type per group, a leader (their id is the group id; a pool person leads). Group size from the type's weights (≤ 8). Members share the leader's floor knowledge.
 - Members prefer a machine within 2 tiles of a member who's playing (+1.2), or at least in sight of one (+0.4).
 - Mood eases toward 80% own target + 20% group average.

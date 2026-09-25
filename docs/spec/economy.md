@@ -12,7 +12,9 @@ month is 5 real minutes at 1×, so a slot wins about $20–$35 a month in theory
 money tuned to that:
 - **Build prices halved** (M11.2): every object, sized amenity, decor piece, cabinet and topper, dealers ($400 a
   spot), walls ($20 a tile), doors, entrances, land, research projects, certification ($750) and conversion kits.
-  Running costs (wages, upkeep, drink and food costs) are the same dollars as before. Target: a machine pays for
+  Running costs were left alone at first; after the owner's tutorial playtest (below) **wages and upkeep were
+  halved too, and standard decor has no monthly fee** (only an upfront price; future centerpieces may have one).
+  Drink and food costs per serving are unchanged. Target: a machine pays for
   itself in 6–12 months on a well-filled floor. Measured (Test Floor, 120 days): theoretical win $21–$24 a machine a
   month against an average price of $285, 14–16 months there (131 machines for ~300 guests, half the seats
   empty); a legacy Liberty Bell ($200) about 10 months.
@@ -40,10 +42,17 @@ money tuned to that:
   (`rules`), no janitor, one tech. Research starts with Ancient worlds (Rome, Egypt, Medieval: tourists and
   families like them, though Egypt and Medieval clash) and Old Vegas (mostly wrong for them) and the restaurant;
   the show lounge takes research. Tourists and families come in greater numbers and start at reputation 35 and 30.
-  $20K cash. Goal: worth $36K, Tourists 55 and Families 50 by the end of December, Year 2. What it teaches through
+  $20K cash. Goal: worth $40K, Tourists 55 and Families 50 by the end of December, Year 2. Mini golf is unlocked
+  from the start (families' favorite), and entertainers can be hired. What it teaches through
   setup: read the thoughts (dirty, bad theming, drunks, fights), clean up, throw out the junk, retheme for the
   crowd you want, rein in the bar and hire a guard with stricter rules, add a restaurant and shows. Machines can
   be moved (docs/spec/construction.md).
+  **After the owner's playtest (M11.2, second pass):** the owner met both reputation goals but could only reach a
+  worth of about $30K by the deadline. With wages and upkeep halved and decor free to keep, `npm run economy`
+  (seeds 1, 2): idle Tourists ~38, Families ~35 (lost; worth ~$47–50K, which is why worth alone can't win it);
+  "good" (now with mini golf and an entertainer) wins by month 12; "big" (21 decor pieces at once, a 6×4
+  restaurant, a 6×6 show lounge, 7×5 mini golf, three janitors, two security, an entertainer, two ad campaigns)
+  wins in month 13–18 with worth $49–55K by month 24. The earlier (first pass) measurements:
   Measured with `npm run economy <strategy> 24 1,2,3`: doing nothing ends with Tourists ~33, Families ~32 (worth
   ~$40K, lost); janitors only Tourists ~47, Families ~41–47 (lost); the scripted fix (janitors, a guard and
   Moderate rules, the bar at standard, the junk out, Medieval decor, a restaurant, a family campaign, a show

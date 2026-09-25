@@ -121,6 +121,8 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   goodMeal: { text: "That hit the spot.", alt: ["Great food here."], voice: { retiree: ["What a lovely meal."] } },
   steep: { text: "Those prices are steep.", alt: ["That cost an arm and a leg."], bad: true },
   // (M11.2) Entertainers, the visit's to-do list and mini golf; which place was full or pricey, and plain food.
+  barLine: { text: "The line at the bar is ridiculous.", alt: ["Can't get near the bar."], bad: true },
+  restroomLine: { text: "Why is there always a line for the restroom?", alt: ["The restroom line!"], bad: true },
   foodLine: { text: "The restaurant's full.", alt: ["No table to be had."], bad: true },
   showFull: { text: "The show's sold out.", alt: ["No seats left for the show."], bad: true },
   golfLine: { text: "Mini golf's packed.", bad: true },

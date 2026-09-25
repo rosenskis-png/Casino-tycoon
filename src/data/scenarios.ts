@@ -289,7 +289,7 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
     // Starting themes: Ancient worlds suit tourists and families (Egypt and Medieval clash, though); Old Vegas
     // mostly doesn't. The restaurant and mini golf are ready to build; the show lounge takes research.
     research: ["th_ancient", "th_vegas", "restaurant", "minigolf"],
-    goals: { worth: 36_000, rep: { type: "tourist", min: 55 }, reps: { types: ["family"], min: 50 }, by: { year: 2, month: 11 } },
+    goals: { worth: 40_000, rep: { type: "tourist", min: 55 }, reps: { types: ["family"], min: 50 }, by: { year: 2, month: 11 } },
     tools: 2, tax: 0.05,
   },
   sandbox: {

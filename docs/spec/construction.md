@@ -181,3 +181,11 @@ and go only on outdoor ground.
   from before keep their own map and street; lots that don't fit a save's map aren't offered.
 - Saves: schema 9 adds `parcels` (ids bought).
 - **Deferred to M9:** Families (they bring minors and underage incidents) and the hotel elevator, with vice.
+
+## Mini golf (M11.2, owner)
+- A sized amenity, indoors or out (4×3 to 12×10; $600 + $40 a tile; upkeep $10 + $0.50 a hole): putting greens
+  round a windmill, a hole (a player's spot) every third tile. Tiers Putt-putt and Adventure golf (12 holes).
+  A round takes 40–70 s, a ticket per round ($0–$20, default $6; over $10 × the tier's tolerance is "steep").
+  Fun time the whole round, a lift after. Pull (`comeFor.golf`): families 0.6, tourists 0.15, party 0.1, a little
+  for the rest, none for high rollers. Suits Pirate, Medieval and Tiki; outdoors. Research: Mini golf ($1,000);
+  unlocked in the tutorial. On the Test Floor's front lawn.

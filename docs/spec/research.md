@@ -21,6 +21,7 @@ Costs halved in M11.2 (the money scale, docs/spec/economy.md).
 | Games | Big-jackpot slots | $1,250 | | Thunder Jackpot |
 | Amenities | Restaurant | $1,500 | | restaurant, patio restaurant |
 | Amenities | Show lounge | $2,500 | Restaurant | show lounge |
+| Amenities | Mini golf (M11.2) | $1,000 | | mini golf |
 | Amenities | Nightclub | $2,500 | | nightclub |
 | Amenities | Outdoors | $3,000 | | pool, garden, patio bar |
 | Themes | Old Vegas | $1,500 | | Rat Pack Lounge, Neon Atomic, Gold Rush |

@@ -142,6 +142,7 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 
 ## M11.2 · Tutorial rebuild and final balance pass ◐  (owner 2026-09-25; see DECISIONS, docs/spec/economy.md)
 - **Tutorial ☑** (owner's vision): 68 machines and no new games; litter and vomit, broken theming, a free strong-drinks bar, fighting regulars and lax rules to fix; starting themes some good and some not; a restaurant ready, shows by research; goal worth $36K with Tourists 55 and Families 50 by the end of Year 2. Machines can be moved. Gentle classics with small jackpots.
+- **Owner's playtest ☑:** running costs halved, decor free to keep, security and enforcers merged, entertainers, mini golf, visit to-do lists, doors as signs and remembered places, a crowd survey, faster word of mouth. Save schema 19.
 - **Balance ☑:** build prices halved (machines pay back in about a year or less), Free Play guest cap 1,500 (a strong casino in about 2 years), groups wait for each other, luck ±10, restroom search, dark-lever and tutorial reports, multi-seed measurement.
 - **Scenario ladder ☐** (FOUNDATIONS §20: early, core, challenge, free play; unlocks; the working titles as real maps with goals). Open: part of v0.8 or after it (DECISIONS, Open).
 

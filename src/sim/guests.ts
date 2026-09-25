@@ -1171,7 +1171,7 @@ function decide(g: Game, a: Agent) {
     } else {
       const use = goUse(g, a, "bladder");
       if (use === "ok") return;
-      if (use === "full") { think(g, a, "line"); gd.annoy += 3; return wander(g, a, r); }
+      if (use === "full") { think(g, a, "restroomLine"); gd.annoy += 3; return wander(g, a, r); }
       // The more urgent, the more single-minded the search.
       if (seekNeed(g, a, r, "bladder", n.bladder / 40)) return;
     }
@@ -1188,7 +1188,7 @@ function decide(g: Game, a: Agent) {
     if (use === "ok") return;
     if (use === "unknown" && seekNeed(g, a, r, "thirst", 0.8)) return;
     if (use === "none") { if (!g.has("thirst")) { think(g, a, "noBar"); gd.mem.unmet++; } gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
-    else if (use === "full") { think(g, a, "line"); gd.annoy += 2; gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
+    else if (use === "full") { think(g, a, "barLine"); gd.annoy += 2; gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND; }
     else gd.mem.barAt = g.state.tick + BAR_RETRY * TICKS_PER_SECOND;
     gd.intent = "gamble";
   }

@@ -158,4 +158,41 @@ Moved after M10 on 2026-09-24. The creative core, RCT's coaster builder for slot
 - Luxury: the Monte Carlo theme and slot theme, the casino host, escorts on the arm; high rollers' fair edge 3%.
 - `npm run outfit` proves the lesson (3 seeds × 24 months). Save schema 22.
 
+## Owner's playtest list after The Outfit (Batches A–E)  (owner 2026-09-25; see DECISIONS)
+Batches, not milestones: lettered, one chat each, in order. Each ends merged to `main`; release tags `bA`…`bE`.
+
+**Batch A · Flow and friction ☐** (small fixes, biggest annoyance per token)
+- Every scenario starts paused; building works while paused. Win and loss pause the game for a pop-up.
+- Every scenario opens with an in-world intro screen (as The Outfit's letter). Sandbox scenario: Outfit-sized, empty,
+  unlimited money, everything unlocked, no goal.
+- Save confirmation. Fewer notices (big wins and jackpots rarer), with a checkbox per notice type.
+- Research: cheaper (so faster), a queue, and no funding spent while nothing is queued.
+- Remove the hidden lucky/unlucky trait (North Star conflict, see DECISIONS). Escorts never use staff-only doors.
+- Restroom lines: measure the waits on the Test Floor first (likely a choice/pathing bug, everyone to one block);
+  then capacity or bladder rate.
+- Slot-maker offers: a chance from 20 fans, certain at 50; the offer pauses the game, sits in the Slots tab until answered.
+
+**Batch B · Games working right ☐**
+- Spin to win: no early reveal (every space blank until it lands), reels visibly spinning in the open squares.
+- Pick a prize: the player picks.
+- Progressives, must-hit-by and linked meters: a headless check that the increment comes out of the payback budget
+  (spec says it does; prove it for every stock design and the fuzzed set).
+- Hand pays: wins at or above the tax-form line ($2,000) lock the machine until a staff member walks over and pays it.
+- A one-line game description on every slot and table card (feature, volatility, who it's for, no crowd names).
+- Sound: light conversation murmur replaces the whoosh; a better title theme.
+
+**Batch C · Hands on the floor ☐**
+- Tap a staff member for their card: pick up and place, set patrol area, and the rest of their controls.
+- Pick up and drop guests (RCT style). One-way doors with an arrow. Bar servers assigned to several rooms.
+
+**Batch D · Decor and how nice the place is ☐**
+- Large decor (2×2 to 3×3, wider reach) and centerpieces (4×4 and up, very expensive, draw from the street / whole
+  casino, e.g. a volcano out front).
+- A global niceness: each guest keeps a running impression of everything they've seen this visit; engagement
+  follows both the spot they're in and that impression.
+
+**Batch E · Emoji slot themes ☐** (design first in the same chat, owner signs off, then build)
+- Custom themes from a master list of emojis with hidden tags; the player picks the symbols and their pay order.
+- Theme score from shared tags weighted by how specific each tag is (draft in DECISIONS); crowds have tag tastes.
+
 **After M11.2: alpha build, Casino Tycoon v0.8.**

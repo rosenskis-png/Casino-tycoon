@@ -226,14 +226,16 @@ function testFloor(): ScenarioDef {
     d("mc_chandelier", 66, 28), d("mc_piano", 64, 29), d("mc_champagne", 62, 27), d("mc_rope", 67, 29),
     // M8.6: Lucky Dragon pieces along the bingo room's outer wall (its door at x 42 kept clear).
     d("dragon_lantern", 37, 17), d("dragon_lion", 39, 17), d("dragon_vase", 45, 17), d("dragon_screen", 47, 17),
-    // Batch D: one large piece per theme, in rooms that suit it where there's space, the rest out front.
-    d("big_spire", 51, 5), d("big_cube", 57, 11), d("big_anubis", 70, 14), d("big_martini", 62, 23), d("big_clock", 70, 25),
+    // Batch D: one large piece per theme, in rooms that suit it where there's space (the Mirror Cube by the Golden
+    // Dragon: they pair), the rest out front in families that go together: rome, egypt and riviera left of the path;
+    // tiki, pirate and atomic by the pool; gold rush and medieval in the far corner by the golf.
+    d("big_spire", 51, 5), d("big_cube", 11, 5), d("big_anubis", 70, 14), d("big_martini", 62, 23), d("big_clock", 70, 25),
     d("big_drums", 58, 28), d("big_pagoda", 46, 13),
-    d("big_arch", 2, 33), d("big_mine", 2, 37), d("big_turret", 8, 39), d("big_pergola", 73, 33), d("big_totems", 46, 35),
-    d("big_wreck", 62, 38), d("big_saucer", 74, 37),
-    // Batch D: centerpieces, one of each: a volcano and dancing fountains either side of the front path, a sphinx
-    // and a galleon out front, a golden dragon in the main floor's corner and a carousel by the rowdy bar.
-    d("cp_volcano", 21, 36), d("cp_fountains", 29, 37), d("cp_sphinx", 40, 36), d("cp_ship", 69, 37),
+    d("big_turret", 2, 33), d("big_mine", 2, 37), d("big_arch", 16, 38), d("big_pergola", 73, 33), d("big_totems", 46, 35),
+    d("big_wreck", 62, 38), d("big_saucer", 40, 37),
+    // Batch D: centerpieces, one of each: dancing fountains and a sphinx left of the front path, a volcano right of
+    // it, a galleon by the pool, a golden dragon in the main floor's corner and a carousel by the rowdy bar.
+    d("cp_fountains", 21, 37), d("cp_sphinx", 21, 32), d("cp_volcano", 29, 37), d("cp_ship", 69, 37),
     d("cp_dragon", 7, 5), d("cp_carousel", 38, 23),
   );
   // Outdoors (M6.5): a garden, a pool with a patio bar and a patio restaurant, tiki torches and a parasol.

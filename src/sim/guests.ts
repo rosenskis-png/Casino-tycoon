@@ -348,8 +348,8 @@ function periodicThought(g: Game, a: Agent, type: GuestTypeDef) {
   const n = gd.needs;
   // (Batch D) The impression of the whole place, once they've seen enough of it.
   if (gd.impW >= IMPRESSION.seen) {
-    if (gd.imp >= IMPRESSION.hi) consider("gorgeous", 2 + 3 * (gd.imp - IMPRESSION.hi));
-    else if (gd.imp <= IMPRESSION.lo) consider("shabby", 3 + 6 * (IMPRESSION.lo - gd.imp));
+    if (gd.imp >= IMPRESSION.hi) consider("gorgeous", 4 + 4 * (gd.imp - IMPRESSION.hi));
+    else if (gd.imp <= IMPRESSION.lo) consider("shabby", 5 + 8 * (IMPRESSION.lo - gd.imp));
   }
   if (n.fatigue > 80) consider("tired", (n.fatigue - 70) / 2);
   if (n.hunger > 80) consider("hungry", (n.hunger - 70) / 2);

@@ -56,4 +56,4 @@ export const LANDMARK = { curb: 0.5, reach: 18, sights: 0.5, sightsCap: 3 };
  * late sights still count. Engagement and mood follow (1 − mix) × the spot they're in + mix × the impression.
  * Thoughts once `seen` seconds are in: "gorgeous" at `hi` and above, "shabby" at `lo` and below.
  */
-export const IMPRESSION = { mix: 0.4, memory: 300, seen: 60, hi: 1, lo: -0.2 };
+export const IMPRESSION = { mix: 0.4, memory: 300, seen: 60, hi: 0.8, lo: -0.3 };

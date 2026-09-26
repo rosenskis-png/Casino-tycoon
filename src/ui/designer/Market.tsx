@@ -5,7 +5,7 @@ import { GUEST_TYPES } from "../../data/guests";
 import { SCENARIOS } from "../../data/scenarios";
 import { THOUGHTS } from "../../data/thoughts";
 import {
-  ageDays, awareness, designById, fanCount, fansOf, installs, machinesOf, researched, saleBlocks, wishes, MONTH_NAMES, TICKS_PER_DAY,
+  ageDays, awareness, cutLine, designById, fanCount, fansOf, installs, royLine, machinesOf, researched, saleBlocks, wishes, MONTH_NAMES, TICKS_PER_DAY,
   dateOfDay, type Game,
 } from "../../sim";
 import { play } from "../../platform/audio";
@@ -62,12 +62,28 @@ export function DesignMarket({ g, id }: { g: Game; id: string }) {
         <b>Fans</b><span className="num">{nFans}{st.fans && st.fans > nFans ? ` (peak ${st.fans})` : ""}{deep && types.length ? ` · ${types.map((t) => `${typeName(t)} ${fans[t]}`).join(", ")}` : ""}</span>
         {deep && pop.length > 0 && <><b>Known to</b><span className="num">{pop.map((t) => `${typeName(t)} ${Math.round(awareness(st, t) * 100)}%`).join(", ")}</span></>}
         {sale && <><b>Sold to</b><span>{sale.maker} for {money(sale.cash)} · you keep {Math.round(sale.share * 100)}% of its edge here · {(sale.roy * 100).toFixed(1)}% royalty</span></>}
-        {sale && <><b>Out there</b><span className="num">{installs(s, id, sale).toLocaleString("en-US")} machines (peak {Math.max(sale.peak, installs(s, id, sale)).toLocaleString("en-US")}) · royalties so far {money(sale.paid)}</span></>}
+        {sale && <SaleLines g={g} id={id} />}
       </div>
       <LifeCurve g={g} id={id} />
       {!deep && <p className="muted small">Market research shows who knows this game and who its fans are.</p>}
       {sale && <p className="muted small">Its math and features belong to {sale.maker}; its looks are still yours. Its jackpots are wide-area: the maker pays them.</p>}
       {blocks.length > 0 && <p className="muted small">A slot maker might want to buy it once it has: {blocks.join(", ")}.</p>}
+    </>
+  );
+}
+
+/** (2026-09-26, owner) How a sold design is doing: machines out there and where sales are heading, last month's royalties and cut, totals. */
+function SaleLines({ g, id }: { g: Game; id: string }) {
+  const s = g.state, sale = s.designs[id].sale!, now = installs(s, id, sale);
+  const before = installs(s, id, { ...sale, at: sale.at + 30 * TICKS_PER_DAY });
+  const trend = now > before * 1.02 + 1 ? "still selling" : s.tick - sale.at > 36 * 30 * TICKS_PER_DAY && now < before ? "slowly retiring" : "leveled off";
+  const last = s.finance.history[s.finance.history.length - 1]?.l ?? {}, tot = s.finance.total;
+  const roy = last[royLine(id)] ?? 0, cut = last[cutLine(id)] ?? 0;
+  return (
+    <>
+      <b>Out there</b><span className="num">{now.toLocaleString("en-US")} machines · {trend}{sale.peak > now ? ` (peak ${sale.peak.toLocaleString("en-US")})` : ""}</span>
+      <b>Last month</b><span className="num">royalties {money(roy)} · maker's cut here {money(cut)} · net {money(roy + cut)}</span>
+      <b>Since the sale</b><span className="num">{money(sale.cash)} price + {money(sale.paid)} royalties{tot[cutLine(id)] ? ` − ${money(-tot[cutLine(id)])} cut` : ""}</span>
     </>
   );
 }
@@ -86,7 +102,7 @@ export function OfferLetter({ g, onAnswer }: { g: Game; onAnswer?: () => void })
         <b>Your machines</b><span>you keep {Math.round(o.share * 100)}% of the house edge on your own {d?.name}; the rest is our fee</span>
         <b>Royalty</b><span>{(o.roy * 100).toFixed(1)}% of what it wins in other casinos, every month</span>
       </div>
-      <p className="muted small">After a sale its math is ours (you can still restyle it), its progressives go wide-area and we pay them. Nobody knows how many we'll sell. The offer stands until you answer.</p>
+      <p className="muted small">After a sale its math is ours (you can still restyle it), its progressives go wide-area (every machine out there feeds them) and we pay them. Nobody knows how many we'll sell: usually dozens to hundreds of machines within a year or two, now and then thousands. The offer stands until you answer.</p>
       <div className="row">
         <button className="btn on" onClick={() => { play("click"); g.dispatch({ type: "saleAnswer", yes: true }); g.flushCommands(); onAnswer?.(); }}>Accept</button>
         <button className="btn" onClick={() => { play("click"); g.dispatch({ type: "saleAnswer", yes: false }); g.flushCommands(); onAnswer?.(); }}>Decline</button>

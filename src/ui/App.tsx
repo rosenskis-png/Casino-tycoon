@@ -47,6 +47,8 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const [host, setHost] = useState<Host | null>(null);
   const [tab, setTab] = useState<TabId | null>(null);
   const [tool, setTool] = useState<Tool>("inspect");
+  // (2026-09-26) Bumped when the objects picked for a group change, so the Build tab redraws.
+  const [, setPickN] = useState(0);
   const toolRef = useRef(tool);
   toolRef.current = tool;
   const [rot, setRot] = useState(0);
@@ -119,6 +121,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       tool: () => toolRef.current,
       rot: () => rotRef.current,
       command: (c: Command) => { h.game.dispatch(c); if (c.type === "move") setTool("inspect"); },
+      picked: () => setPickN((n) => n + 1),
       tap: (tile, fx, fy) => {
         const g = h.game;
         let best: number | null = null, bd = 0.7;
@@ -160,6 +163,9 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
     sn.offer = !!s.offer;
     if (pop && !alert) { host.setSpeed(0); setAlert(pop); play(pop === "lost" ? "urgent" : "news"); }
   });
+
+  // (2026-09-26) Objects picked for a group are let go once the pick tool is put away.
+  useEffect(() => { if (host && tool !== "pick" && host.picked.length) { host.picked = []; host.markPicked(); } }, [host, tool]);
 
   // Keep selection highlight in the renderer.
   if (host) {
@@ -323,5 +329,7 @@ function toolHint(t: Tool): string {
   if (t === "entrance") return "Tap your land beside the sidewalk to open a way in";
   if (t === "remove") return "Tap an object to sell it (half price back)";
   if (t.startsWith("move:")) return "Tap where it should go · Rotate in the Build tab";
-  return "Tap to place · drag to position · Rotate in the Build tab";
+  if (t === "pick") return "Tap objects to add or take away · drag a box around several";
+  if (t.startsWith("group:")) return "Tap to build the group there · drag to position · Rotate in the Build tab";
+  return "Tap to place · drag for a row · Rotate in the Build tab";
 }

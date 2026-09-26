@@ -10,7 +10,7 @@ import type { System } from "./registry";
 import type { Agent, GameState, GuestData, PlacedObject } from "./state";
 import { slotInfo, statsOf } from "./design";
 import { lastSpin, spinCtx } from "./design/compile";
-import { recordJackpot, saleFees, saleLine, saleOf } from "./design/market";
+import { cutLine, recordJackpot, saleFees, saleOf } from "./design/market";
 import { afterSpin, hasMeters, prepSpin, type MeterHost } from "./design/meters";
 import { judged } from "./design/appeal";
 import { rng, type Rng } from "./rng";
@@ -18,7 +18,7 @@ import { post } from "./finance";
 import { TICKS_PER_SECOND } from "./clock";
 import { fmtMoney, newsFor } from "./news";
 import { compSeeking } from "./drinks";
-import { payStats, wagerPay } from "./cheats";
+import { guestName, payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
 import { earnComps, ensureCash, expectedExcess, insured, stiff } from "./bank";
 import { engagement, savvyNow, showOff } from "./guests";
@@ -196,7 +196,10 @@ function resolve(g: Game, a: Agent) {
   const ws: Wager[] = [];
   // (M8.6) A sold design: the maker takes its cut and the meters' increments, and pays their jackpots.
   const sale = inf ? saleOf(g.state, inf.id) : undefined;
-  let inc = 0, covered = 0;
+  let inc = 0, covered = 0, grand = 0;
+  // (2026-09-26, owner) The design's top progressive level: a guest winning it is always news.
+  let topLv = -1;
+  if (host) for (let i = inf!.c.levels.length - 1; i >= 0; i--) if (inf!.c.levels[i].kind !== "fixed") { topLv = i; break; }
   let near = 0, feats = 0, extra = 0, jps = 0, voided = 0, big = false, seen = "";
   for (let k = 0; k < WAGERS_PER_ROUND; k++) {
     if (host) prepSpin(host, inf!.c, bet, r);
@@ -207,6 +210,7 @@ function resolve(g: Game, a: Agent) {
     if (host) {
       const a = afterSpin(host, inf!.c, bet, x !== 0 ? lastSpin.level : -1, r);
       if (a.x) { x = x < 0 ? x - a.x : x + a.x; jps++; mhb = a.x * bet; }
+      if (topLv >= 0 && x > 0 && ((a.x && a.level === topLv) || (lastSpin.level === topLv && lastSpin.voided < 0))) grand += x * bet;
     }
     let cv = sale ? mhb : 0;
     if (sale && host) {
@@ -228,10 +232,14 @@ function resolve(g: Game, a: Agent) {
     // Near misses: some losing spins are shown as just missing (docs/spec/designer.md §2).
     if (x === 0 && m.nearMiss && r.chance(m.nearMiss)) near++;
   }
-  if (sale && covered) post(g, saleLine(inf!.id), covered);
+  if (sale && covered) post(g, cutLine(inf!.id), covered);
   const { won, wagered, jackpot } = settle(g, a, o, ws, "slots");
   if (sale) saleFees(g, inf!.id, sale, wagered, inf!.c.d.rtp, inc);
   if (jackpot && inf) recordJackpot(g, inf.id, won);
+  if (grand > 0) {
+    const lv = ["Mini", "Minor", "Major", "Grand"][4 - inf!.c.levels.length + topLv] ?? "top";
+    newsFor("progressives")(g, "good", `${guestName(gd.name)} won the ${lv} progressive on ${inf!.d.name}: ${fmtMoney(grand)}!`, { a: a.id });
+  }
   // How the round felt: a feature, a real win, a win smaller than the stake, a near miss.
   gd.mem.feel += feats ? 1.5 : won >= wagered ? 1 : won > 0 ? (m.ldwFeel ?? 0.3) * (won / wagered) : Math.min(1, near * 0.1);
   o.last = { tick: g.state.tick, win: jackpot ? 2 : feats ? 3 : won > 0 ? 1 : 0 };

@@ -301,6 +301,21 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const p of s.pool) p.luck = 0;
     return s;
   },
+  // 23 → 24 (2026-09-26, owner): sold designs rebalanced (more machines, faster sales, a smaller cut, bigger
+  // royalties; the old terms mapped onto the new ranges); saved groups of objects.
+  23: (s) => {
+    for (const rec of Object.values<any>(s.designs ?? {})) {
+      const x = rec.sale;
+      if (!x) continue;
+      const k = (v: number, lo: number, hi: number) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+      x.units = Math.max(5, Math.round(x.units * 7.5));
+      x.ramp = 3 + 6 * k(x.ramp, 4, 24);
+      x.share = Math.round((0.7 + 0.2 * k(x.share, 0.25, 0.75)) * 20) / 20;
+      x.roy = Math.round((0.04 + 0.08 * k(x.roy, 0.01, 0.03)) * 1000) / 1000;
+    }
+    s.groups = [];
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

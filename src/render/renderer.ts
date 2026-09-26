@@ -37,12 +37,15 @@ const FLOOR_ALT: Record<string, (x: number, y: number) => boolean> = {
 };
 const DOOR_MARK: Record<number, string> = { [DOOR_STATE.STAFF]: "door:staff", [DOOR_STATE.LOCKED]: "door:locked", [DOOR_STATE.CARD]: "door:card", [DOOR_STATE.DRESS]: "door:dress", [DOOR_STATE.ROLE]: "door:role" };
 
-export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean }
+/** A build preview; `bad` tiles (and seats) are pieces of a row or group that don't fit, drawn red beside the rest. */
+export interface Ghost { tiles: number[]; seats?: number[]; ok: boolean; bad?: number[]; badSeats?: number[] }
 export interface DrawOptions {
   overlay?: Channel | null;
   /** (M9.5) Heatmap over the games: what each has won for the house, or how long it's been played. */
   heat?: "revenue" | "play" | null;
   ghost?: Ghost | null;
+  /** (2026-09-26) Tiles of the objects picked for a group, outlined. */
+  marks?: number[] | null;
   selectedTile?: number;
   selectedAgent?: number;
 }
@@ -969,6 +972,17 @@ export class Renderer {
       for (const i of opt.ghost.tiles) ctx.fillRect(ox + (i % w) * tp, oy + Math.floor(i / w) * tp, tp, tp);
       ctx.strokeStyle = opt.ghost.ok ? "rgba(125,255,176,0.9)" : "rgba(229,72,77,0.9)";
       for (const i of opt.ghost.seats ?? []) ctx.strokeRect(ox + (i % w) * tp + 2, oy + Math.floor(i / w) * tp + 2, tp - 4, tp - 4);
+      if (opt.ghost.bad?.length) {
+        ctx.fillStyle = "rgba(229,72,77,0.38)";
+        for (const i of opt.ghost.bad) ctx.fillRect(ox + (i % w) * tp, oy + Math.floor(i / w) * tp, tp, tp);
+        ctx.strokeStyle = "rgba(229,72,77,0.9)";
+        for (const i of opt.ghost.badSeats ?? []) ctx.strokeRect(ox + (i % w) * tp + 2, oy + Math.floor(i / w) * tp + 2, tp - 4, tp - 4);
+      }
+    }
+    if (opt.marks?.length) {
+      ctx.fillStyle = "rgba(242,210,122,0.28)";
+      ctx.strokeStyle = "rgba(242,210,122,0.95)";
+      for (const i of opt.marks) { ctx.fillRect(ox + (i % w) * tp, oy + Math.floor(i / w) * tp, tp, tp); ctx.strokeRect(ox + (i % w) * tp + 1, oy + Math.floor(i / w) * tp + 1, tp - 2, tp - 2); }
     }
     if (opt.selectedTile !== undefined && opt.selectedTile >= 0) {
       const i = opt.selectedTile;

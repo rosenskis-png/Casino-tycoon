@@ -27,7 +27,7 @@ import {
   locked, projectFor, researched, projectAvailable, toolTier, overlays, hasClub, hasHeatmaps, hasBreakdowns, runningEvents, adFees,
   priceOf, dims, seatCount, objStaff, tierName, priceFor, gradeOf, servingCost, showPhase, landForSale, tableOpen, dealerSeats, limitsNow, tableDefOf,
   type Agent, type Ledger, type HouseRules, type NewsRef,
-  cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST,
+  cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST, groupPlacements, MAX_GROUPS,
   NEWS_CATS,
 } from "../sim";
 import { play } from "../platform/audio";
@@ -74,6 +74,7 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
         {b("remove", "Sell object")}
         <button className="btn" onClick={() => setRot((rot + 1) & 3)}>Rotate<small>faces {FACING[rot & 3]}</small></button>
       </div>
+      <Groups host={host} tool={tool} setTool={setTool} />
       {OBJECT_CATS.filter((c) => !(noGames && c.id === "table")).map((c) => (
         <Fragment key={c.id}>
           <p className="muted" style={{ margin: "10px 0 6px" }}>{c.label}
@@ -107,6 +108,48 @@ export function BuildPanel({ host, tool, setTool, rot, setRot, thumb, onDesigner
         const z = OBJECTS[tool.slice(6)].sized!;
         return ` Drag to size it: ${z.min[0]}–${z.max[0]} wide, ${z.min[1]}–${z.max[1]} deep (the front is the side it faces). Tap for ${OBJECTS[tool.slice(6)].w}×${OBJECTS[tool.slice(6)].h}.`;
       })()}</p>}
+    </>
+  );
+}
+
+/**
+ * (2026-09-26, owner) Groups: pick objects on the floor (tap, or drag a box), name and keep the layout, then build
+ * it again anywhere as a whole (copy and paste), turned with Rotate.
+ */
+function Groups({ host, tool, setTool }: { host: Host; tool: Tool; setTool: (t: Tool) => void }) {
+  const g = host.game, groups = g.state.groups ?? [], n = host.picked.length;
+  const [name, setName] = useState("");
+  const [, redraw] = useState(0);
+  const clear = () => { host.picked = []; host.markPicked(); redraw((k) => k + 1); };
+  const cost = (i: number) => groupPlacements(groups[i], 0, 0, 0).reduce((t, p) => t + priceOf(p, g.state).cost, 0);
+  return (
+    <>
+      <p className="muted" style={{ margin: "10px 0 6px" }}>Groups<small> · copy a layout and build it again</small></p>
+      <div className="grid">
+        <button className={`btn ${tool === "pick" ? "on" : ""}`} onClick={() => setTool(tool === "pick" ? "inspect" : "pick")}>New group<small>{n ? `${n} picked` : "pick objects on the floor"}</small></button>
+        {groups.map((bp, i) => (
+          <button key={i} className={`btn ${tool === `group:${i}` ? "on" : ""}`} onClick={() => { if (tool === "pick") clear(); setTool(tool === `group:${i}` ? "inspect" : `group:${i}`); }}>
+            {bp.name}<small>{bp.items.length} pieces · {money(cost(i))}</small>
+          </button>
+        ))}
+      </div>
+      {tool === "pick" && (
+        <div className="row" style={{ marginTop: 6 }}>
+          <input value={name} maxLength={30} placeholder={`Group ${groups.length + 1}`} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+          <button className="btn on" disabled={!n || groups.length >= MAX_GROUPS} onClick={() => {
+            if (g.dispatch({ type: "saveGroup", name, ids: host.picked })) return;
+            g.flushCommands();
+            clear(); setName(""); setTool(`group:${g.state.groups.length - 1}`);
+          }}>Save</button>
+          <button className="btn" disabled={!n} onClick={clear}>Clear</button>
+        </div>
+      )}
+      {tool.startsWith("group:") && groups[Number(tool.slice(6))] && (
+        <div className="row" style={{ marginTop: 6 }}>
+          <span className="muted small" style={{ flex: 1 }}>Every piece has to fit. Each is bought at its usual price.</span>
+          <button className="btn" onClick={() => { g.dispatch({ type: "dropGroup", i: Number(tool.slice(6)) }); g.flushCommands(); setTool("inspect"); }}>Delete group</button>
+        </div>
+      )}
     </>
   );
 }

@@ -5,7 +5,7 @@ import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 
 export interface MapState {
   w: number;
@@ -581,7 +581,14 @@ export interface GameState {
    */
   crowdWin: { month: Record<string, number>; hist: Record<string, number>[] };
   lowPolice: number;
+  /** (2026-09-26, owner) Saved groups of objects, rebuilt as a whole elsewhere (copy and paste). */
+  groups: Blueprint[];
 }
+
+/** One piece of a group: where it sits from the group's corner, and what it is (a design for slots, a size for amenities). */
+export interface BlueprintPiece { kind: string; dx: number; dy: number; rot: number; w?: number; h?: number; design?: string }
+/** (2026-09-26) A named group of objects kept to be built again as a whole; `w` × `h` is its bounding box. */
+export interface Blueprint { name: string; w: number; h: number; items: BlueprintPiece[] }
 
 /** (M11.2) One crowd's survey: visits and their scores, thoughts had, and themes enjoyed or disliked (by theme id; "none" for bad theming with no theme). */
 export interface SurveyRow { n: number; score: number; th: Record<string, number>; like: Record<string, number>; dislike: Record<string, number> }

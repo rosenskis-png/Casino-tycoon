@@ -1743,9 +1743,34 @@ function headInside(g: Game, a: Agent): boolean {
       if (d >= bd || m.terrain[i] !== T.DOOR || !g.walkable(i) || !canSee(g, here, i) || !g.pathsFor(a).reachable(here, i)) continue;
       bd = d; best = i;
     }
+  // (2026-09-26, owner: guests came in off the street and wandered the lot) Nothing in view: they still know the
+  // way to the building. The nearest door between the open air and indoors they can reach.
+  if (best < 0) {
+    const p = g.pathsFor(a);
+    for (const i of outerDoors(g)) {
+      const x = i % w, d = Math.abs(x - a.x) + Math.abs((i - x) / w - a.y);
+      if (d < bd && g.walkable(i) && p.reachable(here, i)) { bd = d; best = i; }
+    }
+  }
   if (best < 0) return false;
   go(a, best, "idle");
   return true;
+}
+
+/** Doors between the open air and indoors (rebuilt when the layout changes). */
+function outerDoors(g: Game): number[] {
+  if (g.outerDoors) return g.outerDoors;
+  const m = g.state.map, w = m.w, out: number[] = [];
+  for (let i = 0; i < m.terrain.length; i++) {
+    if (m.terrain[i] !== T.DOOR) continue;
+    let air = false, inside = false;
+    for (const j of [i - 1, i + 1, i - w, i + w]) {
+      if (j < 0 || j >= m.terrain.length || m.terrain[j] !== T.FLOOR) continue;
+      if (m.outdoor[j]) air = true; else inside = true;
+    }
+    if (air && inside) out.push(i);
+  }
+  return (g.outerDoors = out);
 }
 
 function guestTick(g: Game, a: Agent) {

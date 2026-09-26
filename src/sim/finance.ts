@@ -57,7 +57,11 @@ export function worth(g: Game): number {
 export const meterDebt = (g: Game) => { const h = houseMeters(g.state); return liability(h.meters, h.objects); };
 /** A ledger line's name: (M8.6) each sold design has its own. */
 export function ledgerLabel(g: Game, k: string): string {
-  if (k.startsWith("sale:")) { const rec = g.state.designs[k.slice(5)]; return `Sold: ${rec?.d.name ?? "a design"}`; }
+  // (2026-09-26, owner) Three lines per sold design: the price, the maker's cut here, the royalties from elsewhere.
+  const name = (id: string) => g.state.designs[id]?.d.name ?? "a design";
+  if (k.startsWith("sale:")) return `Sold: ${name(k.slice(5))}`;
+  if (k.startsWith("cut:")) return `Maker's cut: ${name(k.slice(4))}`;
+  if (k.startsWith("roy:")) return `Royalties: ${name(k.slice(4))}`;
   return LEDGER_LABELS[k] ?? k;
 }
 

@@ -2,7 +2,7 @@
 export { Game } from "./game";
 export type { CommandRecord } from "./game";
 export type { Command } from "./commands";
-export type { GameState, Agent, PlacedObject, NewsItem, NewsRef, GuestData, Ledger, Person, Ped, Incident, HouseRules, EnfJob } from "./state";
+export type { GameState, Blueprint, Agent, PlacedObject, NewsItem, NewsRef, GuestData, Ledger, Person, Ped, Incident, HouseRules, EnfJob } from "./state";
 export { SCHEMA_VERSION } from "./state";
 export type { SimEvent, NewsLevel } from "./events";
 export { serialize, loadState } from "./save";
@@ -12,7 +12,7 @@ export { UNREACHED } from "./paths";
 export { MAX_RADIUS } from "./fields";
 export { idx } from "./map";
 export { objSeats, objSize, objCells, objStaff, objFootprint, covers, dims, priceOf, sizeTier, seatCount, type Placed } from "./geometry";
-export { placement, landForSale, MOVE_COST } from "./build";
+export { placement, landForSale, MOVE_COST, blueprintOf, groupPlacements, MAX_GROUPS, MAX_GROUP_PIECES } from "./build";
 export { showPhase, tierOf, tierName, priceFor, purposeAt, stakeMult, gradeOf, servingCost } from "./amenities";
 export type { Gate } from "./state";
 export { LEDGER_LABELS, ledgerLabel, monthlyCosts, worth, meterDebt } from "./finance";
@@ -31,7 +31,7 @@ export { opinionsOf, gameKey, OPINION_MONTHS, type OpinionSummary } from "./opin
 export { huntEdge, topMeter, signDesign, collectHuntAt } from "./design";
 export { meterPull } from "./guests";
 export {
-  awareness, ageDays, marketVersion, fansOf, fanCount, wishes, saleBlocks, saleOf, installs, saleLine, marketFactor, MARKET, SALE_RULES, MAKERS,
+  awareness, ageDays, marketVersion, fansOf, fanCount, wishes, saleBlocks, saleOf, installs, saleLine, cutLine, royLine, SALE_UNITS, marketFactor, MARKET, SALE_RULES, MAKERS,
 } from "./design/market";
 export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";

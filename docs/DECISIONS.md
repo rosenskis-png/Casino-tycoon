@@ -2,6 +2,18 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Batch C: hands on the floor (owner)
+- **Pick up and set down** guests and staff from their cards; set down on any tile a person can stand on, inside or
+  out on the lot (owner: "anywhere"; the sidewalk is the passers-by's, not walkable for guests). Not while in an incident, held, or on an enforcement job; visitors can't be moved.
+- **Staff theft stays secret** (owner): the card shows skill, morale and wage, never honesty or thefts.
+- **Patrol area = ticked rooms** (owner), several allowed, for janitors, techs, guards and pit bosses; bars' servers
+  the same. Save schema 26 (a room tile becomes a list of them).
+- **No one-way doors** (owner): the problem was guests stuck where they're not meant to be. Rule instead: a guest
+  with no way out through doors they may use, but one through any unlocked door, takes it at once, free. Replaces
+  M6's "staff let them out after 90 s", which also cost a point of police standing; that cost is gone with it
+  (Claude's call: the owner's rule has no waiting, so there's no one to complain). Walls and locked doors still trap.
+- Test Floor numbers unchanged against `main` (no layout there strands anyone); speed the same.
+
 ## 2026-09-26 · Batch B built: games working right
 - **Progressives (owner):** the headless check was already done (see the entry below); the owner chose outside play:
   "progressive goes up by a good amount from outside players, unless it's a newly designed slot during this

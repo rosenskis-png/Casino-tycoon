@@ -221,6 +221,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const newDesignFor = () => newDesign("");
   const openTab = (id: TabId) => {
     play("click");
+    setLifted(null);
     setTab((t) => (t === id ? null : id));
     if (id !== "build") setTool("inspect");
   };

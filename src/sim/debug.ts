@@ -4,7 +4,7 @@
 import { OBJECTS } from "../data/objects";
 import { T } from "../data/terrain";
 import { CHANNELS } from "../data/fields";
-import { STAFF_ROLES } from "../data/staff";
+import { STAFF_ROLES, ZONED_ROLES } from "../data/staff";
 import { ENF, ENF_ACTIONS, LUCK_SHIFT } from "../data/cheats";
 import { luckConvert, luckRedraw, luckVoid } from "./cheats";
 import {
@@ -29,6 +29,7 @@ import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { SCENARIOS } from "../data/scenarios";
 import { MAX_PEDS } from "./street";
 import { TRAY } from "./staff";
+import { cantLift } from "./hands";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
 import { spawnGroup, groupSize, isGone } from "./guests";
 import { INCIDENTS } from "../data/incidents";
@@ -376,9 +377,16 @@ function fiddle(g: Game) {
       if (servers.length) g.dispatch({ type: "assignServer", id: r.pick(servers).id, bar });
     }
   }
-  else {
+  else if (roll < 0.98) {
     const staff = g.state.agents.filter((a) => STAFF_ROLES[a.role]);
     if (staff.length) g.dispatch({ type: "fire", id: r.pick(staff).id });
+  }
+  else {
+    // (Batch C) Pick someone up and set them down anywhere (rejected where nobody can stand), and keep workers to rooms.
+    const who = g.state.agents.filter((a) => a.role === "guest" || STAFF_ROLES[a.role]);
+    if (who.length) g.dispatch({ type: "placeAgent", id: r.pick(who).id, tile: y * w + x });
+    const zoned = g.state.agents.filter((a) => a.st && ZONED_ROLES.includes(a.role));
+    if (zoned.length) g.dispatch({ type: "setZone", id: r.pick(zoned).id, tiles: r.chance(0.3) ? [] : [y * w + x, r.int(0, w * h - 1)] });
   }
 }
 
@@ -423,8 +431,48 @@ export function exitChecks(): string[] {
   return p;
 }
 
+/**
+ * (Batch C) A guest set down in a room whose every door is staff only finds their way out through one, then goes
+ * back to their own doors; walled in, they stay (exitChecks).
+ */
+export function strayChecks(): string[] {
+  const p: string[] = [];
+  const g = Game.create("horseshoe", 5);
+  g.dispatch({ type: "spawnGuests", n: 40 });
+  for (let t = 0; t < 200; t++) g.step();
+  const s = g.state, m = s.map, w = m.w, ents = new Set(m.entrances);
+  // The smallest indoor room with doors, none of them an exit.
+  const doorsOf = new Map<number, number[]>();
+  for (let i = 0; i < m.terrain.length; i++) {
+    if (m.terrain[i] !== T.DOOR || ents.has(i)) continue;
+    for (const j of [i - 1, i + 1, i - w, i + w]) {
+      const rz = g.rooms.roomOf[j];
+      if (rz >= 0 && g.rooms.rooms[rz].indoor && !(doorsOf.get(rz) ?? []).includes(i)) doorsOf.set(rz, [...(doorsOf.get(rz) ?? []), i]);
+    }
+  }
+  let room = -1;
+  for (const [rz] of doorsOf) if (!m.entrances.some((e) => g.rooms.roomOf[e] === rz) && (room < 0 || g.rooms.rooms[rz].size < g.rooms.rooms[room].size)) room = rz;
+  if (room < 0) return ["stray: no room with doors to test on"];
+  for (const d of doorsOf.get(room)!) g.dispatch({ type: "setDoor", tile: d, rule: DOOR_STATE.STAFF });
+  let spot = -1;
+  for (let i = 0; i < m.terrain.length && spot < 0; i++) if (g.rooms.roomOf[i] === room && g.walkable(i)) spot = i;
+  const a = s.agents.find((b) => b.role === "guest" && !b.g!.minor && !b.g!.why && cantLift(g, b) === null);
+  if (spot < 0 || !a) return ["stray: nowhere to set a guest down"];
+  const err = g.dispatch({ type: "placeAgent", id: a.id, tile: spot });
+  g.step();
+  if (err || g.rooms.roomOf[a.y * w + a.x] !== room) return [`stray: the guest wasn't set down (${err ?? "elsewhere"})`];
+  let out = false;
+  for (let t = 0; t < 3000 && !out; t++) { g.step(); out = !s.agents.includes(a) || g.rooms.roomOf[a.y * w + a.x] !== room; }
+  if (!out) p.push("stray: a guest set down behind staff-only doors never got out");
+  else if (s.agents.includes(a) && !a.g!.recent.includes("slipOut")) p.push("stray: a guest got out from behind staff-only doors without noticing they were somewhere they shouldn't be");
+  for (let t = 0; t < 300; t++) g.step();
+  if (s.agents.includes(a) && a.g!.esc && !a.g!.why) p.push("stray: a guest who got out still walks through staff-only doors");
+  p.push(...checkInvariants(g).map((q) => `stray: ${q}`));
+  return p;
+}
+
 export function smoke(opts: { days: number; seeds: number[]; scenario?: string }): { ok: boolean; problems: string[] } {
-  const problems: string[] = [...mathChecks(), ...yoursMathChecks(), ...yoursPlayChecks(), ...exitChecks(), ...generatorChecks()];
+  const problems: string[] = [...mathChecks(), ...yoursMathChecks(), ...yoursPlayChecks(), ...exitChecks(), ...strayChecks(), ...generatorChecks()];
   const sc = opts.scenario ?? "horseshoe";
   for (const seed of opts.seeds) {
     const g = run(sc, seed, opts.days, (g, d) => {

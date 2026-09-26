@@ -290,7 +290,7 @@ export function StaffPanel({ host }: { host: Host }) {
       })}
       <p className="muted" style={{ margin: "8px 0" }}>Pay is set per job, against the going rate. Better pay buys more skilled, happier staff, and fewer who steal. Overwork and trouble on the floor wear morale down; miserable staff quit.</p>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
-      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to one room. Tap a job's color to change its uniform.</p>
+      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to some rooms, or to pick them up and set them down elsewhere. Tap a job's color to change its uniform.</p>
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
@@ -1250,7 +1250,7 @@ function DoorCard({ g, tile }: { g: Game; tile: number }) {
       <p className="muted" style={{ marginTop: 6 }}>
         {rule === DOOR_STATE.CARD ? `${hasClub(g.state) ? "Club members" : "Card holders"} are guests who've been here before; their companions come in with them. ` : ""}
         {rule !== DOOR_STATE.OPEN && rule !== DOOR_STATE.ROLE ? "Staff, police and paramedics always pass. " : ""}
-        Guests who can't pass go around, or can't get there at all. Anyone trapped gets let out by staff, eventually, and the police hear about it.
+        Guests who can't pass go around, or can't get there at all. A guest stuck where their doors won't let them out goes through one anyway (never a locked one).
       </p>
     </>
   );

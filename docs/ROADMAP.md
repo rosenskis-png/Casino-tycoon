@@ -186,9 +186,12 @@ any entrance to the building's door; drag to place a row; groups (copy and paste
 - A one-line game description on every slot and table card.
 - Sound: a conversation murmur replaces the whoosh; a new 16-bar title theme.
 
-**Batch C · Hands on the floor ☐**
-- Tap a staff member for their card: pick up and place, set patrol area, and the rest of their controls.
-- Pick up and drop guests (RCT style). One-way doors with an arrow. Bar servers assigned to several rooms.
+**Batch C · Hands on the floor ☑** (built 2026-09-26, schema 26, see DECISIONS)
+- Staff card: pick up and set down, the rooms they work (ticked, several allowed, tinted on the floor), Fire.
+- Pick up and drop guests anywhere (RCT style).
+- Instead of one-way doors (owner): a guest stuck where their doors won't let them out goes through any door but a
+  locked one, free, and back to normal once out. Replaces the 90-second let-out and its police cost.
+- Bar servers work any set of rooms.
 
 **Batch D · Decor and how nice the place is ☐**
 - Large decor (2×2 to 3×3, wider reach) and centerpieces (4×4 and up, very expensive, draw from the street / whole

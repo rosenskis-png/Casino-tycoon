@@ -11,7 +11,7 @@ import type { Agent, BarPolicy, GuestData, PlacedObject } from "./state";
 import { rng } from "./rng";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
-import { greed, steal } from "./crew";
+import { greed, oneTilePerRoom, steal } from "./crew";
 import { think } from "./guests";
 import { gradeOf, priceTolerance, servingCost } from "./amenities";
 import { gradeWorth } from "../data/grades";
@@ -19,7 +19,7 @@ import { gradeWorth } from "../data/grades";
 declare module "./commands" {
   interface CommandTypes {
     /** Drink policy for one bar (and its servers). */
-    setBar: { id: number; price?: number; comp?: number; strength?: number; area?: number };
+    setBar: { id: number; price?: number; comp?: number; strength?: number; area?: number[] };
     /** Put a drink server on a bar. */
     assignServer: { id: number; bar: number };
   }
@@ -34,7 +34,7 @@ export const INTOX_CAP = 1.3;
 export const STRENGTHS = [0.6, 1, 1.4];
 /** (M12) How much each comped drink raises a guest's intended intoxication, × their crowd's taste for luxury. */
 export const COMP_NUDGE = 0.1;
-export const DEFAULT_BAR: BarPolicy = { price: 1, comp: 0, strength: 1, area: -1 };
+export const DEFAULT_BAR: Readonly<BarPolicy> = { price: 1, comp: 0, strength: 1, area: [] };
 /** A guest down to this much of their drink will order the next one ("another?"); the last of the old one goes down when it arrives. */
 export const NEXT_AT = 0.25;
 /** Holding a drink with more than a few sips left: not ordering another yet. */
@@ -140,16 +140,16 @@ const commands: CommandTable<"setBar" | "assignServer"> = {
       if (c.price !== undefined && !(c.price >= 0 && c.price <= 3)) return "Price must be 0–3×";
       if (c.comp !== undefined && !(c.comp >= 0 && c.comp <= 1)) return "Comps must be 0–100%";
       if (c.strength !== undefined && !STRENGTHS.includes(c.strength)) return "Unknown strength";
-      if (c.area !== undefined && c.area !== -1 && !(c.area >= 0 && c.area < g.state.map.terrain.length)) return "Unknown area";
+      if (c.area !== undefined && (!Array.isArray(c.area) || c.area.some((t) => !(Number.isInteger(t) && t >= 0 && t < g.state.map.terrain.length) || g.rooms.roomOf[t] < 0))) return "Unknown area";
       return null;
     },
     apply(g, c) {
       const o = g.objById.get(c.id)!;
-      const pol = (o.bar ??= { ...DEFAULT_BAR });
+      const pol = (o.bar ??= { ...DEFAULT_BAR, area: [] });
       if (c.price !== undefined) pol.price = c.price;
       if (c.comp !== undefined) pol.comp = c.comp;
       if (c.strength !== undefined) pol.strength = c.strength;
-      if (c.area !== undefined) pol.area = c.area;
+      if (c.area !== undefined) pol.area = oneTilePerRoom(g, c.area);
     },
   },
   assignServer: {

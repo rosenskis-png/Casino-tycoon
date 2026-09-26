@@ -31,7 +31,8 @@ Same priority order as M2 (leave → restroom → bar → cage → machine → b
 
 ## Leaving and being trapped
 - An exit in view, or one a regular knows, means walking straight there. Otherwise they head roughly back toward the door they came in by, using signs, and think "I can't find the way out" after 3 hops. After 8 hops lost they find the way anyway ("Finally found the exit.", annoyance). A guest with a walkable path always gets out.
-- No walkable path to any exit means **trapped**: "I'm trapped in here!", annoyance every look, and they stay and browse what they can reach. Their needs keep rising and their mood keeps falling. They leave once any exit is reachable again. Police and reputation consequences arrive with M4.
+- (Batch C, owner) No path out through doors they may use, but one past a door they normally can't (anything but locked): they take it at once ("I'll just slip out this way."), free, heading for the nearest exit, and go back to their own doors as soon as those let them out again (docs/spec/construction.md). Checked by `strayChecks`.
+- No walkable path to any exit at all (walls, locked doors) means **trapped**: "I'm trapped in here!", annoyance every look, and they stay and browse what they can reach. Their needs keep rising and their mood keeps falling. They leave once any exit is reachable again.
 - Cash-out on the way home uses the same search for the cage, and a guest who gives up leaves without cashing out.
 - `npm run check` verifies both guarantees (`exitChecks` in `src/sim/debug.ts`): with every exit walled, nobody leaves and guests notice they're trapped; once the exits reopen, everyone gets out.
 

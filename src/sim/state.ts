@@ -5,7 +5,7 @@ import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 25;
+export const SCHEMA_VERSION = 26;
 
 export interface MapState {
   w: number;
@@ -88,8 +88,8 @@ export interface BarPolicy {
   comp: number;
   /** Drink strength multiplier (0.6 light, 1 standard, 1.4 strong). */
   strength: number;
-  /** A tile of the room its servers work, or -1 for anywhere. */
-  area: number;
+  /** (Batch C) A tile of each room its servers work; empty for anywhere. */
+  area: number[];
 }
 
 export type Needs = { bladder: number; hunger: number; thirst: number; fatigue: number };
@@ -376,8 +376,8 @@ export interface StaffData {
   /** Beats spent working today, and beats counted. */
   busy: number;
   beats: number;
-  /** A tile of the room they're kept to, or -1 for anywhere. */
-  zone: number;
+  /** (Batch C) A tile of each room they're kept to; empty for anywhere. */
+  zone: number[];
 }
 
 /** A person on the map: guests and staff share one movement model on distance fields. */

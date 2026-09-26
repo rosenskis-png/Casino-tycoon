@@ -21,7 +21,7 @@ import { go, isWalking, nearbyTile } from "./agents";
 import { objSeats, objSize } from "./geometry";
 import { drawPay, isTable, limitsOf, settle, tableDefOf, tiltBet, wantBet, type Wager } from "./gaming";
 import { THEFT } from "../data/staff";
-import { greed, inZone, skillOf, steal } from "./crew";
+import { greed, inZone, skillOf, steal, zoned } from "./crew";
 import { hash01, sharedPay, wagerPay } from "./cheats";
 import { stakeMult, purposeOf } from "./amenities";
 import { engagement, seatHolders, showOff } from "./guests";
@@ -126,7 +126,7 @@ function pitTick(g: Game, a: Agent) {
   }
   const r = rng(g.state, "staff");
   // M9: a pit boss kept to a room watches only the tables in it.
-  const w = g.state.map.w, mine = a.st && a.st.zone >= 0 ? g.tables.filter((t) => inZone(g, a, t.y * w + t.x)) : g.tables;
+  const w = g.state.map.w, mine = zoned(a) ? g.tables.filter((t) => inZone(g, a, t.y * w + t.x)) : g.tables;
   // M11: of two tables, the one fewer other pit bosses are watching.
   let o = mine.length ? mine[r.int(0, mine.length - 1)] : null;
   if (mine.length > 1) {

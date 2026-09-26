@@ -47,11 +47,14 @@ Tap a door to open its card. Entrances (street and elevator) can't be changed.
   door?!"). A guest who can't pay can't pass.
 - **Routing:** every rule is real pathfinding. People who can't pass a door route around it or, when there's no
   way around, can't get there. Guests search and give up on needs as before (docs/spec/navigation.md).
-- **Trapped guests:** someone with no way out they're allowed through (a fee they can't pay on the only exit, a
-  dress-code door that isn't theirs) is trapped, and angry. After 90 seconds staff let them out, if any route out
-  exists past unlocked doors: from then on they pass any door except locked ones, without paying. Each guest let
-  out this way costs 1 point of police standing (a complaint). Walls are walls: behind locked doors or walls
-  they stay trapped, as before (docs/spec/navigation.md).
+- **Stuck guests (Batch C, owner; replaces M6's "staff let them out after 90 s", which cost police standing):**
+  a guest checks for a way out through doors they may use; if there's none, they check again through every door
+  but locked ones (staff only, card holders, a dress code or job that isn't theirs, a fee they can't pay). If that
+  finds one, they go that way at once, free, thinking "I'll just slip out this way." A guest who meant to leave keeps
+  that pass until they're out; one who was only somewhere they shouldn't be (set down there, or the way they came
+  closed) drops it as soon as their own doors let them out again, and carries on with the visit. This fires only
+  when they're stuck: doors still route everyone else normally. Walls are walls: behind locked doors or walls they
+  stay trapped, as before (docs/spec/navigation.md).
 - Whoever is standing in a doorway can always step off it (a guest who paid the fee and can't afford it again
   isn't stuck in the door).
 - **Sight:** any door that isn't Open blocks sight, like a closed door today.

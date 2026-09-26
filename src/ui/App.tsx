@@ -21,7 +21,7 @@ import { AUTO_KEY, load, newGame, save } from "./saves";
 import { noticeOn } from "./notices";
 import { newDesign } from "../data/designer";
 import { placeTool } from "./panels";
-import { Letter, AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, type Selection } from "./panels";
+import { Letter, AuthoritiesPanel, BuildPanel, FinancePanel, PoliciesPanel, ResearchPanel, GamePanel, GoalsPanel, GuestsPanel, Inspector, LogSheet, Placeholder, StaffPanel, selArea, type Selection } from "./panels";
 
 const TABS = [
   { id: "build", icon: "🔨", label: "Build" },
@@ -55,6 +55,10 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const rotRef = useRef(rot);
   rotRef.current = rot;
   const [sel, setSel] = useState<Selection>(null);
+  /** (Batch C) Someone picked up: the next tap on the floor sets them down. */
+  const [lifted, setLifted] = useState<number | null>(null);
+  const liftRef = useRef<number | null>(null);
+  liftRef.current = lifted;
   const [showLog, setShowLog] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   /** (M12) A new game's letter (the scenario's intro), shown until dismissed. */
@@ -124,6 +128,14 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
       picked: () => setPickN((n) => n + 1),
       tap: (tile, fx, fy) => {
         const g = h.game;
+        if (liftRef.current !== null) {
+          const id = liftRef.current;
+          if (tile < 0 || !g.walkable(tile)) { play("deny"); return; }
+          g.dispatch({ type: "placeAgent", id, tile });
+          setLifted(null);
+          if (g.state.agents.some((a) => a.id === id)) setSel({ kind: "agent", id });
+          return;
+        }
         let best: number | null = null, bd = 0.7;
         for (const a of g.state.agents) {
           if (a.hidden) continue;
@@ -171,6 +183,8 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   if (host) {
     host.drawOptions.selectedTile = sel?.kind === "tile" ? sel.tile : undefined;
     host.drawOptions.selectedAgent = sel?.kind === "agent" ? sel.id : undefined;
+    host.drawOptions.liftedAgent = lifted ?? undefined;
+    host.drawOptions.areaRooms = selArea(host.game, sel);
   }
 
   const g = host?.game;
@@ -207,6 +221,7 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
   const newDesignFor = () => newDesign("");
   const openTab = (id: TabId) => {
     play("click");
+    setLifted(null);
     setTab((t) => (t === id ? null : id));
     if (id !== "build") setTool("inspect");
   };
@@ -290,7 +305,13 @@ export function App({ initial, bootNote }: { initial: Game; bootNote?: TickerIte
         )}
       </div>
       {host && showLog && <LogSheet game={host.game} onClose={() => setShowLog(false)} onGo={focus} />}
-      {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} onMove={(id, r) => { setRot(r); setTool(`move:${id}`); }} />}
+      {host && !showLog && !playing && sel && <Inspector host={host} sel={sel} onClose={() => setSel(null)} onMove={(id, r) => { setRot(r); setTool(`move:${id}`); }} onLift={(id) => { setSel(null); setTab(null); setTool("inspect"); setLifted(id); }} />}
+      {host && lifted !== null && (
+        <div className="sheet lift-bar">
+          <span>Tap where to set them down.</span>
+          <button className="btn" onClick={() => setLifted(null)}>Put back</button>
+        </div>
+      )}
       {host && !showLog && !playing && !designing && !sel && tab && (
         <div className="sheet">
           <h3>{TABS.find((t) => t.id === tab)!.label}<button className="x" onClick={() => { setTab(null); setTool("inspect"); }}>✕</button></h3>

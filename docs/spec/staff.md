@@ -43,7 +43,24 @@
 - **(M11.1) A big organization's problem (owner):** every theft chance × (staff − 8) / (40 − 8), clamped 0–1, counting every worker plus one per bar and cage crew. A family-sized casino has no theft; a big one has it at full strength.
 
 ## Patrol zones
-Janitors, slot techs, guards and pit bosses can be kept to one room (the staff card; "Anywhere" by default). They look for work and patrol only there; guards still run to trouble anywhere. Drink servers keep their bar's service area (docs/spec/guests.md).
+Janitors, slot techs, guards and pit bosses can be kept to any set of rooms (Batch C, owner: tick them on the staff
+card; none ticked means anywhere). The card tints their rooms on the floor. They look for work and patrol only there,
+and one outside them walks back to the nearest; guards still run to trouble anywhere. A room since walled over drops
+out of the set (all gone: anywhere). Drink servers keep their bar's rooms (docs/spec/guests.md).
+
+## Pick up and set down (Batch C, owner)
+- Tap a guest or a worker, then **Pick up**: they disappear from the floor and the next tap sets them down on any tile
+  a person can stand on (floor or grounds anywhere on the lot, an unlocked door; not walls, objects or the sidewalk), RollerCoaster Tycoon style. "Put back"
+  cancels.
+- A guest drops what they were doing (their seat, the line, the stall), thinks "Whoa! Put me down!" (+2 annoyance) and
+  carries on from where they land. Set down behind doors they can't use, they find their own way out
+  (docs/spec/construction.md).
+- A worker drops the job in hand: a server's tray of orders, a hand pay on the way (another payer is sent), a table
+  they were dealing (they walk back).
+- Not while someone is in an incident, held by security or part of an enforcement job; police, paramedics,
+  inspectors and escorts aren't the player's to move.
+- The staff card shows the job, what they're doing, skill, morale and wage, the rooms they work, Pick up and Fire.
+  Honesty and theft stay hidden (the monthly count shows the leak, not the thief).
 
 ## Dealers come with the tables (M11, owner)
 - A table's price includes its dealers ($400 per dealer spot (M11.2; was $800), added to each table's cost; craps has two) and there are no wages. Dealers aren't hired, paid or given a pay level (skill is their knack alone); the Staff tab lists them as "come with the tables".

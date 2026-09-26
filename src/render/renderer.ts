@@ -48,6 +48,9 @@ export interface DrawOptions {
   marks?: number[] | null;
   selectedTile?: number;
   selectedAgent?: number;
+  /** (Batch C) Someone picked up (not drawn until set down), and the rooms a selected worker or bar is kept to (a tile of each), tinted. */
+  liftedAgent?: number;
+  areaRooms?: number[] | null;
 }
 export interface DrawStats { agentsDrawn: number; chunksRedrawn: number }
 
@@ -902,7 +905,7 @@ export class Renderer {
       });
     }
     for (const a of s.agents) {
-      if (a.hidden) continue;
+      if (a.hidden || a.id === opt.liftedAgent) continue;
       const moving = a.nx !== a.x || a.ny !== a.y;
       const p = moving ? Math.min(1, (a.t + alpha) / a.steps) : 0;
       let fx = a.x + (a.nx - a.x) * p, fy = a.y + (a.ny - a.y) * p;
@@ -980,6 +983,11 @@ export class Renderer {
         ctx.strokeStyle = "rgba(229,72,77,0.9)";
         for (const i of opt.ghost.badSeats ?? []) ctx.strokeRect(ox + (i % w) * tp + 2, oy + Math.floor(i / w) * tp + 2, tp - 4, tp - 4);
       }
+    }
+    if (opt.areaRooms?.length) {
+      const roomOf = g.rooms.roomOf, want = new Set(opt.areaRooms.map((t) => roomOf[t]).filter((r) => r >= 0));
+      ctx.fillStyle = "rgba(125,200,255,0.16)";
+      if (want.size) for (let i = 0; i < roomOf.length; i++) if (want.has(roomOf[i])) ctx.fillRect(ox + (i % w) * tp, oy + Math.floor(i / w) * tp, tp, tp);
     }
     if (opt.marks?.length) {
       ctx.fillStyle = "rgba(242,210,122,0.28)";

@@ -29,6 +29,7 @@ import {
   type Agent, type Ledger, type HouseRules, type NewsRef,
   cantPlay, yourFam, uniformOf, bribeChance, bribePrice, MOVE_COST, groupPlacements, MAX_GROUPS,
   NEWS_CATS,
+  cantLift,
 } from "../sim";
 import { play } from "../platform/audio";
 import { SoundSettings } from "./title";
@@ -289,7 +290,7 @@ export function StaffPanel({ host }: { host: Host }) {
       })}
       <p className="muted" style={{ margin: "8px 0" }}>Pay is set per job, against the going rate. Better pay buys more skilled, happier staff, and fewer who steal. Overwork and trouble on the floor wear morale down; miserable staff quit.</p>
       <p className="muted" style={{ margin: "8px 0" }}>{Object.values(STAFF_ROLES).map((r) => `${r.name}: ${r.desc}`).join(" ")}</p>
-      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to one room. Tap a job's color to change its uniform.</p>
+      <p className="muted" style={{ margin: "8px 0" }}>Drink prices, comps, strength and where servers work are set per bar: tap a bar. Table rules and limits are set per table: tap a table. Tap a worker to keep them to some rooms, or to pick them up and set them down elsewhere. Tap a job's color to change its uniform.</p>
       {staff.length === 0 && <p className="muted">Nobody on staff.</p>}
       {staff.map((a) => (
         <div className="row" key={a.id} style={{ alignItems: "center" }}>
@@ -301,18 +302,30 @@ export function StaffPanel({ host }: { host: Host }) {
   );
 }
 
-/** The room a worker is kept to (janitors, techs, guards, pit bosses). */
+/** The rooms a worker is kept to (janitors, techs, guards, pit bosses). */
 function StaffZone({ g, a }: { g: Game; a: Agent }) {
   if (!ZONED_ROLES.includes(a.role) || !a.st) return null;
-  const rooms = roomChoices(g), z = a.st.zone, zr = z >= 0 ? g.rooms.roomOf[z] : -1;
-  const cur = rooms.find((r) => g.rooms.roomOf[r.tile] === zr)?.tile ?? -1;
+  return <RoomTicks g={g} label="Works in" tiles={a.st.zone} onChange={(tiles) => g.dispatch({ type: "setZone", id: a.id, tiles })} />;
+}
+
+/** (Batch C) Rooms ticked from a list (a tile of each); none ticked means anywhere. */
+function RoomTicks({ g, label, tiles, onChange }: { g: Game; label: string; tiles: number[]; onChange: (tiles: number[]) => void }) {
+  const rooms = roomChoices(g), roomOf = g.rooms.roomOf;
+  const on = new Set(tiles.map((t) => roomOf[t]).filter((rz) => rz >= 0));
+  const toggle = (tile: number, yes: boolean) => {
+    const rest = tiles.filter((t) => roomOf[t] >= 0 && roomOf[t] !== roomOf[tile]);
+    onChange(yes ? [...rest, tile] : rest);
+  };
   return (
-    <div className="row">
-      <span className="muted">Works in</span>
-      <select value={cur} onChange={(e) => g.dispatch({ type: "setZone", id: a.id, tile: Number(e.target.value) })}>
-        <option value={-1}>Anywhere</option>
-        {rooms.map((r) => <option key={r.tile} value={r.tile}>{r.name}</option>)}
-      </select>
+    <div style={{ margin: "6px 0" }}>
+      <span className="muted">{label}: {on.size ? `${on.size} room${on.size === 1 ? "" : "s"}` : "anywhere"}</span>
+      {rooms.length ? (
+        <div className="row" style={{ flexWrap: "wrap", gap: "4px 12px" }}>
+          {rooms.map((r) => (
+            <label key={r.tile}><input type="checkbox" checked={on.has(roomOf[r.tile])} onChange={(e) => toggle(r.tile, e.target.checked)} /> {r.name}</label>
+          ))}
+        </div>
+      ) : <div><small className="muted">No rooms yet: build walls to make some.</small></div>}
     </div>
   );
 }
@@ -353,10 +366,7 @@ function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
   const o = g.objById.get(id);
   if (!o?.bar) return null;
   const d = o.bar;
-  const set = (c: { price?: number; comp?: number; strength?: number; area?: number }) => g.dispatch({ type: "setBar", id, ...c });
-  const rooms = roomChoices(g);
-  const areaRoom = d.area >= 0 ? g.rooms.roomOf[d.area] : -1;
-  const cur = rooms.find((r) => g.rooms.roomOf[r.tile] === areaRoom)?.tile ?? -1;
+  const set = (c: { price?: number; comp?: number; strength?: number; area?: number[] }) => g.dispatch({ type: "setBar", id, ...c });
   const servers = g.state.agents.filter((a) => a.role === "server" && a.bar === id).length;
   return (
     <>
@@ -373,14 +383,8 @@ function BarPolicyEditor({ g, id }: { g: Game; id: number }) {
             {STRENGTHS.map((v, k) => <option key={v} value={v}>{STRENGTH_NAMES[k]}</option>)}
           </select>
         </span>
-        <b>Servers work</b>
-        <span>
-          <select value={cur} onChange={(e) => set({ area: Number(e.target.value) })}>
-            <option value={-1}>Anywhere</option>
-            {rooms.map((r) => <option key={r.tile} value={r.tile}>{r.name}</option>)}
-          </select>
-        </span>
       </div>
+      <RoomTicks g={g} label="Servers work" tiles={d.area} onChange={(area) => set({ area })} />
     </>
   );
 }
@@ -810,7 +814,7 @@ export function LogSheet({ game, onClose, onGo }: { game: Game; onClose: () => v
 
 // ---------------------------------------------------------------------------------------------------------
 
-function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: () => void }) {
+function AgentInspector({ host, a, onClose, onLift }: { host: Host; a: Agent; onClose: () => void; onLift?: (id: number) => void }) {
   const g = host.game;
   if (a.role === "officer" || a.role === "medic" || a.role === "inspector" || a.role === "escort") {
     return (
@@ -834,7 +838,7 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
         {a.st && <p className="muted">{skillWord(skillOf(g, a))} at the job · {moraleWord(a.st.morale)} (morale {Math.round(a.st.morale)}) · {money(wageFor(g, a.role))}/mo</p>}
         <ServerBar g={g} a={a} />
         <StaffZone g={g} a={a} />
-        <div className="row"><button className="btn danger" onClick={() => { g.dispatch({ type: "fire", id: a.id }); onClose(); }}>Fire</button></div>
+        <div className="row"><LiftButton g={g} a={a} onLift={onLift} /><button className="btn danger" onClick={() => { g.dispatch({ type: "fire", id: a.id }); onClose(); }}>Fire</button></div>
       </div>
     );
   }
@@ -859,6 +863,7 @@ function AgentInspector({ host, a, onClose }: { host: Host; a: Agent; onClose: (
       ))}
       <SuspicionTools g={g} a={a} />
       <MarkAndAct g={g} a={a} />
+      <div className="row"><LiftButton g={g} a={a} onLift={onLift} /></div>
       {host.debug && <GuestDebug g={g} a={a} />}
     </div>
   );
@@ -1073,14 +1078,33 @@ function TypeBreakdown({ g, id }: { g: Game; id: number }) {
   );
 }
 
-export function Inspector({ host, sel, onClose, onMove }: { host: Host; sel: NonNullable<Selection>; onClose: () => void; onMove?: (id: number, rot: number) => void }) {
+/** (Batch C) The rooms to tint for what's selected: a worker's rooms, a server's bar's, or a bar's. */
+export function selArea(g: Game, sel: Selection): number[] | null {
+  if (!sel) return null;
+  if (sel.kind === "agent") {
+    const a = g.state.agents.find((b) => b.id === sel.id);
+    if (a?.role === "server") return g.objById.get(a.bar ?? -1)?.bar?.area ?? null;
+    return a?.st?.zone ?? null;
+  }
+  const w = g.state.map.w, x = sel.tile % w, y = Math.floor(sel.tile / w);
+  return g.state.objects.find((o) => o.bar && covers(o, x, y))?.bar?.area ?? null;
+}
+
+/** (Batch C) Pick someone up to set them down elsewhere (or why not right now). */
+function LiftButton({ g, a, onLift }: { g: Game; a: Agent; onLift?: (id: number) => void }) {
+  if (!onLift) return null;
+  const why = cantLift(g, a);
+  return <button className="btn" disabled={!!why} onClick={() => onLift(a.id)}>Pick up{why && <small>{why}</small>}</button>;
+}
+
+export function Inspector({ host, sel, onClose, onMove, onLift }: { host: Host; sel: NonNullable<Selection>; onClose: () => void; onMove?: (id: number, rot: number) => void; onLift?: (id: number) => void }) {
   const g = host.game;
   const s = g.state;
   const w = s.map.w;
   if (sel.kind === "agent") {
     const a = s.agents.find((a) => a.id === sel.id);
     if (!a) return <div className="sheet"><h3>Gone<button className="x" onClick={onClose}>✕</button></h3><p className="muted">They've left.</p></div>;
-    return <AgentInspector host={host} a={a} onClose={onClose} />;
+    return <AgentInspector host={host} a={a} onClose={onClose} onLift={onLift} />;
   }
   const i = sel.tile;
   const x = i % w, y = Math.floor(i / w);
@@ -1226,7 +1250,7 @@ function DoorCard({ g, tile }: { g: Game; tile: number }) {
       <p className="muted" style={{ marginTop: 6 }}>
         {rule === DOOR_STATE.CARD ? `${hasClub(g.state) ? "Club members" : "Card holders"} are guests who've been here before; their companions come in with them. ` : ""}
         {rule !== DOOR_STATE.OPEN && rule !== DOOR_STATE.ROLE ? "Staff, police and paramedics always pass. " : ""}
-        Guests who can't pass go around, or can't get there at all. Anyone trapped gets let out by staff, eventually, and the police hear about it.
+        Guests who can't pass go around, or can't get there at all. A guest stuck where their doors won't let them out goes through one anyway (never a locked one).
       </p>
     </>
   );

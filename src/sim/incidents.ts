@@ -21,7 +21,7 @@ import { companions, depart, release, sendHome, think, THOUGHT_DAYS } from "./gu
 import { cutoff, handsFull, serveDrink, DRINK_PRICE } from "./drinks";
 import { post } from "./finance";
 import { scaled } from "./bank";
-import { inZone, skillOf } from "./crew";
+import { inZone, skillOf, zoned, zoneHome } from "./crew";
 import { fmtMoney, newsFor } from "./news";
 import { deterOf } from "./cheats";
 import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
@@ -443,10 +443,9 @@ export function leaveFloor(g: Game, a: Agent) {
 export function patrol(g: Game, a: Agent, r: Rng) {
   const pts = g.state.wanderPoints;
   // M9: a guard kept to a room patrols there (and still runs to trouble anywhere).
-  const zone = a.st?.zone ?? -1;
-  if (zone >= 0) {
+  if (zoned(a)) {
     const w = g.state.map.w;
-    if (!inZone(g, a, a.y * w + a.x)) { if (g.walkable(zone)) go(a, zone, "idle"); return; }
+    if (!inZone(g, a, a.y * w + a.x)) { const home = zoneHome(g, a); if (home >= 0) go(a, home, "idle"); return; }
     const t = spreadTile(g, a, "police", a.x, a.y, 6, (q) => inZone(g, a, q));
     if (t >= 0) go(a, t, "idle");
     return;

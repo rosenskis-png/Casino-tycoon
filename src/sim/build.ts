@@ -385,7 +385,7 @@ export function newObject(id: number, kind: string, x: number, y: number, rot: n
   if (def?.sized) { o.w = w ?? def.w; o.h = h ?? def.h; }
   if (def?.priceRange) o.price = def.serves === "hunger" ? 1 : def.price ?? 0;
   // Bars carry their own drink policy (docs/spec/guests.md §Drinks): standard price, no comps, standard strength, anywhere.
-  if (OBJECTS[kind]?.serves === "thirst") o.bar = { price: 1, comp: 0, strength: 1, area: -1 };
+  if (OBJECTS[kind]?.serves === "thirst") o.bar = { price: 1, comp: 0, strength: 1, area: [] };
   return o;
 }
 

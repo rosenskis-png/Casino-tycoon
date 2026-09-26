@@ -13,7 +13,18 @@ parcels (below; themes in docs/spec/themes.md).
   from a room to the lot makes that room outdoors until it's closed again. Doors count as closed.
 - **Entrance** (Build, $250 a tile; M11.2 halved every build price, docs/spec/economy.md): a new way in from the street on owned outdoor ground beside the sidewalk.
   Passers-by glance in there and regulars may use it. Entrances can't be removed. They draw as a paved apron.
+- **From the entrance to the door (2026-09-26, owner):** someone who steps onto the lot heads for the nearest door
+  in view; if none is in view they still walk to the nearest door between the open air and indoors that they may
+  pass (people know the way into a building from its lot), instead of wandering the lot. The same holds for anyone
+  who drifted outside and wants back in.
 - The hotel elevator, water, the sidewalk and unowned land stay fixed.
+- **Rows (2026-09-26, owner):** with a fixed-size object picked, a tap places one and a drag lays a row of copies
+  along the longer direction, spaced by the object's footprint and seats (up to 40). Pieces that fit show green,
+  the rest red; only the green ones are bought, in order, until cash runs out.
+- **Groups (2026-09-26, owner):** Build → New group, then tap objects (or drag a box around them), name it and
+  Save. The group is kept in the save (up to 24, 120 pieces each; not scenario pieces) and appears as a button:
+  it follows the finger (by its middle), Rotate turns the whole layout, and it goes down only if every piece fits,
+  each bought at its usual price (slots keep their design; amenities their size). Delete group removes it.
 - **Move (M11.2):** any fixed-size object (not a sized amenity) can be picked up and put down elsewhere from its
   card, for $50: its footprint follows the finger, Rotate turns it. It keeps its record (stats, design, meters) under
   a new id, so anyone playing or walking to it treats it as gone, as when it's sold. Built for the tutorial, where

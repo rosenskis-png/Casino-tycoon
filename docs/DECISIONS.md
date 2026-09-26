@@ -2,6 +2,27 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Owner's notes: slot sales, progressives, entrances, rows and groups
+- **Slot sales rebalanced (owner: "too slow to be meaningful"):** dozens to hundreds of machines is normal,
+  thousands exciting (median 150 × offer quality, heavy tail, 50,000 cap); an S-curve over days to months that
+  levels off within 1–2 years (half at 3–9 months), then a slow retirement after 3 years. The maker's cut here drops
+  to 10–30% of the edge (was 25–75%), royalties rise to 4–12% (were 1–3%), so a median sale pays several times its
+  cut. Existing sales mapped onto the new ranges (schema 24).
+- **Budget lines split (owner: "Sold: mixed the loss and the royalties"):** Sold (price), Maker's cut, Royalties,
+  each per design; the design's card shows machines out there, the trend, last month and totals.
+- **Progressives checked (owner's doubt):** increments are exact (per wager, bet × rate; e.g. the Test Floor's Ember
+  Grand grew exactly 0.6% of its machines' coin-in over 60 days). They look slow because the calendar is compressed
+  (a day is 10 seconds, so a machine plays about one round of 8 spins a game-day): $1 bets × 2% over a month on a
+  few machines is tens of dollars. The designer also trims increments when jackpots take over a third of the payback
+  (it says so in its notes). Sold designs' linked and must-hit-by meters do grow from outside machines (and hit
+  there); standalone meters are per machine and don't. **Flag for the owner:** if meters should visibly climb on
+  your own floor, the options are bigger increments in the designer's range, or outside "network" play feeding
+  linked meters before a sale; neither is built.
+- **Top progressive notice:** a guest winning a design's top progressive level is always a notice (own switch).
+- **Entrances connect to the building:** guests who come in off the street walk to the nearest door into the
+  building even when it isn't in view (they used to wander the lot looking for one).
+- **Drag to place a row** of any fixed-size object; **groups** as copy and paste of a layout (kept in the save).
+
 ## 2026-09-25 · Batch A built: flow and friction (owner: "green light for A")
 - **Start paused, build paused:** new games start paused (a continued one resumes at 1×); commands apply at once
   while the clock is stopped, so building works paused. Autosave runs while paused too.

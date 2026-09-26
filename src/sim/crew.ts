@@ -21,8 +21,8 @@ declare module "./commands" {
   interface CommandTypes {
     /** Pay for a role, as a multiple of the market wage. */
     setPay: { role: string; pay: number };
-    /** Keep a worker to the room holding `tile` (-1: anywhere). */
-    setZone: { id: number; tile: number };
+    /** (Batch C) The rooms a worker is kept to (a tile of each; none for anywhere). */
+    setZone: { id: number; tiles: number[] };
     /** (M11) A job's uniform color (index into UNIFORM_COLORS). */
     setUniform: { role: string; color: number };
   }
@@ -66,7 +66,7 @@ export function setPace(g: Game, a: Agent) {
 /** A new hire's hidden knack and honesty, drawn on the `crew` stream. Morale starts at what the job pays for. */
 export function newStaffData(g: Game, role: string): StaffData {
   const r = rng(g.state, "crew");
-  const st: StaffData = { q: range(r, STAFF.knack), crook: r.chance(crookShare(payOf(g, role))) ? 1 : 0, morale: 50, busy: 0, beats: 0, zone: -1 };
+  const st: StaffData = { q: range(r, STAFF.knack), crook: r.chance(crookShare(payOf(g, role))) ? 1 : 0, morale: 50, busy: 0, beats: 0, zone: [] };
   st.morale = clamp(STAFF.morale.base + STAFF.morale.perPay * (payOf(g, role) - 1), 0, 100);
   return st;
 }
@@ -81,12 +81,37 @@ export function crewAmenity(g: Game, o: PlacedObject) {
 // ---------------------------------------------------------------------------------------------------------
 // Patrol zones.
 
+/** (Batch C) Whether a tile is in one of these rooms (given by a tile of each). Rooms since walled over don't count; anywhere when none are left. */
+export function inRooms(g: Game, rooms: readonly number[], tile: number): boolean {
+  if (!rooms.length) return true;
+  const rt = g.rooms.roomOf[tile];
+  let live = 0;
+  for (const t of rooms) { const rz = g.rooms.roomOf[t]; if (rz < 0) continue; if (rz === rt) return true; live++; }
+  return !live;
+}
+
+/** A tile per room, rooms in the order given, duplicates dropped. */
+export function oneTilePerRoom(g: Game, tiles: readonly number[]): number[] {
+  const seen = new Set<number>(), out: number[] = [];
+  for (const t of tiles) { const rz = g.rooms.roomOf[t]; if (rz >= 0 && !seen.has(rz)) { seen.add(rz); out.push(t); } }
+  return out;
+}
+
+/** Whether this worker is kept to some rooms. */
+export const zoned = (a: Agent): boolean => !!a.st?.zone.length;
+
 /** Whether a tile is inside this worker's zone (anywhere when they have none). */
-export function inZone(g: Game, a: Agent, tile: number): boolean {
-  const z = a.st?.zone ?? -1;
-  if (z < 0) return true;
-  const rz = g.rooms.roomOf[z];
-  return rz < 0 || g.rooms.roomOf[tile] === rz;
+export const inZone = (g: Game, a: Agent, tile: number): boolean => inRooms(g, a.st?.zone ?? [], tile);
+
+/** Where a worker outside their rooms heads back to: the nearest room's tile they can stand on, or -1. */
+export function zoneHome(g: Game, a: Agent): number {
+  const w = g.state.map.w;
+  let best = -1, bd = Infinity;
+  for (const t of a.st?.zone ?? []) {
+    const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y);
+    if (d < bd && g.walkable(t)) { bd = d; best = t; }
+  }
+  return best;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -149,7 +174,7 @@ function replace(g: Game, a: Agent) {
   removeStaff(g, a);
   const b = hireStaff(g, a.role);
   if (!b) return;
-  if (b.st && a.st) b.st.zone = a.st.zone;
+  if (b.st && a.st) b.st.zone = [...a.st.zone];
   if (a.bar !== undefined) b.bar = a.bar;
 }
 
@@ -239,12 +264,12 @@ const commands: CommandTable<"setPay" | "setZone" | "setUniform"> = {
     validate(g, c) {
       const a = g.state.agents.find((b) => b.id === c.id);
       if (!a?.st || !ZONED_ROLES.includes(a.role)) return "Can't be zoned";
-      if (c.tile >= 0 && (c.tile >= g.state.map.terrain.length || g.rooms.roomOf[c.tile] < 0)) return "Not a room";
+      if (!Array.isArray(c.tiles) || c.tiles.some((t) => !(Number.isInteger(t) && t >= 0 && t < g.state.map.terrain.length) || g.rooms.roomOf[t] < 0)) return "Not a room";
       return null;
     },
     apply(g, c) {
       const a = g.state.agents.find((b) => b.id === c.id)!;
-      a.st!.zone = c.tile;
+      a.st!.zone = oneTilePerRoom(g, c.tiles);
       a.target = -1;
       if (a.act === "idle" || a.act === "wait") a.timer = 0;
     },

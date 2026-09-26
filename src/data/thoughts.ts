@@ -120,6 +120,8 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   badTheme: { text: "I don't like the theming in this area.", alt: ["This place can't decide what it wants to be."], bad: true },
   doorFee: { text: "Paying to use a door?!", alt: ["They charge you to walk through here?"], bad: true },
   letOut: { text: "Finally, someone let me out.", bad: true },
+  slipOut: { text: "I'll just slip out this way.", bad: false },
+  lifted: { text: "Whoa! Put me down!", bad: true },
   whereFood: { text: "Is there anywhere to eat?", bad: true },
   whereShow: { text: "Where's the show?", bad: true },
   whereClub: { text: "I heard there's a club here somewhere.", bad: true },

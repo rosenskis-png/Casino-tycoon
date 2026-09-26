@@ -207,3 +207,5 @@ select,input[type=text]{font:inherit;font-size:16px;background:#120a07;color:var
 /* (Batch A) Checkbox lists (notice switches). */
 .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 13px; }
 .checks label { display: flex; align-items: center; gap: 6px; }
+/* (Batch C) Someone picked up: where to set them down. */
+.lift-bar{display:flex;align-items:center;justify-content:space-between;gap:10px}

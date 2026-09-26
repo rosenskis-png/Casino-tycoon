@@ -29,7 +29,6 @@ import { TICKS_PER_BEAT, TICKS_PER_DAY, TICKS_PER_SECOND } from "./clock";
 import { covers, objSeats, objSize, seatCount } from "./geometry";
 import { gradeOf, offers, pickIntent, priceFor, priceTolerance, purposeAt, servingCost, showPhase, stakeMult, tierOf, worthTo } from "./amenities";
 import { gradeWorth } from "../data/grades";
-import { adjustPolice } from "./incidents";
 import { post } from "./finance";
 import { THEFT } from "../data/staff";
 import { greed, steal } from "./crew";
@@ -125,8 +124,6 @@ const URGE_PER_SEC = 100 / 270;
 const SMOKE_SECS = 20;
 /** What a meal costs the house, and the ticket and cover guests find fair at a first-tier place (dollars). */
 const COVER_FAIR = 15;
-/** Seconds trapped before staff let a guest out (docs/spec/construction.md). */
-const LET_OUT = 90;
 /** gaveUp bit: a smoker who found nowhere to smoke this visit. */
 const SMOKE_BIT = 128;
 const DIRT_CAP = 9;
@@ -760,14 +757,38 @@ export function sendHome(g: Game, a: Agent, why: string) {
   startLeaving(g, a, why);
 }
 
-/** Could staff walk this guest out (past any door but a locked one, without a fee)? Walls are walls. */
-function escapable(g: Game, a: Agent): boolean {
-  const gd = a.g!, here = a.y * g.state.map.w + a.x;
-  gd.esc = 1;
+/** Exits this guest can walk to from where they stand, as their doors stand now (`esc`: past any door but a locked one, free). */
+function exitsFrom(g: Game, a: Agent, esc = a.g!.esc): number[] {
+  const gd = a.g!, here = a.y * g.state.map.w + a.x, was = gd.esc;
+  gd.esc = esc;
   const paths = g.pathsFor(a);
-  gd.esc = 0;
-  return g.state.map.entrances.some((e) => g.walkable(e) && paths.reachable(here, e));
+  gd.esc = was;
+  return g.state.map.entrances.filter((e) => g.walkable(e) && paths.reachable(here, e));
 }
+
+/**
+ * (Batch C, owner) A guest somewhere they aren't meant to be (set down there, or the way they came closed behind
+ * them): when the only way out is past a door they normally can't use (anything but a locked one), they use it
+ * anyway, free, heading for the nearest exit until they're back where their own doors let them out (guestBeat).
+ * Returns true when that sent them walking. Walls and locked doors still trap them.
+ */
+function strayed(g: Game, a: Agent): boolean {
+  const gd = a.g!;
+  if (gd.esc || gd.held || exitsFrom(g, a).length) return false;
+  const ways = exitsFrom(g, a, 1);
+  if (!ways.length) return false;
+  gd.esc = 2;
+  think(g, a, "slipOut");
+  go(a, nearestOf(g, a, ways), "idle");
+  return true;
+}
+
+const nearestOf = (g: Game, a: Agent, tiles: number[]): number => {
+  const w = g.state.map.w;
+  let best = tiles[0], bd = Infinity;
+  for (const t of tiles) { const d = Math.abs((t % w) - a.x) + Math.abs(Math.floor(t / w) - a.y); if (d < bd) { bd = d; best = t; } }
+  return best;
+};
 
 function startLeaving(g: Game, a: Agent, why: string) {
   const gd = a.g!, w = g.state.map.w, r = rng(g.state, "guests");
@@ -787,18 +808,17 @@ function startLeaving(g: Game, a: Agent, why: string) {
   const open: number[] = [];
   const paths = g.pathsFor(a);
   for (const e of ents) if (g.walkable(e) && paths.reachable(here, e)) open.push(e);
-  // No way out they're allowed through: trapped, until the layout changes or staff come and let them out
-  // (docs/spec/construction.md), which the police hear about.
+  // (Batch C, owner) No way out they're allowed through, but one past a door they normally can't use (staff only,
+  // a fee they can't pay, someone else's dress code): they go that way anyway, free (docs/spec/construction.md).
+  if (!open.length && !gd.esc && exitsFrom(g, a, 1).length) {
+    gd.esc = 1;
+    think(g, a, "slipOut");
+    return startLeaving(g, a, why);
+  }
+  // Walls or locked doors all round: trapped, until the layout changes.
   if (!open.length) {
     if (!gd.trapped) { gd.trapped = 1; gd.trapAt = g.state.tick; think(g, a, "trapped"); }
     gd.annoy += 4;
-    if (!gd.esc && gd.trapAt >= 0 && g.state.tick - gd.trapAt >= LET_OUT * TICKS_PER_SECOND && escapable(g, a)) {
-      gd.esc = 1;
-      think(g, a, "letOut");
-      adjustPolice(g, -1);
-      news(g, "warn", "Staff let out a guest who was trapped behind your doors.", true);
-      return startLeaving(g, a, why);
-    }
     return wander(g, a, r);
   }
   gd.trapped = 0;
@@ -1384,6 +1404,7 @@ function decide(g: Game, a: Agent) {
   const r = rng(g.state, "guests");
   lookAround(g, a);
   if (gd.why) return startLeaving(g, a, gd.why);
+  if (strayed(g, a)) return;
   // Children (M9.5) stay near the adults; a restroom trip is the only thing they do on their own.
   if (gd.minor) {
     if (n.bladder >= 70 && g.has("bladder") && !(gd.gaveUp & NEED_BIT.bladder) && goUse(g, a, "bladder") === "ok") return;
@@ -2040,6 +2061,12 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   gd.annoy = Math.max(0, Math.min(30, gd.annoy - 0.5 + (gd.wait >= 0 ? 0.3 : 0)));
   gd.buzz = Math.max(0, Math.min(20, gd.buzz - 0.5));
   gd.know += (1 - gd.know) * LEARN * (walking ? 3 : 1);
+  // (Batch C) Finding their way out of somewhere they weren't meant to be: once their own doors let them out
+  // again, they finish the step they're on and carry on with their visit.
+  if (gd.esc === 2 && !gd.why && exitsFrom(g, a, 0).length) {
+    gd.esc = 0;
+    if (walking) go(a, a.ny * g.state.map.w + a.nx, "idle");
+  }
   if (gd.browse > 0) gd.browse--;
   // The drink in hand: sipped over the type's drinking time, easing thirst and adding intoxication as it goes.
   if (gd.drink > 0) {

@@ -17,7 +17,7 @@ import { OBJECTS } from "../data/objects";
 import { ACT_REACH, ACT_SECS, ENTERTAIN, HOST, THEFT } from "../data/staff";
 import { GUEST_TYPES } from "../data/guests";
 import { handPayTick } from "./handpay";
-import { firedWorker, greed, inZone, newStaffData, setPace, skillOf, steal } from "./crew";
+import { firedWorker, greed, inRooms, inZone, zoned, zoneHome, newStaffData, setPace, skillOf, steal } from "./crew";
 
 declare module "./commands" {
   interface CommandTypes {
@@ -115,11 +115,11 @@ function wanderStaff(g: Game, a: Agent) {
   const r = rng(g.state, "staff");
   a.target = -1;
   // M9: a worker kept to a room patrols inside it, and heads back there first.
-  const zone = a.st?.zone ?? -1, w = g.state.map.w;
-  if (zone >= 0 && !inZone(g, a, a.y * w + a.x)) { if (g.walkable(zone)) go(a, zone, "idle"); return; }
-  const near = r.chance(0.7) || zone >= 0 ? spreadTile(g, a, "staff", a.x, a.y, zone >= 0 ? 6 : 12, (t) => inZone(g, a, t)) : -1;
+  const kept = zoned(a), w = g.state.map.w;
+  if (kept && !inZone(g, a, a.y * w + a.x)) { const home = zoneHome(g, a); if (home >= 0) go(a, home, "idle"); return; }
+  const near = r.chance(0.7) || kept ? spreadTile(g, a, "staff", a.x, a.y, kept ? 6 : 12, (t) => inZone(g, a, t)) : -1;
   if (near >= 0) go(a, near, "idle");
-  else if (zone < 0) { const p = spreadPoint(g, a, "staff"); if (p >= 0) go(a, p, "idle"); }
+  else if (!kept) { const p = spreadPoint(g, a, "staff"); if (p >= 0) go(a, p, "idle"); }
 }
 
 function janitorFindWork(g: Game, a: Agent) {
@@ -136,7 +136,7 @@ function janitorFindWork(g: Game, a: Agent) {
     const x = i % w, y = (i - x) / w, d = Math.abs(x - a.x) + Math.abs(y - a.y);
     const s = d - Math.min(dirt[i], 4) * 0.5;
     if (s >= bs) continue;
-    if (others.some((b) => Math.abs(x - b.x) + Math.abs(y - b.y) + 2 < d && (b.st?.zone ?? -1) < 0)) continue;
+    if (others.some((b) => Math.abs(x - b.x) + Math.abs(y - b.y) + 2 < d && !zoned(b))) continue;
     bs = s; best = i;
   }
   if (best >= 0 && g.pathsFor(a).reachable(here, best)) { a.target = best; go(a, best, "clean"); return; }
@@ -204,13 +204,12 @@ function nextCustomer(g: Game, a: Agent, bar: PlacedObject): Agent | null {
   const w = g.state.map.w, tick = g.state.tick, pol = barPolicy(bar);
   const from = a.tray?.length ? a.y * w + a.x : faceTile(g, bar);
   const fx = from % w, fy = Math.floor(from / w);
-  const room = pol.area >= 0 ? g.rooms.roomOf[pol.area] : -2;
   const taken = ordered(g), cut = cutoff(g);
   let best: Agent | null = null, bs = SERVER_REACH;
   for (const b of g.state.agents) {
     const gd = b.g;
     if (!gd || gd.minor || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
-    if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
+    if (!inRooms(g, pol.area, b.y * w + b.x)) continue;
     const s = Math.abs(b.x - fx) + Math.abs(b.y - fy) + (isWalking(b) ? 6 : 0);
     if (s < bs) { bs = s; best = b; }
   }
@@ -269,13 +268,12 @@ function serverTick(g: Game, a: Agent) {
     // "Cocktails?": everyone within reach at this stop gets asked, until the tray is full.
     if (bar) {
       const pol = barPolicy(bar), tick = g.state.tick, taken = ordered(g), w = g.state.map.w, cut = cutoff(g);
-      const room = pol.area >= 0 ? g.rooms.roomOf[pol.area] : -2;
-      for (const b of g.state.agents) {
+          for (const b of g.state.agents) {
         if (a.tray!.length >= TRAY) break;
         const gd = b.g;
         if (!gd || gd.minor || b.hidden || handsFull(gd) || gd.why || gd.mem.offerAt > tick || taken.has(b.id) || gd.intox >= cut || b.act === "out" || b.act === "fight" || gd.held) continue;
         if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > OFFER_REACH) continue;
-        if (room !== -2 && g.rooms.roomOf[b.y * w + b.x] !== room) continue;
+        if (!inRooms(g, pol.area, b.y * w + b.x)) continue;
         const comped = rollComp(g, gd, pol);
         gd.mem.offerAt = tick + OFFER_AGAIN;
         if (!r.chance(acceptChance(gd, pol, comped, bar.grade ?? 1))) continue;

@@ -179,7 +179,7 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     const ROLES = ["janitor", "tech", "server", "guard", "operator", "dealer", "pitboss", "enforcer"];
     for (const a of s.agents) {
       if (a.role === "guest" && a.g) Object.assign(a.g, { vip: 0, comp: 0, unpaid: 0 });
-      else if (ROLES.includes(a.role)) a.st = { q: 1, crook: 0, morale: 50, busy: 0, beats: 0, zone: -1 };
+      else if (ROLES.includes(a.role)) a.st = { q: 1, crook: 0, morale: 50, busy: 0, beats: 0, zone: [] };
     }
     for (const o of s.objects) if (o.kind === "bar" || o.kind === "cage" || o.bar) o.crook = 0;
     s.crew = { pay: {}, shrink: {}, hist: [] };
@@ -318,6 +318,13 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
   },
   // 24 → 25 (Batch B): hand pays (optional fields on machines and staff; nothing waits in an older save).
   24: (s) => s,
+  // 25 → 26 (Batch C, owner): workers and bar servers kept to several rooms (a tile per room; none for anywhere).
+  25: (s) => {
+    const list = (v: unknown) => (typeof v === "number" && v >= 0 ? [v] : Array.isArray(v) ? v : []);
+    for (const a of s.agents ?? []) if (a.st) a.st.zone = list(a.st.zone);
+    for (const o of s.objects ?? []) if (o.bar) o.bar.area = list(o.bar.area);
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

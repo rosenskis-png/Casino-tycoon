@@ -372,7 +372,7 @@ function fiddle(g: Game) {
     const bars = g.amenities.thirst, servers = g.state.agents.filter((a) => a.role === "server");
     if (bars.length) {
       const bar = r.pick(bars).id;
-      g.dispatch({ type: "setBar", id: bar, price: r.int(0, 12) / 4, comp: r.int(0, 20) / 20, strength: r.pick(STRENGTHS), area: r.chance(0.5) ? -1 : y * w + x });
+      g.dispatch({ type: "setBar", id: bar, price: r.int(0, 12) / 4, comp: r.int(0, 20) / 20, strength: r.pick(STRENGTHS), area: r.chance(0.5) ? [] : [y * w + x] });
       if (servers.length) g.dispatch({ type: "assignServer", id: r.pick(servers).id, bar });
     }
   }

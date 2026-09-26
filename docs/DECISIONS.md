@@ -2,6 +2,15 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Title theme, third pass (owner)
+- **Owner:** chords and resolutions are right; the all-quarter-note melody is now too plodding. Lean harder into
+  spy: half-step slips around resolution notes and trills like the Bond and Pink Panther themes, mostly in key,
+  swingier.
+- **Built:** same chords and phrase ends. Melody in swung eighths with anticipations; trills on held notes (D-Eb,
+  C-Db, A-Bb); half steps leaning into or off chord tones (Ab-G, Bb-A, C#-D, G-F#-G) on weak beats only, every
+  downbeat still a chord tone; a half-step fall on the last home note. Swing 0.6 across the band. Melody notes
+  gained "~" (trill) and "v" (fall).
+
 ## 2026-09-26 · Title theme, second pass (owner)
 - **Owner feedback on the first pass:** "much better", but too many non-traditional chords and resolving notes in
   the main section; a little too fast and crisp, jarring instead of warm and comforting. Keep the bridge's feel.

@@ -127,7 +127,7 @@ export class MusicPlayer {
     const c = tr.chords[bar], half = k >= 8 && c.length === 4;
     const chordRoot = half ? c[2]! : c[0], tones = CHORD_TONES[half ? c[3]! : c[1]];
     const fill = tr.fills?.[bar];
-    type Voice = { a?: number; cutoff?: number; f1?: number; sus?: boolean; detune?: number; vib?: number; brass?: boolean };
+    type Voice = { a?: number; cutoff?: number; f1?: number; sus?: boolean; detune?: number; vib?: number; brass?: boolean; trill?: number; fall?: boolean };
     const quiet = (part: "bass" | "pad" | "arp") => fill?.quiet?.includes(part);
     const tone = (note: number, len: number, wave: Wave, gain: number, o: Voice = {}) => {
       const g = ctx.createGain(), a = o.a ?? 0.005, end = t + len + (o.sus ? 0.08 : 0);
@@ -165,6 +165,9 @@ export class MusicPlayer {
         osc.type = wave;
         osc.frequency.setValueAtTime(hz(note), t);
         if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1, t + len);
+        // A trill alternates with the note a half step up every half step of the sequencer.
+        if (o.trill) for (let s = t + o.trill, up = true; s < t + len; s += o.trill, up = !up) osc.frequency.setValueAtTime(hz(note + (up ? 1 : 0)), s);
+        if (o.fall) { osc.frequency.setValueAtTime(hz(note), t + len * 0.55); osc.frequency.exponentialRampToValueAtTime(hz(note - 1), t + len * 0.8); }
         if (i) osc.detune.value = o.detune!;
         depth?.connect(osc.detune);
         osc.connect(dest);
@@ -232,8 +235,9 @@ export class MusicPlayer {
     if (line.exact) while (k + n < 16 && lb[k + n] === "-") n++;
     // Otherwise a note rings until the next one (at most half a bar).
     else while (n < 8 && k + n < 16 && (lb[k + n] === "." || lb[k + n] === "-")) n++;
-    const len = line.ring ?? dur * n * (line.exact ? 0.95 : 0.85);
-    tone(this.track.root + Number(lt) + 12 * line.oct, len, line.wave, line.gain, {
+    const len = line.ring ?? dur * n * (line.exact ? 0.95 : 0.85), mark = line.ring ? "" : lt.slice(-1);
+    tone(this.track.root + parseInt(lt) + 12 * line.oct, len, line.wave, line.gain, {
+      trill: mark === "~" ? dur / 2 : undefined, fall: mark === "v",
       a: line.attack ?? (line.ring ? 0.003 : 0.02), cutoff: line.cutoff ?? (line.ring ? undefined : 2600), sus: line.exact, detune: line.detune, vib: line.vib, brass: line.brass,
     });
   }

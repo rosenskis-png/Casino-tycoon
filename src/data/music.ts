@@ -74,36 +74,38 @@ const up = (bars: string[], n: number) => bars.map((b) => b.replace(/-?\d+/g, (m
 // Rules it keeps: chords change every two bars or so (i, iv, V, i; I, vi, IV, V in the bridge); the melody moves
 // by step in long notes and every phrase lands on a chord tone, the first on V and the second home on G. The one
 // color is the spy-movie line cliche (G, F#, F, E), heard as a slow inner voice in the strings and guitar under
-// held melody notes, so it's a pattern the ear learns rather than a surprise. Layers enter one by one in the intro
+// held melody notes, so it's a pattern the ear learns rather than a surprise. Third pass (owner: "too plodding",
+// more spy): swung eighths, trills on held notes, and half steps leaning into or falling off chord tones, never
+// on a downbeat. Layers enter one by one in the intro
 // (bass and ride, then guitar, then strings, then drums), a melody doubled in octaves, soft horn swells at the
 // peaks, vibes doubling the last chorus, all in a reverb room.
 const QUESTION = [
-  "12 - - - 15 - - - 19 - - - - - - -", //    Gm, Gm(maj7)   G Bb D, rising
-  "19 - - - 20 - - - 19 - - - 17 - 15 -", //   Gm7, Gm6       D, a sigh up to Eb and back
-  "17 - - - 20 - - - 24 - - - 22 - 20 -", //  Cm
-  "19 - - - - - - - 23 - - - 26 - - -", //    D7             left hanging on V
+  "12 - 15 - 19 - - - 19~ - - - - - . 18", //   Gm, Gm(maj7)   G Bb D, a trill, C# sliding up
+  "19 - . 20 19 - 17 - 15 - - - . . 16 -", //   Gm7, Gm6       D, a flick of Eb, down to Bb; B leans on C
+  "17 - 20 - 24 - - 25 24 - - - 22 - 20 -", //  Cm             up to G via Ab
+  "19 - 23 - 26 - - - - - 27 26 - - - -", //    D7             left hanging on A, via Bb
 ];
 const ANSWER = [
-  "27 - - - 24 - - - 19 - - - - - - -", //    Gm, Gm(maj7)   the same arpeggio, falling
-  "19 - - - 17 - - - 15 - - - - - - -", //    Gm7, Gm6       stepping down
-  "17 - - - 15 - - - 14 - - - 11 - - -", //   Cm | D7        down to the leading tone
-  "12 - - - - - - - - - - - - - - -", //      Gm             home
+  "27 - 26 27 24 - - - 19~ - - - - - . .", //   Gm, Gm(maj7)   the same, falling, with the same trill
+  "19 - 18 19 17 - - - 15 - - - . . . 16", //   Gm7, Gm6
+  "17 - - 16 15 - - - 14 - 15 14 11 - - -", //  Cm | D7        down to the leading tone
+  "12 - - - - - - - - - 11 12 - - - -", //      Gm             home, with a wink down to F#
 ];
 const ANSWER_HIGH = [
-  "24 - - - 20 - - - 24 - - - 27 - - -", //   Eb             climbing
-  "29 - - - 27 - - - 24 - - - 20 - - -", //   Cm             the top, then down
-  "26 - - - 24 - - - 23 - - - 26 - - -", //   D7
-  "24 - - - - - - - - - - - - - - -", //      Gm             home
+  "24 - 20 - 24 - 27 - - - - - . . 28 -", //    Eb             climbing; B leans on C
+  "29~ - - - - - 27 - 24 - - 25 24 - 20 -", //  Cm             a trill at the top, then down
+  "26 - 27 26 24 - - - 23 - - - 26 - - -", //   D7
+  "24 - - - - - - - - - - - 24v - - -", //      Gm             home, and a half-step fall
 ];
 const BRIDGE = [
-  "19 - - - 22 - - - 27 - - - - - - -", //    Bb             the hook's rise, in major
-  "24 - - - 22 - - - 19 - - - - - - -", //    Gm
-  "20 - - - 24 - - - 27 - - - - - - -", //    Eb
-  "29 - - - 27 - - - 26 - - - 22 - - -", //   F7
-  "22 - - - 27 - - - 31 - - - - - - -", //    Bb             the peak
-  "31 - - - 29 - - - 27 - - - 24 - - -", //   Gm
-  "20 - - - 24 - - - 29 - - - - - - -", //    Cm
-  "26 - - - - - - - 23 - - - 19 - - -", //    D7             back to G minor
+  "19 - - - 22 - 27 - - - - - - - - -", //      Bb             the hook's rise, in major
+  "24 - - - 22 - 19 - - - - - - - - -", //      Gm
+  "20 - - - 24 - 27 - - - - - - - - -", //      Eb
+  "29 - 27 - 26~ - - - 22 - - - - - . .", //    F7
+  "22 - - - 27 - 31 - - - - - - - - -", //      Bb             the peak
+  "31 - 29 - 27 - - - 24 - - - - - . .", //     Gm
+  "20 - - - 24 - 29 - - - - - 30 29 - -", //    Cm
+  "26 - - - 27 26 - - 23 - - - 19 - . .", //    D7             back to G minor
 ];
 const THEME_LEAD = ["", "", "", "", ...QUESTION, ...ANSWER, ...QUESTION, ...ANSWER_HIGH, ...BRIDGE, ...QUESTION, ...ANSWER_HIGH];
 const CLICHE: Track["chords"] = [[0, "min", 0, "mM7"], [0, "m7", 0, "m6"]];
@@ -112,7 +114,7 @@ const SWELL = "X---------------";
 
 export const TRACKS: Record<string, Track> = {
   theme: {
-    id: "theme", name: "Casino Tycoon", bpm: 100, root: 55, gain: 0.9, loopFrom: 4, space: 0.45,
+    id: "theme", name: "Casino Tycoon", bpm: 100, swing: 0.6, root: 55, gain: 0.9, loopFrom: 4, space: 0.45,
     chords: [
       [0, "min"], [0, "mM7"], [0, "m7"], [0, "m6"],
       ...CLICHE, [5, "min"], [7, "7"], ...CLICHE, [5, "min", 7, "7"], [0, "min"],

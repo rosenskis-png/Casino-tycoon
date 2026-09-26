@@ -176,14 +176,15 @@ faster S-curve to a plateau, smaller cut, bigger royalties) with separate Sold /
 status on the design's card; progressives verified; a notice when a guest wins a top progressive; guests walk from
 any entrance to the building's door; drag to place a row; groups (copy and paste a layout).
 
-**Batch B · Games working right ☐**
-- Spin to win: no early reveal (every space blank until it lands), reels visibly spinning in the open squares.
+**Batch B · Games working right ☑** (built 2026-09-26, schema 25, see DECISIONS)
+- Hold & spin: every open spot spins and lands on its own; nothing shows before it lands.
 - Pick a prize: the player picks.
-- Progressives, must-hit-by and linked meters: a headless check that the increment comes out of the payback budget
-  (spec says it does; prove it for every stock design and the fuzzed set).
-- Hand pays: wins at or above the tax-form line ($2,000) lock the machine until a staff member walks over and pays it.
-- A one-line game description on every slot and table card (feature, volatility, who it's for, no crowd names).
-- Sound: light conversation murmur replaces the whoosh; a better title theme.
+- Progressives (owner: already verified): stock designs' linked and must-hit-by meters grow from the maker's
+  outside network (wide-area, the maker pays); designs made in the scenario stay local until sold.
+- Hand pays (owner: top prizes and Grands only): the machine locks until a staff member walks over and pays; people
+  nearby stop to watch and cheer. Paid at once with no staff.
+- A one-line game description on every slot and table card.
+- Sound: a conversation murmur replaces the whoosh; a new 16-bar title theme.
 
 **Batch C · Hands on the floor ☐**
 - Tap a staff member for their card: pick up and place, set patrol area, and the rest of their controls.

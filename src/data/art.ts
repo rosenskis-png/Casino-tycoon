@@ -1257,6 +1257,8 @@ export const EXTRA_SPRITES: Record<string, SpriteDef> = {
     "................", "..ww............", "..Rw............", "................", "................",
     "................",
   ], { a: "#b8862a88", A: "#e0b04a88" }, false),
+  // (Batch B) A hand pay waiting: a gold dollar sign over the machine.
+  handpay: S(["..g.g..", ".ggggg.", "gg.g...", ".ggggg.", "...g.gg", ".ggggg.", "..g.g.."], { g: "#ffd23f" }),
   broken: S(["...q...", "..qkq..", "..qkq..", ".qqkqq.", ".qqqqq.", "qqqkqqq", "qqqqqqq"]),
   // Tables (M7): cards (face up, red or black, and face down), chips, dice.
   "card:r": S(["www", "wRw", "www", "wwP"]),

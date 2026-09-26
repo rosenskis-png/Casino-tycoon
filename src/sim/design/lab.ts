@@ -2,7 +2,7 @@
 // random numbers, the panel's verdict, and the three ratings: Excitement (the panel), Intensity and Drain (math).
 // Pure; runs on its own seeded generators, never the game's streams.
 import { GUEST_TYPES } from "../../data/guests";
-import { levelName } from "../../data/designer";
+import { FEATURE_NAMES, featuresOf, levelName } from "../../data/designer";
 import { seeded } from "../rng";
 import { lastSpin, spinX, type Compiled } from "./compile";
 import { feelOf, judge, sessionOf } from "./appeal";
@@ -118,4 +118,25 @@ export function panel(c: Compiled, mix: Record<string, number>): Panel {
   for (const t of byType) for (const r of t.reasons) tally.set(r, (tally.get(r) ?? 0) + t.w);
   const verdict = [...tally].filter(([, w]) => w >= 0.15).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([r]) => r);
   return { ratings: { excitement, intensity: f.intensity, drain: f.drain }, byType, verdict };
+}
+
+/**
+ * (Batch B, owner) A design's one-line description for its cards: its feature, its volatility and who it suits
+ * (no crowd names: the player learns those). `wide`: its progressives are wide-area (a stock or sold design).
+ */
+export function gameBlurb(c: Compiled, wide = false): string {
+  const d = c.d, feats = featuresOf(d).map((f) => FEATURE_NAMES[f].toLowerCase());
+  const progs = c.levels.filter((l) => l.kind !== "fixed");
+  const what = feats.length ? feats.join(", ").replace(/, ([^,]*)$/, " and $1") : c.lay.win === "classic" ? "a classic stepper, no bonus" : "straight reels, no bonus";
+  const jp = !c.levels.length ? "" : progs.length
+    ? ` with ${progs.some((l) => l.kind === "mhb") ? "a must-hit-by " : ""}${wide && progs.some((l) => l.kind !== "sa") ? "wide-area " : ""}progressive${progs.length > 1 ? "s" : ""}`
+    : ` with ${c.levels.length > 1 ? `${c.levels.length} fixed jackpots` : "a fixed jackpot"}`;
+  const v = Math.min(4, Math.floor(d.vol * 5)), top = d.maxBet * d.denom;
+  const who = top >= 25 ? "big bets for serious players"
+    : v <= 0 ? "long, gentle sessions on a small budget"
+    : v === 1 ? "steady play with a shot at something bigger"
+    : v === 2 ? "players who like some swing"
+    : "thrill seekers chasing the big hit";
+  const cap = what[0].toUpperCase() + what.slice(1);
+  return `${cap}${jp}. ${INTENSITY_WORDS[v]} volatility: ${who}.`;
 }

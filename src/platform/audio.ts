@@ -123,33 +123,80 @@ export function play(id: string, opts?: { gain?: number; pan?: number }) {
   voices.push(last);
 }
 
-// ---- The ambient floor: a looped murmur of voices (band-passed noise, slowly wandering) whose level the UI
-// sets from the crowd and energy in view.
-let amb: { g: GainNode; f: BiquadFilterNode; lfo: OscillatorNode } | null = null;
+// ---- The ambient floor (Batch B, owner: "light conversation murmur replaces the whoosh"): a few synthesized
+// voices talking at once. Each is a buzzy tone at a speaking pitch through two vowel filters (formants) that move
+// from syllable to syllable, spoken in bursts with pauses between phrases, all muffled as if from across the
+// room, over a faint room tone. The UI sets the level from the crowd in view; the voices pause when it's silent.
+interface Voice { osc: OscillatorNode; f1: BiquadFilterNode; f2: BiquadFilterNode; g: GainNode; base: number; talk: number; pause: number }
+let amb: { g: GainNode; voices: Voice[]; timer: number; level: number } | null = null;
+/** Vowel formants (F1, F2 in Hz): ah, eh, ee, oh, oo, uh. */
+const VOWELS: [number, number][] = [[730, 1090], [530, 1840], [290, 2250], [570, 840], [300, 870], [640, 1190]];
+const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+function syllables(now: number) {
+  if (!ctx || !amb) return;
+  for (const v of amb.voices) {
+    if (now < v.pause) continue;
+    // A phrase is 4-14 syllables; then a breath or a listen (0.4-2.5 s).
+    if (v.talk <= 0) { v.talk = 4 + Math.floor(Math.random() * 10); v.pause = now + 0.4 + Math.random() * 2.1; v.g.gain.setTargetAtTime(0, ctx.currentTime, 0.05); continue; }
+    v.talk--;
+    const t = ctx.currentTime, len = 0.11 + Math.random() * 0.14, [a, b] = pick(VOWELS);
+    v.f1.frequency.setTargetAtTime(a, t, 0.03);
+    v.f2.frequency.setTargetAtTime(b, t, 0.03);
+    // Speech melody: a little up and down around the voice's pitch, falling at a phrase's end.
+    v.osc.frequency.setTargetAtTime(v.base * (0.9 + Math.random() * 0.25) * (v.talk === 0 ? 0.85 : 1), t, 0.06);
+    v.g.gain.setTargetAtTime(0.5 + Math.random() * 0.5, t, 0.025);
+    v.g.gain.setTargetAtTime(0.08, t + len * 0.7, 0.03);
+    v.pause = now + len;
+  }
+}
 export function setAmbient(level: number) {
   if (!ctx || !running()) return;
   if (!amb) {
+    const out = ctx.createGain();
+    out.gain.value = 0;
+    // Across the room: no consonants, no words.
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1300;
+    lp.connect(out).connect(cats.floor);
+    // Room tone: a whisper of low noise under the voices.
     const src = ctx.createBufferSource();
     src.buffer = noiseBuf;
     src.loop = true;
-    const f = ctx.createBiquadFilter();
-    f.type = "bandpass";
-    f.frequency.value = 600;
-    f.Q.value = 0.9;
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 1800;
-    const g = ctx.createGain();
-    g.gain.value = 0;
-    // A slow wobble in the band makes noise read as a room of voices rather than hiss.
-    const lfo = ctx.createOscillator(), depth = ctx.createGain();
-    lfo.frequency.value = 0.35;
-    depth.gain.value = 180;
-    lfo.connect(depth).connect(f.frequency);
-    lfo.start();
-    src.connect(f).connect(lp).connect(g).connect(cats.floor);
+    const nf = ctx.createBiquadFilter(), ng = ctx.createGain();
+    nf.type = "lowpass";
+    nf.frequency.value = 400;
+    ng.gain.value = 0.12;
+    src.connect(nf).connect(ng).connect(lp);
     src.start();
-    amb = { g, f, lfo };
+    const voices: Voice[] = [];
+    const pitches = [105, 118, 132, 150, 185, 205, 220, 240];
+    for (let k = 0; k < 8; k++) {
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.value = pitches[k];
+      const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), g = ctx.createGain(), pan = ctx.createStereoPanner();
+      f1.type = f2.type = "bandpass";
+      f1.Q.value = 6; f2.Q.value = 9;
+      f1.frequency.value = 600; f2.frequency.value = 1400;
+      g.gain.value = 0;
+      pan.pan.value = ((k * 5) % 8) / 4 - 0.9;
+      const mix = ctx.createGain();
+      mix.gain.value = 0.05;
+      osc.connect(f1).connect(g);
+      osc.connect(f2).connect(g);
+      g.connect(mix).connect(pan).connect(lp);
+      osc.start();
+      voices.push({ osc, f1, f2, g, base: pitches[k], talk: 0, pause: k * 0.3 });
+    }
+    amb = { g: out, voices, timer: 0, level: 0 };
   }
-  amb.g.gain.setTargetAtTime(Math.max(0, Math.min(1, level)) * 0.22, ctx.currentTime, 0.4);
+  const l = Math.max(0, Math.min(1, level));
+  amb.level = l;
+  // Busier floors: more of the voices talk (the quiet ones stay silent).
+  const talking = Math.round(2 + l * 6);
+  amb.voices.forEach((v, k) => { if (k >= talking) { v.talk = 0; v.pause = Infinity; v.g.gain.setTargetAtTime(0, ctx!.currentTime, 0.1); } else if (v.pause === Infinity) v.pause = 0; });
+  if (l > 0 && !amb.timer) amb.timer = window.setInterval(() => syllables(performance.now() / 1000), 45);
+  if (l === 0 && amb.timer) { clearInterval(amb.timer); amb.timer = 0; }
+  amb.g.gain.setTargetAtTime(Math.sqrt(l) * 0.55, ctx.currentTime, 0.4);
 }

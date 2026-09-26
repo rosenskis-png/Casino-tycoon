@@ -16,6 +16,7 @@ import { acceptChance, barPolicy, cutoff, handsFull, leastServedBar, rollComp, s
 import { OBJECTS } from "../data/objects";
 import { ACT_REACH, ACT_SECS, ENTERTAIN, HOST, THEFT } from "../data/staff";
 import { GUEST_TYPES } from "../data/guests";
+import { handPayTick } from "./handpay";
 import { firedWorker, greed, inZone, newStaffData, setPace, skillOf, steal } from "./crew";
 
 declare module "./commands" {
@@ -381,6 +382,8 @@ export const staffSystem: System = {
   tick(g) {
     // Guards and visitors (police, paramedics) are run by the incident system (sim/incidents.ts).
     for (const a of g.state.agents) {
+      // (Batch B) On the way to (or counting out) a hand pay.
+      if (a.hp !== undefined && handPayTick(g, a)) continue;
       if (a.role === "janitor" || a.role === "tech" || a.role === "server") staffTick(g, a);
       else if (a.role === "entertainer") entertainerTick(g, a);
       else if (a.role === "host") hostTick(g, a);

@@ -5,7 +5,7 @@ import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 24;
+export const SCHEMA_VERSION = 25;
 
 export interface MapState {
   w: number;
@@ -43,6 +43,10 @@ export interface PlacedObject {
   price?: number;
   /** (M8.5) Slots in a big bonus: the tick it ends (onlookers gather). Saved so a reloaded game plays on the same. */
   bonus?: number;
+  /** (Batch B, owner) A top prize or Grand won here, waiting for a staff member to hand pay it (dollars): the winner
+   * stays seated and the machine is locked; `hpAt` is when it hit. */
+  hp?: number;
+  hpAt?: number;
   /** (M11.4) Priced places and bars: what they serve, 0 cheap, 1 standard (missing), 2 fancy (data/grades.ts). */
   grade?: number;
   /** 1 while broken down (slots), waiting for a tech. */
@@ -360,7 +364,9 @@ export type Activity =
   // M7: a dealer at their table; a guest watching a craps table.
   | "deal" | "look"
   // M11.2: an entertainer performing. M12: an escort keeping a player company; a casino host looking after a guest.
-  | "perform" | "company" | "host";
+  | "perform" | "company" | "host"
+  // Batch B: a staff member hand paying a jackpot.
+  | "handpay";
 
 /** (M9) A worker's hidden knack and honesty, morale, today's workload, and patrol zone (docs/spec/staff.md). */
 export interface StaffData {
@@ -400,6 +406,8 @@ export interface Agent {
   /** Drink servers: their bar (object id), orders on the tray (guest ids), and when order-taking ends (officers: when their visit ends). */
   bar?: number;
   tray?: number[];
+  /** (Batch B) Staff on their way to hand pay a jackpot: the machine's id. */
+  hp?: number;
   due?: number;
   /** Enforcers: 1 while carrying a bag. */
   bag?: number;

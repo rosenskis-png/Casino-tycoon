@@ -41,10 +41,11 @@ import { viceSystem } from "./vice";
 import { yoursSystem } from "./yours";
 import { designSystem } from "./design";
 import { marketSystem } from "./design/market";
+import { handPaySystem } from "./handpay";
 
 /** Every system, in any order; the registry sorts by dependencies. */
 const SYSTEMS: System[] = [
-  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem, yoursSystem, designSystem, marketSystem,
+  doorSystem, movementSystem, newsSystem, buildSystem, financeSystem, gamingSystem, tableSystem, guestSystem, drinkSystem, poolSystem, streetSystem, staffSystem, goalSystem, incidentSystem, cheatSystem, crewSystem, bankSystem, regulatorSystem, whaleSystem, calendarSystem, researchSystem, viceSystem, yoursSystem, designSystem, marketSystem, handPaySystem,
 ];
 
 export type Serves = "thirst" | "bladder" | "cage" | "atm" | "hunger" | "show" | "club" | "pool" | "garden" | "golf";

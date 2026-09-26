@@ -8,7 +8,7 @@ import { TABLE_GAMES, ruleOf, vpModel, type TableDef } from "../data/tables";
 import type { Game } from "./game";
 import type { System } from "./registry";
 import type { Agent, GameState, GuestData, PlacedObject } from "./state";
-import { slotInfo, statsOf } from "./design";
+import { isStock, slotInfo, statsOf } from "./design";
 import { lastSpin, spinCtx } from "./design/compile";
 import { cutLine, recordJackpot, saleFees, saleOf } from "./design/market";
 import { afterSpin, hasMeters, prepSpin, type MeterHost } from "./design/meters";
@@ -22,6 +22,8 @@ import { guestName, payStats, wagerPay } from "./cheats";
 import { stakeMult } from "./amenities";
 import { earnComps, ensureCash, expectedExcess, insured, stiff } from "./bank";
 import { engagement, savvyNow, showOff } from "./guests";
+import { startHandPay } from "./handpay";
+import type { Compiled } from "./design/compile";
 const news = newsFor("wins");
 
 /** (Batch A: raised from $1,000 / 500×, owner) Jackpots at least this big (or this multiple of the bet) reach the ticker; smaller ones only the log. */
@@ -175,6 +177,9 @@ export function settle(g: Game, a: Agent, o: PlacedObject, ws: Wager[], ledger: 
   return { won, wagered, jackpot };
 }
 
+/** A design's best base-game pay (× bet): its top prize when it has no jackpot levels. */
+const topBaseX = (c: Compiled) => c.base.e.reduce((t, q) => Math.max(t, q.x), 0);
+
 /** Seconds a free spin takes on the floor, as a share of a round (one wager's time). */
 const FS_SPIN = 1 / WAGERS_PER_ROUND;
 
@@ -196,27 +201,35 @@ function resolve(g: Game, a: Agent) {
   const ws: Wager[] = [];
   // (M8.6) A sold design: the maker takes its cut and the meters' increments, and pays their jackpots.
   const sale = inf ? saleOf(g.state, inf.id) : undefined;
+  // (Batch B) A stock design's linked and must-hit-by meters are the maker's network: same deal for those levels.
+  const net = !sale && !!host && isStock(inf!.id);
   let inc = 0, covered = 0, grand = 0;
   // (2026-09-26, owner) The design's top progressive level: a guest winning it is always news.
   let topLv = -1;
   if (host) for (let i = inf!.c.levels.length - 1; i >= 0; i--) if (inf!.c.levels[i].kind !== "fixed") { topLv = i; break; }
+  // (Batch B, owner) A machine's top prize (its top jackpot level, else its best base-game pay) is hand paid.
+  const topAll = inf ? inf.c.levels.length - 1 : -1, topBase = inf && topAll < 0 ? topBaseX(inf.c) : Infinity;
+  let hand = 0;
   let near = 0, feats = 0, extra = 0, jps = 0, voided = 0, big = false, seen = "";
   for (let k = 0; k < WAGERS_PER_ROUND; k++) {
     if (host) prepSpin(host, inf!.c, bet, r);
     lastSpin.kind = 0; lastSpin.level = -1; lastSpin.voided = -1; lastSpin.secs = 0; lastSpin.spins = 0; lastSpin.feat = "";
     let x = wagerPay(g, gd, m, drawPay, r);
     const kind = lastSpin.kind as number, feat = lastSpin.feat as string;
-    let mhb = 0;
+    let mhb = 0, mhbLv = -1;
     if (host) {
       const a = afterSpin(host, inf!.c, bet, x !== 0 ? lastSpin.level : -1, r);
-      if (a.x) { x = x < 0 ? x - a.x : x + a.x; jps++; mhb = a.x * bet; }
+      if (a.x) { x = x < 0 ? x - a.x : x + a.x; jps++; mhb = a.x * bet; mhbLv = a.level; }
       if (topLv >= 0 && x > 0 && ((a.x && a.level === topLv) || (lastSpin.level === topLv && lastSpin.voided < 0))) grand += x * bet;
     }
-    let cv = sale ? mhb : 0;
-    if (sale && host) {
-      for (const l of inf!.c.levels) if (l.kind !== "fixed") inc += l.inc * bet;
+    if (x > 0 && (inf ? (topAll >= 0 && ((lastSpin.level === topAll && lastSpin.voided < 0) || (mhb > 0 && mhbLv === topAll))) || x >= topBase - 1e-9 : x >= m.jackpotX)) hand += x * bet;
+    // A stock network pays only what its meter grew: the seed is in the design's own payback, so the house pays that.
+    const seedOf = (i: number) => (net ? g.state.meters[inf!.id]?.seed[i] ?? 0 : 0);
+    let cv = sale ? mhb : net && mhb ? Math.max(0, mhb - seedOf(mhbLv)) : 0;
+    if ((sale || net) && host) {
+      for (const l of inf!.c.levels) if (l.kind !== "fixed" && (sale || l.kind !== "sa")) inc += l.inc * bet;
       const lv = lastSpin.level as number, l = inf!.c.levels[lv];
-      if (x > 0 && lv >= 0 && lastSpin.voided < 0 && l && (l.kind === "sa" || l.kind === "linked")) cv += (spinCtx.mx[lv] ?? 0) * bet;
+      if (x > 0 && lv >= 0 && lastSpin.voided < 0 && l && ((sale && l.kind === "sa") || l.kind === "linked")) cv += Math.max(0, (spinCtx.mx[lv] ?? 0) * bet - seedOf(lv));
     }
     ws.push({ m, bet, x, cov: cv || undefined });
     covered += cv;
@@ -233,9 +246,11 @@ function resolve(g: Game, a: Agent) {
     if (x === 0 && m.nearMiss && r.chance(m.nearMiss)) near++;
   }
   if (sale && covered) post(g, cutLine(inf!.id), covered);
+  if (net) post(g, "wap", covered - inc);
   const { won, wagered, jackpot } = settle(g, a, o, ws, "slots");
   if (sale) saleFees(g, inf!.id, sale, wagered, inf!.c.d.rtp, inc);
   if (jackpot && inf) recordJackpot(g, inf.id, won);
+  if (hand > 0 && !gd.why) startHandPay(g, a, o, hand);
   if (grand > 0) {
     const lv = ["Mini", "Minor", "Major", "Grand"][4 - inf!.c.levels.length + topLv] ?? "top";
     newsFor("progressives")(g, "good", `${guestName(gd.name)} won the ${lv} progressive on ${inf!.d.name}: ${fmtMoney(grand)}!`, { a: a.id });

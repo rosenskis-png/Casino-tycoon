@@ -1108,7 +1108,7 @@ function candidates(g: Game, a: Agent, type: GuestTypeDef, maxLooks = MAX_LOOKS)
       if (!list) continue;
       for (const o of list) {
         if (--scan < 0) return out;
-        if (o.broken) continue;
+        if (o.broken || o.hp) continue;
         const appeal = gameAppeal(g, type, gd, o);
         if (appeal <= 0.05 || freeSeat(g, o.id) < 0) continue;
         const d = Math.abs(o.x - a.x) + Math.abs(o.y - a.y);
@@ -1801,13 +1801,15 @@ function guestTick(g: Game, a: Agent) {
       if (a.timer === 0) {
         // Just sat down: start the session and the first round.
         const o = g.objById.get(a.target);
-        if (!o || !isGame(o.kind) || o.broken || a.seat < 0) { release(g, a); a.act = "idle"; return; }
+        if (!o || !isGame(o.kind) || o.broken || o.hp || a.seat < 0) { release(g, a); a.act = "idle"; return; }
         o.st.sessions++;
         gd.mem.sitAt = g.state.tick;
         gd.sf = 0;
         gd.favAt = 0;
         a.timer = nextRound(g, a);
       } else if (a.timer === -1) {
+        // (Batch B) A hand pay on the way: the winner waits in the seat, whatever else is going on.
+        if (g.objById.get(a.target)?.hp) { gd.buzz = Math.min(20, gd.buzz + 0.05); return; }
         const why = quitReason(g, a);
         if (why) {
           noteSession(g, a);

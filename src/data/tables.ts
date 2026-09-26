@@ -27,16 +27,20 @@ export interface TableDef {
   privacy?: boolean;
   /** Draws onlookers (craps). */
   onlookers?: boolean;
+  /** (Batch B, owner) One line for its card: how it plays, how it swings, who it suits. */
+  blurb: string;
 }
 
 export const TABLE_GAMES: Record<Family, TableDef> = {
   vpoker: {
     id: "vpoker", name: "Video poker", round: 3, minPlayers: 1, ledger: "slots",
+    blurb: "Draw poker against a paytable, player's choices matter; low swings with a rare royal flush: for patient players who like to decide.",
     rules: [{ id: "pay", name: "Paytable", opts: ["9/6", "8/5", "7/5", "6/5"], score: [0.4, 0, -0.3, -0.6] }],
     limits: [[0.25, 1.25], [1, 5], [5, 25]],
   },
   blackjack: {
     id: "blackjack", name: "Blackjack", round: 7, minPlayers: 1, ledger: "tables",
+    blurb: "Cards against the dealer, decisions every hand; steady swings and a thin edge with good rules: for players who think they can play it right.",
     rules: [
       { id: "nat", name: "Natural pays", opts: ["3:2", "6:5"], score: [0.2, -1] },
       { id: "decks", name: "Decks", opts: ["6", "8", "2", "1"], score: [0, -0.1, 0.2, 0.4] },
@@ -46,37 +50,44 @@ export const TABLE_GAMES: Record<Family, TableDef> = {
   },
   roulette: {
     id: "roulette", name: "Roulette", round: 10, minPlayers: 1, ledger: "tables",
+    blurb: "Bets on where the ball lands, from even money to 35 to 1; any swing you like: for relaxed social play.",
     rules: [{ id: "zero", name: "Wheel", opts: ["Double zero", "Single zero"], score: [0, 0.7] }],
     limits: [[5, 250], [10, 500], [25, 1000], [2, 100], [100, 5000]],
   },
   craps: {
     id: "craps", name: "Craps", round: 8, minPlayers: 1, ledger: "tables", onlookers: true,
+    blurb: "Dice with a table full of bets, everyone rides the shooter; streaky and loud: for groups who want to cheer together.",
     rules: [{ id: "odds", name: "Odds", opts: ["2×", "None", "1×", "3-4-5×", "10×"], score: [0, -0.6, -0.2, 0.3, 0.6] }],
     limits: [[5, 250], [10, 500], [25, 1000], [2, 100], [100, 5000]],
   },
   baccarat: {
     id: "baccarat", name: "Baccarat", round: 8, minPlayers: 1, ledger: "tables", privacy: true,
+    blurb: "Bet banker or player and watch the cards; smooth swings and a low edge: for big bettors who like it quiet.",
     rules: [{ id: "comm", name: "Commission", opts: ["5%", "4%"], score: [0, 0.5] }],
     limits: [[25, 1000], [10, 500], [100, 5000], [5, 250]],
   },
   poker: {
     id: "poker", name: "Poker", round: 12, minPlayers: 2, ledger: "poker", pool: true,
+    blurb: "Players against each other for the pot, the house takes a rake; skill over luck: for regulars who play for hours.",
     rules: [{ id: "rake", name: "Rake", opts: ["10%", "5%"], score: [0, 0.5] }],
     limits: [[5, 5], [2, 2], [10, 10], [25, 25]],
   },
   keno: {
     id: "keno", name: "Keno", round: 20, minPlayers: 1, ledger: "keno",
+    blurb: "Pick numbers and watch the draw; small stakes with a long shot at a big prize: for slow, easy play between other things.",
     rules: [],
     limits: [[1, 20], [2, 50], [5, 100]],
   },
   bingo: {
     id: "bingo", name: "Bingo", round: 25, minPlayers: 1, ledger: "keno", pool: true,
+    blurb: "Cards and called numbers, players share the pot; gentle and social: for a long, cheap session with company.",
     rules: [{ id: "hold", name: "House hold", opts: ["30%", "20%", "40%"], score: [0, 0.5, -0.5] }],
     limits: [[2, 2], [1, 1], [5, 5]],
   },
   // M9.5 (docs/spec/calendar.md): bets on a game at a price; the book's vig is the edge.
   sports: {
     id: "sports", name: "Sportsbook", round: 30, minPlayers: 1, ledger: "sports",
+    blurb: "Bets on the games, paid at the posted price; one bet a game, slow and steady: for fans who follow the scores.",
     rules: [{ id: "vig", name: "Price", opts: ["-110", "-105", "-120"], score: [0, 0.5, -0.6] }],
     limits: [[5, 500], [10, 1000], [25, 2500]],
   },

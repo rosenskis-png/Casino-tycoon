@@ -327,6 +327,21 @@ The rare jackpot of design: a game good enough that a maker buys it.
 - Each sold design is its own line in the budget (royalties in, fees out); the monthly statement lists its installs; the library records "Sold to …" and peak installs.
 - ~~Scenario goals (M11) may exclude royalties~~: cut by the owner on 2026-09-25.
 
+### Batch B (owner, 2026-09-26)
+- **Stock progressives are wide-area.** A stock design's linked and must-hit-by meters are fed every day by the
+  maker's network (1,500 machines at a middle bet, one round a day each), so they climb visibly, and can hit out
+  there (news: "The Grand on Ember Link hit in Reno for $…", quiet under $25K). Like a sold design's, those meters
+  are the maker's: your machines' increments go to the maker as a fee, and when they hit on your floor the maker pays
+  what the meter grew above its seed (the house pays the seed, which is in the design's payback) (ledger line "Wide-area progressives (fees less jackpots paid)"); they don't count as your liability.
+  Standalone meters stay per machine and yours. Designs made in this scenario have no network until sold.
+  Test Floor: the Grand Wheel's meter went $3K → $11.5K in 75 days; Ember's Major climbs to $3–5K between hits.
+- **Hold & spin:** every open spot spins its own little reel (orbs and blanks rolling) and lands on its own, in
+  reel order, blank or with an orb. Nothing shows before its spot lands.
+- **Pick:** the player picks. The board waits for taps; each tap turns over the next prize the math already settled
+  (the tile is the player's choice, the prize isn't). Skip turns over the rest. Autoplay stops at a pick.
+- **Card description:** every design's cards carry one generated line: its features and jackpots, its volatility and
+  who it suits, with no crowd names (`gameBlurb`).
+
 ## As built in M8.6 (differences from the plan above)
 Code: `src/sim/design/market.ts` (sim), `src/ui/designer/Market.tsx` (panels). Tuning in `MARKET` and `SALE_RULES`.
 - **Dropped (owner, before the build):** the yearly Slot Expo and rival makers' releases. The `rival` origin stays in the data but nothing makes one.

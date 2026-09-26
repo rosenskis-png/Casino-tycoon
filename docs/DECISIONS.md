@@ -2,6 +2,26 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Batch B built: games working right
+- **Progressives (owner):** the headless check was already done (see the entry below); the owner chose outside play:
+  "progressive goes up by a good amount from outside players, unless it's a newly designed slot during this
+  scenario". Stock designs' linked and must-hit-by meters now grow daily from a maker's network (1,500 machines)
+  and can hit elsewhere; standalone meters and your own designs are unchanged (a sold design keeps its own network).
+  **Flag for the owner (Claude's call):** those network meters are the maker's, as real wide-area progressives are
+  and as sold designs already were: your increments go to the maker as a fee and the maker pays what a meter grew above
+  its seed when it hits on your floor (the seed is in the design's payback, so the house still pays that). Why: otherwise the house would pay jackpots mostly fed by other casinos' players, a payback far above
+  the design's budget. Expected cost to you is unchanged (the fee equals your share); only the swings go away.
+  Say if you'd rather the house pays them.
+- **Hand pays (owner, changed mid-build):** only top prizes and Grands, not the $2,000 tax line: "anyone who wins a
+  top prize or grand jackpot has to be hand paid by a staff member (unless no staff members), so there is more
+  celebration and spectacle. Maybe the people nearby pause what they're doing to watch/cheer." Built as described
+  in docs/spec/staff.md (slot techs first, then any free floor staff; 90 s fallback; onlookers and cheers).
+- **Hold & spin** ("spin to win"): open spots spin their own reels and land one by one. **Pick:** the player taps the
+  tiles; the prizes stay settled by the math when the feature starts.
+- **Card descriptions:** generated for slot designs (features, jackpots, volatility, who it suits); written for tables.
+- **Sound:** synthesized conversation murmur in place of the noise whoosh; a new 16-bar title theme.
+- Save schema 25 (hand-pay fields).
+
 ## 2026-09-26 · Owner's notes: slot sales, progressives, entrances, rows and groups
 - **Slot sales rebalanced (owner: "too slow to be meaningful"):** dozens to hundreds of machines is normal,
   thousands exciting (median 150 × offer quality, heavy tail, 50,000 cap); an S-curve over days to months that

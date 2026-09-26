@@ -74,6 +74,9 @@ Drawn per person from a stable hash: how adventurous they are follows their type
 ### High rollers (new type)
 A recurring type with a pool of its own: few, rich (visit budget median $2,000), sharp, rules-aware, fond of prestige and privacy, and uninterested in cheap machines. They come more when the casino has tables, and more again when it has a high-limit room. Whales (M9) are events on top of this.
 
+## Card description (Batch B)
+Each game's card starts with one line (`TableDef.blurb`): how it plays, how it swings, who it suits, with no crowd names.
+
 ## Books
 
 New ledger lines: **Tables** (blackjack, roulette, craps, baccarat), **Poker rake**, **Keno & bingo**. Video poker books under Slots.

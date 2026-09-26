@@ -21,6 +21,8 @@ import { TICKS_PER_DAY } from "../clock";
 import { judged, feelOf, sessionOf } from "./appeal";
 import { panel } from "./lab";
 import { designById, designIdOf, isStock, designPrice } from "./lookup";
+import { meterFor } from "./meters";
+import { WAGERS_PER_ROUND } from "../../data/games";
 import { compiledById, machinesOf, panelMix, perfIndex, statsOf } from "./index";
 const news = newsFor("slots");
 
@@ -514,11 +516,44 @@ function outsidePlay(g: Game) {
     });
   }
 }
+/**
+ * (Batch B, owner 2026-09-26) Stock designs' linked and must-hit-by meters are wide-area: a maker's network of
+ * machines in other casinos feeds them every day (so they climb visibly) and can hit them. Designs made in this
+ * scenario don't have one until a maker buys them. The maker runs these meters: your machines' increments go to it
+ * as a fee, and it pays their jackpots when they hit on your floor (the "Wide-area progressives" line).
+ */
+export const NETWORK = { units: 1500 };
+/** A stock design's network coin-in per day: its machines at a middle bet, one round a day each. */
+const networkCoin = (c: { d: SlotDesign }) => NETWORK.units * ((c.d.minBet + c.d.maxBet) / 2) * c.d.denom * WAGERS_PER_ROUND;
+/** Whether a design's linked and must-hit-by meters are wide-area and the maker's (stock, or sold). */
+export const wideArea = (s: GameState, id: string) => isStock(id) || !!s.designs[id]?.sale;
+
+function networkPlay(g: Game) {
+  const s = g.state, r = rng(s, "network");
+  const ids = new Set<string>();
+  for (const o of s.objects) if (OBJECTS[o.kind]?.slot && isStock(designIdOf(o))) ids.add(designIdOf(o));
+  for (const id of [...ids].sort()) {
+    const c = compiledById(s, id);
+    if (!c || !c.levels.some((l) => l.kind === "linked" || l.kind === "mhb")) continue;
+    const coin = networkCoin(c), top = c.d.maxBet * c.d.denom;
+    c.levels.forEach((l, i) => {
+      if (l.kind !== "linked" && l.kind !== "mhb") return;
+      const m = meterFor({ meters: s.meters, own: {}, id }, c, i, r)!;
+      m.v[i] += l.inc * coin;
+      const hit = l.kind === "mhb" ? m.v[i] >= m.hit[i] : r.chance(1 - Math.exp(-(l.p * coin) / top));
+      if (!hit) return;
+      news(g, "info", `The ${levelWord(c.levels.length, i)} on ${c.d.name} hit in ${r.pick(CITIES)} for ${fmtMoney(m.v[i])}.`, m.v[i] < 25000);
+      m.v[i] = m.seed[i];
+      if (l.kind === "mhb") m.hit[i] = m.seed[i] + r.next() * (l.cap - l.x) * top;
+    });
+  }
+}
+
 const levelWord = (n: number, i: number) => ["Mini", "Minor", "Major", "Grand"][4 - n + i] ?? "jackpot";
 
 /** Meters the house owes (a sold design's belong to its maker). */
 export const houseMeters = (s: GameState) => ({
-  meters: Object.fromEntries(Object.entries(s.meters ?? {}).filter(([id]) => !s.designs[id]?.sale)),
+  meters: Object.fromEntries(Object.entries(s.meters ?? {}).filter(([id]) => !wideArea(s, id))),
   objects: s.objects.filter((o) => !(o.meter && s.designs[designIdOf(o)]?.sale)),
 });
 
@@ -570,6 +605,7 @@ export const marketSystem: System = {
     if (Math.floor(s.tick / DAY) % 7 === 0) marketChanged(g);
     offers(g);
     outsidePlay(g);
+    networkPlay(g);
   },
   closeMonth(g) { royalties(g); },
   month(g) {

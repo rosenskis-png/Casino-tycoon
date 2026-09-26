@@ -32,24 +32,37 @@ export interface Track {
 }
 
 export const TRACKS: Record<string, Track> = {
-  // The main theme: a swinging lounge tune in F, brassy lead over walking bass and brushes.
+  // The main theme (Batch B, owner: "a better title theme"): a 16-bar swinging lounge tune in F, verse and bridge.
+  // A brassy hook over walking bass, brushes and a vibraphone sparkle; bluesy turnarounds back to the top.
   theme: {
-    id: "theme", name: "Casino Tycoon", bpm: 112, swing: 0.64, root: 53, gain: 0.9,
-    chords: [[0, "maj7"], [9, "m7"], [2, "m7"], [7, "7"], [0, "maj7"], [9, "m7"], [2, "m7"], [7, "7"]],
-    drums: { ride: "x...x.x.x...x.x.", rim: "....x.......x...", kick: "x.......x......." },
-    bass: { wave: "triangle", notes: "0 - - . 4 - - . 7 - - . 9 - - .", oct: -1, cutoff: 900 },
-    pad: { wave: "triangle", gain: 0.05, oct: 0 },
+    id: "theme", name: "Casino Tycoon", bpm: 118, swing: 0.62, root: 53, gain: 0.9,
+    chords: [
+      [0, "maj7"], [9, "m7"], [2, "m7"], [7, "7"], [4, "m7"], [9, "7"], [2, "m7"], [7, "7"],
+      [5, "maj7"], [10, "7"], [4, "m7"], [9, "7"], [2, "m7"], [7, "7"], [0, "maj7"], [7, "7"],
+    ],
+    drums: { ride: "x...x.x.x...x.x.", rim: "....x.......x...", kick: "x.......x.....x.", hat: "....x.......x..." },
+    bass: { wave: "triangle", notes: "0 - - . 7 - - . 12 - - . 9 - 7 -", oct: -1, cutoff: 900 },
+    pad: { wave: "triangle", gain: 0.045, oct: 0 },
+    arp: { wave: "triangle", notes: ". . 0+ . . . 1+ . . . 2+ . . . 3 .", oct: 1, gain: 0.022 },
     lead: {
-      wave: "square", oct: 0, gain: 0.07,
+      wave: "square", oct: 0, gain: 0.065,
       bars: [
-        "12 . . 14 16 . 12 . 9 . . . . . . .",
-        "14 . . 12 9 . 7 . 9 . . . . . . .",
-        "14 . . 17 21 . 17 . 14 . . . . . . .",
-        "16 . . . 19 . . . 17 . 16 . 14 . . .",
-        "12 . . 14 16 . 19 . 21 . . . 19 . 16 .",
-        "17 . . . 14 . 12 . 9 . . . . . 12 .",
-        "14 . 17 . 21 . 17 . 14 . 12 . 9 . 7 .",
-        "16 . . . . . . . 7 . 9 . 10 . 11 .",
+        "12 . 16 . 19 . 21 - - . 19 . 16 . . .",
+        "21 . . 19 21 . 24 . 21 - - . . . . .",
+        "19 . . 17 14 . 17 . 21 - - . . . 19 .",
+        "23 - - . 22 . 19 . 17 . 16 . 14 . . .",
+        "16 . 19 . 23 . 26 - - . 24 . 23 . . .",
+        "25 . . 26 25 . 21 . 19 - - . . . . .",
+        "17 . 21 . 24 . 26 . 24 . 21 . 17 . 14 .",
+        "16 - - - 19 - - - 12 . . . . . . .",
+        "24 . . . 21 . 24 . 28 - - - . . . .",
+        "26 . . 25 26 . 22 . 20 - - - . . . .",
+        "19 . . . 16 . 19 . 23 - - - . . . .",
+        "25 . . 24 25 . 21 . 19 - - - . . . .",
+        "14 . 17 . 21 . 24 . 26 . 24 . 21 . 17 .",
+        "23 . . . 22 . . . 19 . 17 . 16 . 14 .",
+        "12 . 16 . 19 . 21 . 24 - - - - - . .",
+        ". . . . 19 . 21 . 22 . 23 . . . . .",
       ],
     },
   },

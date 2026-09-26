@@ -48,6 +48,7 @@ export function yourFam(kind: string): YourFam | null {
 export function cantPlay(g: Game, o: PlacedObject | undefined): string | null {
   if (!o || !yourFam(o.kind)) return "You can't play this";
   if (o.broken) return "It's broken down";
+  if (o.hp) return "Waiting on a hand pay";
   if (!tableOpen(g, o)) return "No dealer: the table is closed";
   return null;
 }

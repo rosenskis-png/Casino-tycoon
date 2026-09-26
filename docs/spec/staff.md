@@ -55,7 +55,23 @@ Staff of the same job drift apart like a soft repel field. When a janitor, tech,
 ## Uniforms (M11, owner)
 Every job has a uniform color the player sets in the Staff tab (tap the job's color: 16 swatches, `UNIFORM_COLORS`); it dyes the job's parts (`UNIFORMS`: janitor coverall and cap, tech vest and hard hat, server vest, guard jacket, operator polo, dealer jacket, pit boss jacket, enforcer top). Defaults: janitor teal, tech orange, server black, guard red, operator grey, dealer wine, pit boss charcoal, enforcer black. Silhouettes and props: docs/spec/art.md §6.
 
+## Hand pays (Batch B, owner 2026-09-26)
+- A guest who wins a machine's **top prize** is paid by hand: the design's top jackpot level (the Grand, fixed or
+  progressive, must-hit-by included), or on a design without jackpots its best base-game pay; on video poker the
+  royal flush. Nothing smaller: every other win pays on the machine.
+- The machine locks (`PlacedObject.hp`, dollars; `hpAt`) and the winner stays in the seat. The nearest free staff
+  member walks over (slot techs first, then casino hosts, then janitors, drink servers with an empty tray and
+  entertainers; guards, dealers, pit bosses and operators are never pulled away), counts it out for 5 s, and the
+  machine unlocks. A gold $ flashes over the machine meanwhile.
+- With nobody on staff who could come, the win pays at once. If nobody gets there within 90 s, a supervisor pays it.
+- The celebration: guests on their feet within 10 tiles who can see it stop to watch (60%, as at a hot craps table),
+  seated players nearby cheer (a lift), and passers-by keep being drawn for 30 s. The winner gets a bigger lift when
+  paid. Measured (Test Floor, 90 days): 8 hand pays, average wait 20 s, longest 35 s.
+- The play-it-yourself machine shows its hand-pay banner on the same rule (was: any jackpot of $1,200 and up).
+
 ## Save
+Schema 25 (Batch B): `PlacedObject.hp`/`hpAt`, `Agent.hp` (the machine a staff member is paying).
+
 Schema 18 (M11): `crew.uniform` (color per job; missing = default). Dealers from older saves are matched to the tables on load.
 
 Schema 11: staff gain `st` (knack, crook, morale, busy and counted beats today, zone tile); state gains `crew` (pay per role, shrinkage pending per area); bars and cages gain `crook`.

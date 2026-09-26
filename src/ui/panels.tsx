@@ -20,7 +20,7 @@ import { sportsX, bjBaseEdge, bingoHold, commission, pockets, pokerRake, vpPayba
 import { INCIDENTS, INCIDENT_CATS, RULE_LEVELS, RULE_HELP, CUTOFF } from "../data/incidents";
 import { ENF, ENF_ACTIONS, ENF_REASONS, ENF_REASON_IDS, type EnfAction, type EnfReason } from "../data/cheats";
 import {
-  formatDate, describeGoals, goalStatus, monthlyCosts, worth, meterDebt, covers, compiledOf, designIdOf, designById, cantUse, designLocks, cabKind, ledgerLabel, MONTH_NAMES,
+  formatDate, describeGoals, goalStatus, monthlyCosts, worth, meterDebt, covers, compiledOf, designIdOf, gameBlurb, wideArea, designById, cantUse, designLocks, cabKind, ledgerLabel, MONTH_NAMES,
   Game, TICKS_PER_DAY, TICKS_PER_SECOND, thoughtRates, poolSummary, person, guestCount, DRINK_PRICE, STRENGTHS,
   incidentRates, incidentOf, isStaff, LADDER_NAMES, CALL_AFTER, suspicion, coverage, purposeTiles,
   payOf, wageFor, skillOf, skillWord, roleMorale, debtOf, loanRoom, emergencyRoom, COMP_BIT, NOT_INCOME, theo,
@@ -1005,6 +1005,7 @@ function TableCard({ g, id }: { g: Game; id: number }) {
     <>
       <div className="kv">
         {need > 0 && <><b>Status</b><span>{tableOpen(g, o) ? `Open · ${players} playing` : `Closed: ${have} of ${need} dealer${need > 1 ? "s" : ""} (hire them in Staff)`}</span></>}
+        <b>About</b><span>{def.blurb}</span>
         {fam === "vpoker" && <><b>Status</b><span>{o.broken ? "Broken down" : "Working"}</span></>}
         <b>House edge</b><span>{edgeText(fam, o.rules)}</span>
         <b>{def.pool ? "Stake" : "Limits"}</b>
@@ -1046,6 +1047,7 @@ function ObjectStats({ host, id }: { host: Host; id: number }) {
   return (
     <div className="kv">
       <b>Game</b><span>{c.d.name} · {c.lay.name}</span>
+      <b>About</b><span>{gameBlurb(c, wideArea(s, id2))}</span>
       <b>Status</b><span>{o.broken ? "Broken down" : "Working"}{s.designs[id2]?.rigged ? " · uncertified" : ""}</span>
       <b>Bets</b><span className="num">{bets} a spin</span>
       <b>Payback</b><span className="num">{(m.rtp * 100).toFixed(1)}% by design</span>

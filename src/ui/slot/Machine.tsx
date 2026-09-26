@@ -56,8 +56,9 @@ interface View {
   shower: number;
   /** (M8.5) Which screen is up, and each feature's own state. */
   mode: "reels" | "hns" | "pick" | "wheel" | "offer";
-  hns?: { orbs: Record<number, Orb2>; left: number; spinning: boolean; spots: number };
-  pick?: { tiles: ({ x: number; lv: number } | null)[]; mode: "collect" | "match"; level: number };
+  /** (Batch B) `landed`: open spots that have stopped this respin (the rest are still spinning). */
+  hns?: { orbs: Record<number, Orb2>; left: number; spinning: boolean; spots: number; landed?: number[] };
+  pick?: { tiles: ({ x: number; lv: number } | null)[]; mode: "collect" | "match"; level: number; open?: boolean };
   wheel?: { segs: { x: number; lv: number }[]; turn: number; spinning: boolean; at: number };
   offer?: { vals: number[]; k: number; state: "ask" | "took" | "final" };
   col: number;
@@ -66,12 +67,10 @@ interface View {
   mark: string;
 }
 /** One step of a spin's presentation: `run` schedules it (compressed after a tap) and returns its length in ms; `end` jumps to its last frame. */
-interface Phase { run(quick: boolean): number; end?(): void; feat?: boolean; wait?: boolean }
+interface Phase { run(quick: boolean): number; end?(): void; feat?: boolean; wait?: boolean; skip?(): void }
 
 const fmt = (v: number) => `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const denomLabel = (d: number) => (d < 1 ? `${Math.round(d * 100)}¢` : `$${d}`);
-/** Real machines hand-pay jackpots of $1,200 and up (the tax form threshold). */
-const HANDPAY = 1200;
 const TRIGGERS = [SCATTER, BONUS_PICK, BONUS_WHEEL, BONUS_OFFER];
 
 /** A believable starting screen: a losing layout from the design's symbols. */
@@ -173,9 +172,12 @@ export function Machine(p: MachineProps) {
   /** Skip: every step of the feature jumps to its end; its total then counts up. */
   function skipFeature() {
     let i = pi.current;
+    // A waiting step that can finish itself (the pick board turns over the rest and moves on).
+    if (phases.current[i]?.wait && phases.current[i]?.skip) { phases.current[i].skip!(); return; }
     clearAll();
     while (phases.current[i]?.feat && !phases.current[i]?.wait) { phases.current[i].end?.(); i++; }
     go(i, true);
+    if (phases.current[i]?.wait && phases.current[i]?.skip) phases.current[i].skip!();
   }
   function done() {
     const out = outRef.current;
@@ -347,15 +349,23 @@ export function Machine(p: MachineProps) {
       for (const o of got) orbs[o.at] = { x: o.x, lv: o.lv };
       left = got.length ? 3 : left - 1;
       const after = { ...orbs }, leftNow = left;
-      const fin = () => setView((v) => ({ ...v, hns: v.hns && { ...v.hns, orbs: Object.fromEntries(Object.entries(after).map(([k, o]) => [k, { ...o, fresh: false }])), left: leftNow, spinning: false }, msg: `${leftNow} RESPIN${leftNow === 1 ? "" : "S"} LEFT` }));
+      const fin = () => setView((v) => ({ ...v, hns: v.hns && { ...v.hns, orbs: Object.fromEntries(Object.entries(after).map(([k, o]) => [k, { ...o, fresh: false }])), left: leftNow, spinning: false, landed: [] }, msg: `${leftNow} RESPIN${leftNow === 1 ? "" : "S"} LEFT` }));
+      // (Batch B, owner) Every open spot spins and lands on its own, in reel order: blank, or an orb. Nothing shows
+      // before its spot has landed.
+      const open = Array.from({ length: h.spots }, (_, k) => k).filter((k) => !before[k]);
+      const byAt = new Map(got.map((o) => [o.at, o]));
       P.push({
         feat: true,
         run(quick) {
-          setView((v) => ({ ...v, hns: v.hns && { ...v.hns, orbs: before, spinning: true }, msg: "" }));
+          setView((v) => ({ ...v, hns: v.hns && { ...v.hns, orbs: before, spinning: true, landed: [] }, msg: "" }));
           play("respin");
-          const t0 = quick ? 150 : 700;
-          got.forEach((o, k) => at(t0 + k * (quick ? 40 : 160), () => { setView((v) => ({ ...v, hns: v.hns && { ...v.hns, orbs: { ...v.hns.orbs, [o.at]: { x: o.x, lv: o.lv, fresh: true } } } })); play("orb"); }));
-          const t = t0 + got.length * (quick ? 40 : 160) + (quick ? 150 : 450);
+          const t0 = quick ? 120 : 650, step = quick ? 15 : Math.max(60, Math.min(140, 1600 / Math.max(1, open.length)));
+          open.forEach((k, j) => at(t0 + j * step, () => {
+            const o = byAt.get(k);
+            setView((v) => ({ ...v, hns: v.hns && { ...v.hns, landed: [...(v.hns.landed ?? []), k], orbs: o ? { ...v.hns.orbs, [k]: { x: o.x, lv: o.lv, fresh: true } } : v.hns.orbs } }));
+            play(o ? "orb" : "reelstop");
+          }));
+          const t = t0 + open.length * step + (quick ? 150 : got.length ? 550 : 350);
           at(t, fin);
           return t;
         },
@@ -381,46 +391,53 @@ export function Machine(p: MachineProps) {
     return P;
   }
 
-  /** Pick: tiles turn over; until "collect", or until three of a jackpot match. */
+  /** Pick (Batch B, owner: the player picks): the board waits for taps; each tap turns over the next prize the math
+   * settled (the tile is the player's, the prize was drawn when the feature started). Skip turns over the rest. */
+  const pickRef = useRef<{ out: Outcome; bet: number; next: number; tiles: ({ x: number; lv: number } | null)[]; sum: number } | null>(null);
   function pickSteps(out: Outcome, bet: number): Phase[] {
     const pk = out.pick!, P: Phase[] = [];
-    const order = tileOrder(pk.board, pk.reveals.length);
+    const board = () => ({ tiles: Array(pk.board).fill(null), mode: pk.mode, level: pk.level, open: true });
     P.push({
       feat: true,
       run(quick) {
         setView((v) => ({ ...v, wins: [{ s: BONUS_PICK, k: 3, pay: 0, cells: cellsOf(out.grid, BONUS_PICK) }], msg: "BONUS!" }));
         play(d.show.call);
         at(quick ? 300 : 900, () => { banner("pick", pk.mode === "match" ? "PICK TO MATCH" : "PICK A PRIZE", pk.mode === "match" ? "MATCH 3 TO WIN" : "UNTIL COLLECT"); play("fsStart"); });
-        at(quick ? 900 : 2400, () => setView((v) => ({ ...v, banner: null, wins: [], mode: "pick", pick: { tiles: Array(pk.board).fill(null), mode: pk.mode, level: pk.level } })));
+        at(quick ? 900 : 2400, () => setView((v) => ({ ...v, banner: null, wins: [], mode: "pick", msg: "PICK A TILE", pick: board() })));
         return quick ? 1000 : 2600;
       },
-      end: () => setView((v) => ({ ...v, banner: null, wins: [], mode: "pick", pick: { tiles: Array(pk.board).fill(null), mode: pk.mode, level: pk.level } })),
+      end: () => setView((v) => ({ ...v, banner: null, wins: [], mode: "pick", msg: "PICK A TILE", pick: board() })),
     });
-    let sum = 0;
-    const tiles: ({ x: number; lv: number } | null)[] = Array(pk.board).fill(null);
-    pk.reveals.forEach((rv, k) => {
-      tiles[order[k]] = rv;
-      sum += rv.x;
-      const snap = tiles.slice(), total = sum;
-      const fin = () => setView((v) => ({ ...v, pick: v.pick && { ...v.pick, tiles: snap }, msg: pk.mode === "collect" ? (rv.lv === -2 ? "COLLECT!" : `+${fmt(rv.x * bet)}`) : v.msg }));
-      P.push({
-        feat: true,
-        run(quick) {
-          at(quick ? 80 : 650, () => { fin(); play(rv.lv === -2 ? "wheelStop" : "pick"); if (pk.mode === "collect") setWin(credit0Win.current + total * bet); });
-          return quick ? 120 : 750;
-        },
-        end: () => { fin(); if (pk.mode === "collect") setWin(credit0Win.current + total * bet); },
-      });
+    P.push({
+      feat: true, wait: true,
+      run() { setAuto(0); pickRef.current = { out, bet, next: 0, tiles: Array(pk.board).fill(null), sum: 0 }; return 0; },
+      skip() {
+        const st = pickRef.current;
+        if (!st) return;
+        while (st.next < pk.reveals.length) { const free = st.tiles.findIndex((t) => !t); if (free < 0) break; reveal(free, true); }
+      },
     });
     if (pk.mode === "match" && pk.level >= 0) P.push(awardStep("jp", `${levelName(c.levels.length, pk.level, classic)}!`, out.x, bet, 2400, "jackpot", { feat: true }));
     else if (pk.mode === "match") P.push(awardStep("small", "NO MATCH", 0, bet, 1400, "deny", { feat: true, sub: "Jackpots need a bigger bet" }));
     return P;
   }
-  /** The pick board's tile order (UI only; the prize was settled when the feature started). */
-  function tileOrder(n: number, k: number): number[] {
-    const a = [...Array(n).keys()];
-    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-    return a.slice(0, k);
+  /** Turns over tile `k` with the next settled prize; after the last one, the feature goes on. */
+  function reveal(k: number, quiet = false) {
+    const st = pickRef.current;
+    if (!st || st.tiles[k] || st.next >= st.out.pick!.reveals.length) return;
+    const pk = st.out.pick!, rv = pk.reveals[st.next++];
+    st.tiles[k] = rv;
+    st.sum += rv.x;
+    const snap = st.tiles.slice(), total = st.sum, last = st.next >= pk.reveals.length;
+    setView((v) => ({ ...v, pick: v.pick && { ...v.pick, tiles: snap, open: !last }, msg: pk.mode === "collect" ? (rv.lv === -2 ? "COLLECT!" : `+${fmt(rv.x * st.bet)}`) : last ? "" : "PICK A TILE" }));
+    if (!quiet) play(rv.lv === -2 ? "wheelStop" : "pick");
+    if (pk.mode === "collect") setWin(credit0Win.current + total * st.bet);
+    if (last) {
+      pickRef.current = null;
+      clearAll();
+      if (quiet) go(pi.current + 1, true);
+      else at(900, () => go(pi.current + 1));
+    }
   }
 
   /** The wheel: it spins and lands on the segment the math drew. */
@@ -575,9 +592,11 @@ export function Machine(p: MachineProps) {
       const name = levelName(c.levels.length, out.mhb.level, classic);
       P.push(awardStep("jp", `MUST-HIT-BY ${name}!`, out.mhb.x, bet, 2600, "jackpot"));
     }
-    // A hand pay for a big jackpot.
-    const jpPay = (out.level >= 0 ? (out.kind === "jackpot" ? out.x : out.x) : 0) * bet + (out.mhb ? out.mhb.x * bet : 0);
-    if ((out.level >= 0 || out.mhb) && jpPay >= HANDPAY) {
+    // (Batch B, owner) A hand pay for the top prize: the top jackpot level (the Grand), or the best base-game pay on a
+    // design without jackpots. Smaller wins pay on the machine.
+    const topLv = c.levels.length - 1, topBase = c.base.e.reduce((a, q) => Math.max(a, q.x), 0);
+    const jpPay = (topLv >= 0 ? (out.level === topLv && out.voided !== topLv ? out.x : 0) + (out.mhb?.level === topLv ? out.mhb.x : 0) : out.x >= topBase ? out.x : 0) * bet;
+    if (jpPay > 0) {
       P.push({ run: (q) => { banner("handpay", "JACKPOT — HAND PAY", "Call attendant · verification required"); play("handpay"); return q ? 800 : 2600; } });
       P.push({ run: (q) => { banner("handpay", "PAID", fmt(jpPay)); return q ? 400 : 1000; } });
     }
@@ -709,7 +728,7 @@ export function Machine(p: MachineProps) {
         <div className="sm-window">
           <div className="sm-side l">{lay.badge.split(" ").map((w, k) => <b key={k}>{w}</b>)}{fsOn && view.fs!.mult > 1 && <i>×{view.fs!.mult}</i>}</div>
           {view.mode === "hns" && view.hns ? <HnsBoard v={view.hns} reels={lay.reels} rows={rows} bet={p.bet} c={c} />
-            : view.mode === "pick" && view.pick ? <PickBoard v={view.pick} bet={p.bet} c={c} />
+            : view.mode === "pick" && view.pick ? <PickBoard v={view.pick} bet={p.bet} c={c} onPick={(k) => reveal(k)} />
             : view.mode === "wheel" && view.wheel && !topperWheel ? <div className="sm-wheelbox"><WheelDisk segs={view.wheel.segs} turn={view.wheel.turn} spinning={view.wheel.spinning} bet={p.bet} c={c} /></div>
             : view.mode === "offer" && view.offer ? <OfferBoard v={view.offer} bet={offerRef.current?.bet ?? p.bet} onAnswer={answerOffer} />
             : (
@@ -767,10 +786,11 @@ function HnsBoard({ v, reels, rows, bet, c }: { v: NonNullable<View["hns"]>; ree
       {Array.from({ length: reels }, (_, r) => (
         <div key={r} className="col">
           {Array.from({ length: rows }, (_, row) => {
-            const o = v.orbs[r * rows + row];
+            const k = r * rows + row, o = v.orbs[k], spinning = !o && v.spinning && !v.landed?.includes(k);
             return (
-              <div key={row} className={`spot ${o ? "orb" : v.spinning ? "spin" : ""} ${o?.fresh ? "fresh" : ""} ${o && o.lv >= 0 ? "jp" : ""}`}>
-                {o ? (o.lv >= 0 ? <b>{levelName(c.levels.length, o.lv)}</b> : <b>{fmt(o.x * bet).replace(".00", "")}</b>) : null}
+              <div key={row} className={`spot ${o ? "orb" : spinning ? "spin" : ""} ${o?.fresh ? "fresh" : ""} ${o && o.lv >= 0 ? "jp" : ""}`}>
+                {o ? (o.lv >= 0 ? <b>{levelName(c.levels.length, o.lv)}</b> : <b>{fmt(o.x * bet).replace(".00", "")}</b>)
+                  : spinning ? <div className="hstrip" style={{ animationDuration: `${0.22 + ((k * 7) % 5) * 0.02}s` }}>{[0, 1, 2, 3, 0, 1, 2, 3].map((q, j) => <span key={j} className={q === 1 ? "o" : ""} />)}</div> : null}
               </div>
             );
           })}
@@ -780,11 +800,11 @@ function HnsBoard({ v, reels, rows, bet, c }: { v: NonNullable<View["hns"]>; ree
   );
 }
 /** Pick: a board of tiles; turned ones show their prize, "COLLECT", or a jackpot name. */
-function PickBoard({ v, bet, c }: { v: NonNullable<View["pick"]>; bet: number; c: Compiled }) {
+function PickBoard({ v, bet, c, onPick }: { v: NonNullable<View["pick"]>; bet: number; c: Compiled; onPick(k: number): void }) {
   return (
-    <div className="sm-pick">
+    <div className={`sm-pick ${v.open ? "live" : ""}`}>
       {v.tiles.map((t, k) => (
-        <div key={k} className={`tile ${t ? "open" : ""} ${t && t.lv >= 0 ? "jp" : ""} ${t && t.lv >= 0 && t.lv === v.level ? "match" : ""}`}>
+        <div key={k} role="button" onClick={() => { if (v.open && !t) onPick(k); }} className={`tile ${t ? "open" : ""} ${t && t.lv >= 0 ? "jp" : ""} ${t && t.lv >= 0 && t.lv === v.level ? "match" : ""}`}>
           {!t ? <span>?</span> : t.lv === -2 ? <b>COLLECT</b> : t.lv >= 0 ? <b style={{ color: levelColor(c.levels.length, t.lv) }}>{levelName(c.levels.length, t.lv)}</b> : <b>{fmt(t.x * bet)}</b>}
         </div>
       ))}

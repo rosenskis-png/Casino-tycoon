@@ -316,6 +316,8 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     s.groups = [];
     return s;
   },
+  // 24 → 25 (Batch B): hand pays (optional fields on machines and staff; nothing waits in an older save).
+  24: (s) => s,
 };
 
 export function serialize(g: Game): string {

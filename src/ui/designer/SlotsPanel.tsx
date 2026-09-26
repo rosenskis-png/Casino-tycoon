@@ -6,7 +6,7 @@ import { LAYOUTS, newDesign, type SlotDesign } from "../../data/designer";
 import { RESEARCH } from "../../data/research";
 import { play } from "../../platform/audio";
 import { loadLibrary, noteInLibrary, parseCode, removeFromLibrary } from "../../platform/library";
-import { sameMath, cantUse, certPending, certified, designLocks, machinesOf, perfIndex, sanitize, TICKS_PER_DAY, type Game } from "../../sim";
+import { compiledById, gameBlurb, wideArea, sameMath, cantUse, certPending, certified, designLocks, machinesOf, perfIndex, sanitize, TICKS_PER_DAY, type Game } from "../../sim";
 import { money } from "../format";
 import { opinionLine } from "./Opinions";
 import { DesignMarket, OfferLetter, RecordsAndWishes, marketLine } from "./Market";
@@ -37,11 +37,13 @@ export function SlotsPanel({ g, open, place }: { g: Game; open: (d: SlotDesign) 
   const row = (id: string, d: SlotDesign) => {
     const n = machinesOf(s, id).length, idx = perfIndex(s, id), st = s.dstats[id];
     const why = cantUse(s, id), locks = designLocks(s, d, id);
+    const c = compiledById(s, id), blurb = c ? gameBlurb(c, wideArea(s, id)) : "";
     return (
       <Fragment key={id}>
       <div className="dz-list-row">
         <div>
           <b>{d.name}</b>
+          {blurb && <small className="muted">{blurb}</small>}
           <small>{LAYOUTS[d.layout].name} · {(d.rtp * 100).toFixed(1)}% · {status(id)}{n ? ` · ${n} on the floor` : ""}{idx !== null ? ` · index ${idx.toFixed(2)}` : ""}{st?.coinIn ? ` · won ${money(st.coinIn - st.paidOut)}` : ""}</small>
           {locks.length > 0 && <small className="neg">Research: {locks.map((q) => RESEARCH[q]?.name ?? q).join(", ")}</small>}
           {opinionLine(g, id, d.name) && <small className="muted">{opinionLine(g, id, d.name)}</small>}

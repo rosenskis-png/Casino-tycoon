@@ -31,12 +31,12 @@ export { opinionsOf, gameKey, OPINION_MONTHS, type OpinionSummary } from "./opin
 export { huntEdge, topMeter, signDesign, collectHuntAt } from "./design";
 export { meterPull } from "./guests";
 export {
-  awareness, ageDays, marketVersion, fansOf, fanCount, wishes, saleBlocks, saleOf, installs, saleLine, cutLine, royLine, SALE_UNITS, marketFactor, MARKET, SALE_RULES, MAKERS,
+  awareness, ageDays, marketVersion, fansOf, fanCount, wishes, saleBlocks, saleOf, wideArea, NETWORK, installs, saleLine, cutLine, royLine, SALE_UNITS, marketFactor, MARKET, SALE_RULES, MAKERS,
 } from "./design/market";
 export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";
 export { judge, feelOf } from "./design/appeal";
-export { panel, parSheet, sessions, ratingWord, INTENSITY_WORDS, type Panel, type SessionStats } from "./design/lab";
+export { gameBlurb, panel, parSheet, sessions, ratingWord, INTENSITY_WORDS, type Panel, type SessionStats } from "./design/lab";
 export { spinFull, forces, TIERS, type Force, type Outcome, type Orb } from "./design/spin";
 export { seeded } from "./rng";
 export { tableOpen, dealerSeats, limitsNow } from "./tables";

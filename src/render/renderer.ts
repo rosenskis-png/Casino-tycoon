@@ -632,6 +632,8 @@ export class Renderer {
               blit("obj:broken", px + 4.5 * scale, py - (9 + (Math.floor(now / 400) & 1)) * scale);
               return;
             }
+            // (Batch B) A hand pay on the way: the dollar sign bobs and flashes until it's paid.
+            if (o.hp && Math.floor(now / 250) % 3) blit("obj:handpay", px + 4.5 * scale, py - (10 + (Math.floor(now / 250) & 1)) * scale);
             // Spinning reels, visible from the front only; they stop left to right.
             if (facing === "front" && player && player.timer > 0) {
               const strip = F.get(`reel:${cabK}`)!;

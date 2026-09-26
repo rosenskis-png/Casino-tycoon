@@ -27,6 +27,8 @@ Newest first. One entry per decision: date, what, why.
 - **Theming bonuses (owner, after the first build):** the lab lists every shared tag the set gets credit from, with
   the symbols sharing it, so players feel they discovered something and learn tags to build on. Tags a symbol
   has alone, and anything that costs, stay hidden.
+- **Custom is a theme (owner):** a top-level tile beside the themes, not a third set under each; a Colors row picks
+  the machine's background, frame and call.
 - **Test Floor check (owner):** `npm run targets` no longer flags Stampede Gold as barely played (one machine; it
   flagged every run).
 - **Fix:** guests' feel of a design and their judgments were cached by its math alone, so a looks-only change

@@ -233,21 +233,36 @@ function Concept({ d, set }: { d: SlotDesign; set: Set }) {
         <div className="dz-chips fonts">{FONTS.map((f, i) => <button key={f.name} className={i === look.font ? "on" : ""} style={{ fontFamily: f.css }} onClick={() => { play("click"); setLook((l) => { l.font = i; }); }}>{f.name}</button>)}</div>
         <Chips opts={LOGO_FX.map((name, i) => ({ v: i, label: name }))} value={look.fx} set={(v) => setLook((l) => { l.fx = v; })} />
       </Row>
-      <Row label="Theme" value={th.name} hint={d.syms ? "With custom symbols the theme sets only the colors, frame and call." : "The theme sets the symbols, colors and call, and counts toward the room's theming."}>
+      <Row label="Theme" value={d.syms ? "Custom" : th.name} hint={d.syms ? "Your own symbols from the emoji library." : "The theme sets the symbols, colors and call, and counts toward the room's theming."}>
         <div className="dz-themes">
+          <button className={`custom ${d.syms ? "on" : ""}`} onClick={() => { play("click"); set((n) => { if (!n.syms) n.syms = customFrom(n); }); }}>
+            <span>✏️</span><small>Custom</small>
+          </button>
           {SLOT_THEME_IDS.map((t) => (
-            <button key={t} className={t === d.theme ? "on" : ""} style={{ background: `linear-gradient(${SLOT_THEMES[t].bg[0]}, ${SLOT_THEMES[t].bg[1]})` }}
-              onClick={() => { play("click"); set((n) => { if (n.show.call === SLOT_THEMES[n.theme].call) n.show.call = SLOT_THEMES[t].call; n.theme = t; }); }}>
+            <button key={t} className={!d.syms && t === d.theme ? "on" : ""} style={{ background: `linear-gradient(${SLOT_THEMES[t].bg[0]}, ${SLOT_THEMES[t].bg[1]})` }}
+              onClick={() => { play("click"); set((n) => { if (n.show.call === SLOT_THEMES[n.theme].call) n.show.call = SLOT_THEMES[t].call; n.theme = t; delete n.syms; }); }}>
               <span>{SLOT_THEMES[t].sets[0].highs[0].startsWith("#") ? "7️⃣" : SLOT_THEMES[t].sets[0].highs[0]}</span><small>{SLOT_THEMES[t].name}</small>
             </button>
           ))}
         </div>
       </Row>
-      <Row label="Symbols" hint={d.syms ? "Pick each symbol from the library, best-paying first. Tap a spot, then a symbol; ◀ ▶ change what pays more." : undefined}>
-        <Chips opts={[...th.sets.map((q, i) => ({ v: i as 0 | 1 | 2, label: <>{q.name}<small className="syms">{q.highs.map((h) => (h.startsWith("#") ? "7" : h)).join(" ")}</small></> })), { v: 2 as const, label: <>Custom<small className="syms">your own</small></> }]}
-          value={d.syms ? 2 : d.set} set={(v) => set((n) => { if (v === 2) { if (!n.syms) n.syms = customFrom(n); } else { delete n.syms; n.set = v; } })} />
-        {d.syms && <SymbolEditor d={d} set={set} />}
-      </Row>
+      {d.syms ? (
+        <>
+          <Row label="Symbols" hint="Pick each symbol from the library, best-paying first. Tap a spot, then a symbol; ◀ ▶ change what pays more.">
+            <SymbolEditor d={d} set={set} />
+          </Row>
+          <Row label="Colors" value={th.name} hint="The machine's background, frame and default call.">
+            <div className="dz-swatches">{SLOT_THEME_IDS.map((t) => (
+              <button key={t} className={t === d.theme ? "on" : ""} style={{ background: `linear-gradient(${SLOT_THEMES[t].bg[0]}, ${SLOT_THEMES[t].bg[1]})`, boxShadow: `inset 0 0 0 2px ${SLOT_THEMES[t].accent}` }} aria-label={SLOT_THEMES[t].name}
+                onClick={() => { play("click"); set((n) => { if (n.show.call === SLOT_THEMES[n.theme].call) n.show.call = SLOT_THEMES[t].call; n.theme = t; }); }} />
+            ))}</div>
+          </Row>
+        </>
+      ) : (
+        <Row label="Symbols">
+          <Chips opts={th.sets.map((q, i) => ({ v: i as 0 | 1, label: <>{q.name}<small className="syms">{q.highs.map((h) => (h.startsWith("#") ? "7" : h)).join(" ")}</small></> }))} value={d.set} set={(v) => set((n) => { n.set = v; })} />
+        </Row>
+      )}
       <Row label="Theme rating" hint="How well the symbols go together, and how the colors, lights and call suit them. Guests who care about theming feel it.">
         <ThemeBar d={d} />
       </Row>

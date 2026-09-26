@@ -29,8 +29,9 @@ WILD stays the drawn WILD tile. On 3-reel classics the reels show the hero, the 
 low (or the scatter). The design's theme still sets the colors, the frame and the default call. A custom set is
 looks only: no new version, no certification.
 
-**Designer (Concept tab):** Symbols offers the theme's two sets and **Custom** (starts as a copy of the current
-set). Tap a spot, then a symbol. Picking a symbol that's already in the set swaps the two. ◀ Pays more / Pays less ▶
+**Designer (Concept tab):** **Custom** is its own tile at the head of the theme list (owner), starting as a copy
+of the current set; picking a theme drops it. With Custom on, a **Colors** row picks which theme's background,
+frame and default call the machine wears. Tap a spot, then a symbol. Picking a symbol that's already in the set swaps the two. ◀ Pays more / Pays less ▶
 move the selected symbol in pay order. "Card ranks / Symbols" switches the lows. The library is browsed by nine
 categories or searched by name. The **Theme rating** bar sits under it, and at the foot of the Show and Cabinet tabs
 and in the lab's ratings; the lab also lists the Theming bonuses. Tag names shown there come from `tagName()`

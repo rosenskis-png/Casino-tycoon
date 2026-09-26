@@ -121,3 +121,4 @@
 .dz-glyph.seven.sr{color:#ff3a3a}.dz-glyph.seven.sb{color:#4a8aff}.dz-glyph.seven.sw{color:#fff}
 .dz-glyph.bars{display:flex;flex-direction:column;gap:1px}
 .dz-glyph.bars b{font-size:7px;background:#111;color:#fff;padding:0 2px;border-radius:2px}
+.ct .dz-themes button.custom{background:linear-gradient(135deg,#3a2a6a,#1a4a5a 50%,#6a2a3a)}

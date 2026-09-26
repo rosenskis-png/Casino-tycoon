@@ -2,6 +2,17 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Title theme, second pass (owner)
+- **Owner feedback on the first pass:** "much better", but too many non-traditional chords and resolving notes in
+  the main section; a little too fast and crisp, jarring instead of warm and comforting. Keep the bridge's feel.
+  Lean away from big band into layered, richer spy-casino music with expected trajectories and resolutions, minor
+  main section to a major bridge and back, like the RollerCoaster Tycoon title.
+- **Built:** G minor, 100 bpm. The first pass's bridge idea (the spy line cliche G, F#, F, E) became the main
+  section's backbone as a slow inner voice. Chords change every two bars (i, iv, V, i); the bridge is B-flat major
+  (I, vi, IV, V, back through D7). Melody moves by step in long notes, every downbeat is a chord tone, phrases end
+  on V then home. Layers: bass and ride, twangy guitar figure, detuned strings, melody doubled in octaves, soft horn
+  swells at peaks, vibes on the last chorus, brushes, and a reverb room (new per-track `space`; clubs stay dry).
+
 ## 2026-09-26 · New title theme (owner)
 - **Owner:** "a really good title theme, entirely different than our current one", in the spirit of the
   RollerCoaster Tycoon title music but matching a Vegas casino vibe.

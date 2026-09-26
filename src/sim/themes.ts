@@ -6,6 +6,7 @@
 import { OBJECTS } from "../data/objects";
 import { SYNERGY, THEME_IDS, THEME_PEAK, THEME_RADIUS, type Place } from "../data/themes";
 import { designById } from "./design/lookup";
+import { themeOf } from "./design/theme";
 import { T } from "../data/terrain";
 import type { Game } from "./game";
 import { objSize } from "./geometry";
@@ -74,7 +75,7 @@ export class ThemeField {
     for (const o of this.g.state.objects) {
       // M8: a designed slot themes its spot a little, like a weak decor piece (docs/spec/designer.md §2).
       if (o.design && OBJECTS[o.kind].slot) {
-        const d = designById(this.g.state, o.design), k = d ? THEME_IDS.indexOf(d.theme as never) : -1;
+        const d = designById(this.g.state, o.design), th = d ? themeOf(d) : null, k = th ? THEME_IDS.indexOf(th as never) : -1;
         if (k >= 0) { themedAny = true; this.sources.push({ k, kind: 0, cx: o.x, cy: o.y, s: 0.8 * THEME_PEAK, r: THEME_RADIUS }); }
         continue;
       }

@@ -41,7 +41,7 @@ Presentation that sells these games, and the designer offers: anticipation (the 
 A design has eight sections (tabs in the designer). Each control lists what it changes: the math, the floor, the play screen, and guests.
 
 ### Concept
-- **Name** (typed), **theme** and **symbol set**. Themes are the 12 decor themes plus **Classic Vegas** (sevens, bars, cherries, diamonds; slot-only) and **Lucky Dragon** (Asian fortune: dragons, lanterns, coins, envelopes; also a new 13th decor theme with 4 pieces, since it's the biggest real slot genre). Each theme has two symbol sets (Gold Rush: Prospector or Stampede; Egypt: Pharaoh or Tomb; Classic: Sevens & Bars or Fruit; …) and a **hero symbol** (the top-paying one).
+- **Name** (typed), **theme** and **symbol set**. Themes are the 12 decor themes plus **Classic Vegas** (sevens, bars, cherries, diamonds; slot-only) and **Lucky Dragon** (Asian fortune: dragons, lanterns, coins, envelopes; also a new 13th decor theme with 4 pieces, since it's the biggest real slot genre). Each theme has two symbol sets (Gold Rush: Prospector or Stampede; Egypt: Pharaoh or Tomb; Classic: Sevens & Bars or Fruit; …) and a **hero symbol** (the top-paying one). (Batch E) Or a **custom** set from the emoji library, judged by the Theme rating: docs/spec/symbols.md.
 - Floor: the theme counts in the room's theming like a decor piece (weaker), and suits or clashes with the room (docs/spec/themes.md). Play screen: symbols, background, colors, logo. Guests: theming weight per type; kids are drawn to bright cartoon themes (underage incidents, docs/spec/calendar.md).
 
 ### Reels
@@ -161,7 +161,7 @@ Like theme pairings (docs/spec/themes.md), each strong pairing adds to Excitemen
 - **Theme + feature:** Lucky Dragon + hold & spin or pick-to-match; Gold Rush (Stampede) + ways + multiplier wilds in free spins; Egypt + expanding symbol or ×3 free spins; Tiki + hold & spin (fire orbs); Pirate + pick (treasure chests); Gold Rush (Prospector) + collector; Rome or Gilded Deco + topper wheel; Neon Atomic + cascades; Rat Pack or Classic + a 3-reel stepper with multiplier wilds; Modern Luxe + slant-top at $5+; Rock & Roll + loud show and long roll-ups.
 - **Feature + feature:** hold & spin + linked Major/Grand; free spins + multiplier wilds + ways; collector + upgrades in free spins; cascades + a climbing multiplier; wheel + progressive segment; mystery jackpots + must-hit-by meters.
 - **Clashes:** a classic stepper with 4,096 ways-style clutter (more than one feature); a giant loud cabinet at a $25 denomination; Medieval + cascades; small-win celebration on a classic (it can't happen: the control is off).
-- Coherence also counts symbol set, signature call and cabinet colors matching the theme's palette.
+- Coherence also counts symbol set, signature call and cabinet colors matching the theme's palette. (Batch E: these now make up the Theme rating, docs/spec/symbols.md; coherence keeps the pairings. A custom set's pairings use the theme its symbols lean to.)
 
 ## 8. The floor
 - **Cabinets** are compiled sprites (docs/spec/art.md pipeline): the slot cabinet redrawn per type (slant 16×14, upright 16×20, stepper, tall 16×24, giant 32×32 on 2×2) recolored with the design's palette, with its topper. Lamp chase, reel scroll and a bonus pattern (a distinct flash and topper animation while a feature runs) as animation frames.

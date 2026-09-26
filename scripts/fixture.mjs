@@ -21,6 +21,8 @@ if (sim.SCHEMA_VERSION >= 16) {
     name: "Fixture Link", hns: { every: 60, land: 1, values: 1 }, collect: { size: 0, every: 80, prize: "super", x: 50 },
     jackpots: [{ x: 10, every: 0, kind: "mhb", inc: 0.01, cap: 1.5 }, { x: 50, every: 2000, how: "hns" }, { x: 500, every: 100000, kind: "linked", inc: 0.005, how: "hns" }],
     look: { font: 3, fx: 2, top: 1, meters: 0, reels: 2, deck: 1 },
+    // Batch E: a custom emoji symbol set.
+    ...(sim.SCHEMA_VERSION >= 28 ? { syms: { highs: ["🌋", "🐢", "🌺", "🍍"], lows: ["🥥", "🍧", "🐬", "🏄", "🌈"], scatter: "🌊", jackpot: "🗿" } } : {}),
   });
   g.dispatch({ type: "designSave", d });
   g.step();

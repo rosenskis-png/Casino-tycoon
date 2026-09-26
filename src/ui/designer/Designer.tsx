@@ -20,6 +20,7 @@ import {
 } from "../../sim";
 import type { Meter } from "../../sim/state";
 import { Machine } from "../slot/Machine";
+import { SymbolEditor, ThemeBar, customFrom } from "./Symbols";
 import { betLevels } from "../play";
 import { money } from "../format";
 import "./designer.css";
@@ -232,7 +233,7 @@ function Concept({ d, set }: { d: SlotDesign; set: Set }) {
         <div className="dz-chips fonts">{FONTS.map((f, i) => <button key={f.name} className={i === look.font ? "on" : ""} style={{ fontFamily: f.css }} onClick={() => { play("click"); setLook((l) => { l.font = i; }); }}>{f.name}</button>)}</div>
         <Chips opts={LOGO_FX.map((name, i) => ({ v: i, label: name }))} value={look.fx} set={(v) => setLook((l) => { l.fx = v; })} />
       </Row>
-      <Row label="Theme" value={th.name} hint="The theme sets the symbols, colors and call, and counts toward the room's theming.">
+      <Row label="Theme" value={th.name} hint={d.syms ? "With custom symbols the theme sets only the colors, frame and call." : "The theme sets the symbols, colors and call, and counts toward the room's theming."}>
         <div className="dz-themes">
           {SLOT_THEME_IDS.map((t) => (
             <button key={t} className={t === d.theme ? "on" : ""} style={{ background: `linear-gradient(${SLOT_THEMES[t].bg[0]}, ${SLOT_THEMES[t].bg[1]})` }}
@@ -242,8 +243,13 @@ function Concept({ d, set }: { d: SlotDesign; set: Set }) {
           ))}
         </div>
       </Row>
-      <Row label="Symbols">
-        <Chips opts={th.sets.map((q, i) => ({ v: i as 0 | 1, label: <>{q.name}<small className="syms">{q.highs.map((h) => (h.startsWith("#") ? "7" : h)).join(" ")}</small></> }))} value={d.set} set={(v) => set((n) => { n.set = v; })} />
+      <Row label="Symbols" hint={d.syms ? "Pick each symbol from the library, best-paying first. Tap a spot, then a symbol; ◀ ▶ change what pays more." : undefined}>
+        <Chips opts={[...th.sets.map((q, i) => ({ v: i as 0 | 1 | 2, label: <>{q.name}<small className="syms">{q.highs.map((h) => (h.startsWith("#") ? "7" : h)).join(" ")}</small></> })), { v: 2 as const, label: <>Custom<small className="syms">your own</small></> }]}
+          value={d.syms ? 2 : d.set} set={(v) => set((n) => { if (v === 2) { if (!n.syms) n.syms = customFrom(n); } else { delete n.syms; n.set = v; } })} />
+        {d.syms && <SymbolEditor d={d} set={set} />}
+      </Row>
+      <Row label="Theme rating" hint="How well the symbols go together, and how the colors, lights and call suit them. Guests who care about theming feel it.">
+        <ThemeBar d={d} />
       </Row>
     </>
   );
@@ -516,6 +522,7 @@ function Show({ d, set }: { d: SlotDesign; set: Set }) {
       <Row label="Anticipation"><Toggle on={d.show.antic} set={(v) => set((n) => { n.show.antic = v; })} label={d.show.antic ? "Last reels slow down when a feature is one symbol away" : "Off"} /></Row>
       <Row label="Win roll-up"><Chips opts={ROLLUPS.map((q, i) => ({ v: i, label: q.name }))} value={d.show.rollup} set={(v) => set((n) => { n.show.rollup = v; })} /></Row>
       <Row label="Spin speed" hint="Faster spins take money faster; slower ones stretch a guest's time."><Chips opts={SPEEDS.map((q, i) => ({ v: i, label: q.name }))} value={d.show.speed} set={(v) => set((n) => { n.show.speed = v; })} /></Row>
+      <Row label="Theme rating"><ThemeBar d={d} /></Row>
     </>
   );
 }
@@ -539,6 +546,7 @@ function Cabinet({ d, set, g }: { d: SlotDesign; set: Set; g: Game }) {
       <Row label="Jackpot meters"><Chips opts={LOOK_METERS.map((q, i) => ({ v: i, label: q }))} value={look.meters} set={(v) => setLook((l) => { l.meters = v; })} /></Row>
       <Row label="Reel window"><Chips opts={LOOK_REELS.map((q, i) => ({ v: i, label: q }))} value={look.reels} set={(v) => setLook((l) => { l.reels = v; })} /></Row>
       <Row label="Buttons"><Chips opts={LOOK_DECK.map((q, i) => ({ v: i, label: q }))} value={look.deck} set={(v) => setLook((l) => { l.deck = v; })} /></Row>
+      <Row label="Theme rating"><ThemeBar d={d} /></Row>
     </>
   );
 }
@@ -546,7 +554,8 @@ function Cabinet({ d, set, g }: { d: SlotDesign; set: Set; g: Game }) {
 /** The lab: ratings from a test panel of this casino's own guests, the panel's words, exact numbers, forced outcomes. */
 function Lab({ c, g, onForce, onRefill }: { c: Compiled; g: Game; onForce: (f: Force) => void; onRefill: () => void }) {
   const mix = panelMix(g.state);
-  const pn = useMemo(() => panel(c, mix), [c]); // eslint-disable-line react-hooks/exhaustive-deps
+  // c keeps its identity through looks-only changes; c.d doesn't (symbols and colors move the panel too).
+  const pn = useMemo(() => panel(c, mix), [c, c.d]); // eslint-disable-line react-hooks/exhaustive-deps
   const [sess, setSess] = useState<ReturnType<typeof sessions>[] | null>(null);
   useEffect(() => {
     setSess(null);
@@ -563,10 +572,11 @@ function Lab({ c, g, onForce, onRefill }: { c: Compiled; g: Game; onForce: (f: F
       <Row label="Test it" hint="Force the next spin (lab credits; nothing on the floor changes). Forced outcomes are drawn from the real math within that outcome.">
         <div className="dz-chips">{forces(c).map((f) => <button key={f.id} onClick={() => { play("click"); onForce(f.id); }}>{f.name}</button>)}<button onClick={onRefill}>Refill credits</button></div>
       </Row>
-      <Row label="Ratings" hint="Excitement: how a test panel of this casino's own guests felt. Intensity: how hard it swings. Drain: how fast it takes money. None of them is good or bad on its own.">
+      <Row label="Ratings" hint="Excitement: how a test panel of this casino's own guests felt. Intensity: how hard it swings. Drain: how fast it takes money. None of them is good or bad on its own. Theme: how well its symbols and looks go together.">
         {bar("Excitement", r.excitement, ratingWord(r.excitement), "#ffcf3a")}
         {bar("Intensity", r.intensity, ratingWord(r.intensity, INTENSITY_WORDS), "#ff7a3a")}
         {bar("Drain", r.drain, ratingWord(r.drain), "#ff4a6a")}
+        <ThemeBar d={c.d} />
       </Row>
       <Row label="The panel said">
         {pn.verdict.length ? pn.verdict.map((q) => <p key={q} className="quote">“{q}”</p>) : <p className="dz-hint">Nothing much either way.</p>}

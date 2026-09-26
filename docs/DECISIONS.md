@@ -2,6 +2,32 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Batch E: custom emoji symbols and the theme rating (owner)
+- **Custom, not more themes (owner):** every theme keeps its two premade sets, which rank good to great, never
+  perfect. A Custom option builds a set from a big emoji library in pay order and can end up much worse or better.
+- **Hidden tags, judged by links (owner):** rarer tags are worth more, and a rare tag shared by more symbols more
+  again. Links joining different groups of symbols all count; links joining the same symbols mostly count once
+  ("marine animals sharing the same two tags isn't the best"). Tags are a mind map with non-obvious, Codenames-style
+  connections (stories, places, puns), so obvious sets aren't fought and creative ones are rewarded.
+  docs/spec/symbols.md.
+- **Exact rating, no why (owner):** the Theme rating shows to two decimals, like RCT's; nothing tells the player
+  what helped or hurt.
+- **Pay order judged (owner, "not against it"):** each symbol has a hidden clout; grander symbols paying more reads
+  right. This replaces the draft's "no tag says which symbol pays most" (it's a hidden value, not a tag).
+- **Crowds' tag tastes, decor mapping (owner):** each type likes and dislikes tags that fit who they are; tags map to
+  decor themes so a custom set still counts toward room theming and pairings.
+- **Show and cabinet count a little (owner):** the body and light colors against the symbols' own colors (each
+  emoji's main color, as drawn), the call and the look add −0.5 to +0.5 to the rating, for every design.
+- **Draft changes:** "every emoji shares 2 tags" became "every symbol belongs" (orphans cost; a single link is
+  fine). A set split into two unrelated groups loses part of its score. A treasure-type scatter or jackpot always
+  belongs (the genre's convention).
+- Library: 466 symbols, about 350 tags. Premade sets score 5.2-8.6, random picks about 1, first-try custom sets
+  7.5-8.5, a greedy optimizer 9.4-9.7 (always real themes). The call's fit moved from the pairings into the rating.
+- Save schema 28 (a design's optional custom set).
+- **Fix:** guests' feel of a design and their judgments were cached by its math alone, so a looks-only change
+  (symbols, colors, lights, sound, call, theme) wasn't felt until the cache cleared. Now redone when the design
+  changes; the lab's panel too.
+
 ## 2026-09-26 · Batch D: decor and how nice the place is (owner)
 - **Large decor, one per theme (owner):** 14 pieces (every theme, Monte Carlo included), 2×2 or 3×3, $1,000-1,600,
   no monthly fee. Each themes strength 6 over 15 tiles (a 1×1 piece: 3 over 11), with prestige and energy to match.

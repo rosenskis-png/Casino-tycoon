@@ -108,7 +108,7 @@ export function Machine(p: MachineProps) {
   const clearAll = () => { for (const t of timers.current) clearTimeout(t); timers.current = []; };
   useEffect(() => () => clearAll(), []);
   // A new design (the designer): a fresh screen in its layout.
-  const layoutKey = `${d.layout}:${d.theme}:${d.set}`;
+  const layoutKey = `${d.layout}:${d.theme}:${d.set}:${d.syms ? Object.values(d.syms).flat().join("") : ""}`;
   useEffect(() => {
     clearAll();
     phases.current = [];

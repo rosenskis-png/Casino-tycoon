@@ -2,7 +2,8 @@
 // Word of mouth (awareness by guest type on a Bass curve), the novelty bump, boredom and favorites, fans and the
 // guests they draw, variety, wishes, records and Evergreens, and slot makers buying the player's own designs.
 // Guests only ever feel the result: how much a machine appeals to them is its judged appeal × this market factor.
-import { LAYOUTS, featuresOf, kindOf, type SlotDesign } from "../../data/designer";
+import { LAYOUTS, featuresOf, kindOf, symSetOf, type SlotDesign } from "../../data/designer";
+import { themeOf } from "./theme";
 import { GUEST_TYPES } from "../../data/guests";
 import { OBJECTS } from "../../data/objects";
 import { SCENARIOS } from "../../data/scenarios";
@@ -256,7 +257,7 @@ export function marketSession(g: Game, a: Agent, o: PlacedObject, secs: number, 
 // Launch, word of mouth, novelty.
 
 function tokens(d: SlotDesign): Set<string> {
-  const t = new Set<string>([`lay:${d.layout}`, `win:${LAYOUTS[d.layout].win}`, `cab:${d.cab.type}`, `top:${d.cab.topper}`, `th:${d.theme}`, `w:${d.wild}`]);
+  const t = new Set<string>([`lay:${d.layout}`, `win:${LAYOUTS[d.layout].win}`, `cab:${d.cab.type}`, `top:${d.cab.topper}`, `th:${themeOf(d)}`, `w:${d.wild}`, ...symSetOf(d).highs.map((e) => `s:${e}`)]);
   for (const f of featuresOf(d)) t.add(`f:${f}`);
   if (d.fs) t.add(`enh:${d.fs.enh}`);
   for (const j of d.jackpots) t.add(`j:${kindOf(j)}`);

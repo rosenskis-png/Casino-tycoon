@@ -1,7 +1,7 @@
 // Slot symbols on the play screen (docs/spec/designer.md §9): emoji on styled tiles, plus the tokens a real slot
 // draws itself (card ranks, sevens, bars, WILD). UI only: the floor stays pixel art.
 import {
-  BONUS_OFFER, BONUS_PICK, BONUS_WHEEL, C_BAR1, C_BAR2, C_BAR3, C_BLANK, C_CHERRY, C_TOP, C_WILD, JACKPOT, ORB, PIECE, SCATTER, SLOT_THEMES, WILD,
+  BONUS_OFFER, BONUS_PICK, BONUS_WHEEL, C_BAR1, C_BAR2, C_BAR3, C_BLANK, C_CHERRY, C_TOP, C_WILD, JACKPOT, ORB, PIECE, SCATTER, SLOT_THEMES, WILD, symSetOf,
   type SlotDesign,
 } from "../../data/designer";
 
@@ -15,7 +15,7 @@ const RANK_COLORS: Record<string, [string, string]> = {
 
 /** What a symbol code shows for a design: a token or an emoji. */
 export function symbolOf(d: SlotDesign, code: number): string {
-  const set = SLOT_THEMES[d.theme].sets[d.set];
+  const set = symSetOf(d);
   if (d.layout === "c3") {
     if (code === C_WILD) return "#wild";
     if (code === C_TOP) return set.classic[0];

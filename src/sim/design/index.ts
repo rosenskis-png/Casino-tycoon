@@ -8,6 +8,7 @@ import {
   defaultLook, featuresOf, type CabType, type JackpotHow, type JackpotKind, type SlotDesign,
 } from "../../data/designer";
 import { OBJECTS } from "../../data/objects";
+import { EMOJI } from "../../data/emoji";
 import { SCENARIOS } from "../../data/scenarios";
 import { GUEST_TYPES } from "../../data/guests";
 import { SYNERGY, THEME_IDS } from "../../data/themes";
@@ -16,6 +17,7 @@ import type { System } from "../registry";
 import type { DesignStats, GameState, PlacedObject } from "../state";
 import { compile, mathKey, type Compiled } from "./compile";
 import { hasMeters, maxBetOf, meterValue } from "./meters";
+import { themeOf } from "./theme";
 import type { Game } from "../game";
 import { pruneOpinions } from "../opinions";
 import { designById, designIdOf, isStock } from "./lookup";
@@ -69,7 +71,7 @@ export function slotInfo(s: GameState, o: PlacedObject): SlotInfo | undefined {
   if (inf && inf.o === o && (o.design === undefined || (s.designs[o.design]?.d ?? STOCK_DESIGNS[o.design]) === inf.d)) return inf;
   const id = designIdOf(o), c = compiledById(s, id);
   if (!c) return undefined;
-  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(c.d.theme), prog: hasMeters(c), am: new Map(), mv: -1 };
+  const n: SlotInfo = { o, id, d: designById(s, id)!, c, ap: new Map(), ex: new Map(), th: themeFit(themeOf(c.d) ?? ""), prog: hasMeters(c), am: new Map(), mv: -1 };
   if (infos.size > 50000) infos.clear();
   infos.set(o.id, n);
   return n;
@@ -222,6 +224,19 @@ export function sanitize(d: SlotDesign): SlotDesign {
   if (c.cab.topper === "wheel" && !c.wheel) c.cab.topper = "none";
   const lk = c.look ?? defaultLook();
   c.look = { font: int(lk.font, 0, FONTS.length - 1, 0), fx: int(lk.fx, 0, LOGO_FX.length - 1, 0), top: int(lk.top, 0, 2, 0), meters: int(lk.meters, 0, 2, 1), reels: int(lk.reels, 0, 2, 1), deck: int(lk.deck, 0, 1, 0) };
+  // (Batch E) A custom set: library symbols only, all different; a bad slot takes the theme's symbol.
+  if (c.syms && typeof c.syms === "object") {
+    const base = SLOT_THEMES[c.theme].sets[c.set], cs = c.syms;
+    const ok = (e: unknown, def: string) => (typeof e === "string" && EMOJI[e] ? e : def);
+    const list = (v: unknown, def: string[]) => def.map((q, i) => ok(Array.isArray(v) ? v[i] : undefined, q));
+    const syms = {
+      highs: list(cs.highs, base.highs), lows: cs.lows === null || !Array.isArray(cs.lows) ? null : list(cs.lows, base.lows),
+      scatter: ok(cs.scatter, base.scatter), jackpot: ok(cs.jackpot, base.jackpot),
+    };
+    const all = [...syms.highs, ...(syms.lows ?? []), syms.scatter, syms.jackpot];
+    if (syms.lows && syms.lows.some((e) => !EMOJI[e])) syms.lows = null;
+    if (new Set(all).size === all.length && all.every((e) => EMOJI[e])) c.syms = syms; else delete c.syms;
+  } else delete c.syms;
   c.origin = c.origin === "stock" || c.origin === "rival" || c.origin === "imported" ? c.origin : "own";
   return c;
 }

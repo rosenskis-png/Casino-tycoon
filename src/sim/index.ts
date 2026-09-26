@@ -36,6 +36,7 @@ export {
 } from "./design/market";
 export { meterValue, meterFor, prepSpin, afterSpin, liability, maxBetOf, hasMeters, type MeterHost } from "./design/meters";
 export { compile, type Compiled } from "./design/compile";
+export { themeRating, type ThemeRating } from "./design/theme";
 export { judge, feelOf } from "./design/appeal";
 export { gameBlurb, panel, parSheet, sessions, ratingWord, INTENSITY_WORDS, type Panel, type SessionStats } from "./design/lab";
 export { spinFull, forces, TIERS, type Force, type Outcome, type Orb } from "./design/spin";

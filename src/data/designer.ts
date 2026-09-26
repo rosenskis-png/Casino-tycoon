@@ -207,6 +207,27 @@ export const SLOT_THEMES: Record<SlotTheme, SlotThemeDef> = {
 };
 export const SLOT_THEME_IDS = Object.keys(SLOT_THEMES) as SlotTheme[];
 
+/**
+ * (Batch E) A custom symbol set picked from the emoji library (data/emoji.ts), in pay order: four highs (the hero
+ * first), five lows (null: card ranks), the scatter and the jackpot symbol. The theme then only sets the colors,
+ * frame and default call.
+ */
+export interface CustomSyms {
+  highs: string[];
+  lows: string[] | null;
+  scatter: string;
+  jackpot: string;
+}
+
+/** The symbols a design shows: its custom set, or its theme's set. */
+export function symSetOf(d: { theme: SlotTheme; set: 0 | 1; syms?: CustomSyms }): SymbolSet {
+  const base = (SLOT_THEMES[d.theme] ?? SLOT_THEMES.classic).sets[d.set === 1 ? 1 : 0];
+  const c = d.syms;
+  if (!c) return base;
+  const lows = c.lows ?? ["#A", "#K", "#Q", "#J", "#10"];
+  return { name: "Custom", highs: c.highs, lows, wild: "#wild", scatter: c.scatter, jackpot: c.jackpot, classic: [c.highs[0], c.highs[1], c.highs[2], c.highs[3], c.lows?.[0] ?? c.scatter] };
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // Paytables. Video: 3/4/5/6-of-a-kind per symbol (index as above), in credits per line (lines) or per unit (ways).
 // The hero's top pay scales with volatility. The 3×3 game pays 3 of a kind only. Classic: per coin.
@@ -507,6 +528,8 @@ export interface SlotDesign {
   name: string;
   theme: SlotTheme;
   set: 0 | 1;
+  /** (Batch E) A custom symbol set; missing = the theme's set. */
+  syms?: CustomSyms;
   layout: LayoutId;
   /** Dollars per credit, and the bet range in credits. */
   denom: number;

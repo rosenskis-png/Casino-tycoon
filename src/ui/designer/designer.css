@@ -94,3 +94,31 @@
 .mk-letter{border:1px solid #c9a24a;border-radius:8px;padding:10px;margin:0 0 10px;background:rgba(201,162,74,.08)}
 .mk-letter p{margin:6px 0}
 .mk-more{padding:4px 0 8px;border-bottom:1px solid rgba(255,255,255,.08)}
+/* (Batch E) Custom symbols: the set in pay order and the emoji library. */
+.dz-symed{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.dz-symrow{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.dz-symrow>small{font-size:10px;opacity:.7;min-width:44px}
+.ct .dz-sym{width:40px;height:40px;font-size:24px;line-height:1;border-radius:9px;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);background:rgba(255,255,255,.06)}
+.ct .dz-sym.hero{width:48px;height:48px;font-size:30px;background:linear-gradient(160deg,rgba(255,215,100,.35),rgba(255,215,100,.08))}
+.ct .dz-sym.hi{background:linear-gradient(160deg,rgba(255,215,100,.2),rgba(255,215,100,.04))}
+.ct .dz-sym.on{box-shadow:0 0 0 2px var(--gold,#f2d27a),0 0 10px rgba(242,210,122,.7)}
+.ct .dz-mini{font-size:11px;padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.ct .dz-mini:disabled{opacity:.35}
+.dz-move{display:flex;gap:4px;margin-left:auto}
+.dz-cards{font-weight:800;letter-spacing:2px;opacity:.8;font-size:13px}
+.dz-cats{display:flex;gap:3px;align-items:center;flex-wrap:wrap}
+.ct .dz-cats button{font-size:18px;padding:3px 5px;border-radius:7px;background:rgba(255,255,255,.05)}
+.ct .dz-cats button.on{box-shadow:0 0 0 2px var(--gold,#f2d27a)}
+.ct .dz-cats .dz-input{flex:1;min-width:80px;font-size:14px;padding:5px 8px}
+.dz-emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:3px;max-height:210px;overflow-y:auto;padding:2px}
+.ct .dz-emojis button{font-size:24px;height:38px;padding:0;border-radius:7px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center}
+.ct .dz-emojis button.used{opacity:.35}
+.dz-bonuses{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.dz-bonuses li b{font-weight:700;margin-right:6px}
+.dz-bonuses li span{font-size:16px;letter-spacing:1px}
+.dz-glyph{font-weight:900;font-size:.8em;line-height:1}
+.dz-glyph.seven{font-family:Georgia,serif;font-size:1em}
+.dz-glyph.seven.sr{color:#ff3a3a}.dz-glyph.seven.sb{color:#4a8aff}.dz-glyph.seven.sw{color:#fff}
+.dz-glyph.bars{display:flex;flex-direction:column;gap:1px}
+.dz-glyph.bars b{font-size:7px;background:#111;color:#fff;padding:0 2px;border-radius:2px}
+.ct .dz-themes button.custom{background:linear-gradient(135deg,#3a2a6a,#1a4a5a 50%,#6a2a3a)}

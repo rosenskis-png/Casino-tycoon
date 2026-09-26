@@ -1,12 +1,13 @@
 // How guests judge a design (docs/spec/designer.md §4-5): what they can feel of it (the feel vector), each type's
 // Excitement (0-10) and appeal, and the lab's Intensity and Drain. The lab's Excitement is this same model run for
 // a panel of the scenario's own guests, without a room, neighbors or novelty. Pure; cached per compiled design.
-import { CABINETS, CELEBRATE, LAYOUTS, ROLLUPS, SLOT_THEMES, featuresOf, howOf, kindOf, type SlotDesign } from "../../data/designer";
+import { CABINETS, CELEBRATE, LAYOUTS, ROLLUPS, featuresOf, howOf, kindOf, type SlotDesign } from "../../data/designer";
 import { GUEST_TYPES } from "../../data/guests";
 import { WAGERS_PER_ROUND } from "../../data/games";
 import { PAIRINGS, SLOT_TASTES, type SlotTaste } from "../../data/slotTastes";
 import type { Pref } from "../../data/guests";
 import type { Compiled } from "./compile";
+import { kiddyOf, tasteFor, themeOf, themeRating, type SetScore } from "./theme";
 
 export interface Feel {
   hit: number; win: number; ldw: number;
@@ -21,6 +22,8 @@ export interface Feel {
   /** Bet range in dollars. */
   minBet: number; maxBet: number;
   coherence: number; kiddy: number;
+  /** (Batch E) The theme rating (0-10, symbols and presentation) and the symbol set's score, for crowds' tag tastes. */
+  theme: number; set: SetScore;
 }
 
 /** Piecewise log-linear map through anchor points. */
@@ -48,10 +51,13 @@ const TOPPER_SPEC: Record<string, number> = { none: 0, sign: 0.5, dome: 1, figur
 const FEAT_DRAMA: Record<string, number> = { hns: 0.6, pick: 0.35, wheel: 0.45, offer: 0.55, collect: 0.35 };
 const FEAT_CX: Record<string, number> = { fs: 1.5, hns: 1.8, pick: 1, wheel: 0.8, offer: 1, collect: 1.6, cascade: 1.2, mystery: 0.5 };
 
-const feelCache = new WeakMap<Compiled, Feel>();
+// Cached per compiled math and the design object it was felt for: a looks-only change (symbols, colors, lights, call)
+// keeps the compiled math but must be felt afresh.
+const feelCache = new WeakMap<Compiled, { d: SlotDesign; f: Feel }>();
 export function feelOf(c: Compiled): Feel {
-  let f = feelCache.get(c);
-  if (f) return f;
+  const hit = feelCache.get(c);
+  if (hit && hit.d === c.d) return hit.f;
+  let f: Feel;
   const d = c.d, lay = c.lay, PJ = c.PJ, na = 1 - PJ;
   const winP = c.base.e.reduce((a, q) => a + (q.x >= 1 ? q.p : 0), 0), ldwP = c.base.e.reduce((a, q) => a + (q.x < 1 ? q.p : 0), 0);
   // Features: every triggered one (jackpots won inside count toward what a feature is worth); jackpots of their own
@@ -91,18 +97,18 @@ export function feelOf(c: Compiled): Feel {
       + (c.cas ? FEAT_CX.cascade : 0) + (c.mys ? FEAT_CX.mystery : 0) + 0.4 * c.levels.length + 0.2 * prog),
     near: c.near, classic: Math.min(1, (d.layout === "c3" ? 1 : d.layout === "r33" ? 0.5 : 0) + (d.cab.type === "stepper" ? 0.3 : 0)),
     perMin, minBet: d.denom * d.minBet, maxBet: d.denom * d.maxBet,
-    coherence: coherenceOf(d), kiddy: SLOT_THEMES[d.theme]?.kiddy ?? 0,
+    coherence: coherenceOf(d), kiddy: kiddyOf(d), ...(({ rating, set }) => ({ theme: rating, set }))(themeRating(d)),
   };
-  feelCache.set(c, f);
+  feelCache.set(c, { d, f });
   return f;
 }
 
-/** Hidden pairings (data/slotTastes.ts) plus the signature call matching the theme. */
+/** Hidden pairings (data/slotTastes.ts). (Batch E: the call's fit moved into the theme rating.) */
 export function coherenceOf(d: SlotDesign): number {
-  let v = d.show.call === SLOT_THEMES[d.theme]?.call ? 0.1 : -0.05;
-  const feats = featuresOf(d);
+  let v = 0.1;
+  const feats = featuresOf(d), theme = themeOf(d);
   for (const p of PAIRINGS) {
-    if (p.theme && !p.theme.includes(d.theme)) continue;
+    if (p.theme && !(theme && p.theme.includes(theme))) continue;
     if (p.set !== undefined && p.set !== d.set) continue;
     if (p.layout && !p.layout.includes(d.layout)) continue;
     if (p.enh && !(d.fs && p.enh.includes(d.fs.enh))) continue;
@@ -138,6 +144,12 @@ export function sessionOf(type: string, f: Feel, rtp: number): { stake: number; 
   return { stake, budget, spins: Math.min(byTime, byMoney) };
 }
 
+/**
+ * (Batch E) The theme rating's pull on Excitement per point away from 7 (a typical premade), scaled by a type's
+ * taste for theming; and a crowd's taste for the symbols' tags (docs/spec/symbols.md).
+ */
+export const THEME_EX = 0.022, TASTE_EX = 0.07;
+
 /** How steeply Excitement follows a design's qualities. */
 export const EX_SLOPE = 6.5, EX_MID = 0.6;
 
@@ -166,7 +178,8 @@ export function judge(c: Compiled, type: string): TypeJudgment {
   const ldw = tt.ldw * Math.min(1, f.ldw * 3);
   const intensity = fit(f.intensity, tt.intensity);
   const raw = 0.3 + 0.2 * fit(f.hit, tt.hit) + 0.2 * featScore + 0.15 * dream + 0.15 * fit(f.spectacle, tt.spectacle)
-    + 0.1 * fit(f.complexity, tt.complexity) + 0.08 * ldw + 0.3 * tt.near * f.near + 0.22 * f.coherence * (0.5 + t.theming) + 0.12 * intensity + 0.08 * tt.classic * f.classic;
+    + 0.1 * fit(f.complexity, tt.complexity) + 0.08 * ldw + 0.3 * tt.near * f.near + 0.22 * f.coherence * (0.5 + t.theming) + 0.12 * intensity + 0.08 * tt.classic * f.classic
+    + THEME_EX * (f.theme - 7) * (0.5 + t.theming) + TASTE_EX * tasteFor(f.set, type);
   // Squashed, like RCT's ratings (M8.5: steeper, so the whole 0-10 scale is reachable by design).
   const excitement = 10 / (1 + Math.exp(-EX_SLOPE * (raw - EX_MID)));
   // Appeal to sit down: the thrill, how it swings for them, what it costs a minute, and the stakes it takes.
@@ -184,11 +197,12 @@ export function judge(c: Compiled, type: string): TypeJudgment {
   return { excitement, appeal, features, reasons };
 }
 
-const judgeCache = new WeakMap<Compiled, Map<string, TypeJudgment>>();
-/** Cached judgment (floor use). */
+const judgeCache = new WeakMap<Compiled, { d: SlotDesign; m: Map<string, TypeJudgment> }>();
+/** Cached judgment (floor use), redone when the design's looks change. */
 export function judged(c: Compiled, type: string): TypeJudgment {
-  let m = judgeCache.get(c);
-  if (!m) judgeCache.set(c, (m = new Map()));
+  let e = judgeCache.get(c);
+  if (!e || e.d !== c.d) judgeCache.set(c, (e = { d: c.d, m: new Map() }));
+  const m = e.m;
   let j = m.get(type);
   if (!j) m.set(type, (j = judge(c, type)));
   return j;

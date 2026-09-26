@@ -14,6 +14,9 @@ import { forces, spinFull } from "./spin";
 import { judge } from "./appeal";
 import { SCATTER, JACKPOT } from "../../data/designer";
 import { sanitize } from "./index";
+import { setScore, themeRating } from "./theme";
+import { EMOJI, EMOJI_LIST, KIDDY_TAGS, TAG_CLASHES, TAG_DECOR, TAG_TASTES } from "../../data/emoji";
+import { SLOT_THEMES } from "../../data/designer";
 
 export function fuzzDesigns(n: number, seed = 99): SlotDesign[] {
   const r = seeded(seed), out: SlotDesign[] = [];
@@ -98,13 +101,48 @@ export function designChecks(): string[] {
     checkOne(compile(d, `check:${id}`), p, 100000);
   }
   for (const d of fuzzDesigns(120)) checkOne(compile(d, `check:${d.id}`), p, 120);
-  p.push(...featureChecks());
+  p.push(...featureChecks(), ...themeChecks());
   for (const o of Object.values(OBJECTS)) if (o.slot && !STOCK_DESIGNS[o.slot]) p.push(`${o.id}: unknown stock design ${o.slot}`);
   // The original machines keep (about) their old appeal to each type.
   for (const t of Object.keys(GUEST_TYPES)) for (const id of ["cherry", "liberty", "thunder"]) {
     const want = GUEST_TYPES[t].games[id], got = judge(compile(STOCK_DESIGNS[id], `check:${id}`), t).appeal;
     if (want !== undefined && Math.abs(got - want) > 0.15) p.push(`${id} appeal to ${t}: ${got.toFixed(2)}, was ${want}`);
   }
+  return p;
+}
+
+/**
+ * (Batch E) The emoji library is well formed (every tag shared, every hidden table naming real tags, every premade
+ * symbol in it) and the theme score keeps its shape on fixed sets: premades 5-9, a fixed batch of random picks
+ * well below, every rating finite and within 0-10.
+ */
+function themeChecks(): string[] {
+  const p: string[] = [], carriers: Record<string, number> = {};
+  for (const e of EMOJI_LIST) {
+    for (const t of Object.keys(e.tags)) carriers[t] = (carriers[t] ?? 0) + 1;
+    if (Object.keys(e.tags).length < 3 || !e.name || e.clout < 1 || e.clout > 5) p.push(`emoji ${e.e}: needs a name, clout 1-5 and 2+ tags`);
+  }
+  for (const [t, n] of Object.entries(carriers)) if (n < 2) p.push(`tag ${t}: only one emoji carries it`);
+  const named = [...Object.keys(TAG_DECOR), ...TAG_CLASHES.flatMap(([a, b]) => [a, b]), ...Object.values(TAG_TASTES).flatMap((q) => Object.keys(q)), ...Object.keys(KIDDY_TAGS)];
+  for (const t of named) if (!carriers[t]) p.push(`hidden table names tag ${t}, which no emoji carries`);
+  for (const th of Object.values(SLOT_THEMES)) for (const set of th.sets) {
+    for (const e of [...set.highs, ...set.lows, set.scatter, set.jackpot]) if (!EMOJI[e] && !/^#(A|K|Q|J|10|9)$/.test(e)) p.push(`${th.id} ${set.name}: ${e} not in the emoji library`);
+    const s = setScore(set).score;
+    if (!(s >= 5 && s <= 9)) p.push(`${th.id} ${set.name}: theme score ${s.toFixed(2)} outside 5-9`);
+  }
+  const r = seeded(5), pool = EMOJI_LIST.filter((e) => !e.e.startsWith("#")).map((e) => e.e);
+  let sum = 0;
+  for (let k = 0; k < 200; k++) {
+    const pick: string[] = [];
+    while (pick.length < 11) { const e = r.pick(pool); if (!pick.includes(e)) pick.push(e); }
+    const d = newDesign("th");
+    d.syms = { highs: pick.slice(0, 4), lows: k % 2 ? pick.slice(4, 9) : null, scatter: pick[9], jackpot: pick[10] };
+    d.cab.body = k % 12; d.show.light = k % 8;
+    const t = themeRating(d);
+    if (!Number.isFinite(t.rating) || t.rating < 0 || t.rating > 10) p.push(`theme rating ${t.rating} out of range`);
+    sum += t.set.score;
+  }
+  if (sum / 200 > 2.5) p.push(`random symbol sets average ${(sum / 200).toFixed(2)} (should stay under 2.5)`);
   return p;
 }
 

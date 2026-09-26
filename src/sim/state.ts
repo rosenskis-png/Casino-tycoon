@@ -5,7 +5,7 @@ import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 27;
+export const SCHEMA_VERSION = 28;
 
 export interface MapState {
   w: number;

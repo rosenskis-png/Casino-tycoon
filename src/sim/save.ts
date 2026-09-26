@@ -330,6 +330,8 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const a of s.agents ?? []) if (a.g) { a.g.imp = 0; a.g.impW = 0; }
     return s;
   },
+  // 27 → 28 (Batch E, owner): a design may carry a custom emoji symbol set (d.syms); older designs keep their theme's.
+  27: (s) => s,
 };
 
 export function serialize(g: Game): string {

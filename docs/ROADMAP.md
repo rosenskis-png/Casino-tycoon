@@ -199,8 +199,9 @@ any entrance to the building's door; drag to place a row; groups (copy and paste
 - A global niceness: each guest keeps a running impression of everything they've seen this visit; engagement
   follows both the spot they're in and that impression.
 
-**Batch E · Emoji slot themes ☐** (design first in the same chat, owner signs off, then build)
-- Custom themes from a master list of emojis with hidden tags; the player picks the symbols and their pay order.
-- Theme score from shared tags weighted by how specific each tag is (draft in DECISIONS); crowds have tag tastes.
+**Batch E · Emoji slot themes ☑** (built 2026-09-26, schema 28, see DECISIONS and docs/spec/symbols.md)
+- Custom symbol sets from a 466-emoji library with hidden tags; the player picks the symbols and their pay order.
+- Theme rating from shared tags weighted by rarity and reach, belonging, a through-line, pay order and one-world
+  unity, plus presentation (colors, call, look); crowds have tag tastes; sets lean to decor themes.
 
 **After M11.2: alpha build, Casino Tycoon v0.8.**

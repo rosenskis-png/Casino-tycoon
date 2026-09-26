@@ -118,6 +118,9 @@ export const THOUGHTS: Record<string, ThoughtDef> = {
   garden: { text: "What a peaceful garden.", alt: ["Nice to get some quiet."], voice: { retiree: ["Such lovely flowers."] } },
   goodTheme: { text: "I love the theming in here.", alt: ["This place really has a look."], voice: { tourist: ["It's like stepping into a movie!"] } },
   badTheme: { text: "I don't like the theming in this area.", alt: ["This place can't decide what it wants to be."], bad: true },
+  // (Batch D) The impression of the whole visit so far, not the spot they're in.
+  gorgeous: { text: "This whole place is gorgeous.", alt: ["Everywhere you look there's something to see."], voice: { highroller: ["Now this is a proper casino."], family: ["The kids haven't stopped pointing at things."] } },
+  shabby: { text: "This place is a bit shabby.", alt: ["Nothing here makes me want to stay."], bad: true },
   doorFee: { text: "Paying to use a door?!", alt: ["They charge you to walk through here?"], bad: true },
   letOut: { text: "Finally, someone let me out.", bad: true },
   slipOut: { text: "I'll just slip out this way.", bad: false },

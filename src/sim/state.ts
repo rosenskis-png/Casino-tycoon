@@ -5,7 +5,7 @@ import type { EnfAction, EnfReason } from "../data/cheats";
 import type { SlotDesign } from "../data/designer";
 import type { Outcome } from "./design/spin";
 
-export const SCHEMA_VERSION = 26;
+export const SCHEMA_VERSION = 27;
 
 export interface MapState {
   w: number;
@@ -211,6 +211,12 @@ export interface GuestData {
   thoughtTick: number;
   recent: string[];
   nextThink: number;
+  /**
+   * (Batch D) The impression: a running read of how well everything they've seen this visit suits them (docs/spec/
+   * guests.md "The impression"), and the seconds behind it (capped at IMPRESSION.memory).
+   */
+  imp: number;
+  impW: number;
   /**
    * Finding a machine: seconds of browsing (sightseeing, learning the floor) still to do, frustration from wanting
    * to sit and finding nothing (they give up at FRUSTRATED), machines they liked the look of this visit, and which

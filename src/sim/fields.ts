@@ -37,12 +37,15 @@ export class FieldEngine {
   noise = new Float32Array(0);
   /** (M11.1) The casino's draw by guest type (sim/guests.ts `floorDraw`), dropped on every layout change. */
   drawCache: Record<string, number> | null = null;
+  /** (Batch D) Landmarks' draw (sim/street.ts `landmarkCurb`, sim/guests.ts `sightsDraw`), dropped with the draw. */
+  landmarkCache: Record<string, number> | null = null;
 
   constructor(private g: Game) { this.themes = new ThemeField(g); }
 
   /** Full rebuild (new game or load). */
   init() {
     this.drawCache = null;
+    this.landmarkCache = null;
     const { w, h } = this.g.state.map;
     for (const c of CHANNELS) this.values[c] = new Float32Array(w * h);
     this.collectSources();
@@ -85,6 +88,7 @@ export class FieldEngine {
   tilesChanged(tiles: number[]) {
     if (!tiles.length) return;
     this.drawCache = null;
+    this.landmarkCache = null;
     const { w, h } = this.g.state.map;
     let x0 = w, y0 = h, x1 = 0, y1 = 0;
     for (const i of tiles) {

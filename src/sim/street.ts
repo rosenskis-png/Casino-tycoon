@@ -15,6 +15,7 @@ import { SIGHT, canSee } from "./wayfinding";
 import { groupSize, repFactor, room, spawnGroup } from "./guests";
 import { reasonPull } from "./amenities";
 import { available, person } from "./pool";
+import { landmarkCurb } from "./landmarks";
 
 /** Most groups on the sidewalk at once (performance). */
 export const MAX_PEDS = 40;
@@ -72,7 +73,7 @@ function sidewalkRows(g: Game): { from: [number, number]; to: [number, number] }
 
 /**
  * What a passer-by sees glancing in at entrance k, about 0-1.5 (read fresh at each glance): an open door in view, machines visible
- * through it, noise and prestige near the door, and a crowd inside.
+ * through it, noise and prestige near the door, a crowd inside, and (Batch D) landmarks out front.
  */
 export function curbAppeal(g: Game, k: number): number {
   const m = g.state.map, w = m.w, h = m.h, e = m.entrances[k];
@@ -96,7 +97,8 @@ export function curbAppeal(g: Game, k: number): number {
       }
     }
   if (open) score += 0.3;
-  return score + 0.04 * machines + Math.min(0.2, crowd / 10);
+  // (Batch D) A landmark out front is seen from the street, door or no door.
+  return score + 0.04 * machines + Math.min(0.2, crowd / 10) + landmarkCurb(g, k);
 }
 
 /** Tile position (floats) of member k of a pedestrian group, for drawing. */

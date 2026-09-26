@@ -33,6 +33,7 @@ import { cantLift } from "./hands";
 import { INTOX_CAP, STRENGTHS } from "./drinks";
 import { spawnGroup, groupSize, isGone } from "./guests";
 import { INCIDENTS } from "../data/incidents";
+import { IMPRESSION } from "../data/psych";
 
 export function checkInvariants(g: Game): string[] {
   const p: string[] = [];
@@ -199,6 +200,10 @@ export function checkInvariants(g: Game): string[] {
     if (a.act === "held" && !gd.held) p.push(`guest ${a.id} standing held with no job`);
     if (gd.spell < 0 || gd.take < 0 || !(gd.mem.ev >= 0) || !(gd.mem.v >= 0) || ![0, 1].includes(gd.cheat)) p.push(`guest ${a.id} cheat fields out of range`);
   }
+  // (Batch D) Centerpieces: one of each; impressions stay within what a spot's fit can be, their weight within memory.
+  const uniq = new Set<string>();
+  for (const o of s.objects) if (OBJECTS[o.kind]?.unique) { if (uniq.has(o.kind)) p.push(`two ${o.kind}`); uniq.add(o.kind); }
+  for (const a of s.agents) if (a.g && !(Math.abs(a.g.imp) < 20 && a.g.impW >= 0 && a.g.impW <= IMPRESSION.memory)) p.push(`guest ${a.id} impression ${a.g.imp} over ${a.g.impW} s`);
   if (!(s.enf.heat >= 0 && Number.isFinite(s.enf.heat))) p.push(`enforcement heat ${s.enf.heat}`);
   for (const [k, v] of Object.entries(s.rules)) if (!(Number.isInteger(v) && v >= 0 && v <= 3)) p.push(`house rule ${k} = ${v}`);
   for (const [k, v] of [["police", s.auth.police.standing], ["regulator", s.auth.regulator.standing]] as const) if (!(v >= 0 && v <= 100)) p.push(`${k} standing ${v}`);

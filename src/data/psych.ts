@@ -42,3 +42,18 @@ export const SCALE = { refMonth: 10_000, min: 0.1, max: 10, perSeat: 30 };
 
 /** Staff theft is a big organization's problem: crooks steal × (staff − SMALL) / (BIG − SMALL), clamped to 0..1. */
 export const ORG = { small: 8, big: 40 };
+
+/**
+ * (Batch D, owner) Centerpieces as landmarks (docs/spec/themes.md "Large decor and centerpieces"). Outdoors, one adds
+ * curb × its draw × (1 − distance ÷ (reach + 1)) to what a passer-by sees at an entrance within `reach` tiles; anywhere,
+ * it adds sights × its draw × (0.6 + 0.6 × the crowd's taste for its theme, 0-1.2) to the casino's sights (0-sightsCap).
+ */
+export const LANDMARK = { curb: 0.5, reach: 18, sights: 0.5, sightsCap: 3 };
+
+/**
+ * (Batch D, owner) The impression: each guest's running read of how well everything they've seen this visit suits
+ * them (the same fit that moves mood), weighting each moment by its time; the weight caps at `memory` seconds, so
+ * late sights still count. Engagement and mood follow (1 − mix) × the spot they're in + mix × the impression.
+ * Thoughts once `seen` seconds are in: "gorgeous" at `hi` and above, "shabby" at `lo` and below.
+ */
+export const IMPRESSION = { mix: 0.4, memory: 300, seen: 60, hi: 0.8, lo: -0.3 };

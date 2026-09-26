@@ -1344,6 +1344,10 @@ export const ANIMS: Record<string, { ms: number; seq?: number[] }> = {
   "inc:cheer": { ms: 200 },
   "inc:fight": { ms: 120 },
   spark: { ms: 90 },
+  // (Batch D) Centerpieces: decorative loops only.
+  cp_volcano: { ms: 420 },
+  cp_fountains: { ms: 520 },
+  cp_carousel: { ms: 650 },
 };
 
 /** Light pools baked into the floor: color, radius in tiles, strength 0-1, and an offset toward the object's front. */
@@ -1370,6 +1374,15 @@ export const LIGHTS: Record<string, LightDef> = {
   slot_cherry: { color: "#ff7ab4", r: 1.5, k: 0.35, front: 0.7 },
   slot_liberty: { color: "#ffc94a", r: 1.5, k: 0.3, front: 0.7 },
   slot_thunder: { color: "#4fe8ff", r: 1.6, k: 0.4, front: 0.7 },
+  // (Batch D) Large decor and centerpieces that give off light.
+  big_martini: { color: "#3ff2ff", r: 3, k: 0.45 },
+  big_saucer: { color: "#3ff2ff", r: 3.4, k: 0.4 },
+  big_spire: { color: "#ffd23f", r: 2.6, k: 0.3 },
+  big_clock: { color: "#fff0c8", r: 2.4, k: 0.3 },
+  cp_volcano: { color: "#ff7a2a", r: 5.5, k: 0.55 },
+  cp_fountains: { color: "#6fd8ff", r: 5, k: 0.45 },
+  cp_carousel: { color: "#ffe0a0", r: 4.2, k: 0.45 },
+  cp_dragon: { color: "#ffd23f", r: 3.8, k: 0.35 },
 };
 
 // ---------------------------------------------------------------------------------------------------------

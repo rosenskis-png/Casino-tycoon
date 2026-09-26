@@ -73,7 +73,7 @@ for (let d = 0; d < days; d++) {
   // Reports, police calls and ejections are counted by the sim per day; add up yesterday's.
   if (d > 0) for (const [k, n] of Object.entries(g.state.incidentDays[1] ?? {})) if (k.startsWith("_")) totals[k] = (totals[k] ?? 0) + n;
   // Thought counts for the day just ended (the day hook has already started a new one).
-  for (const k of ["goodTheme", "badTheme"]) totals[k] = (totals[k] ?? 0) + (g.state.thoughts[1]?.[k] ?? 0);
+  for (const k of ["goodTheme", "badTheme", "gorgeous", "shabby"]) totals[k] = (totals[k] ?? 0) + (g.state.thoughts[1]?.[k] ?? 0);
 }
 
 const med = (xs) => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
@@ -188,6 +188,10 @@ if (!totals._ejected && !Object.values(dep).flat().some((e) => e.warned)) flags.
 if (policeHigh - policeLow < 0.5) flags.push("police standing never moved");
 for (const k of ["restaurant", "showlounge", "club", "pool", "garden", "patiobar", "patiorestaurant"]) if (!uses[k]) flags.push(`nobody ever used the ${k}`);
 console.log(`theming thoughts: good ${totals.goodTheme ?? 0}, bad ${totals.badTheme ?? 0} (whole run)`);
+// (Batch D) The impression: what guests on the floor now make of the whole place (those who've seen a minute of it).
+const imps = {};
+for (const a of g.state.agents) if (a.g && a.g.impW >= 60) (imps[a.g.type] ??= []).push(a.g.imp);
+console.log(`impression thoughts: gorgeous ${totals.gorgeous ?? 0}, shabby ${totals.shabby ?? 0} (whole run); impression median now ${Object.entries(imps).map(([t, v]) => `${t} ${med(v).toFixed(2)}`).join(", ")}`);
 // Cheats (M5): there are some, the ones who get away win something, and security catches some.
 if (!cheats.length) flags.push("no cheats at all");
 else {

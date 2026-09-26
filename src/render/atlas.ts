@@ -6,6 +6,7 @@ import {
   SLOT_COLORS, SLOT_ROWS, TILES, cabinetRows, recolor, type CabShape, type SpriteDef,
 } from "../data/art";
 import { BODY_COLORS, LIGHT_COLORS } from "../data/designer";
+import { LARGE_SPRITES } from "../data/artLarge";
 import { UNIFORMS } from "../data/staff";
 
 /**
@@ -96,7 +97,7 @@ export function buildAtlas(looks: string[] = [], uni: Uniforms = {}): Atlas {
 
   for (const [k, d] of Object.entries(TILES)) add(`tile:${k}`, d, base(d));
   // Object side views face left (-x); the right-facing view is the mirror.
-  for (const [k, d] of Object.entries(OBJECT_SPRITES)) {
+  for (const [k, d] of Object.entries({ ...OBJECT_SPRITES, ...LARGE_SPRITES })) {
     add(`obj:${k}`, d, base(d));
     if (k.includes(":side")) {
       add(`obj:${k.replace(":side", ":left")}`, d, base(d));

@@ -235,6 +235,8 @@ const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" |
       if (SCENARIOS[g.state.scenario]?.noGames && isGameKind(c.kind)) return "No new games here: make the most of the ones you have";
       // M9.5: some things need research first.
       if (locked(g.state, c.kind)) return `Needs research: ${RESEARCH[projectFor(c.kind)].name}`;
+      // (Batch D) Centerpieces: one of each per casino.
+      if (OBJECTS[c.kind]?.unique && g.state.objects.some((o) => o.kind === c.kind)) return `You already have the ${OBJECTS[c.kind].name}: one per casino`;
       // M8: a slot cabinet plays a design (certified, or run uncertified), placed as its own cabinet.
       if (c.design !== undefined) {
         const d = designById(g.state, c.design);

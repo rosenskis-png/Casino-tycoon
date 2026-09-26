@@ -193,7 +193,7 @@ any entrance to the building's door; drag to place a row; groups (copy and paste
   locked one, free, and back to normal once out. Replaces the 90-second let-out and its police cost.
 - Bar servers work any set of rooms.
 
-**Batch D · Decor and how nice the place is ☐**
+**Batch D · Decor and how nice the place is ☑** (built 2026-09-26, schema 27, see DECISIONS; pixel-art kit in tools/pixelart)
 - Large decor (2×2 to 3×3, wider reach) and centerpieces (4×4 and up, very expensive, draw from the street / whole
   casino, e.g. a volcano out front).
 - A global niceness: each guest keeps a running impression of everything they've seen this visit; engagement

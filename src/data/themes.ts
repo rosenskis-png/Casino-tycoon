@@ -48,6 +48,8 @@ export interface ThemeTags {
   theme?: ThemeId;
   /** How strongly it themes the area (default 3 for themed items). */
   strength?: number;
+  /** (Batch D) How far it themes, in tiles (default THEME_RADIUS): large decor and centerpieces reach further. */
+  radius?: number;
   /** General items: themes they quietly count toward, with a weight. Themed items may add neighbors too. */
   suitsTheme?: Partial<Record<ThemeId, number>>;
   /** Themes it clashes with (weight): it weakens them nearby and is weakened where they're strong. */

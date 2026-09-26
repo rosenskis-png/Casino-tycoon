@@ -5,6 +5,10 @@ Built in M3.1. Every new sprite, tile, prop and effect follows this page. Data l
 ## 1. The look in one paragraph
 Late-night casino, seen as a toybox. Warm, dim burgundy carpet and walnut; brass trim that catches the light; felt and cream as quiet accents; and saturated neon, screens and lamps as the only truly bright things. Chunky pixel art with a dark ink outline, chibi people with big readable heads, soft light pools on the floor. Classic tycoon scale: you should be able to read a crowd at Default zoom and a single guest's outfit at Close.
 
+**Tooling (Batch D):** draw new sprites with the kit in `tools/pixelart/` (README there): shape tools on a
+palette-letter canvas, a PNG preview to look at, and an exact export into `src/data` (e.g. `src/data/artLarge.ts`,
+generated: edit the source in `tools/pixelart/sprites/` and re-export).
+
 ## 2. Hard rules
 1. **Grid.** 16 art px per tile. Sprites are whole pixels, drawn at integer scale at Close/Default. No anti-aliasing, no sub-pixel art, no smooth gradients inside sprites.
 2. **View.** Top-down 3/4. An object's footprint is its floor contact; it rises *upward* on screen from the footprint's bottom edge. Show a 1-2 px lit top face, then the front (south) face. Tall things may rise up to ~6 px above their footprint (slot toppers 4, bar back shelf 6, restroom roof 4).
@@ -43,6 +47,8 @@ Slot models recolor `A E B D J I o F` (top face, lit edge, body, shade, topper, 
 | 1×1 prop (ATM, neon, sign, plant) | 16×21-22 | Bottom on footprint bottom, centered |
 | Tiled piece (bar, cage) | 16×21-22 per tile, parts `a` `b` `c` | Each on its tile's bottom |
 | 2×2 (restroom, fountain) | 32×36 | Bottom on footprint bottom |
+| Large decor (Batch D), 2×2 / 3×3 | 32×36-46 / 48×48-58 | Bottom on footprint bottom, centered. May rise up to ~14 px (statues, towers) |
+| Centerpiece (Batch D), 4×4 / 5×5 | 64×76-92 / 80×96-100 | Bottom on footprint bottom, centered. Landmarks: may rise up to ~28 px (sails, smoke, jets) |
 | Sized amenity piece (M6: table, chair, kitchen, stage, booth, speaker, backdrop, dance floor) | 16×16-22 per cell | Each on its cell's bottom; floor pieces (stage, dance) sort under people |
 | Restroom of any size (M6) | slices of the 2×2 block: face `rr:door`/`rr:wall` 16×24, roof bands `rr:top` / `rr:roof` / `rr:eave`, each `l` `m` `r` | Face bottom on the footprint bottom; roof fills up to 4 px above the top row |
 | Door rule marker (M6) | ≤16×16 | Drawn over the door tile in the static chunk |

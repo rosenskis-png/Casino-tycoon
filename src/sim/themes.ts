@@ -20,7 +20,7 @@ const PRESENT = 0.2;
 /** How much each unit of an unrelated theme muddles the dominant one. */
 const MUDDLE = 0.8;
 
-interface Src { k: number; kind: 0 | 1 | 2 | 3; cx: number; cy: number; s: number }
+interface Src { k: number; kind: 0 | 1 | 2 | 3; cx: number; cy: number; s: number; r: number }
 
 export class ThemeField {
   /** True once any themed decor exists; until then every score is 0 and nothing is allocated. */
@@ -38,6 +38,8 @@ export class ThemeField {
   /** Per room: dominant theme (-1 none) and coherence. */
   rooms: { dom: number; coh: number }[] = [];
   private sources: Src[] = [];
+  /** The widest source's radius. */
+  private reach = THEME_RADIUS;
 
   constructor(private g: Game) {}
 
@@ -73,13 +75,13 @@ export class ThemeField {
       // M8: a designed slot themes its spot a little, like a weak decor piece (docs/spec/designer.md §2).
       if (o.design && OBJECTS[o.kind].slot) {
         const d = designById(this.g.state, o.design), k = d ? THEME_IDS.indexOf(d.theme as never) : -1;
-        if (k >= 0) { themedAny = true; this.sources.push({ k, kind: 0, cx: o.x, cy: o.y, s: 0.8 * THEME_PEAK }); }
+        if (k >= 0) { themedAny = true; this.sources.push({ k, kind: 0, cx: o.x, cy: o.y, s: 0.8 * THEME_PEAK, r: THEME_RADIUS }); }
         continue;
       }
       const tags = OBJECTS[o.kind].tags;
       if (!tags) continue;
-      const { w, h } = objSize(o), cx = o.x + (w - 1) / 2, cy = o.y + (h - 1) / 2;
-      if (tags.junk) { themedAny = true; this.sources.push({ k: 0, kind: 3, cx, cy, s: tags.junk * THEME_PEAK }); continue; }
+      const { w, h } = objSize(o), cx = o.x + (w - 1) / 2, cy = o.y + (h - 1) / 2, r = tags.radius ?? THEME_RADIUS;
+      if (tags.junk) { themedAny = true; this.sources.push({ k: 0, kind: 3, cx, cy, s: tags.junk * THEME_PEAK, r }); continue; }
       const at = this.placesOf(Math.round(cx), Math.round(cy));
       // Hidden place fit: suited places strengthen an item, clashing ones weaken it.
       let mult = 1;
@@ -87,24 +89,29 @@ export class ThemeField {
       if (tags.clashesPlace?.some((p) => at.has(p))) mult -= 0.5;
       if (tags.theme) {
         themedAny = true;
-        this.sources.push({ k: THEME_IDS.indexOf(tags.theme), kind: 0, cx, cy, s: (tags.strength ?? 3) * mult * THEME_PEAK });
+        this.sources.push({ k: THEME_IDS.indexOf(tags.theme), kind: 0, cx, cy, s: (tags.strength ?? 3) * mult * THEME_PEAK, r });
       }
-      for (const [t, wgt] of Object.entries(tags.suitsTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 1, cx, cy, s: 1.5 * (wgt ?? 0) * mult * THEME_PEAK });
-      for (const [t, wgt] of Object.entries(tags.clashesTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 2, cx, cy, s: 1.5 * (wgt ?? 0) * THEME_PEAK });
+      for (const [t, wgt] of Object.entries(tags.suitsTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 1, cx, cy, s: 1.5 * (wgt ?? 0) * mult * THEME_PEAK, r });
+      for (const [t, wgt] of Object.entries(tags.clashesTheme ?? {})) this.sources.push({ k: THEME_IDS.indexOf(t as never), kind: 2, cx, cy, s: 1.5 * (wgt ?? 0) * THEME_PEAK, r });
     }
+    this.reach = this.sources.reduce((m, s) => Math.max(m, s.r), THEME_RADIUS);
     if (themedAny && !this.active) { this.active = true; this.alloc(); }
     if (!themedAny && this.active) { this.active = false; this.themed = []; this.gen = []; this.clash = []; this.junk = new Float32Array(0); this.q = new Float32Array(0); this.score = new Float32Array(0); this.dom = new Int8Array(0); this.rooms = []; }
   }
 
   /** Recompute everything a change in this box can reach (or the whole map). */
   update(x0: number, y0: number, x1: number, y1: number) {
+    // (Batch D) The widest source's reach, before or after (a removed centerpiece's area is cleared too): large
+    // decor and centerpieces theme further than THEME_RADIUS.
+    const before = this.reach;
     this.collect();
     if (!this.active) return;
-    const { w, h, terrain } = this.g.state.map, R = THEME_RADIUS + 1;
+    const { w, h, terrain } = this.g.state.map, R = Math.max(before, this.reach) + 1;
     x0 = Math.max(0, x0 - R); y0 = Math.max(0, y0 - R); x1 = Math.min(w - 1, x1 + R); y1 = Math.min(h - 1, y1 + R);
     for (const set of [this.themed, this.gen, this.clash, [this.junk]]) for (const v of set) for (let y = y0; y <= y1; y++) v.fill(0, y * w + x0, y * w + x1 + 1);
-    const keep = 1 - WALL_CUT, r = THEME_RADIUS;
+    const keep = 1 - WALL_CUT;
     for (const src of this.sources) {
+      const r = src.r;
       const sx0 = Math.max(x0, Math.ceil(src.cx - r)), sx1 = Math.min(x1, Math.floor(src.cx + r));
       const sy0 = Math.max(y0, Math.ceil(src.cy - r)), sy1 = Math.min(y1, Math.floor(src.cy + r));
       if (sx0 > sx1 || sy0 > sy1 || src.k < 0) continue;

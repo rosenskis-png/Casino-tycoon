@@ -13,7 +13,7 @@ money tuned to that:
 - **Build prices halved** (M11.2): every object, sized amenity, decor piece, cabinet and topper, dealers ($400 a
   spot), walls ($20 a tile), doors, entrances, land, research projects, certification ($750) and conversion kits.
   Running costs were left alone at first; after the owner's tutorial playtest (below) **wages and upkeep were
-  halved too, and standard decor has no monthly fee** (only an upfront price; future centerpieces may have one).
+  halved too, and standard decor has no monthly fee** (only an upfront price; Batch D centerpieces carry $80-120 a month).
   Drink and food costs per serving are unchanged. Target: a machine pays for
   itself in 6–12 months on a well-filled floor. Measured (Test Floor, 120 days): theoretical win $21–$24 a machine a
   month against an average price of $285, 14–16 months there (131 machines for ~300 guests, half the seats

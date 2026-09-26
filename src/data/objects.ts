@@ -74,6 +74,10 @@ export interface ObjectDef {
   priceRange?: [number, number];
   /** (M11.2) Only a scenario places it (the tutorial's broken theming): never in the Build list; thrown out for free. */
   scenarioOnly?: boolean;
+  /** (Batch D) A centerpiece: only one of this kind per casino. */
+  unique?: boolean;
+  /** (Batch D) A landmark's draw (about 1): passers-by at entrances nearby (outdoors) and the casino's sights. */
+  landmark?: number;
   desc: string;
 }
 
@@ -148,6 +152,58 @@ const THEMED_DECOR: Record<string, ObjectDef> = Object.fromEntries(DECOR_ROWS.ma
   id, name, cat: "decor", w: 1, h: 1, cost, upkeep: 0, blocks: true, place: "any",
   emits: [...(prs ? [{ channel: "PRS" as const, strength: prs, radius: 3 }] : []), ...(nrg ? [{ channel: "NRG" as const, strength: nrg, radius: 4 }] : [])],
   sprite: id, art: "whole", seats: [], tags: { theme, ...tags }, desc,
+} satisfies ObjectDef]));
+
+/**
+ * (Batch D, owner) Large decor: one 2×2 or 3×3 piece per theme, theming LARGE.strength over LARGE.radius tiles (a
+ * 1×1 piece: 3 over THEME_RADIUS), with prestige and energy to match. No monthly fee, like the rest of the decor.
+ */
+export const LARGE = { strength: 6, radius: 15 };
+type LargeRow = [id: string, theme: ThemeId, name: string, size: number, cost: number, prs: number, nrg: number, tags: Omit<ThemeTags, "theme">, desc: string];
+const LARGE_ROWS: LargeRow[] = [
+  ["big_arch", "rome", "Triumphal Arch", 3, 1600, 4, 0, { suitsPlace: ["outdoor", "floor"] }, "A marble arch for a triumph nobody has won yet."],
+  ["big_anubis", "egypt", "Anubis Statue", 2, 1100, 3.5, 0, { suitsPlace: ["indoor", "show", "highlimit"] }, "The jackal god, twice a man's height, weighing hearts."],
+  ["big_turret", "medieval", "Castle Turret", 3, 1500, 3, 0.5, { suitsPlace: ["outdoor", "bar"], clashesPlace: ["club"] }, "A stone tower with a pennant on top. Nobody lives in it."],
+  ["big_drums", "rock", "Giant Drum Kit", 2, 1100, 1, 5, { suitsPlace: ["club", "bar"], clashesPlace: ["restaurant", "highlimit"] }, "A drum kit for a giant, sticks crossed on the snare."],
+  ["big_spire", "deco", "Skyscraper Spire", 2, 1300, 4.5, 0, { suitsTheme: { ratpack: 0.3 }, suitsPlace: ["highlimit", "indoor"] }, "A gilded tower in stepped tiers, lit from inside."],
+  ["big_cube", "luxe", "Mirror Cube", 2, 1400, 4.5, 0, { suitsPlace: ["highlimit", "restaurant"], clashesPlace: ["club", "smoking"] }, "A polished steel cube. You look richer in it."],
+  ["big_pergola", "riviera", "Vine Pergola", 3, 1200, 3.5, 0, { suitsTheme: { rome: 0.4 }, suitsPlace: ["outdoor", "restaurant", "water"], clashesPlace: ["indoor"] }, "Grapevines over a white pergola, and a café table in the shade."],
+  ["big_martini", "ratpack", "Martini Sign", 2, 1000, 2, 3.5, { suitsTheme: { atomic: 0.3 }, suitsPlace: ["bar", "show"] }, "A neon martini, olive and all, taller than the bar."],
+  ["big_saucer", "atomic", "Flying Saucer", 3, 1500, 1.5, 4, { suitsPlace: ["floor", "outdoor", "club"], clashesPlace: ["highlimit"] }, "Landed on three legs, portholes glowing. Take me to your cashier."],
+  ["big_mine", "goldrush", "Mine Entrance", 3, 1200, 1, 1.5, { suitsPlace: ["outdoor", "floor"], clashesPlace: ["highlimit", "water"] }, "Timber props, a lantern and rails running into the dark."],
+  ["big_totems", "tiki", "Totem Trio", 2, 1000, 2, 2, { suitsTheme: { pirate: 0.3 }, suitsPlace: ["outdoor", "water", "bar"] }, "Three carved gods, the tallest in the middle. They seem to be smiling."],
+  ["big_wreck", "pirate", "Shipwreck Bow", 3, 1400, 2.5, 1, { suitsTheme: { tiki: 0.3 }, suitsPlace: ["water", "outdoor", "floor"] }, "The front of a galleon run aground, figurehead still grinning."],
+  ["big_pagoda", "dragon", "Pagoda Shrine", 2, 1200, 3.5, 0.5, { suitsTheme: { luxe: 0.2 }, suitsPlace: ["floor", "restaurant", "highlimit"] }, "Three red roofs stacked up, with golden bells at the corners."],
+  ["big_clock", "monaco", "Belle Époque Clock", 2, 1500, 5, 0, { suitsTheme: { deco: 0.3 }, suitsPlace: ["highlimit", "restaurant", "indoor"], clashesPlace: ["club", "outdoor"] }, "A gilded clock on a marble column. It never says how late it is."],
+];
+
+/**
+ * (Batch D, owner) Centerpieces: 4×4 and up, very expensive, with a monthly fee, one of each per casino. They theme
+ * CENTER.strength over CENTER.radius tiles, and as landmarks (`landmark`) they draw: outdoors, passers-by at the
+ * entrances nearby; anywhere, the whole casino's sights (sim/street.ts curbAppeal, sim/guests.ts sightsDraw).
+ */
+export const CENTER = { strength: 9, radius: 20 };
+type CenterRow = [id: string, theme: ThemeId, name: string, size: number, cost: number, upkeep: number, place: ObjectDef["place"], prs: number, nrg: number, landmark: number, tags: Omit<ThemeTags, "theme">, desc: string];
+const CENTER_ROWS: CenterRow[] = [
+  ["cp_volcano", "tiki", "Volcano", 5, 15000, 120, "outdoor", 4, 8, 1.2, { suitsTheme: { pirate: 0.4 }, suitsPlace: ["outdoor", "water"] }, "A rumbling volcano out front, glowing at the top. People cross the street to see it."],
+  ["cp_fountains", "riviera", "Dancing Fountains", 5, 14000, 110, "outdoor", 7, 4, 1.1, { suitsTheme: { rome: 0.4, monaco: 0.4 }, suitsPlace: ["outdoor", "water"] }, "Jets that dance to music across a pool the size of a lobby."],
+  ["cp_sphinx", "egypt", "Great Sphinx", 4, 11000, 80, "any", 6, 0, 1, { suitsPlace: ["outdoor", "floor"] }, "A sphinx guarding the house, paws out, a riddle on its lips."],
+  ["cp_ship", "pirate", "Pirate Galleon", 4, 12000, 90, "any", 3, 5, 1, { suitsTheme: { tiki: 0.4 }, suitsPlace: ["water", "outdoor", "floor"] }, "A full-size galleon, bow first, sails furled and cannons out."],
+  ["cp_dragon", "dragon", "Golden Dragon", 4, 12000, 90, "any", 6, 2, 1, { suitsTheme: { luxe: 0.3 }, suitsPlace: ["indoor", "floor", "highlimit"] }, "A golden dragon coiled round a pearl, breathing incense smoke."],
+  ["cp_carousel", "monaco", "Grand Carousel", 4, 10000, 80, "indoor", 5, 3, 0.9, { suitsTheme: { deco: 0.3 }, suitsPlace: ["indoor", "floor", "restaurant"], clashesPlace: ["club"] }, "A gilded Belle Époque carousel, horses and mirrors, turning to a waltz."],
+];
+
+/** Prestige and energy out to r tiles (before DECOR_REACH; kept within the widest emitter so field updates stay cheap). */
+const emitsOf = (prs: number, nrg: number, r: number): Emission[] =>
+  [...(prs ? [{ channel: "PRS" as const, strength: prs, radius: r }] : []), ...(nrg ? [{ channel: "NRG" as const, strength: nrg, radius: r }] : [])];
+const LARGE_DECOR: Record<string, ObjectDef> = Object.fromEntries(LARGE_ROWS.map(([id, theme, name, n, cost, prs, nrg, tags, desc]) => [id, {
+  id, name, cat: "decor", w: n, h: n, cost, upkeep: 0, blocks: true, place: "any", emits: emitsOf(prs, nrg, 3 + n / 2),
+  sprite: id, art: "whole", seats: [], tags: { theme, strength: LARGE.strength, radius: LARGE.radius, ...tags }, desc,
+} satisfies ObjectDef]));
+const CENTERPIECES: Record<string, ObjectDef> = Object.fromEntries(CENTER_ROWS.map(([id, theme, name, n, cost, upkeep, place, prs, nrg, landmark, tags, desc]) => [id, {
+  id, name, cat: "decor", w: n, h: n, cost, upkeep, blocks: true, place, emits: emitsOf(prs, nrg, 3 + n / 2),
+  sprite: id, art: "whole", seats: [], tags: { theme, strength: CENTER.strength, radius: CENTER.radius, ...tags }, landmark, unique: true,
+  desc: `${desc} A centerpiece: one per casino.`,
 } satisfies ObjectDef]));
 
 const FRONT: SeatDef[] = [{ dx: 0, dy: 1, kind: "stool" }];
@@ -384,6 +440,8 @@ export const OBJECTS: Record<string, ObjectDef> = {
     desc: "A grill and shaded tables outside. Fed guests stay longer.",
   },
   ...THEMED_DECOR,
+  ...LARGE_DECOR,
+  ...CENTERPIECES,
   camera: {
     id: "camera", name: "Camera", cat: "security", w: 1, h: 1, cost: 200, upkeep: 1.5, blocks: false, place: "indoor",
     emits: [{ channel: "SRVH", strength: 3, radius: 6 }], sprite: "camera", art: "whole", seats: [],

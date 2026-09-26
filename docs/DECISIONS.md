@@ -2,6 +2,24 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · Batch D: decor and how nice the place is (owner)
+- **Large decor, one per theme (owner):** 14 pieces (every theme, Monte Carlo included), 2×2 or 3×3, $1,000-1,600,
+  no monthly fee. Each themes strength 6 over 15 tiles (a 1×1 piece: 3 over 11), with prestige and energy to match.
+- **Centerpieces, one of each per casino (owner):** Volcano and Dancing Fountains (5×5, outdoors only), Great Sphinx,
+  Pirate Galleon, Golden Dragon (4×4, anywhere) and Grand Carousel (4×4, indoors); $10,000-15,000 and $80-120 a month
+  (owner, M11.2: only centerpieces carry a fee). Theme strength 9 over 20 tiles. As landmarks they draw: outdoors,
+  passers-by at entrances within 18 tiles (curb appeal + 0.5 × draw, fading with distance); anywhere, every crowd's
+  sights (+0.5 × draw × 0.6-1.2 by the crowd's taste for the theme; sights cap raised from 2 to 3). No research: their
+  themes' unlocks and the price are the gate.
+- **The impression (owner, 60/40):** each guest keeps a running read of how well everything they've seen this visit
+  suits them (time-weighted, the last 5 minutes or so counting most). Engagement and mood follow 60% the spot they're
+  in, 40% the impression. New thoughts: "This whole place is gorgeous" / "This place is a bit shabby". Save schema 27.
+- **Test Floor:** every new piece placed (owner: its theming quality doesn't matter). Measured 300 days, seed 1: 3,012
+  gorgeous and 1,944 shabby thoughts (mostly retirees, whom the loud floor doesn't suit); speed unchanged.
+- **Pixel-art kit (owner asked to keep it):** the sprites were drawn with a small Python kit (shape tools on a
+  palette-letter canvas, a PNG preview, exact export into src/data). Now in `tools/pixelart/`; CLAUDE.md and art.md
+  point future chats to it.
+
 ## 2026-09-26 · Batch C: hands on the floor (owner)
 - **Pick up and set down** guests and staff from their cards; set down on any tile a person can stand on, inside or
   out on the lot (owner: "anywhere"; the sidewalk is the passers-by's, not walkable for guests). Not while in an incident, held, or on an enforcement job; visitors can't be moved.

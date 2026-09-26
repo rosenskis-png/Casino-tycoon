@@ -72,6 +72,16 @@ Reference (a 4-piece cluster on an empty floor, score at its middle): one theme 
 Pirate) 1.7, two themed pieces with a palm and a fountain 1.8, a clashing pair (Egypt + Medieval) 0.3, four
 unrelated themes −0.6.
 
+## Large decor and centerpieces (Batch D, owner)
+- **Large decor** (`LARGE` in data/objects.ts): one piece per theme, 2×2 or 3×3, no monthly fee. A themed source of
+  strength 6 over 15 tiles (tags `strength`, `radius`; sim/themes.ts reads a radius per source).
+- **Centerpieces** (`CENTER`): six, 4×4 or 5×5, one of each per casino (`unique`, refused by the place command),
+  $10-15K with a monthly fee. Strength 9 over 20 tiles. Each is a **landmark** (`landmark` ≈ 1; sim/landmarks.ts,
+  LANDMARK in data/psych.ts): outdoors it adds 0.5 × draw × (1 − distance ÷ 19) to the curb appeal of every entrance
+  within 18 tiles; anywhere it adds 0.5 × draw × (0.6 + 0.6 × the crowd's theme taste, 0-1.2) to each crowd's sights
+  (capped at 3). Cached with the draw; never saved.
+- Wide reach cuts both ways: a centerpiece whose theme doesn't pair with its neighbors muddles a big area.
+
 ## Guests
 - Each type has a `theming` weight: Locals 0.3, Retirees 0.5, Tourists 1.0, Party 0.6.
 - **(M11.1) Each type has hidden theme tastes** (−1..1, `themes` in data/guests.ts): Locals Gold Rush, Rat Pack,

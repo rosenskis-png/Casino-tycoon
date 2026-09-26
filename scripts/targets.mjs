@@ -73,7 +73,7 @@ for (let d = 0; d < days; d++) {
   // Reports, police calls and ejections are counted by the sim per day; add up yesterday's.
   if (d > 0) for (const [k, n] of Object.entries(g.state.incidentDays[1] ?? {})) if (k.startsWith("_")) totals[k] = (totals[k] ?? 0) + n;
   // Thought counts for the day just ended (the day hook has already started a new one).
-  for (const k of ["goodTheme", "badTheme"]) totals[k] = (totals[k] ?? 0) + (g.state.thoughts[1]?.[k] ?? 0);
+  for (const k of ["goodTheme", "badTheme", "gorgeous", "shabby"]) totals[k] = (totals[k] ?? 0) + (g.state.thoughts[1]?.[k] ?? 0);
 }
 
 const med = (xs) => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };

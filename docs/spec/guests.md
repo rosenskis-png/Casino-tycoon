@@ -256,6 +256,12 @@ Jackpots are red ("bad" news level: red but queued normally). Only jackpots of $
 
 ## Engagement and draw (M11.1)
 `src/sim/guests.ts` (`engagement`, `floorDraw`, `capacity`), `src/sim/fields.ts` (crowd noise), numbers in `src/data/psych.ts`. Owner, 2026-09-25: layout, theming and attractions should draw the crowds you want, and the right place should get the most out of each game; spamming slots wins the tutorial and nothing after it.
+- **(Batch D, owner) The impression:** each guest keeps `imp`, a running average of the fit at every spot they've
+  been (the same fit that moves mood), weighted by time and remembering about the last 5 minutes (`impW` caps at
+  IMPRESSION.memory = 300 s; data/psych.ts). Mood and engagement read the *felt* fit = 0.6 × the spot + 0.4 × the
+  impression (`feltFit`). After a minute of looking: "This whole place is gorgeous" at 0.8+, "a bit shabby" at −0.3 or
+  less. Saved per guest (schema 27). Test Floor medians: tourists 1.0, conventioneers 0.8, party 0.7, locals 0.3,
+  families 0.3, high rollers 0.25, retirees −0.2.
 - **Engagement at a game** = 1 + 0.35 × (how well the spot suits them − 0.5) + 0.5 × (their appeal for this game − 0.9), clamped 0.6–1.6. "How well the spot suits them" is the same fit that moves mood (qualities, theming and theme taste, smoke). Pure: recomputed where it's used, never saved.
 - It moves money: pace and stake × √engagement; the loss limit × engagement; and **time flies**: each round (machine) or hand (table) adds (engagement − 1) × half its length to the visit's floor time (negative when bored). Whales are always 1.
 - Mood from surroundings now ranges −30 to **+25** (was +12): a place can please, not just avoid annoying.

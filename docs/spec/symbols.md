@@ -17,8 +17,11 @@ rules behind it.
 - Links that join the *same* symbols mostly count once, so ten sea creatures sharing "sea" and "animal" aren't
   rewarded twice. Links that join *different* groups of symbols all count. The owner's Hawaii example: 🐬 🥥 🍧 🌈
   are all tropical, and shaved ice also links to the coconut (food) and to the rainbow (colorful).
-- **The player sees the exact rating (two decimals, like RCT's ratings) and never why.** No hints, no "the dolphin
-  doesn't fit". Experimenting is the game.
+- **The player sees the exact rating (two decimals, like RCT's ratings) and never what's wrong.** No hints, no "the
+  dolphin doesn't fit". Experimenting is the game.
+- **Theming bonuses (owner, same day):** the lab lists every shared tag the set earns credit from, most credit
+  first, with the symbols sharing it ("Hawaii 🌺🍍🥥🐢", "Bow 🏹🎻"). Only links earned, never tags a symbol has
+  alone or what's missing: the player discovers tags and learns them to build on.
 
 ## The set
 Four highs (the hero first), five lows (or card ranks A K Q J 10), a scatter and a jackpot symbol, all different.
@@ -30,7 +33,8 @@ looks only: no new version, no certification.
 set). Tap a spot, then a symbol. Picking a symbol that's already in the set swaps the two. ◀ Pays more / Pays less ▶
 move the selected symbol in pay order. "Card ranks / Symbols" switches the lows. The library is browsed by nine
 categories or searched by name. The **Theme rating** bar sits under it, and at the foot of the Show and Cabinet tabs
-and in the lab's ratings.
+and in the lab's ratings; the lab also lists the Theming bonuses. Tag names shown there come from `tagName()`
+(`TAG_NAMES` overrides, else the id in words).
 
 ## The library (`src/data/emoji.ts`)
 466 symbols (every emoji the game already used, the drawn sevens and bars, and about 330 more) and about 350 tags.

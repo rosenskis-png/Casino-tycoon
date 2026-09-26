@@ -113,6 +113,9 @@
 .dz-emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:3px;max-height:210px;overflow-y:auto;padding:2px}
 .ct .dz-emojis button{font-size:24px;height:38px;padding:0;border-radius:7px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center}
 .ct .dz-emojis button.used{opacity:.35}
+.dz-bonuses{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:13px}
+.dz-bonuses li b{font-weight:700;margin-right:6px}
+.dz-bonuses li span{font-size:16px;letter-spacing:1px}
 .dz-glyph{font-weight:900;font-size:.8em;line-height:1}
 .dz-glyph.seven{font-family:Georgia,serif;font-size:1em}
 .dz-glyph.seven.sr{color:#ff3a3a}.dz-glyph.seven.sb{color:#4a8aff}.dz-glyph.seven.sw{color:#fff}

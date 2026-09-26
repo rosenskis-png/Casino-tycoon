@@ -2,7 +2,7 @@
 // jackpot symbol, picked from the emoji library in pay order, with the live Theme rating. The tags behind the rating
 // stay hidden: the player sees the number, never why.
 import { useMemo, useState } from "react";
-import { EMOJI, EMOJI_CATS, EMOJI_LIST, type EmojiCat } from "../../data/emoji";
+import { EMOJI, EMOJI_CATS, EMOJI_LIST, tagName, type EmojiCat } from "../../data/emoji";
 import { symSetOf, type CustomSyms, type SlotDesign } from "../../data/designer";
 import { play } from "../../platform/audio";
 import { ratingWord, themeRating } from "../../sim";
@@ -43,6 +43,17 @@ export function ThemeBar({ d }: { d: SlotDesign }) {
   const r = themeRating(d).rating;
   return (
     <div className="dz-rating"><span>Theme</span><div><i style={{ width: `${r * 10}%`, background: "#7ad0ff" }} /></div><b>{r.toFixed(2)}</b><small>{ratingWord(r)}</small></div>
+  );
+}
+
+/** (Owner) The lab's list of every shared tag the set earns credit from: discovered links, never what's missing. */
+export function ThemeBonuses({ d }: { d: SlotDesign }) {
+  const shared = themeRating(d).set.shared;
+  if (!shared.length) return <p className="dz-hint">None yet: no two symbols have anything in common.</p>;
+  return (
+    <ul className="dz-bonuses">
+      {shared.map((s) => <li key={s.tag}><b>{tagName(s.tag)}</b><span>{s.syms.map((e) => <Glyph key={e} e={e} />)}</span></li>)}
+    </ul>
   );
 }
 

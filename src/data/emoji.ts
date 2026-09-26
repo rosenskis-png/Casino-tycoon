@@ -597,5 +597,29 @@ export const TAG_TASTES: Record<string, Record<string, number>> = {
   family: { cute: 0.6, candy: 0.5, fairytale: 0.4, toy: 0.5, nursery: 0.4, circus: 0.4, carnival: 0.3, prehistoric: 0.5, sea: 0.2, animal: 0.2, vice: -0.6, booze: -0.5, spooky: -0.3, creature: -0.4, weapon: -0.4 },
 };
 
+/**
+ * (Batch E, owner) Tag names for the lab's "Theming bonuses" list, where a shared tag is shown once the player's set
+ * earns it. Unlisted tags read as their id in words ("gold_rush" → "Gold rush"; "c_red" → "Red").
+ */
+const TAG_NAMES: Record<string, string> = {
+  aesop: "Aesop's fables", alice: "Alice in Wonderland", arabian: "Arabian Nights", arthur: "King Arthur", aussie: "Australia",
+  beanstalk: "Jack and the Beanstalk", beauty_beast: "Beauty and the Beast", berry: "Berries (botanically)", big_cat: "Big cats",
+  black_white: "Black and white", charlotte: "Charlotte's Web", classic_slot: "Classic fruit machine", code: "Programming languages",
+  dia_muertos: "Day of the Dead", diddle: "Hey Diddle Diddle", eden: "Garden of Eden", frog_prince: "The Frog Prince",
+  grand_prix: "Grand Prix", greek: "Greek myth", guardians: "The Four Guardians", hansel: "Hansel and Gretel", humpty: "Humpty Dumpty",
+  ice_age: "Ice Age", king_kong: "King Kong", lab: "The lab", lights_festival: "Festivals of light", long_neck: "Long necks",
+  mardi_gras: "Mardi Gras", mob: "The Mob", monkey_king: "The Monkey King", nyc: "New York", nye: "New Year's Eve", oz: "The Wizard of Oz",
+  pacman: "Pac-Man bonus items", peter_pan: "Peter Pan", pooh: "Winnie-the-Pooh", potter: "Beatrix Potter", red_hood: "Little Red Riding Hood",
+  rio: "Rio Carnival", rock: "Rock (stone)", rock_music: "Rock music", sea_monster: "Sea monsters", sherlock: "Sherlock Holmes",
+  sleeping_beauty: "Sleeping Beauty", snow_white: "Snow White", tea_party: "Tea party", three_pigs: "Three Little Pigs", tmnt: "Ninja Turtles",
+  toybox: "The toy box", twenties: "The Twenties", fifties: "The Fifties", eighties: "The Eighties", wild_west: "Wild West",
+  willows: "The Wind in the Willows", zodiac: "Chinese zodiac", horn: "Horns", wing: "Wings", star: "Stars", egg: "Eggs",
+  wheel: "Wheels", ring: "Rings", nuts: "Nuts", tomb: "Tombs", toy: "Toys", gem: "Gems", pet: "Pets", fish: "Fish",
+};
+export const tagName = (t: string) => {
+  const s = TAG_NAMES[t] ?? t.replace(/^c_/, "").replace(/_/g, " ");
+  return s[0].toUpperCase() + s.slice(1);
+};
+
 /** Tags that draw children's eyes (underage incidents, docs/spec/calendar.md). */
 export const KIDDY_TAGS: Record<string, number> = { cute: 1, candy: 0.8, toy: 1, nursery: 0.8, fairytale: 0.6, circus: 0.6, carnival: 0.5, prehistoric: 0.6 };

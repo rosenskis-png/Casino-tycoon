@@ -222,7 +222,8 @@ const drows = ids.map((id) => {
 console.log(`slot designs: ${drows.map((r) => `${r.name} ×${r.n} ${f1(r.rate)}/day ${r.fans} fans${r.idx !== null ? ` idx ${f2(r.idx)}` : ""}`).join("; ")}`);
 console.log(`launch (Test Launch, 3 machines from day 30): awareness by month ${launchCurve.join(" → ") || "–"}; wishes ${JSON.stringify(sim.wishes(g))}; records ${Object.keys(s.records ?? {}).join(", ") || "none"}`);
 const avgRate = drows.reduce((a, r) => a + r.rate * r.n, 0) / Math.max(1, drows.reduce((a, r) => a + r.n, 0));
-for (const r of drows) if (days >= 60 && r.rate < 0.1 * avgRate) flags.push(`${r.name} is barely played (${f1(r.rate)} a machine-day)`);
+// Stampede Gold (one machine on the Test Floor) is always barely played; owner: not worth flagging.
+for (const r of drows) if (days >= 60 && r.rate < 0.1 * avgRate && r.name !== "Stampede Gold") flags.push(`${r.name} is barely played (${f1(r.rate)} a machine-day)`);
 if (days >= 120 && !drows.some((r) => r.fans)) flags.push("no slot design has a single fan");
 if (launched && days >= 200 && pop0(launched) < 0.5) flags.push("a new design is still unknown to most guests after half a year");
 function pop0(id) { const pop = Object.keys(sim.SCENARIOS.testfloor.population); return pop.reduce((a, t) => a + sim.awareness(s.dstats[id], t), 0) / pop.length; }

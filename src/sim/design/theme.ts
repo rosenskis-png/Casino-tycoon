@@ -46,6 +46,8 @@ export interface SetScore {
   cover: Record<string, number>;
   /** The decor theme the symbols lean to (null: none clearly). */
   lean: SlotTheme | null;
+  /** (Owner) The shared tags it earns credit from, most credit first, with the symbols sharing each. */
+  shared: { tag: string; syms: string[]; credit: number }[];
   /** Colors, weighted. */
   palette: { hue: string; w: number }[];
   kiddy: number;
@@ -82,9 +84,6 @@ export function setScore(set: SymbolSet, fresh = false): SetScore {
   return r;
 }
 
-/** Debug and tuning only (scripts): the counted links of the last set scored. */
-export let lastLinks: { m: Set<number>; c: number; t: string }[] = [];
-
 function scoreSyms(syms: Sym[]): SetScore {
   const n = syms.length, W = syms.reduce((a, s) => a + s.w, 0) || 1;
   // Members of each tag.
@@ -104,7 +103,6 @@ function scoreSyms(syms: Sym[]): SetScore {
   links.sort((a, b) => b.L - a.L || (a.t < b.t ? -1 : 1));
   // Links joining the same symbols as a stronger one mostly count once; different groupings count in full.
   const counted: { m: Set<number>; c: number; sp: number; t: string }[] = [];
-  lastLinks = counted;
   let total = 0;
   for (const l of links) {
     const ms = new Set(l.m);
@@ -155,7 +153,8 @@ function scoreSyms(syms: Sym[]): SetScore {
   const palette = [...pal].map(([hue, w]) => ({ hue, w })).sort((a, b) => b.w - a.w);
   let kiddy = 0;
   for (const [t, v] of Object.entries(KIDDY_TAGS)) kiddy += (cover[t] ?? 0) * v;
-  return { score, links: linkPart, belong, spine, order, unity, orphans, clash, n, cover, lean, palette, kiddy: Math.min(1, kiddy) };
+  const shared = counted.filter((c) => c.c > 0).sort((a, b) => b.c - a.c).map((c) => ({ tag: c.t, syms: [...c.m].sort((a, b) => a - b).map((i) => syms[i].d.e), credit: c.c }));
+  return { shared, score, links: linkPart, belong, spine, order, unity, orphans, clash, n, cover, lean, palette, kiddy: Math.min(1, kiddy) };
 }
 
 /** Pay order against clout: grander symbols paying more reads right. 0-1. */

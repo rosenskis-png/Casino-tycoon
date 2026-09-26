@@ -20,7 +20,7 @@ import {
 } from "../../sim";
 import type { Meter } from "../../sim/state";
 import { Machine } from "../slot/Machine";
-import { SymbolEditor, ThemeBar, customFrom } from "./Symbols";
+import { SymbolEditor, ThemeBar, ThemeBonuses, customFrom } from "./Symbols";
 import { betLevels } from "../play";
 import { money } from "../format";
 import "./designer.css";
@@ -577,6 +577,9 @@ function Lab({ c, g, onForce, onRefill }: { c: Compiled; g: Game; onForce: (f: F
         {bar("Intensity", r.intensity, ratingWord(r.intensity, INTENSITY_WORDS), "#ff7a3a")}
         {bar("Drain", r.drain, ratingWord(r.drain), "#ff4a6a")}
         <ThemeBar d={c.d} />
+      </Row>
+      <Row label="Theming bonuses" hint="Everything the symbols share that the Theme rating counts, most first.">
+        <ThemeBonuses d={c.d} />
       </Row>
       <Row label="The panel said">
         {pn.verdict.length ? pn.verdict.map((q) => <p key={q} className="quote">“{q}”</p>) : <p className="dz-hint">Nothing much either way.</p>}

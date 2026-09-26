@@ -24,6 +24,11 @@ Newest first. One entry per decision: date, what, why.
 - Library: 466 symbols, about 350 tags. Premade sets score 5.2-8.6, random picks about 1, first-try custom sets
   7.5-8.5, a greedy optimizer 9.4-9.7 (always real themes). The call's fit moved from the pairings into the rating.
 - Save schema 28 (a design's optional custom set).
+- **Theming bonuses (owner, after the first build):** the lab lists every shared tag the set gets credit from, with
+  the symbols sharing it, so players feel they discovered something and learn tags to build on. Tags a symbol
+  has alone, and anything that costs, stay hidden.
+- **Test Floor check (owner):** `npm run targets` no longer flags Stampede Gold as barely played (one machine; it
+  flagged every run).
 - **Fix:** guests' feel of a design and their judgments were cached by its math alone, so a looks-only change
   (symbols, colors, lights, sound, call, theme) wasn't felt until the cache cleared. Now redone when the design
   changes; the lab's panel too.

@@ -7,13 +7,13 @@
 // half bar. Melody lines (lead, counter, bells) are one 16-token string per bar in semitones above the key's root,
 // cycling through the bars. Tracks with an intro play it once, then loop from `loopFrom`.
 
-export type Quality = "maj" | "min" | "7" | "m7" | "maj7" | "dim" | "m9" | "6" | "m6" | "aug";
+export type Quality = "maj" | "min" | "7" | "m7" | "maj7" | "dim" | "m9" | "6" | "m6" | "aug" | "mM7";
 export const CHORD_TONES: Record<Quality, number[]> = {
   maj: [0, 4, 7, 12], min: [0, 3, 7, 12], "7": [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], dim: [0, 3, 6, 9], m9: [0, 3, 10, 14],
-  "6": [0, 4, 7, 9], m6: [0, 3, 7, 9], aug: [0, 4, 8, 12],
+  "6": [0, 4, 7, 9], m6: [0, 3, 7, 9], aug: [0, 4, 8, 12], mM7: [0, 3, 7, 11],
 };
 export type Wave = "sine" | "square" | "triangle" | "sawtooth";
-export type Drums = { kick?: string; snare?: string; clap?: string; hat?: string; open?: string; rim?: string; ride?: string; crash?: string; tom?: string };
+export type Drums = { kick?: string; snare?: string; clap?: string; hat?: string; open?: string; rim?: string; ride?: string; crash?: string; tom?: string; brush?: string };
 
 /** A melody part. Bars are one 16-token string each ("" rests a whole bar), cycling through the song. */
 export interface Line {
@@ -28,6 +28,8 @@ export interface Line {
   brass?: boolean;
   /** Struck and left to ring this many seconds, whatever the holds (bells). */
   ring?: number;
+  /** Seconds to swell in (default: a quick 0.02). */
+  attack?: number;
   cutoff?: number;
 }
 
@@ -46,15 +48,19 @@ export interface Track {
   drums: Drums;
   /** fold: roots above a fifth drop an octave, so the bass stays low whatever the chord. */
   bass?: { wave: Wave; notes: string; oct: number; cutoff?: number; fold?: boolean };
-  pad?: { wave: Wave; gain: number; oct: number };
-  arp?: { wave: Wave; notes: string; oct: number; gain: number };
-  /** Horn-section chord hits: 16 characters per bar ("x" hit, "X" accent, "-" hold, "." rest), the chord's upper tones. */
-  stabs?: { wave: Wave; hits: string; oct: number; gain: number; cutoff?: number };
+  /** Sustained chords. detune and attack (seconds) make a string section of it; otherwise it fades like an organ. */
+  pad?: { wave: Wave; gain: number; oct: number; detune?: number; attack?: number; cutoff?: number };
+  arp?: { wave: Wave; notes: string; oct: number; gain: number; cutoff?: number };
+  /** Horn-section chord hits: 16 characters per bar ("x" hit, "X" accent, "-" hold, "." rest), the chord's upper tones.
+   * swell: the horns fade in softly instead of biting. */
+  stabs?: { wave: Wave; hits: string; oct: number; gain: number; cutoff?: number; swell?: boolean };
   lead?: Line;
   counter?: Line;
   bells?: Line;
-  /** Per-bar changes (song bar index): that bar's drums, bass or stabs replace the usual ones. */
-  fills?: Record<number, { drums?: Drums; bass?: string; stabs?: string }>;
+  /** Per-bar changes (song bar index): that bar's drums, bass or stabs replace the usual ones; quiet parts sit out. */
+  fills?: Record<number, { drums?: Drums; bass?: string; stabs?: string; quiet?: ("bass" | "pad" | "arp")[] }>;
+  /** Room reverb level (0 dry). */
+  space?: number;
   /** Overall level (tracks are mixed against each other by ear). */
   gain: number;
 }
@@ -62,102 +68,80 @@ export interface Track {
 /** Shifts every note of some lead bars by n semitones. */
 const up = (bars: string[], n: number) => bars.map((b) => b.replace(/-?\d+/g, (m) => String(Number(m) + n)));
 
-// The main theme (owner, 2026-09-26: "entirely different", in the spirit of the RollerCoaster Tycoon title): a Vegas
-// showband march in B-flat. What made that theme stick, kept: a bouncy straight-eighths two-beat (oom-pah bass on
-// 1 and 3, the band on 2 and 4), one short hook stated, sequenced up and repeated until you can hum it, secondary
-// dominants and chromatic pickups for the fairground cheek, AABA with a contrasting bridge, and a loop that turns
-// straight back to the top. The Vegas part: a drumroll-and-fanfare intro that steps up a half step, brass stabs,
-// a minor-iv sigh, a Charleston 3-3-2 kick, a "Sing, Sing, Sing" tom bridge in G minor with the spy-movie line
-// cliche underneath, and a glockenspiel doubling the last chorus like a jackpot.
-const HOOK = [
-  "19 . 21 23 24 - - . 19 . 16 . 12 - - .", //   Bb6   F G A Bb, F D Bb
-  "20 . 21 23 26 - - . 23 . 20 . 16 - - .", //   D7    the same shape, a step up
-  "21 . 22 24 29 - - . 24 . 21 . 17 - - .", //   Eb6   and again, to the top
-  "29 - - . 26 . 24 . 20 - - - . . 17 18", //   Ebm6  the sigh, and a chromatic pickup
+// The main theme (owner, 2026-09-26, second pass): a spy-casino theme in G minor with a B-flat major bridge.
+// The owner's brief after the first pass: warm, plodding and comforting, like the RollerCoaster Tycoon title,
+// which moves minor to a major bridge and back; expected chords and resolutions, no jarring notes; rich layers.
+// Rules it keeps: chords change every two bars or so (i, iv, V, i; I, vi, IV, V in the bridge); the melody moves
+// by step in long notes and every phrase lands on a chord tone, the first on V and the second home on G. The one
+// color is the spy-movie line cliche (G, F#, F, E), heard as a slow inner voice in the strings and guitar under
+// held melody notes, so it's a pattern the ear learns rather than a surprise. Layers enter one by one in the intro
+// (bass and ride, then guitar, then strings, then drums), a melody doubled in octaves, soft horn swells at the
+// peaks, vibes doubling the last chorus, all in a reverb room.
+const QUESTION = [
+  "12 - - - 15 - - - 19 - - - - - - -", //    Gm, Gm(maj7)   G Bb D, rising
+  "19 - - - 20 - - - 19 - - - 17 - 15 -", //   Gm7, Gm6       D, a sigh up to Eb and back
+  "17 - - - 20 - - - 24 - - - 22 - 20 -", //  Cm
+  "19 - - - - - - - 23 - - - 26 - - -", //    D7             left hanging on V
 ];
 const ANSWER = [
-  "19 . 21 23 24 - - 22 21 . 25 . 28 - - .", //  Bb6 | G7
-  "26 . 28 26 24 - - . 21 . 18 . 14 - - .", //  C7
-  "26 . . 24 . . 23 . 29 . . 28 . . 26 .", //   F7    3-3-2
+  "27 - - - 24 - - - 19 - - - - - - -", //    Gm, Gm(maj7)   the same arpeggio, falling
+  "19 - - - 17 - - - 15 - - - - - - -", //    Gm7, Gm6       stepping down
+  "17 - - - 15 - - - 14 - - - 11 - - -", //   Cm | D7        down to the leading tone
+  "12 - - - - - - - - - - - - - - -", //      Gm             home
 ];
-const TURN = "24 - - - - - . . . . . . . . 17 18"; // Bb6 | F7, back to the top
-const BUTTON = "24 - - . 19 . 24 . . . . . . . . ."; //  Bb6 | D7, "shave and a haircut" into the bridge
-const BIG = "31 - - - - - - - - - - - . . 17 18"; //   F7 | F+ (the intro's last bar and the bridge's)
+const ANSWER_HIGH = [
+  "24 - - - 20 - - - 24 - - - 27 - - -", //   Eb             climbing
+  "29 - - - 27 - - - 24 - - - 20 - - -", //   Cm             the top, then down
+  "26 - - - 24 - - - 23 - - - 26 - - -", //   D7
+  "24 - - - - - - - - - - - - - - -", //      Gm             home
+];
 const BRIDGE = [
-  "28 - - - - - 27 - 28 - - - . . . .", //       Gm
-  "31 - - . 28 . 24 . 21 - - - . . . .", //      Gm
-  "29 - - - - - 28 - 29 - - - . . . .", //       Cm7
-  "26 - - . 23 . 20 . 16 - - - . . . .", //      D7
-  "28 - - - - - 27 - 28 - - - . . . .", //       Gm
-  "27 - - . 24 . 21 . 17 - - - . . . .", //      Eb7
-  "26 . 24 . 21 . 24 . 23 . 26 . 29 . 31 .", //  Cm7 | F7
-  BIG, //                                        F7 | F+
+  "19 - - - 22 - - - 27 - - - - - - -", //    Bb             the hook's rise, in major
+  "24 - - - 22 - - - 19 - - - - - - -", //    Gm
+  "20 - - - 24 - - - 27 - - - - - - -", //    Eb
+  "29 - - - 27 - - - 26 - - - 22 - - -", //   F7
+  "22 - - - 27 - - - 31 - - - - - - -", //    Bb             the peak
+  "31 - - - 29 - - - 27 - - - 24 - - -", //   Gm
+  "20 - - - 24 - - - 29 - - - - - - -", //    Cm
+  "26 - - - - - - - 23 - - - 19 - - -", //    D7             back to G minor
 ];
-const FANFARE = ["", "19 . . 19 19 . 23 . 26 - - - - - - .", "20 . . 20 20 . 24 . 27 - - - - - - .", BIG];
-const THEME_LEAD = [...FANFARE, ...HOOK, ...ANSWER, TURN, ...HOOK, ...ANSWER, BUTTON, ...BRIDGE, ...HOOK, ...ANSWER, TURN];
-const A_CHORDS: Track["chords"] = [[0, "6"], [4, "7"], [5, "6"], [5, "m6"], [0, "6", 9, "7"], [2, "7"], [7, "7"]];
-const THEME_DRUMS: Drums = { kick: "x.......x.......", snare: "....x.......x...", hat: "x.x.x.x.x.x.x.x.", open: "..............x." };
-const TOMS: Drums = { tom: "X...x..xX...x..x", kick: "x.......x.......", hat: "..x...x...x...x." };
-const FANFARE_HITS = "X..xx.x.X------.";
-const FANFARE_DRUMS: Drums = { kick: "x..xx.x.x.......", snare: "x..xx.x.X.......", crash: "x..............." };
-const BIG_DRUMS: Drums = { crash: "x...............", kick: "x.......x.......", tom: "............xxxX" };
-const THREE_THREE_TWO = "x..x..x.x..x..x.";
-const TURN_FILL = { bass: "0 - . . . . . . 0 . 2 . 4 - . .", drums: { ...THEME_DRUMS, snare: "....x.......x.xx" } };
+const THEME_LEAD = ["", "", "", "", ...QUESTION, ...ANSWER, ...QUESTION, ...ANSWER_HIGH, ...BRIDGE, ...QUESTION, ...ANSWER_HIGH];
+const CLICHE: Track["chords"] = [[0, "min", 0, "mM7"], [0, "m7", 0, "m6"]];
+const THEME_DRUMS: Drums = { kick: "x.......x.......", brush: "....x.......x...", ride: "x.x.x.x.x.x.x.x." };
+const SWELL = "X---------------";
 
 export const TRACKS: Record<string, Track> = {
   theme: {
-    id: "theme", name: "Casino Tycoon", bpm: 140, root: 58, gain: 0.9, loopFrom: 4,
+    id: "theme", name: "Casino Tycoon", bpm: 100, root: 55, gain: 0.9, loopFrom: 4, space: 0.45,
     chords: [
-      [7, "7"], [7, "7"], [8, "7"], [7, "7", 7, "aug"],
-      ...A_CHORDS, [0, "6", 7, "7"], ...A_CHORDS, [0, "6", 4, "7"],
-      [9, "min"], [9, "min"], [2, "m7"], [4, "7"], [9, "min"], [5, "7"], [2, "m7", 7, "7"], [7, "7", 7, "aug"],
-      ...A_CHORDS, [0, "6", 7, "7"],
+      [0, "min"], [0, "mM7"], [0, "m7"], [0, "m6"],
+      ...CLICHE, [5, "min"], [7, "7"], ...CLICHE, [5, "min", 7, "7"], [0, "min"],
+      ...CLICHE, [5, "min"], [7, "7"], [8, "maj"], [5, "min"], [7, "7"], [0, "min"],
+      [3, "maj"], [0, "min"], [8, "maj"], [10, "7"], [3, "maj"], [0, "min"], [5, "min"], [7, "7"],
+      ...CLICHE, [5, "min"], [7, "7"], [8, "maj"], [5, "min"], [7, "7"], [0, "min"],
     ],
+    // Brushes on 2 and 4 under a straight ride.
     drums: THEME_DRUMS,
-    bass: { wave: "triangle", notes: "0 - . . . . . . -5 - . . . . . .", oct: -1, cutoff: 1000, fold: true },
-    pad: { wave: "triangle", gain: 0.025, oct: 0 },
-    stabs: { wave: "sawtooth", hits: "....x.......x...", oct: 0, gain: 0.022, cutoff: 2200 },
-    lead: { wave: "sawtooth", bars: THEME_LEAD, oct: 0, gain: 0.05, exact: true, detune: 9, vib: 14, brass: true, cutoff: 2800 },
-    counter: {
-      wave: "sawtooth", oct: -1, gain: 0.04, exact: true, brass: true, cutoff: 1500,
-      bars: [
-        "", "", "", "", "", "", "", "", "", "", "", ". . . . . . . . 26 . 24 . 23 - . .",
-        "", "", "", "", "", "", "", ". . . . . . . . 16 . 20 . 23 . 26 .",
-        // The line cliche: G, F#, F, E under the held melody.
-        "21 - - - - - - - 20 - - - - - - -", "19 - - - - - - - 18 - - - - - - -", "", "",
-        "21 - - - - - - - 20 - - - - - - -", "19 - - - - - - - 17 - - - - - - -", "", "",
-        "", "", "", "", "", "", "", ". . . . . . . . 26 . 24 . 23 - . .",
-      ],
-    },
+    bass: { wave: "triangle", notes: "0 - - . 7 - - . 12 - - . 7 - - .", oct: -1, cutoff: 800, fold: true },
+    // The guitar: a twangy eighth-note figure whose top note walks the line cliche.
+    arp: { wave: "sawtooth", notes: "0 . 2 . 3 . 2 . 0 . 2 . 3 . 2 .", oct: 0, gain: 0.028, cutoff: 1400 },
+    pad: { wave: "sawtooth", gain: 0.016, oct: 0, detune: 12, attack: 0.5, cutoff: 1300 },
+    stabs: { wave: "sawtooth", hits: "................", oct: 0, gain: 0.014, cutoff: 1600, swell: true },
+    lead: { wave: "sawtooth", bars: THEME_LEAD, oct: 0, gain: 0.042, exact: true, detune: 7, vib: 12, attack: 0.06, cutoff: 1900 },
+    counter: { wave: "triangle", bars: THEME_LEAD, oct: -1, gain: 0.04, exact: true, attack: 0.05 },
     bells: {
-      wave: "sine", oct: 0, gain: 0.03, ring: 0.7,
-      bars: [
-        "", "", "", ". . . . . . . . 19 23 27 31 35 39 . .",
-        "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
-        ". . . . . . . . 16 20 23 26 28 32 35 38",
-        "", "", "", "", "", "", "", "",
-        ...up([...HOOK, ...ANSWER, TURN], 12),
-      ],
+      wave: "sine", oct: 0, gain: 0.028, ring: 1.4,
+      bars: [...Array<string>(28).fill(""), ...up([...QUESTION, ...ANSWER_HIGH], 12)],
     },
     fills: {
-      0: { drums: { snare: "xxxxxxxxXXXXXXXX" }, bass: "0 - - - - - - - - - - - - - - -", stabs: "................" },
-      1: { drums: FANFARE_DRUMS, bass: "0 . . 0 0 . 0 . 0 - - - - - - .", stabs: FANFARE_HITS },
-      2: { drums: FANFARE_DRUMS, bass: "0 . . 0 0 . 0 . 0 - - - - - - .", stabs: FANFARE_HITS },
-      3: { drums: BIG_DRUMS, bass: "0 - - - - - - - 0 - - - - - . .", stabs: "X-------X-----.." },
+      0: { drums: { ride: THEME_DRUMS.ride }, quiet: ["pad", "arp"] },
+      1: { drums: { ride: THEME_DRUMS.ride }, quiet: ["pad"] },
+      2: { drums: { ride: THEME_DRUMS.ride, kick: THEME_DRUMS.kick } },
       4: { drums: { ...THEME_DRUMS, crash: "x..............." } },
-      7: { bass: "0 - . . . . . . -1 . -2 . -3 . -4 ." },
-      10: { stabs: THREE_THREE_TWO }, 11: TURN_FILL,
-      15: { bass: "0 - . . . . . . -1 . -2 . -3 . -4 ." },
-      18: { stabs: THREE_THREE_TWO },
-      19: { drums: { kick: "x.....x.x.......", snare: "......X.x.x.xxxx", crash: "x.....x........." }, bass: "0 - . . . . 0 . 0 - - - 7 - . .", stabs: "X.....X.X---...." },
-      20: { drums: { ...TOMS, crash: "x..............." }, stabs: "......x.......x." }, 21: { drums: TOMS, stabs: "......x.......x." },
-      22: { drums: TOMS, stabs: "......x.......x." }, 23: { drums: TOMS, stabs: "......x.......x." },
-      24: { drums: TOMS, stabs: "......x.......x." }, 25: { drums: TOMS, stabs: "......x.......x." },
-      26: { drums: TOMS, stabs: "x.x.x.x.x.x.x.x." },
-      27: { drums: BIG_DRUMS, bass: "0 - - - - - - - 0 - . . 2 . 4 .", stabs: "X-------X-----.." },
+      16: { stabs: SWELL }, 19: { stabs: SWELL },
+      20: { drums: { ...THEME_DRUMS, crash: "x..............." } }, 24: { stabs: SWELL },
       28: { drums: { ...THEME_DRUMS, crash: "x..............." } },
-      31: { bass: "0 - . . . . . . -1 . -2 . -3 . -4 ." },
-      34: { stabs: THREE_THREE_TWO }, 35: TURN_FILL,
+      32: { stabs: SWELL }, 35: { stabs: SWELL },
     },
   },
   // Nightclub tracks (a club's card picks one).

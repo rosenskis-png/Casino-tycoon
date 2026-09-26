@@ -13,6 +13,25 @@ function holdOf(t: string[], k: number): number {
   return n;
 }
 
+/** A reverb room: two channels of decaying fixed pseudo-noise (an LCG, not gameplay randomness), made once per context. */
+const rooms = new WeakMap<BaseAudioContext, AudioBuffer>();
+function room(ctx: BaseAudioContext): AudioBuffer {
+  let b = rooms.get(ctx);
+  if (b) return b;
+  const len = Math.floor(ctx.sampleRate * 2.4);
+  b = ctx.createBuffer(2, len, ctx.sampleRate);
+  let x = 7;
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      x = (x * 1103515245 + 12345) % 2147483648;
+      d[i] = (x / 1073741824 - 1) * (1 - i / len) ** 3;
+    }
+  }
+  rooms.set(ctx, b);
+  return b;
+}
+
 export class MusicPlayer {
   readonly track: Track;
   private out: GainNode | null = null;
@@ -40,15 +59,26 @@ export class MusicPlayer {
     if (this.timer) { this.place(gain, pan); return true; }
     const a = audioOut("music");
     if (!a) return false;
-    this.out = a.ctx.createGain();
-    this.out.gain.value = 0;
-    this.pan = a.ctx.createStereoPanner();
-    this.out.connect(this.pan).connect(a.out);
+    this.wire(a.ctx, a.out);
     this.next = a.ctx.currentTime + 0.06;
     this.step = 0;
     this.timer = window.setInterval(() => this.schedule(), 25);
     this.place(gain, pan);
     return true;
+  }
+
+  /** out -> pan -> dest, plus a reverb send when the track has space. */
+  private wire(ctx: BaseAudioContext, dest: AudioNode) {
+    this.out = ctx.createGain();
+    this.out.gain.value = 0;
+    this.pan = ctx.createStereoPanner();
+    this.out.connect(this.pan).connect(dest);
+    if (this.track.space) {
+      const verb = ctx.createConvolver(), wet = ctx.createGain();
+      verb.buffer = room(ctx);
+      wet.gain.value = this.track.space;
+      this.out.connect(verb).connect(wet).connect(this.pan);
+    }
   }
 
   /** Moves the music: its level (0-1) and left/right pan, eased. */
@@ -65,12 +95,14 @@ export class MusicPlayer {
     if (!this.timer) return;
     clearInterval(this.timer);
     this.timer = 0;
-    const out = this.out, a = audioOut("music");
+    const out = this.out, pan = this.pan, a = audioOut("music");
     this.out = null;
     this.pan = null;
     if (!out) return;
     if (a) out.gain.setTargetAtTime(0, a.ctx.currentTime, fade / 4);
     window.setTimeout(() => out.disconnect(), fade * 1000 + 400);
+    // The reverb tail rings on a little longer.
+    window.setTimeout(() => pan?.disconnect(), fade * 1000 + 3000);
   }
 
   private schedule() {
@@ -96,6 +128,7 @@ export class MusicPlayer {
     const chordRoot = half ? c[2]! : c[0], tones = CHORD_TONES[half ? c[3]! : c[1]];
     const fill = tr.fills?.[bar];
     type Voice = { a?: number; cutoff?: number; f1?: number; sus?: boolean; detune?: number; vib?: number; brass?: boolean };
+    const quiet = (part: "bass" | "pad" | "arp") => fill?.quiet?.includes(part);
     const tone = (note: number, len: number, wave: Wave, gain: number, o: Voice = {}) => {
       const g = ctx.createGain(), a = o.a ?? 0.005, end = t + len + (o.sus ? 0.08 : 0);
       const oscs = [ctx.createOscillator()];
@@ -162,28 +195,31 @@ export class MusicPlayer {
     if ((v = hit(d.ride))) { hiss(0.28, 0.035 * v, "highpass", 6500); tone(100, 0.2, "sine", 0.015 * v); }
     if ((v = hit(d.crash))) { hiss(1.4, 0.07 * v, "highpass", 4500); hiss(0.5, 0.04 * v, "bandpass", 9000); }
     // Toms fall in pitch across the bar, so a fill runs high to low.
+    if ((v = hit(d.brush))) hiss(0.16, 0.08 * v, "bandpass", 2600);
     if ((v = hit(d.tom))) tone(52 - k * 0.7, 0.22, "sine", 0.24 * v, { f1: hz(46 - k * 0.7) });
     const base = tr.root + chordRoot;
-    if (tr.bass) {
+    if (tr.bass && !quiet("bass")) {
       const bs = this.tok(fill?.bass ?? tr.bass.notes), bt = bs[k];
       const low = tr.bass.fold && chordRoot > 6 ? base - 12 : base;
       if (bt && bt !== "." && bt !== "-") tone(low + Number(bt) + 12 * tr.bass.oct, dur * holdOf(bs, k) * 0.9, tr.bass.wave, 0.22, { cutoff: tr.bass.cutoff ?? 1400 });
     }
     // The pad sounds each chord for as long as it lasts.
-    if (tr.pad && (k === 0 || (k === 8 && c.length === 4))) {
-      for (const x of tones.slice(0, 4)) tone(base + x + 12 * tr.pad.oct, dur * (c.length === 4 ? 7.5 : 15.5), tr.pad.wave, tr.pad.gain, { a: 0.12, cutoff: 2200 });
+    const pad = tr.pad;
+    if (pad && !quiet("pad") && (k === 0 || (k === 8 && c.length === 4))) {
+      const len = dur * (c.length === 4 ? 7.5 : 15.5), strings = !!pad.attack;
+      for (const x of tones.slice(0, 4)) tone(base + x + 12 * pad.oct, len, pad.wave, pad.gain, { a: pad.attack ?? 0.12, cutoff: pad.cutoff ?? 2200, detune: pad.detune, sus: strings });
     }
-    const arp = tr.arp && this.tok(tr.arp.notes), at = arp?.[k];
+    const arp = tr.arp && !quiet("arp") ? this.tok(tr.arp.notes) : undefined, at = arp?.[k];
     if (tr.arp && at && at !== "." && at !== "-") {
       const up = at.endsWith("+") ? 12 : 0, i = Number(up ? at.slice(0, -1) : at);
-      tone(base + tones[i % tones.length] + up + 12 * tr.arp.oct, dur * holdOf(arp!, k) * 0.85, tr.arp.wave, tr.arp.gain, { cutoff: 3200 });
+      tone(base + tones[i % tones.length] + up + 12 * tr.arp.oct, dur * holdOf(arp!, k) * 0.85, tr.arp.wave, tr.arp.gain, { cutoff: tr.arp.cutoff ?? 3200 });
     }
     if (tr.stabs) {
       const p = fill?.stabs ?? tr.stabs.hits, ch = p[k];
       if (ch === "x" || ch === "X") {
         let len = 1;
         while (k + len < 16 && p[k + len] === "-") len++;
-        for (const x of tones.slice(1, 4)) tone(base + x + 12 * tr.stabs.oct, dur * (len === 1 ? 0.7 : len), tr.stabs.wave, tr.stabs.gain * (ch === "X" ? 1.4 : 1), { cutoff: tr.stabs.cutoff ?? 2200, brass: true, sus: len > 1 });
+        for (const x of tones.slice(1, 4)) tone(base + x + 12 * tr.stabs.oct, dur * (len === 1 ? 0.7 : len), tr.stabs.wave, tr.stabs.gain * (ch === "X" ? 1.4 : 1), { cutoff: tr.stabs.cutoff ?? 2200, brass: !tr.stabs.swell, sus: len > 1, a: tr.stabs.swell ? 0.4 : undefined });
       }
     }
     for (const line of [tr.lead, tr.counter, tr.bells]) if (line) this.melody(line, bar, k, dur, tone);
@@ -198,7 +234,7 @@ export class MusicPlayer {
     else while (n < 8 && k + n < 16 && (lb[k + n] === "." || lb[k + n] === "-")) n++;
     const len = line.ring ?? dur * n * (line.exact ? 0.95 : 0.85);
     tone(this.track.root + Number(lt) + 12 * line.oct, len, line.wave, line.gain, {
-      a: line.ring ? 0.003 : 0.02, cutoff: line.cutoff ?? (line.ring ? undefined : 2600), sus: line.exact, detune: line.detune, vib: line.vib, brass: line.brass,
+      a: line.attack ?? (line.ring ? 0.003 : 0.02), cutoff: line.cutoff ?? (line.ring ? undefined : 2600), sus: line.exact, detune: line.detune, vib: line.vib, brass: line.brass,
     });
   }
 }

@@ -325,6 +325,11 @@ const MIGRATIONS: Record<number, (s: any) => any> = {
     for (const o of s.objects ?? []) if (o.bar) o.bar.area = list(o.bar.area);
     return s;
   },
+  // 26 → 27 (Batch D, owner): each guest's impression of the visit (starts fresh for guests already inside).
+  26: (s) => {
+    for (const a of s.agents ?? []) if (a.g) { a.g.imp = 0; a.g.impW = 0; }
+    return s;
+  },
 };
 
 export function serialize(g: Game): string {

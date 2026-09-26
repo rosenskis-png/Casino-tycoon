@@ -8,7 +8,8 @@ import { T } from "../data/terrain";
 import { SCENARIOS } from "../data/scenarios";
 import { WAGERS_PER_ROUND } from "../data/games";
 import { THEME_IDS } from "../data/themes";
-import { DRAW, ENGAGE, ENV_MOOD, THEME_TASTE, TIME_FLIES } from "../data/psych";
+import { DRAW, ENGAGE, ENV_MOOD, IMPRESSION, LANDMARK, THEME_TASTE, TIME_FLIES } from "../data/psych";
+import { landmarkSights } from "./landmarks";
 import type { Game } from "./game";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
@@ -345,6 +346,11 @@ function periodicThought(g: Game, a: Agent, type: GuestTypeDef) {
   // A good word only when the whole place suits them, credited to what they like most.
   if (fit.best && fit.score > 0) consider(GOOD_THOUGHT[fit.best.t], fit.score * 4);
   const n = gd.needs;
+  // (Batch D) The impression of the whole place, once they've seen enough of it.
+  if (gd.impW >= IMPRESSION.seen) {
+    if (gd.imp >= IMPRESSION.hi) consider("gorgeous", 2 + 3 * (gd.imp - IMPRESSION.hi));
+    else if (gd.imp <= IMPRESSION.lo) consider("shabby", 3 + 6 * (IMPRESSION.lo - gd.imp));
+  }
   if (n.fatigue > 80) consider("tired", (n.fatigue - 70) / 2);
   if (n.hunger > 80) consider("hungry", (n.hunger - 70) / 2);
   if (gd.smoker && gd.urge >= 100) consider("needSmoke", 6);
@@ -413,7 +419,7 @@ export function spawnGuest(g: Game, typeId: string, at: number, person: Person |
     },
     // First-timers sightsee before settling; regulars less, the better they know the place.
     browse: 0, frus: 0, liked: [], favAt: 0,
-    thought: "", thoughtTick: -1, recent: [], nextThink: s.tick + r.int(5, 20) * TICKS_PER_SECOND, annoy: 0, buzz: 0, why: "", wait: -1,
+    thought: "", thoughtTick: -1, recent: [], imp: 0, impW: 0, nextThink: s.tick + r.int(5, 20) * TICKS_PER_SECOND, annoy: 0, buzz: 0, why: "", wait: -1,
     warned: 0, unans: 0, called: 0, incAt: 0,
     know: person ? person.know : lead ? lead.know : 0,
     kseed: person ? personSeed(person.id) : lead ? lead.kseed : r.int(0, 1 << 30),
@@ -1062,12 +1068,17 @@ export function engagement(g: Game, a: Agent): number {
   return c ? Math.max(ENGAGE.min, Math.min(ENGAGE.max, 1 + ENGAGE.fit * (c.fit - ENGAGE.fitMid) + ENGAGE.game * (c.app - ENGAGE.gameMid))) : 1;
 }
 
-/** The two parts of engagement: how well the spot suits them and how much they like the game (reports read these). */
+/** The two parts of engagement: how well things suit them (the spot and, Batch D, the impression) and how much they like the game (reports read these). */
 export function engageParts(g: Game, a: Agent): { fit: number; app: number } | null {
   const gd = a.g, o = gd && g.objById.get(a.target);
   if (!gd || !o || gd.vip) return null;
   const type = GUEST_TYPES[gd.type];
-  return { fit: fitAt(g, type, a.y * g.state.map.w + a.x, gd).score, app: gameAppeal(g, type, gd, o) };
+  return { fit: feltFit(gd, fitAt(g, type, a.y * g.state.map.w + a.x, gd).score), app: gameAppeal(g, type, gd, o) };
+}
+
+/** (Batch D, owner) How well things suit them as felt: the spot they're in, and their impression of the whole visit. */
+export function feltFit(gd: GuestData, here: number): number {
+  return gd.impW > 0 ? (1 - IMPRESSION.mix) * here + IMPRESSION.mix * gd.imp : here;
 }
 
 /**
@@ -2093,7 +2104,11 @@ function guestBeat(g: Game, a: Agent, r: Rng) {
   const span = walking ? 1 : MOOD_EVERY;
   if (!walking && (a.id + beatNo) % MOOD_EVERY !== 0) return thinkIfDue(g, a, type, r);
   const here = a.y * g.state.map.w + a.x;
-  const env = Math.max(ENV_MOOD[0], Math.min(ENV_MOOD[1], fitAt(g, type, here, gd).score * 8));
+  // (Batch D) Everything seen this visit builds the impression; mood follows it and the spot they're in.
+  const fit = fitAt(g, type, here, gd).score;
+  gd.impW = Math.min(IMPRESSION.memory, gd.impW + span);
+  gd.imp += (fit - gd.imp) * (span / gd.impW);
+  const env = Math.max(ENV_MOOD[0], Math.min(ENV_MOOD[1], feltFit(gd, fit) * 8));
   const luck = Math.max(-15, Math.min(15, (net(gd) / staked(gd)) * 25));
   let needs = 0;
   for (const v of [n.bladder, n.thirst, n.hunger, n.fatigue]) if (v > 60) needs += (v - 60) / 3;
@@ -2184,7 +2199,8 @@ export function floorDraw(g: Game, typeId: string): number {
 
 /**
  * (M11.2) The sights: how much a crowd would come just to look around. The average over the open floor of the
- * theming they like (a theme's score × their taste for it; bad theming counts against it), × SIGHTS_K, 0-2.
+ * theming they like (a theme's score × their taste for it; bad theming counts against it), × SIGHTS_K, 0-2, plus
+ * (Batch D) the landmarks' draw (sim/landmarks.ts), up to LANDMARK.sightsCap.
  * Cached with the draw until the layout changes.
  */
 export function sightsDraw(g: Game, typeId: string): number {
@@ -2205,7 +2221,8 @@ export function sightsDraw(g: Game, typeId: string): number {
         sums[k] += sc > 0 ? sc * Math.max(0, 0.25 + THEME_TASTE * taste) : 0.5 * sc;
       }
     }
-    types.forEach((t, k) => { f.drawCache![`sights:${t.id}`] = n ? Math.max(0, Math.min(2, (SIGHTS_K * sums[k]) / n)) : 0; });
+    // (Batch D) Centerpieces add to it, for every crowd (more for those who like their theme).
+    types.forEach((t, k) => { f.drawCache![`sights:${t.id}`] = Math.min(LANDMARK.sightsCap, (n ? Math.max(0, Math.min(2, (SIGHTS_K * sums[k]) / n)) : 0) + landmarkSights(g, t.id)); });
   }
   return f.drawCache![key];
 }

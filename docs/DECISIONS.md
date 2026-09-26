@@ -2,6 +2,18 @@
 
 Newest first. One entry per decision: date, what, why.
 
+## 2026-09-26 · New title theme (owner)
+- **Owner:** "a really good title theme, entirely different than our current one", in the spirit of the
+  RollerCoaster Tycoon title music but matching a Vegas casino vibe.
+- **What was kept from RCT:** straight-eighths two-beat bounce (oom-pah bass, band on 2 and 4), one short hook
+  stated, sequenced up a step twice and repeated until it's hummable, secondary dominants and chromatic pickups,
+  AABA with a contrasting bridge, a loop that turns straight back to the top.
+- **The Vegas part:** drumroll and a fanfare that steps up a half step, brass-section lead and stabs, a minor-iv
+  sigh, a Charleston 3-3-2 kick, a "Sing, Sing, Sing" tom bridge in G minor over the spy-movie line cliche, a
+  "shave and a haircut" button, glockenspiel doubling the last chorus.
+- The sequencer grew to carry it (split bars, intro, fills, stabs, counter and bell lines, crash and toms); the
+  club and show tracks sound as before.
+
 ## 2026-09-26 · Batch E: custom emoji symbols and the theme rating (owner)
 - **Custom, not more themes (owner):** every theme keeps its two premade sets, which rank good to great, never
   perfect. A Custom option builds a set from a big emoji library in pay order and can end up much worse or better.

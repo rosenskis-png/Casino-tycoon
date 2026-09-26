@@ -292,8 +292,24 @@ Kept in M8.6 because both need fans and novelty, which are that part's core. The
   - **Fans:** good sessions turn regulars into fans (as planned); fans come back for it and tell others, which feeds awareness.
 - Result: plays climb, peak a little above steady state while it's new, then settle where its quality puts it. The design card draws the curve (plays per day by month).
 
+### Top progressive notice (2026-09-26, owner)
+A guest who wins a design's top progressive level (the highest standalone, linked or must-hit-by level) always makes
+a notice naming them, the level and the amount; tapping it goes to the guest. Its own switch in the Game tab ("A
+guest wins a top progressive").
+
 ### Selling a design to a slot maker
 The rare jackpot of design: a game good enough that a maker buys it.
+- **Owner's rebalance (2026-09-26) replaces the terms and curve below:** the maker takes **10–30%** of the edge on
+  your own machines (you keep 70–90%), royalties are **4–12%** of what its machines win elsewhere, and the hidden
+  total is **150 × (0.4 + 1.2 s) × e^(1.3 × normal)**, 5 to 50,000 (median ~100–220 by offer quality; ~5–12% of
+  sales reach 1,000; tens of thousands are rare). Sales follow a Weibull S-curve (shape 1.6) that starts within days,
+  passes half its total at a random 3–9 months and levels off within about 1–2 years; after 3 years machines retire
+  slowly (half-life 5 years; an Evergreen doesn't). Three budget lines per sold design: **Sold** (the price),
+  **Maker's cut** (edge share and meter increments, less the jackpots it covers) and **Royalties**. The design's card
+  in the Slots tab shows machines out there and whether sales are still climbing, last month's royalties, cut and
+  net, and totals since the sale. Old sales were mapped onto the new ranges (schema 24). Checked on the Test Floor
+  (3 machines of a sold Ember copy, 300 units): installs 19 → 135 → 250 → 290 over months 1, 4, 8, 12; royalties
+  ~$1K a month against a ~$30 cut; the wide-area Grand grew ~$6K in a year from outside play.
 - **Batch A (owner) replaces the rules below:** fans decide. Your own certified design on the floor gets a chance of an offer from **20 fans** (checked daily: about 5% a month at 20, rising to about 45% a month at 49) and **one for sure at 50**. Excitement, performance, fans and hold only shape how good the offer is. The offer **pauses the game with a pop-up** (Accept, Decline, or Decide later) and **waits in the Slots tab until answered** (no 30-day lapse).
 - **Who could get an offer (M8.6):** a design of origin `own` (not stock, rival, imported or a copy of one), on the floor at least 6 months, with Excitement ≥ 6, a (lifetime) performance index ≥ 1.2, at least 50 fans, and payback ≤ 97% (it has to make money, not just be loved at 99%).
 - **Chance:** each month a qualifying design scores s from 0 to 1 (Excitement, performance index, fans, hold); an offer comes with chance 0.5% + 3% × s a month. Even the best design waits a year or so on average.

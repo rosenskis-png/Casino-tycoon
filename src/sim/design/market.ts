@@ -417,7 +417,8 @@ function makeOffer(g: Game, id: string, sc: number) {
   const s = g.state, r = rng(s, "market"), d = s.designs[id].d;
   const j = () => clamp01(sc + (r.next() - 0.5) * 0.4);
   const cash = Math.round((designPrice(d).cost * (10 + 90 * j())) / 100) * 100;
-  const share = Math.round((0.25 + 0.5 * j()) * 20) / 20, roy = Math.round((0.01 + 0.02 * j()) * 1000) / 1000;
+  // (owner, 2026-09-26) Worth it: the maker takes 10-30% of the edge here (was 25-75%) and pays 4-12% royalties (was 1-3%).
+  const share = Math.round((0.7 + 0.2 * j()) * 20) / 20, roy = Math.round((0.04 + 0.08 * j()) * 1000) / 1000;
   // (Batch A, owner) The offer waits until answered (`until` is kept for old saves, unused); the UI pauses for it.
   s.offer = { id, maker: r.pick(MAKERS), cash, share, roy, until: s.tick, s: sc };
   news(g, "good", `A letter from ${s.offer.maker}: they want to buy ${d.name}. Answer it in the Slots tab.`, { tab: "slots" });
@@ -437,33 +438,45 @@ function decline(g: Game, lapsed = false) {
 function accept(g: Game) {
   const s = g.state, o = s.offer!, rec = s.designs[o.id], st = statsOf(s, o.id), r = rng(s, "market");
   s.offer = null;
-  // The machines it will sell out there: fixed now, never shown. Most 10-30, some 100+, very rarely thousands.
-  const units = Math.max(3, Math.min(20000, Math.round(20 * (0.5 + o.s) * Math.exp(1.3 * gauss(r)))));
-  const sale: Sale = { maker: o.maker, share: o.share, roy: o.roy, at: s.tick, units, ramp: 4 + Math.round(r.next() * 20), peak: 0, paid: 0, win: winPerDay(st), cash: o.cash };
+  // The machines it will sell out there: fixed now, never shown. (Owner, 2026-09-26) Dozens to hundreds is normal,
+  // thousands to tens of thousands exciting. Sales run on an S-curve with its own pace (months to its plateau).
+  const units = Math.max(5, Math.min(50000, Math.round(SALE_UNITS * (0.4 + 1.2 * o.s) * Math.exp(1.3 * gauss(r)))));
+  const sale: Sale = { maker: o.maker, share: o.share, roy: o.roy, at: s.tick, units, ramp: 3 + Math.round(r.next() * 60) / 10, peak: 0, paid: 0, win: winPerDay(st), cash: o.cash };
   rec.sale = sale;
   post(g, saleLine(o.id), o.cash);
   news(g, "good", `Sold! ${o.maker} bought ${rec.d.name} for ${fmtMoney(o.cash)}. You keep ${Math.round(o.share * 100)}% of its edge here and earn ${(o.roy * 100).toFixed(1)}% of what it wins elsewhere.`);
 }
 
-/** The budget line of a sold design. */
+/**
+ * The budget lines of a sold design (owner, 2026-09-26: one mixed line was confusing): the price, what goes to the
+ * maker here (its cut of the edge and the meters' increments, less the jackpots it covers), and royalties.
+ */
 export const saleLine = (id: string) => `sale:${id}`;
+export const cutLine = (id: string) => `cut:${id}`;
+export const royLine = (id: string) => `roy:${id}`;
 /** Theoretical win per machine per day on this floor. */
 const winPerDay = (st: DesignStats) => (st.machDays > 0 ? (st.theo ?? 0) / st.machDays : 0);
 /** A sold design's deal, if any. */
 export const saleOf = (s: GameState, id: string): Sale | undefined => s.designs[id]?.sale;
 
-/** Machines installed elsewhere, months after the sale: an S-curve to the hidden total, then a slow fade. */
+/** Median machines a sale places out there (× 0.4-1.6 by how good the offer was). */
+export const SALE_UNITS = 150;
+
+/**
+ * Machines installed elsewhere, months after the sale (owner, 2026-09-26): an S-curve that starts within days,
+ * passes half its total in about `ramp` months (3-9) and levels off by 1-2 years; after 3 years they slowly retire
+ * (half-life 5 years; an Evergreen stays).
+ */
 export function installs(s: GameState, id: string, sale: Sale): number {
-  const m = (s.tick - sale.at) / (30 * DAY), R = Math.max(1, sale.ramp);
-  const S = (x: number) => 1 / (1 + Math.exp(-8 * (x - 0.5)));
-  const up = m >= R ? 1 : (S(m / R) - S(0)) / (S(1) - S(0));
-  const half = s.dstats[id]?.ever ? 120 : 36;
-  return Math.round(sale.units * Math.max(0, up) * (m > R ? Math.pow(0.5, (m - R) / half) : 1));
+  const m = Math.max(0, (s.tick - sale.at) / (30 * DAY)), tau = Math.max(0.5, sale.ramp) / Math.pow(Math.LN2, 1 / 1.6);
+  const up = 1 - Math.exp(-Math.pow(m / tau, 1.6));
+  const fade = m > 36 && !s.dstats[id]?.ever ? Math.pow(0.5, (m - 36) / 60) : 1;
+  return Math.round(sale.units * up * fade);
 }
 
 /** Game fees on a sold design's own spins: the maker's cut of the theoretical edge, and the meters' increments. */
 export function saleFees(g: Game, id: string, sale: Sale, wagered: number, rtp: number, inc: number) {
-  post(g, saleLine(id), -wagered * (1 - rtp) * (1 - sale.share) - inc);
+  post(g, cutLine(id), -wagered * (1 - rtp) * (1 - sale.share) - inc);
 }
 
 function royalties(g: Game) {
@@ -476,8 +489,8 @@ function royalties(g: Game) {
     const n = installs(s, id, sale), pay = n * sale.win * 30 * sale.roy;
     sale.peak = Math.max(sale.peak, n);
     sale.paid += pay;
-    post(g, saleLine(id), pay);
-    news(g, "info", `${rec.d.name}: ${n.toLocaleString("en-US")} machine${n === 1 ? "" : "s"} in other casinos (${sale.maker}); royalties ${fmtMoney(pay)}.`, pay < 5000);
+    post(g, royLine(id), pay);
+    news(g, "info", `${rec.d.name}: ${n.toLocaleString("en-US")} machine${n === 1 ? "" : "s"} in other casinos (${sale.maker}); royalties ${fmtMoney(pay)} this month.`, pay < 5000, { tab: "slots" });
   }
 }
 

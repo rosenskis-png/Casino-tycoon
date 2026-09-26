@@ -123,7 +123,7 @@ export class Game {
       outcome: "", parcels: [],
       crew: newCrew(), bank: newBank(), reg: newRegulator(), whale: newWhale(),
       cal: newCalendar(), ads: [], research: newResearch(def), yours: null, designs: {}, nextDesign: 1, dstats: {}, meters: {}, ohist: {}, offer: null, records: {}, survey: {},
-      crowdWin: { month: {}, hist: [] }, lowPolice: 100,
+      crowdWin: { month: {}, hist: [] }, lowPolice: 100, groups: [],
     };
     // (M12) A town that starts out friendlier (or warier) with the police.
     if (def.police !== undefined) state.auth.police.standing = def.police;
@@ -242,8 +242,12 @@ export class Game {
     this.opaque = opaque;
   }
 
+  /** (2026-09-26) Doors between the open air and indoors, found on demand (sim/guests.ts). */
+  outerDoors: number[] | null = null;
+
   /** Called by commands after changing terrain or occupancy: refreshes engine caches, then tells systems. */
   tilesChanged(tiles: number[]) {
+    this.outerDoors = null;
     this.rooms.detect(this.state);
     this.rooms.reconcile(this.state);
     // A door demolished (or built) can change the gate list itself: then every cache goes; else only what's touched.

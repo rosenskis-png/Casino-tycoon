@@ -16,9 +16,9 @@ export const LOG_DAYS = 30;
  * (Batch A) What a notice is about, for the Game tab's notice switches. "general" (goals, welcome) can't be
  * switched off; urgent notices always reach the ticker.
  */
-export type NewsCat = "general" | "wins" | "incidents" | "security" | "authorities" | "staff" | "money" | "guests" | "calendar" | "slots" | "research";
+export type NewsCat = "general" | "wins" | "progressives" | "incidents" | "security" | "authorities" | "staff" | "money" | "guests" | "calendar" | "slots" | "research";
 export const NEWS_CATS: { id: Exclude<NewsCat, "general">; name: string }[] = [
-  { id: "wins", name: "Big wins and jackpots" }, { id: "incidents", name: "Incidents on the floor" },
+  { id: "wins", name: "Big wins and jackpots" }, { id: "progressives", name: "A guest wins a top progressive" }, { id: "incidents", name: "Incidents on the floor" },
   { id: "security", name: "Cheats and enforcement" }, { id: "authorities", name: "Police and regulator" },
   { id: "staff", name: "Staff" }, { id: "money", name: "Money and loans" }, { id: "guests", name: "Guests and whales" },
   { id: "calendar", name: "Events and marketing" }, { id: "slots", name: "Slot designs and makers" }, { id: "research", name: "Research" },

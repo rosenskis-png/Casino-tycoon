@@ -1,6 +1,6 @@
 // Runs the fixed-timestep loop: advances the sim by whole ticks at the chosen speed, flushes events to
 // listeners, and draws a frame with sub-tick interpolation. Faster speeds run more ticks, never bigger ones.
-import { TICKS_PER_SECOND, type Game, type Speed } from "../sim";
+import { TICKS_PER_SECOND, objFootprint, type Game, type Speed } from "../sim";
 import { Renderer, type DrawOptions } from "../render/renderer";
 import { T } from "../data/terrain";
 import { Camera } from "../render/camera";
@@ -13,6 +13,8 @@ export class Host {
   readonly camera = new Camera();
   speed: Speed = 1;
   drawOptions: DrawOptions = {};
+  /** (2026-09-26) Objects picked for a new group (ids), outlined on the floor. */
+  picked: number[] = [];
   /** Shows hidden values and field overlays (engine testing; players earn these through research later). */
   debug = false;
   /** Rolling frame stats for the debug panel. */
@@ -32,8 +34,17 @@ export class Host {
     this.setGame(game);
   }
 
+  /** Outlines the picked objects (dropping any that are gone). */
+  markPicked() {
+    const g = this.game, w = g.state.map.w;
+    this.picked = this.picked.filter((id) => g.objById.has(id));
+    this.drawOptions.marks = this.picked.flatMap((id) => objFootprint(g.objById.get(id)!).map((p) => p.y * w + p.x));
+  }
+
   setGame(g: Game) {
     this.game = g;
+    this.picked = [];
+    this.drawOptions.marks = null;
     this.renderer.setGame(g);
     // Start over the building and its way in (the lot can be far bigger than the screen).
     const m = g.state.map;

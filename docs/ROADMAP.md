@@ -171,6 +171,11 @@ Batches, not milestones: lettered, one chat each, in order. Each ends merged to 
 - Restroom lines: measured; a complaint bug (guests re-complained at every decision), fixed, plus shorter stall visits.
 - Slot-maker offers: a chance from 20 fans, certain at 50; the offer pauses the game, sits in the Slots tab until answered.
 
+**Owner's notes, 2026-09-26 ☑** (between A and B; schema 24, see DECISIONS): slot sales rebalanced (more machines,
+faster S-curve to a plateau, smaller cut, bigger royalties) with separate Sold / Maker's cut / Royalties lines and a
+status on the design's card; progressives verified; a notice when a guest wins a top progressive; guests walk from
+any entrance to the building's door; drag to place a row; groups (copy and paste a layout).
+
 **Batch B · Games working right ☐**
 - Spin to win: no early reveal (every space blank until it lands), reels visibly spinning in the open squares.
 - Pick a prize: the player picks.

@@ -8,8 +8,8 @@ import type { Game } from "./game";
 import { cabKind, cabOfKind, cantUse, designById, designLocks } from "./design";
 import type { CommandTable } from "./commands";
 import type { System } from "./registry";
-import type { PlacedObject } from "./state";
-import { objCells, objFootprint, objSeats, priceOf, sizeOk, type Placed } from "./geometry";
+import type { Blueprint, BlueprintPiece, PlacedObject } from "./state";
+import { objCells, objFootprint, objSeats, objSize, priceOf, sizeOk, type Placed } from "./geometry";
 import { clearDoor } from "./doors";
 import { besideSidewalk, idx, inBounds, recomputeOutdoor } from "./map";
 import { post } from "./finance";
@@ -35,7 +35,47 @@ declare module "./commands" {
     buyParcel: { id: string };
     /** (M10) The track a nightclub plays (data/music.ts CLUB_TRACKS). */
     setTrack: { id: number; track: number };
+    /** (2026-09-26, owner) Keep these objects' layout as a named group, to build again elsewhere; forget one. */
+    saveGroup: { name: string; ids: number[] };
+    dropGroup: { i: number };
   }
+}
+
+/** How many groups a casino keeps, and pieces in one. */
+export const MAX_GROUPS = 24, MAX_GROUP_PIECES = 120;
+
+/** A group of placed objects as a blueprint: each piece from the group's top-left corner (footprints only). */
+export function blueprintOf(objs: PlacedObject[], name: string): Blueprint {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const o of objs) for (const p of objFootprint(o)) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+  const items: BlueprintPiece[] = objs.map((o) => {
+    const it: BlueprintPiece = { kind: o.kind, dx: o.x - x0, dy: o.y - y0, rot: o.rot & 3 };
+    if (OBJECTS[o.kind].sized) { it.w = o.w; it.h = o.h; }
+    if (o.design !== undefined) it.design = o.design;
+    return it;
+  });
+  return { name, w: x1 - x0 + 1, h: y1 - y0 + 1, items };
+}
+
+/**
+ * The place commands that build group `bp` with its top-left corner at (x, y), turned `rot` quarter turns clockwise
+ * as a whole (each piece's box turns with it, and each piece turns with it).
+ */
+export function groupPlacements(bp: Blueprint, x: number, y: number, rot: number): Placed[] {
+  let items = bp.items.map((it) => ({ ...it })), W = bp.w, H = bp.h;
+  for (let k = 0; k < (rot & 3); k++) {
+    items = items.map((it) => {
+      const sz = objSize({ kind: it.kind, x: 0, y: 0, rot: it.rot, w: it.w, h: it.h });
+      return { ...it, dx: H - it.dy - sz.h, dy: it.dx, rot: (it.rot + 1) & 3 };
+    });
+    [W, H] = [H, W];
+  }
+  return items.map((it) => {
+    const p: Placed = { kind: it.kind, x: x + it.dx, y: y + it.dy, rot: it.rot };
+    if (it.w !== undefined) { p.w = it.w; p.h = it.h; }
+    if (it.design !== undefined) p.design = it.design;
+    return p;
+  });
 }
 
 type Build = "wall" | "door" | "demolish" | "entrance";
@@ -145,7 +185,27 @@ function movedPlacement(g: Game, o: PlacedObject, x: number, y: number, rot: num
   return { p, f };
 }
 
-const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" | "setPrice" | "setGrade" | "buyParcel" | "setTrack"> = {
+const commands: CommandTable<"build" | "place" | "remove" | "move" | "setRoom" | "setPrice" | "setGrade" | "buyParcel" | "setTrack" | "saveGroup" | "dropGroup"> = {
+  saveGroup: {
+    validate(g, c) {
+      const ids = [...new Set(c.ids)];
+      if (!ids.length) return "Pick something first";
+      if (ids.length > MAX_GROUP_PIECES) return `At most ${MAX_GROUP_PIECES} pieces in a group`;
+      if (ids.some((id) => !g.objById.has(id))) return "Something picked is gone";
+      if (ids.some((id) => OBJECTS[g.objById.get(id)!.kind].scenarioOnly)) return "Scenario pieces can't be copied";
+      if ((g.state.groups ?? []).length >= MAX_GROUPS) return `At most ${MAX_GROUPS} groups: delete one first`;
+      return null;
+    },
+    apply(g, c) {
+      const objs = [...new Set(c.ids)].map((id) => g.objById.get(id)!);
+      const name = c.name.trim().slice(0, 30) || `Group ${(g.state.groups ?? []).length + 1}`;
+      (g.state.groups ??= []).push(blueprintOf(objs, name));
+    },
+  },
+  dropGroup: {
+    validate: (g, c) => (g.state.groups?.[c.i] ? null : "No such group"),
+    apply(g, c) { g.state.groups.splice(c.i, 1); },
+  },
   build: {
     validate(g, c) {
       const ok = c.tiles.filter((i) => buildable(g, c.what, i));

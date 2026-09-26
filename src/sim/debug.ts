@@ -22,7 +22,8 @@ import { designIdOf } from "./design/lookup";
 import type { Meter } from "./state";
 import { rng } from "./rng";
 import { loadState, serialize } from "./save";
-import { objCells, objSeats, seatCount, sizeOk, dims } from "./geometry";
+import { objCells, objFootprint, objSeats, seatCount, sizeOk, dims } from "./geometry";
+import { blueprintOf, groupPlacements } from "./build";
 import { DOOR_RULES, DOOR_STATE } from "../data/terrain";
 import { ROOM_PURPOSES, type RoomPurpose } from "../data/rooms";
 import { SCENARIOS } from "../data/scenarios";
@@ -464,6 +465,19 @@ export function smoke(opts: { days: number; seeds: number[]; scenario?: string }
   eg.dispatch({ type: "spawnGuests", n: 60 });
   for (let t = 0; t < TICKS_PER_DAY; t++) eg.step();
   problems.push(...checkInvariants(eg).map((q) => `extension: ${q}`));
+  // (2026-09-26) Groups: a blueprint rebuilds its pieces where they were, and turning it keeps every piece's
+  // footprint and seats apart (a quarter turn four times is the original).
+  {
+    const tf = Game.create("testfloor", 1), pick = tf.state.objects.filter((o) => o.kind === "blackjack" || OBJECTS[o.kind].slot).slice(0, 12);
+    const bp = blueprintOf(pick, "t"), x0 = Math.min(...pick.flatMap((o) => objFootprint(o).map((q) => q.x))), y0 = Math.min(...pick.flatMap((o) => objFootprint(o).map((q) => q.y)));
+    const key = (ps: { kind: string; x: number; y: number; rot: number }[]) => ps.map((p) => `${p.kind}@${p.x},${p.y},${p.rot & 3}`).sort().join();
+    if (key(groupPlacements(bp, x0, y0, 0)) !== key(pick)) problems.push("groups: a blueprint doesn't rebuild its own pieces");
+    if (key(groupPlacements(bp, 0, 0, 4)) !== key(groupPlacements(bp, 0, 0, 0))) problems.push("groups: four quarter turns aren't the original");
+    for (let r = 0; r < 4; r++) {
+      const ps = groupPlacements(bp, 0, 0, r), foot = ps.flatMap((p) => objFootprint(p).map((q) => `${q.x},${q.y}`)), seats = ps.flatMap((p) => objSeats(p).map((q) => `${q.x},${q.y}`));
+      if (new Set(foot).size !== foot.length || seats.some((q) => foot.includes(q))) problems.push(`groups: turned ${r}, pieces overlap`);
+    }
+  }
   // The Test Floor has every kind of object, door rule and room purpose (M6): a day on it must stay clean too.
   run("testfloor", 3, 1, (g, d) => { for (const q of checkInvariants(g)) problems.push(`test floor day ${d + 1}: ${q}`); });
   return { ok: problems.length === 0, problems: problems.slice(0, 30) };
